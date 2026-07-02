@@ -28,6 +28,9 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.joda.time.Duration;
@@ -122,5 +125,49 @@ public class SourceDbToSpannerTest {
     when(mockOptions.getSourceDbDialect())
         .thenReturn(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
     SourceDbToSpanner.validateOptions(mockOptions);
+  }
+
+  @Test
+  public void testRun_ValidationFailures() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setProjectId("testProject");
+    mockOptions.setInstanceId("testInstance");
+    mockOptions.setDatabaseId("testDatabaseId");
+    mockOptions
+        .as(org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.class)
+        .setWorkerMachineType("n2-standard-4");
+
+    try (MockedStatic<PipelineController> mockedPipelineController =
+        mockStatic(PipelineController.class)) {
+
+      // Test MYSQL dialect with wrong config type (AstraConnectionConfig)
+      mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
+      mockedPipelineController
+          .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
+          .thenReturn(mock(AstraConnectionConfig.class));
+      assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
+
+      // Test POSTGRESQL dialect with wrong config type (CassandraConnectionConfig)
+      mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
+      mockedPipelineController
+          .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
+          .thenReturn(mock(CassandraConnectionConfig.class));
+      assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
+
+      // Test CASSANDRA dialect with wrong config type (JdbcShardConfig)
+      mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT);
+      mockedPipelineController
+          .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
+          .thenReturn(mock(JdbcShardConfig.class));
+      assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
+
+      // Test ASTRADB dialect with wrong config type (JdbcShardConfig)
+      mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT);
+      mockedPipelineController
+          .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
+          .thenReturn(mock(JdbcShardConfig.class));
+      assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
+    }
   }
 }
