@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
@@ -66,6 +67,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -680,6 +682,95 @@ public class PipelineControllerTest {
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
+  }
+
+  @Test
+  public void testGetSourceConnectionConfig() {
+    String testFilePath = "gs://test-bucket/config.json";
+
+    try (MockedConstruction<
+            com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser>
+        mockedParser =
+            Mockito.mockConstruction(
+                com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser
+                    .class,
+                (mock, context) -> {
+                  when(mock.parseConfiguration("MYSQL", testFilePath))
+                      .thenReturn(
+                          new com.google.cloud.teleport.v2.spanner.migrations.source.config
+                              .JdbcShardConfig());
+                  when(mock.parseConfiguration("INVALID", testFilePath))
+                      .thenThrow(new IllegalArgumentException("Invalid type"));
+                })) {
+
+      com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig config =
+          PipelineController.getSourceConnectionConfig("MYSQL", testFilePath);
+      assertThat(config)
+          .isInstanceOf(
+              com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig.class);
+
+      RuntimeException exception =
+          assertThrows(
+              RuntimeException.class,
+              () -> PipelineController.getSourceConnectionConfig("INVALID", testFilePath));
+      assertThat(exception.getMessage()).contains("Error parsing source config");
+    }
+  }
+
+  @Test
+  public void testExecuteJdbcMigration() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+
+    SpannerConfig spannerConfig = SpannerConfig.create();
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+    when(mockPipeline.getOptions()).thenReturn(mockOptions);
+
+    com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig mockConfig =
+        new com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig();
+
+    // Test Single Shard Routing
+    mockConfig.setShardConfigs(
+        List.of(new Shard("shard1", "localhost", "3306", "user", "pass", "db1", null, null, null)));
+
+    try (MockedStatic<PipelineController> mockedPipelineController =
+        Mockito.mockStatic(PipelineController.class)) {
+      mockedPipelineController
+          .when(() -> PipelineController.executeJdbcMigration(any(), any(), any(), any()))
+          .thenCallRealMethod();
+
+      PipelineController.executeJdbcMigration(mockOptions, mockConfig, mockPipeline, spannerConfig);
+
+      mockedPipelineController.verify(
+          () -> PipelineController.executeJdbcSingleInstanceMigration(any(), any(), any(), any()),
+          times(1));
+      mockedPipelineController.verify(
+          () -> PipelineController.executeJdbcShardedMigration(any(), any(), any(), any()),
+          times(0));
+    }
+
+    // Test Multi Shard Routing
+    mockConfig.setShardConfigs(
+        List.of(
+            new Shard("shard1", "localhost", "3306", "user", "pass", "db1", null, null, null),
+            new Shard("shard2", "localhost", "3306", "user", "pass", "db2", null, null, null)));
+
+    try (MockedStatic<PipelineController> mockedPipelineController =
+        Mockito.mockStatic(PipelineController.class)) {
+      mockedPipelineController
+          .when(() -> PipelineController.executeJdbcMigration(any(), any(), any(), any()))
+          .thenCallRealMethod();
+
+      PipelineController.executeJdbcMigration(mockOptions, mockConfig, mockPipeline, spannerConfig);
+
+      mockedPipelineController.verify(
+          () -> PipelineController.executeJdbcShardedMigration(any(), any(), any(), any()),
+          times(1));
+      mockedPipelineController.verify(
+          () -> PipelineController.executeJdbcSingleInstanceMigration(any(), any(), any(), any()),
+          times(0));
+    }
   }
 
   @After
