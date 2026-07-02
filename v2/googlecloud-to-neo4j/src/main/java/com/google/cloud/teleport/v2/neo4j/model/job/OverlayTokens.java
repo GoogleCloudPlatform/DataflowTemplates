@@ -27,7 +27,7 @@ public record OverlayTokens(Map<String, String> tokens) implements Serializable 
     return copyOf(tokens);
   }
 
-  // allows nullable keys and value contrary
+  // allows nullable keys and value contrary to JDK's copyOf
   private static <K, V> Map<K, V> copyOf(Map<K, V> original) {
     var result = new HashMap<K, V>(original.size());
     result.putAll(original);
