@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
