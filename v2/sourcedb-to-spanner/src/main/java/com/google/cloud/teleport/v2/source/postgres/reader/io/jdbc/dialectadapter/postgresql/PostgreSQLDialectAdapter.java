@@ -125,7 +125,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
 
-      discoverAndCacheParentTables(conn, sourceSchemaReference.namespace());
+      discoverAndCacheParentTables(conn);
 
       stmt.setString(1, sourceSchemaReference.dbName());
       stmt.setString(2, sourceSchemaReference.namespace());
@@ -449,31 +449,28 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /** Discovers and caches parent tables in an inheritance hierarchy. */
-  private void discoverAndCacheParentTables(Connection conn, String namespace)
+  private void discoverAndCacheParentTables(Connection conn)
       throws SchemaDiscoveryException {
     final String parentTableQuery =
         "SELECT DISTINCT c.relname AS table_name "
             + "FROM pg_catalog.pg_inherits i "
             + "JOIN pg_catalog.pg_class c ON i.inhparent = c.oid "
             + "JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid "
-            + "WHERE n.nspname = ?";
+            + "WHERE n.nspname = 'public' AND c.relkind = 'r'";
 
     try (PreparedStatement parentStmt = conn.prepareStatement(parentTableQuery)) {
-      parentStmt.setString(1, namespace);
       try (ResultSet parentRs = parentStmt.executeQuery()) {
         while (parentRs.next()) {
           parentTables.add(parentRs.getString("table_name"));
         }
         logger.info(
-            "Successfully cached inheritance parent tables for namespace '{}': {}",
-            namespace,
+            "Successfully cached inheritance parent tables for namespace 'public': {}",
             parentTables);
       }
     } catch (SQLException e) {
       logger.error(
-          "Failed to discover inheritance parent tables for namespace={} "
+          "Failed to discover inheritance parent tables for namespace='public' "
               + "(check pg_catalog permissions).",
-          namespace,
           e);
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
@@ -662,18 +659,13 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   private String extractBaseTableName(String tableName) {
-    int lastDotIndex = -1;
-    boolean inQuotes = false;
+    String baseName = tableName;
 
-    for (int i = 0; i < tableName.length(); i++) {
-      if (tableName.charAt(i) == '"') {
-        inQuotes = !inQuotes;
-      } else if (tableName.charAt(i) == '.' && !inQuotes) {
-        lastDotIndex = i;
-      }
+    if (baseName.startsWith("public.")) {
+      baseName = baseName.substring("public.".length());
+    } else if (baseName.startsWith("\"public\".")) {
+      baseName = baseName.substring("\"public\".".length());
     }
-
-    String baseName = tableName.substring(lastDotIndex + 1);
 
     if (baseName.startsWith("\"") && baseName.endsWith("\"")) {
       baseName = baseName.substring(1, baseName.length() - 1).replace("\"\"", "\"");

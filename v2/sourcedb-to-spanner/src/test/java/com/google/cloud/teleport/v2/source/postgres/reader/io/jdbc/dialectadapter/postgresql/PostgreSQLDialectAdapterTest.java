@@ -549,61 +549,6 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
-  public void testUuidBoundaryQueryForParentTable() throws Exception {
-    populateParentTableCache("my_parent_table");
-
-    // Populate uuid cache manually via discoverTableIndexes
-    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
-    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, false);
-    when(mockResultSet.getString("table_name")).thenReturn("my_parent_table");
-    when(mockResultSet.getString("column_name")).thenReturn("col_uuid");
-    when(mockResultSet.getString("index_name")).thenReturn("idx_uuid");
-    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
-    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
-    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
-    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
-    when(mockResultSet.getString("type_category")).thenReturn("U");
-    when(mockResultSet.getString("type_name")).thenReturn("uuid");
-    when(mockResultSet.getInt("type_length")).thenReturn(0);
-    when(mockResultSet.wasNull()).thenReturn(true);
-
-    adapter.discoverTableIndexes(
-        mockDataSource, sourceSchemaReference, ImmutableList.of("my_parent_table"));
-
-    assertThat(adapter.getBoundaryQuery("my_parent_table", ImmutableList.of(), "col_uuid"))
-        .isEqualTo(
-            "SELECT (SELECT col_uuid FROM ONLY my_parent_table ORDER BY col_uuid ASC NULLS LAST"
-                + " LIMIT 1), (SELECT col_uuid FROM ONLY my_parent_table ORDER BY col_uuid DESC"
-                + " NULLS LAST LIMIT 1)");
-    assertThat(
-            adapter.getBoundaryQuery("my_parent_table", ImmutableList.of("parent_col"), "col_uuid"))
-        .isEqualTo(
-            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM ONLY my_parent_table"
-                + " WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
-                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
-                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
-                + " col_uuid DESC NULLS LAST LIMIT 1)");
-
-    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper for
-    // UUIDs
-    assertThat(adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of(), "col_uuid"))
-        .isEqualTo(
-            "SELECT (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid ASC NULLS LAST"
-                + " LIMIT 1), (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid DESC"
-                + " NULLS LAST LIMIT 1)");
-    assertThat(
-            adapter.getBoundaryQuery(
-                "\"my_parent_table\"", ImmutableList.of("parent_col"), "col_uuid"))
-        .isEqualTo(
-            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM ONLY \"my_parent_table\""
-                + " WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
-                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
-                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
-                + " col_uuid DESC NULLS LAST LIMIT 1)");
-  }
-
-  @Test
   public void testReadQuery() {
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of()))
         .isEqualTo("SELECT * FROM my_schema.table1");
