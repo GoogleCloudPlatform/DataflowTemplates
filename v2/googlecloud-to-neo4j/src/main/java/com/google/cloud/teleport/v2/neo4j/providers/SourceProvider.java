@@ -24,7 +24,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 
 /** Provider interface, implemented for every source. */
-public interface Provider {
+public interface SourceProvider {
 
   void configure(OptionsParams optionsParams);
 
@@ -40,14 +40,13 @@ public interface Provider {
    * does not support SQL push-down. For a SQL source with target transformations, this source query
    * will not be made.
    */
-  PTransform<PBegin, PCollection<Row>> querySourceBeamRows(Schema schema);
+  PTransform<PBegin, PCollection<Row>> querySourceRows(Schema schema);
 
   /**
    * Queries the source for a particular target. The TargetQuerySpec includes the source query so
-   * that sources that do not support push-down, additional transforms can be done in this
-   * transform.
+   * that sources that do not support push-down can apply additional transforms.
    */
-  PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec);
+  PTransform<PBegin, PCollection<Row>> querySourceRowsForTarget(TargetQuerySpec targetQuerySpec);
 
   /**
    * Queries the source to extract metadata. This transform returns zero rows and a valid schema

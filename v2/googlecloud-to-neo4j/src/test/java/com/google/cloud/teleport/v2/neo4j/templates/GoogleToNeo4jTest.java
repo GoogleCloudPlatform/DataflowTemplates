@@ -20,9 +20,9 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
-import com.google.cloud.teleport.v2.neo4j.providers.Provider;
-import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
-import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProviderFactory;
+import com.google.cloud.teleport.v2.neo4j.providers.text.TextSourceProvider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.List;
 import org.junit.BeforeClass;
@@ -34,13 +34,13 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class GoogleToNeo4jTest {
 
-  private static Provider providerImpl;
+  private static SourceProvider sourceProvider;
   private static OptionsParams optionsParams;
 
   @BeforeClass
   public static void setUp() {
-    providerImpl =
-        ProviderFactory.of(
+    sourceProvider =
+        SourceProviderFactory.of(
             new InlineTextSource(
                 "a-text-source",
                 List.of(List.of("v1", "v2"), List.of("v3", "v4")),
@@ -48,12 +48,12 @@ public class GoogleToNeo4jTest {
             new TargetSequence());
     optionsParams = new OptionsParams();
     optionsParams.overlayTokens("{\"limit\":7}");
-    providerImpl.configure(optionsParams);
+    sourceProvider.configure(optionsParams);
   }
 
   @Test
   public void validates_source_type() {
-    assertThat(providerImpl.getClass()).isEqualTo(TextImpl.class);
+    assertThat(sourceProvider.getClass()).isEqualTo(TextSourceProvider.class);
   }
 
   @Test

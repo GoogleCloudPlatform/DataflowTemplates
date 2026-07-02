@@ -18,24 +18,21 @@ package com.google.cloud.teleport.v2.neo4j.providers;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
-import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQueryImpl;
-import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
+import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQuerySourceProvider;
+import com.google.cloud.teleport.v2.neo4j.providers.text.TextSourceProvider;
 import org.neo4j.importer.v1.sources.Source;
 
 /**
  * Factory for binding implementation adapters into framework. Currently, supports two providers:
  * bigquery and text
  */
-public class ProviderFactory {
+public class SourceProviderFactory {
 
-  public static Provider of(Source source, TargetSequence targetSequence) {
-    switch (source.getType()) {
-      case "bigquery":
-        return new BigQueryImpl((BigQuerySource) source, targetSequence);
-      case "text":
-        return new TextImpl((TextSource) source, targetSequence);
-      default:
-        throw new RuntimeException("Unsupported source type: " + source);
-    }
+  public static SourceProvider of(Source source, TargetSequence targetSequence) {
+    return switch (source.getType()) {
+      case "bigquery" -> new BigQuerySourceProvider((BigQuerySource) source, targetSequence);
+      case "text" -> new TextSourceProvider((TextSource) source, targetSequence);
+      default -> throw new RuntimeException("Unsupported source type: " + source);
+    };
   }
 }
