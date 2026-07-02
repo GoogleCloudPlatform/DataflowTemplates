@@ -23,4 +23,11 @@ package com.google.cloud.teleport.v2.spanner.migrations.source.config;
  *
  * <p>This interface will be expanded in Phase 2 during the platformization phase.
  */
-public interface SourceConnectionConfig {}
+public interface SourceConnectionConfig {
+
+  /**
+   * Validates that the source configuration is valid. Throws IllegalArgumentException if the
+   * configuration is invalid.
+   */
+  void validateFields();
+}

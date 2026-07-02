@@ -30,7 +30,8 @@ public class CassandraShard extends Shard {
     extractAndSetHostAndPort();
   }
 
-  private void validateFields() {
+  @Override
+  public void validateFields() {
     if (getContactPoints() == null || getContactPoints().isEmpty()) {
       throw new IllegalArgumentException("CONTACT_POINTS cannot be null or empty.");
     }

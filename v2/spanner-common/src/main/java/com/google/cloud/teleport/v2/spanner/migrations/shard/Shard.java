@@ -197,4 +197,37 @@ public class Shard implements Serializable {
         secretManagerUri,
         dbNameToLogicalShardIdMap);
   }
+
+  public void validateFields() {
+    if (logicalShardId == null) {
+      throw new IllegalArgumentException("logicalShardId cannot be null");
+    }
+    if (host == null) {
+      throw new IllegalArgumentException("host cannot be null");
+    }
+    if (port == null) {
+      throw new IllegalArgumentException("port cannot be null");
+    }
+    if (user == null) {
+      throw new IllegalArgumentException("user cannot be null");
+    }
+    if (password == null) {
+      throw new IllegalArgumentException("password cannot be null");
+    }
+    if (dbName == null) {
+      throw new IllegalArgumentException("dbName cannot be null");
+    }
+    if (namespace == null) {
+      throw new IllegalArgumentException("namespace cannot be null");
+    }
+    if (secretManagerUri == null) {
+      throw new IllegalArgumentException("secretManagerUri cannot be null");
+    }
+    if (connectionProperties == null) {
+      throw new IllegalArgumentException("connectionProperties cannot be null");
+    }
+    if (dbNameToLogicalShardIdMap == null) {
+      throw new IllegalArgumentException("dbNameToLogicalShardIdMap cannot be null");
+    }
+  }
 }

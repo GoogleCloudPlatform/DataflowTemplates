@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.typesafe.config.ConfigException;
@@ -380,5 +381,35 @@ public class SourceConfigParserTest {
             IllegalArgumentException.class,
             () -> parser.parseConfiguration("unsupported_db", "dummy/path.json"));
     assertEquals("Unsupported source type: unsupported_db", exception.getMessage());
+  }
+
+  @Test
+  public void testParseConfiguration_Cassandra_ValidationFails() throws Exception {
+    try (MockedStatic<CassandraDriverConfigLoader> mockLoader =
+        mockStatic(CassandraDriverConfigLoader.class)) {
+      String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
+      mockLoader
+          .when(() -> CassandraDriverConfigLoader.getOptionsMapFromFile(testGcsPath))
+          .thenReturn(null);
+
+      Exception exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> parser.parseConfiguration("cassandra", testGcsPath));
+      assertEquals("optionsMap cannot be null", exception.getMessage());
+    }
+  }
+
+  @Test
+  public void testParseConfiguration_Jdbc_EmptyShardConfigs() throws Exception {
+    File tempFile = tempFolder.newFile("jdbc-empty-shards-config.json");
+    String jdbcJson = "{\n  \"shardConfigs\": []\n}";
+    Files.writeString(tempFile.toPath(), jdbcJson);
+
+    Exception exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> parser.parseConfiguration("mysql", tempFile.getAbsolutePath()));
+    assertEquals("shardConfigs cannot be null or empty", exception.getMessage());
   }
 }
