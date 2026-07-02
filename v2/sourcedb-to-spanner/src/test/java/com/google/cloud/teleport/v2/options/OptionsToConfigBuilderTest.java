@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrappe
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;

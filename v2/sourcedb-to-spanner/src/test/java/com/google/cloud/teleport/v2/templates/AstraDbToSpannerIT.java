@@ -36,6 +36,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,21 +62,32 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SourceDbToSpanner.class)
-public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements Serializable {
+public class AstraDbToSpannerIT extends SourceDbToSpannerITBase implements Serializable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AstraDbToSpannerSimpleIT.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AstraDbToSpannerIT.class);
 
   private static final long NUM_ROWS = 50L;
   private static final String ASTRA_DB = "dataflow_integration_tests";
   private static final String ASTRA_DB_REGION = TestProperties.region();
   private static final String ASTRA_KS = "beam";
-  private static final String ASTRA_TBL = "scientist";
+
+  private static final String[][] SCIENTISTS = {
+    new String[] {"phys", "Einstein"},
+    new String[] {"bio", "Darwin"},
+    new String[] {"phys", "Copernicus"},
+    new String[] {"bio", "Pasteur"},
+    new String[] {"bio", "Curie"}
+  };
+
+  private String astraTable;
 
   private static DbOpsClient dbClient;
   private SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setup() throws Exception {
+    astraTable = "scientist_" + testId.replaceAll("-", "_");
+
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
 
@@ -86,7 +99,7 @@ public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements
                 + " person_id INT64,"
                 + " person_name STRING(MAX),"
                 + ") PRIMARY KEY(person_department, person_id)",
-            ASTRA_TBL);
+            astraTable);
     spannerResourceManager.executeDdlStatement(spannerDdl);
 
     // Setup Astra Db
@@ -113,29 +126,61 @@ public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements
     jobParameters.put("sourceDbDialect", "ASTRA_DB");
     jobParameters.put("sourceConfigURL", sourceConfigURL);
     jobParameters.put("outputDirectory", getGcsPath("output", artifactClient));
+    jobParameters.put("tables", astraTable);
     jobParameters.put(
         "ipConfiguration", "WORKER_IP_UNSPECIFIED"); // Require internet access for Astra API
 
-    // Act
     PipelineLauncher.LaunchInfo info =
         launchDataflowJob(testName, null, null, null, spannerResourceManager, jobParameters, null);
-    LOGGER.debug("Pipeline is now running");
+    LOGGER.info("Pipeline is now running.");
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult(result).isLaunchFinished();
-    LOGGER.debug("Destination Table has been populated.");
+    LOGGER.info("Destination Table has been populated.");
 
-    // Optionally verify a row
+    // Verify the row count matches what was inserted
     List<Struct> rows =
         spannerResourceManager.readTableRecords(
-            ASTRA_TBL, List.of("person_department", "person_id", "person_name"));
-    assertThat(rows).isNotEmpty();
+            astraTable, List.of("person_department", "person_id", "person_name"));
+    assertThat(rows).hasSize(Math.toIntExact(NUM_ROWS));
+
+    // Verify row data content using SpannerAsserts like other ITs
+    List<Map<String, Object>> expectedData = getExpectedData();
+
+    SpannerAsserts.assertThatStructs(rows).hasRecordsUnorderedCaseInsensitiveColumns(expectedData);
+  }
+
+  private List<Map<String, Object>> getExpectedData() {
+    List<Map<String, Object>> expectedData = new ArrayList<>();
+    for (int i = 0; i < NUM_ROWS; i++) {
+      int index = i % SCIENTISTS.length;
+      Map<String, Object> expectedRow = new HashMap<>();
+      expectedRow.put("person_department", SCIENTISTS[index][0]);
+      expectedRow.put("person_id", i);
+      expectedRow.put("person_name", SCIENTISTS[index][1]);
+      expectedData.add(expectedRow);
+    }
+    return expectedData;
   }
 
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager);
+
+    if (dbClient != null) {
+      try (CqlSession astraSession =
+          CqlSession.builder()
+              .withCloudSecureConnectBundle(
+                  new ByteArrayInputStream(dbClient.downloadDefaultSecureConnectBundle()))
+              .withAuthCredentials("token", dbClient.getToken())
+              .withKeyspace(ASTRA_KS)
+              .build()) {
+        astraSession.execute(String.format("DROP TABLE IF EXISTS %s.%s;", ASTRA_KS, astraTable));
+      } catch (Exception e) {
+        LOGGER.warn("Failed to drop Astra table", e);
+      }
+    }
   }
 
   private static String test() {
@@ -146,7 +191,7 @@ public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements
   private void createOrResumeAstraDatabase() throws InterruptedException {
     AstraDBOpsClient databasesClient = new AstraDBOpsClient(test());
     if (databasesClient.findByName(ASTRA_DB).findAny().isEmpty()) {
-      LOGGER.debug("Create a new Database {}", ASTRA_DB);
+      LOGGER.info("Create a new Database {}", ASTRA_DB);
       databasesClient.create(
           DatabaseCreationRequest.builder()
               .name(ASTRA_DB)
@@ -154,16 +199,16 @@ public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements
               .cloudRegion(ASTRA_DB_REGION)
               .build());
     } else {
-      LOGGER.debug("Database {} exists in source organization", ASTRA_DB);
+      LOGGER.info("Database {} exists in source organization.", ASTRA_DB);
     }
     dbClient = databasesClient.databaseByName(ASTRA_DB);
     if (dbClient.get().getStatus() == DatabaseStatusType.HIBERNATED) {
       resumeDb(dbClient.get());
-      LOGGER.debug("Resuming as DB was Hibernated");
+      LOGGER.info("Resuming as DB was Hibernated.");
     }
     while (dbClient.get().getStatus() != DatabaseStatusType.ACTIVE) {
       Thread.sleep(5000);
-      LOGGER.debug("Waiting for DB to be ACTIVE....");
+      LOGGER.info("Waiting for DB to be ACTIVE.");
     }
   }
 
@@ -203,21 +248,14 @@ public class AstraDbToSpannerSimpleIT extends SourceDbToSpannerITBase implements
           String.format(
               "CREATE TABLE IF NOT EXISTS %s.%s(person_department text, person_id int, person_name text, PRIMARY KEY"
                   + "((person_department), person_id));",
-              ASTRA_KS, ASTRA_TBL));
-      String[][] scientists = {
-        new String[] {"phys", "Einstein"},
-        new String[] {"bio", "Darwin"},
-        new String[] {"phys", "Copernicus"},
-        new String[] {"bio", "Pasteur"},
-        new String[] {"bio", "Curie"}
-      };
+              ASTRA_KS, astraTable));
       for (int i = 0; i < NUM_ROWS; i++) {
-        int index = i % scientists.length;
+        int index = i % SCIENTISTS.length;
         String insertStr =
             String.format(
                 "INSERT INTO %s.%s(person_department, person_id, person_name) values("
                     + "'%s', %d, '%s');",
-                ASTRA_KS, ASTRA_TBL, scientists[index][0], i, scientists[index][1]);
+                ASTRA_KS, astraTable, SCIENTISTS[index][0], i, SCIENTISTS[index][1]);
         astraSession.execute(insertStr);
       }
     }

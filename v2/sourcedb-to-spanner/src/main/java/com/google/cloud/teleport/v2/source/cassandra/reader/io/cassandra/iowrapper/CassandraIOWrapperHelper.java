@@ -20,7 +20,6 @@ import static com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscovery;
 import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscoveryImpl;

@@ -39,6 +39,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.templates.PipelineController.ShardedJdbcDbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceJdbcDbConfigContainer;
@@ -688,26 +691,19 @@ public class PipelineControllerTest {
   public void testGetSourceConnectionConfig() {
     String testFilePath = "gs://test-bucket/config.json";
 
-    try (MockedConstruction<
-            com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser>
-        mockedParser =
-            Mockito.mockConstruction(
-                com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser
-                    .class,
-                (mock, context) -> {
-                  when(mock.parseConfiguration("MYSQL", testFilePath))
-                      .thenReturn(
-                          new com.google.cloud.teleport.v2.spanner.migrations.source.config
-                              .JdbcShardConfig());
-                  when(mock.parseConfiguration("INVALID", testFilePath))
-                      .thenThrow(new IllegalArgumentException("Invalid type"));
-                })) {
+    try (MockedConstruction<SourceConfigParser> mockedParser =
+        Mockito.mockConstruction(
+            SourceConfigParser.class,
+            (mock, context) -> {
+              when(mock.parseConfiguration("MYSQL", testFilePath))
+                  .thenReturn(new JdbcShardConfig());
+              when(mock.parseConfiguration("INVALID", testFilePath))
+                  .thenThrow(new IllegalArgumentException("Invalid type"));
+            })) {
 
-      com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig config =
+      SourceConnectionConfig config =
           PipelineController.getSourceConnectionConfig("MYSQL", testFilePath);
-      assertThat(config)
-          .isInstanceOf(
-              com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig.class);
+      assertThat(config).isInstanceOf(JdbcShardConfig.class);
 
       RuntimeException exception =
           assertThrows(
@@ -727,8 +723,7 @@ public class PipelineControllerTest {
     org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
     when(mockPipeline.getOptions()).thenReturn(mockOptions);
 
-    com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig mockConfig =
-        new com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig();
+    JdbcShardConfig mockConfig = new JdbcShardConfig();
 
     // Test Single Shard Routing
     mockConfig.setShardConfigs(
