@@ -739,4 +739,16 @@ CREATE TABLE IF NOT EXISTS spatial_geometrycollection (
 
 INSERT INTO spatial_geometrycollection (geoms) VALUES (MultiPoint(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
 
+CREATE TABLE IF NOT EXISTS `uuid_table` (
+    `id` INT PRIMARY KEY,
+    `uuid_col` VARCHAR(36) DEFAULT NULL
+);
 
+INSERT INTO `uuid_table` (`id`, `uuid_col`) VALUES (1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'), (2, NULL);
+
+CREATE TABLE IF NOT EXISTS `uuid_pk_table` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `uuid_pk_col` VARCHAR(36) NOT NULL
+);
+
+INSERT INTO `uuid_pk_table` (`id`, `uuid_pk_col`) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'), ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12');

@@ -489,3 +489,15 @@ CREATE TABLE IF NOT EXISTS spatial_geometrycollection (
   geom_coll VARCHAR,
   PRIMARY KEY (id)
 );
+
+CREATE TABLE IF NOT EXISTS uuid_table (
+  id INT8 NOT NULL,
+  uuid_col VARCHAR,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS uuid_pk_table (
+  id VARCHAR NOT NULL,
+  uuid_pk_col VARCHAR NOT NULL,
+  PRIMARY KEY (id)
+);

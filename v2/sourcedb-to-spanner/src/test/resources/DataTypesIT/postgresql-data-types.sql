@@ -279,3 +279,10 @@ INSERT INTO t_varbit_to_string (col) VALUES ('1100'::varbit(32)), (NULL);
 INSERT INTO t_varbit_to_bool_array (col) VALUES ('1100'::varbit(32)), (NULL);
 INSERT INTO t_varchar (col) VALUES ('testing varchar'), (NULL);
 INSERT INTO t_xml (col) VALUES ('<test>123</test>'::xml), (NULL);
+
+CREATE TABLE t_uuid_pk (
+  id uuid NOT NULL,
+  col integer,
+  PRIMARY KEY(id)
+);
+INSERT INTO t_uuid_pk (id, col) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1), ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 2);

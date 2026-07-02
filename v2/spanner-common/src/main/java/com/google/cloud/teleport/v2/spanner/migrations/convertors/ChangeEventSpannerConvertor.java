@@ -111,6 +111,8 @@ public class ChangeEventSpannerConvertor {
           case STRING:
           case PG_VARCHAR:
           case PG_TEXT:
+          case UUID:
+          case PG_UUID:
             pk.append(
                 ChangeEventTypeConvertor.toString(
                     changeEvent, keyColName, /* requiredField= */ true));

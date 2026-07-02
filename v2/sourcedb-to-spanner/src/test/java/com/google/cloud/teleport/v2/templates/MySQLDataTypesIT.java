@@ -474,6 +474,13 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "-2.2250738585072014E-308"));
     expectedData.put(
         "time_pk", createRows("time_pk", "15:50:00.200000", "838:59:58.123000", "-838:59:59"));
+    expectedData.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+    expectedData.put(
+        "uuid_pk",
+        createRows(
+            "uuid_pk",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     return expectedData;
   }
 
