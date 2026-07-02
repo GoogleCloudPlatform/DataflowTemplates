@@ -337,8 +337,7 @@ public class PostgreSQLDialectAdapterTest {
             "idx_time",
             "idx_timetz",
             "idx_bytea");
-    when(mockResultSet.getString("type_category"))
-        .thenReturn("N", "N", "N", "D", "D", "D", "U");
+    when(mockResultSet.getString("type_category")).thenReturn("N", "N", "N", "D", "D", "D", "U");
     when(mockResultSet.getString("type_name"))
         .thenReturn("numeric", "float4", "float8", "date", "time", "timetz", "bytea");
 
@@ -382,7 +381,6 @@ public class PostgreSQLDialectAdapterTest {
                     .setColumnTypeName("float8")
                     .setDecimalStepSize(new java.math.BigDecimal("0.0000000001"))
                     .build(),
-
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col_date")
                     .setIndexName("idx_date")
@@ -486,8 +484,9 @@ public class PostgreSQLDialectAdapterTest {
     // subqueries
     assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_uuid"))
         .isEqualTo(
-            "SELECT (SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid ASC NULLS LAST LIMIT 1), "
-                + "(SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid DESC NULLS LAST LIMIT 1)");
+            "SELECT (SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid ASC NULLS LAST LIMIT"
+                + " 1), (SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid DESC NULLS LAST"
+                + " LIMIT 1)");
 
     // 3b. Assert that getBoundaryQuery generates correct partitioned query for UUID column (using
     // CTE with subqueries)
@@ -495,20 +494,23 @@ public class PostgreSQLDialectAdapterTest {
             adapter.getBoundaryQuery(
                 "my_schema.table1", ImmutableList.of("parent_col"), "col_uuid"))
         .isEqualTo(
-            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM my_schema.table1 "
-                + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "
-                + "SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY col_uuid ASC NULLS LAST LIMIT 1), "
-                + "(SELECT col_uuid FROM filtered_uuid ORDER BY col_uuid DESC NULLS LAST LIMIT 1)");
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM my_schema.table1 WHERE"
+                + " ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
+                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid DESC NULLS LAST LIMIT 1)");
 
     // 4. Assert that getReadQuery generates the correct query for UUID column
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_uuid")))
         .isEqualTo(
-            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ?"
+                + " OR (? = TRUE AND col_uuid = ?))))");
 
     // 5. Assert that getCountQuery generates the correct query for UUID column
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_uuid"), 1000L))
         .isEqualTo(
-            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND"
+                + " (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
   }
 
   @Test
@@ -570,8 +572,9 @@ public class PostgreSQLDialectAdapterTest {
     // subqueries
     assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_bytea"))
         .isEqualTo(
-            "SELECT (SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea ASC NULLS LAST LIMIT 1), "
-                + "(SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea DESC NULLS LAST LIMIT 1)");
+            "SELECT (SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea ASC NULLS LAST LIMIT"
+                + " 1), (SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea DESC NULLS LAST"
+                + " LIMIT 1)");
 
     // 3b. Assert that getBoundaryQuery generates correct partitioned query for BYTEA column (using
     // CTE with subqueries)
@@ -579,20 +582,23 @@ public class PostgreSQLDialectAdapterTest {
             adapter.getBoundaryQuery(
                 "my_schema.table1", ImmutableList.of("parent_col"), "col_bytea"))
         .isEqualTo(
-            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_bytea FROM my_schema.table1 "
-                + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "
-                + "SELECT (SELECT col_bytea FROM filtered_uuid ORDER BY col_bytea ASC NULLS LAST LIMIT 1), "
-                + "(SELECT col_bytea FROM filtered_uuid ORDER BY col_bytea DESC NULLS LAST LIMIT 1)");
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_bytea FROM my_schema.table1 WHERE"
+                + " ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
+                + " parent_col = ?))))) SELECT (SELECT col_bytea FROM filtered_uuid ORDER BY"
+                + " col_bytea ASC NULLS LAST LIMIT 1), (SELECT col_bytea FROM filtered_uuid ORDER"
+                + " BY col_bytea DESC NULLS LAST LIMIT 1)");
 
     // 4. Assert that getReadQuery generates the correct query for BYTEA column
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_bytea")))
         .isEqualTo(
-            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND (col_bytea < ? OR (? = TRUE AND col_bytea = ?))))");
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND (col_bytea <"
+                + " ? OR (? = TRUE AND col_bytea = ?))))");
 
     // 5. Assert that getCountQuery generates the correct query for BYTEA column
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_bytea"), 1000L))
         .isEqualTo(
-            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND (col_bytea < ? OR (? = TRUE AND col_bytea = ?))))");
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND"
+                + " (col_bytea < ? OR (? = TRUE AND col_bytea = ?))))");
   }
 
   @Test
