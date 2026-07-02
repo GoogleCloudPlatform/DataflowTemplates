@@ -193,6 +193,12 @@ public class BoundarySplitterFactory {
     Preconditions.checkNotNull(
         partitionColumn.numericScale(), "Trying to split BigDecimals without numeric scale.");
     int scale = partitionColumn.numericScale();
+    if (start != null) {
+      scale = Math.max(scale, start.scale());
+    }
+    if (end != null) {
+      scale = Math.max(scale, end.scale());
+    }
     BigInteger startBigInt = bigDecimalToBigInt(start, scale);
     BigInteger endBigInt = bigDecimalToBigInt(end, scale);
 
