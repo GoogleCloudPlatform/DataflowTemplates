@@ -115,5 +115,3 @@ report_unconfirmed_repaired_data_mismatches: false
 enable_materialized_views: false
 enable_sasi_indexes: false
 enable_transient_replication: false
-storage_port: 0
-ssl_storage_port: 0
