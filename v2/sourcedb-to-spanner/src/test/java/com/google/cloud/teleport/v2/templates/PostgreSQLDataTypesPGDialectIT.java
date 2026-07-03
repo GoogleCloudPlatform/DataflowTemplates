@@ -183,11 +183,13 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         createRows("bigint", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put(
         "bigint_to_string",
-        createRows("bigint_to_string", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
+        createRows(
+            "bigint_to_string", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put(
         "bigserial", createRows("bigserial", "-9223372036854775808", "9223372036854775807", "42"));
     result.put(
-        "bigserial_to_string", createRows("bigserial_to_string", "-9223372036854775808", "9223372036854775807", "42"));
+        "bigserial_to_string",
+        createRows("bigserial_to_string", "-9223372036854775808", "9223372036854775807", "42"));
     // bit is commented out to avoid failing the test case; returned data is bits "00110000" and
     // "00110001" (base64 strings "MA==" and "MQ==")
     // result.put("bit", createRows("bit", "AA==", "gA==", "NULL"));
