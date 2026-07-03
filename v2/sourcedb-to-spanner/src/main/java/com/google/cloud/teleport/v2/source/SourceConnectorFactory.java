@@ -32,7 +32,7 @@ public class SourceConnectorFactory {
    * @param options Pipeline options.
    * @return The source connector.
    */
-  public static ISrcToSpSourceConnector getJdbcSourceConnectorByDialect(
+  public static ISrcToSpSourceConnector getSourceConnectorByDialect(
       SourceDbToSpannerOptions options) {
     String dialect = options.getSourceDbDialect();
     if (SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT.equals(dialect)
@@ -55,7 +55,7 @@ public class SourceConnectorFactory {
    * @param dialect The SQL dialect.
    * @return The JDBC source connector.
    */
-  public static AbstractJdbcSrcToSpSourceConnector getJdbcSourceConnectorByDialect(
+  public static AbstractJdbcSrcToSpSourceConnector getSourceConnectorByDialect(
       SQLDialect dialect) {
     if (dialect == SQLDialect.MYSQL) {
       return new MySqlSrcToSpSourceConnector();

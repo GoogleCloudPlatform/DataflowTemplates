@@ -101,6 +101,7 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
     if (StringUtils.isBlank(namespace)) {
       namespace = "public";
     }
+    //TODO check for scenarios where URL already has a ?
     jdbcUrl = jdbcUrl + "?currentSchema=" + namespace;
     if (StringUtils.isNotBlank(connectionProperties)) {
       jdbcUrl = jdbcUrl + "&" + connectionProperties;
