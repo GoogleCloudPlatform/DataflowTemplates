@@ -176,13 +176,16 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     }
   }
 
-private Map<String, List<Map<String, Object>>> getExpectedData() {
+  private Map<String, List<Map<String, Object>>> getExpectedData() {
     HashMap<String, List<Map<String, Object>>> result = new HashMap<>();
-    result.put("bigint", createRows("bigint", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
+    result.put(
+        "bigint",
+        createRows("bigint", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put(
         "bigint_to_string",
         createRows("bigint_to_string", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
-    result.put("bigserial", createRows("bigserial", "-9223372036854775808", "9223372036854775807", "42"));
+    result.put(
+        "bigserial", createRows("bigserial", "-9223372036854775808", "9223372036854775807", "42"));
     result.put(
         "bigserial_to_string", createRows("bigserial_to_string", "-9223372036854775808", "9223372036854775807", "42"));
     // bit is commented out to avoid failing the test case; returned data is bits "00110000" and
@@ -207,7 +210,8 @@ private Map<String, List<Map<String, Object>>> getExpectedData() {
     // result.put("bytea_to_string", createRows("bytea_to_string", "616263", "NULL"));
     result.put("char", createRows("char", "a", "Θ", "NULL"));
     result.put("character", createRows("character", "a", "Ξ", "NULL"));
-    result.put("character_varying", createRows("character_varying", "testing character varying", "NULL"));
+    result.put(
+        "character_varying", createRows("character_varying", "testing character varying", "NULL"));
     result.put("date", createRows("date", "0001-01-01", "9999-12-31", "NULL"));
     result.put("date_to_string", createRows("date_to_string", "0001-01-01", "9999-12-31", "NULL"));
     result.put("decimal", createRows("decimal", "0.12", "NULL"));
@@ -240,21 +244,27 @@ private Map<String, List<Map<String, Object>>> getExpectedData() {
         "float8_to_string",
         createRows("float8_to_string", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
     result.put("int", createRows("int", "-2147483648", "2147483647", "1", "NULL"));
-    result.put("int_to_string", createRows("int_to_string", "-2147483648", "2147483647", "1", "NULL"));
+    result.put(
+        "int_to_string", createRows("int_to_string", "-2147483648", "2147483647", "1", "NULL"));
     result.put("integer", createRows("integer", "-2147483648", "2147483647", "2", "NULL"));
-    result.put("integer_to_string", createRows("integer_to_string", "-2147483648", "2147483647", "2", "NULL"));
+    result.put(
+        "integer_to_string",
+        createRows("integer_to_string", "-2147483648", "2147483647", "2", "NULL"));
     result.put("int2", createRows("int2", "-32768", "32767", "3", "NULL"));
     result.put("int2_to_string", createRows("int2_to_string", "-32768", "32767", "3", "NULL"));
     result.put("int4", createRows("int4", "-2147483648", "2147483647", "4", "NULL"));
-    result.put("int4_to_string", createRows("int4_to_string", "-2147483648", "2147483647", "4", "NULL"));
-    result.put("int8", createRows("int8", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
+    result.put(
+        "int4_to_string", createRows("int4_to_string", "-2147483648", "2147483647", "4", "NULL"));
+    result.put(
+        "int8", createRows("int8", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put(
         "int8_to_string", createRows("int8_to_string", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put("json", createRows("json", "{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string",
         createRows("json_to_string", "{\"duplicate_key\": 1, \"duplicate_k...", "{\"null_key\": null}", "NULL"));
-    result.put("jsonb", createRows("jsonb", "{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
+    result.put(
+        "jsonb", createRows("jsonb", "{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
         "jsonb_to_string", createRows("jsonb_to_string", "{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     result.put(
@@ -302,20 +312,29 @@ private Map<String, List<Map<String, Object>>> getExpectedData() {
         createRows(
             "real_to_string", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
     result.put("serial", createRows("serial", "-2147483648", "2147483647", "6"));
-    result.put("serial_to_string", createRows("serial_to_string", "-2147483648", "2147483647", "6"));
+    result.put(
+        "serial_to_string", createRows("serial_to_string", "-2147483648", "2147483647", "6"));
     result.put("serial2", createRows("serial2", "-32768", "32767", "7"));
     result.put("serial2_to_string", createRows("serial2_to_string", "-32768", "32767", "7"));
     result.put("serial4", createRows("serial4", "-2147483648", "2147483647", "8"));
-    result.put("serial4_to_string", createRows("serial4_to_string", "-2147483648", "2147483647", "8"));
-    result.put("serial8", createRows("serial8", "-9223372036854775808", "9223372036854775807", "9"));
-    result.put("serial8_to_string", createRows("serial8_to_string", "-9223372036854775808", "9223372036854775807", "9"));
+    result.put(
+        "serial4_to_string", createRows("serial4_to_string", "-2147483648", "2147483647", "8"));
+    result.put(
+        "serial8", createRows("serial8", "-9223372036854775808", "9223372036854775807", "9"));
+    result.put(
+        "serial8_to_string",
+        createRows("serial8_to_string", "-9223372036854775808", "9223372036854775807", "9"));
     result.put("smallint", createRows("smallint", "-32768", "32767", "10", "NULL"));
-    result.put("smallint_to_string", createRows("smallint_to_string", "-32768", "32767", "10", "NULL"));
+    result.put(
+        "smallint_to_string", createRows("smallint_to_string", "-32768", "32767", "10", "NULL"));
     result.put("smallserial", createRows("smallserial", "-32768", "32767", "11"));
-    result.put("smallserial_to_string", createRows("smallserial_to_string", "-32768", "32767", "11"));
+    result.put(
+        "smallserial_to_string", createRows("smallserial_to_string", "-32768", "32767", "11"));
     result.put("text", createRows("text", "testing text", "NULL"));
     result.put("timestamp", createRows("timestamp", "1970-01-02T03:04:05.123456Z", "NULL"));
-    result.put("timestamp_to_timestamp", createRows("timestamp_to_timestamp", "1970-01-02T03:04:05.123456000Z", "NULL"));
+    result.put(
+        "timestamp_to_timestamp",
+        createRows("timestamp_to_timestamp", "1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
         "timestamptz",
         createRows("timestamptz", "1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
@@ -328,7 +347,9 @@ private Map<String, List<Map<String, Object>>> getExpectedData() {
     result.put(
         "timestamp_with_timezone_to_string",
         createRows("timestamp_with_timezone_to_string", "1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
-    result.put("timestamp_without_time_zone", createRows("timestamp_without_time_zone", "1970-01-02T03:04:05.123456Z", "NULL"));
+    result.put(
+        "timestamp_without_time_zone",
+        createRows("timestamp_without_time_zone", "1970-01-02T03:04:05.123456Z", "NULL"));
     result.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     // varbit is commented out to avoid failing the test case; returned data is bytes "00110001
     // 00110001 00110000 00110000" (base64 string "MTEwMA==")
