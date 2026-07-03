@@ -20,7 +20,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 
 /** Factory to create {@link ISrcToSpSourceConnector} instances based on pipeline options. */
 public class SourceConnectorFactory {

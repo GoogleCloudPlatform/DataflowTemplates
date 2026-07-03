@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provi
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;

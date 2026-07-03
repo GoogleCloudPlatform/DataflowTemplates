@@ -18,17 +18,17 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrap
 import static com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDefaults.DEFAULT_CASSANDRA_SCHEMA_DISCOVERY_BACKOFF;
 
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaDiscovery;
-import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
-import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscovery;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscoveryImpl;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
+import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscovery;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscoveryImpl;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

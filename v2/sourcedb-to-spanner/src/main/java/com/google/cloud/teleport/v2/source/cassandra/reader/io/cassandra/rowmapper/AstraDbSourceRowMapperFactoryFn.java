@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmap
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import org.apache.beam.sdk.io.astra.db.mapping.AstraDbMapper;
 import org.apache.beam.sdk.io.cassandra.CassandraIO;
 import org.apache.beam.sdk.io.cassandra.Mapper;

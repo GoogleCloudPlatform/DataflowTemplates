@@ -15,12 +15,13 @@
  */
 package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -32,7 +33,7 @@ import org.joda.time.Duration;
 
 /**
  * MySql Default Configuration for {@link
- * com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper JdbcIoWrapper}.
+ * JdbcIoWrapper JdbcIoWrapper}.
  */
 public class MySqlConfigDefaults {
 

@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
-import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;

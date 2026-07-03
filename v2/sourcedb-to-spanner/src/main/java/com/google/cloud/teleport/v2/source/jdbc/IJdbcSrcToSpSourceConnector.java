@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.v2.source.jdbc;
 
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 
 /**
  * Interface for JDBC source connectors. Extends {@link ISrcToSpSourceConnector} with JDBC specific

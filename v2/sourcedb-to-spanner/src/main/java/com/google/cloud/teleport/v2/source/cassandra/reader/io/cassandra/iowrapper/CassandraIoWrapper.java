@@ -17,14 +17,14 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrap
 
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
-import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscovery;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
+import com.google.cloud.teleport.v2.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscovery;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;

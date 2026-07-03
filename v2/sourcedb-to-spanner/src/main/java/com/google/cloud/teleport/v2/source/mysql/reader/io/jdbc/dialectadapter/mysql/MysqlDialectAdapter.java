@@ -15,22 +15,22 @@
  */
 package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql;
 
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSet;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
-import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
+import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.exception;
 
-import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 
 public class AstraDBNotFoundException extends SchemaDiscoveryException {
 

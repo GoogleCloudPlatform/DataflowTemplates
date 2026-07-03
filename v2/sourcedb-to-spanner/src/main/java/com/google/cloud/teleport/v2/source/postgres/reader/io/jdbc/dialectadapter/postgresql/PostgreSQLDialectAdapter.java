@@ -15,22 +15,23 @@
  */
 package com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql;
 
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.replaceTagsAndSanitize;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
-import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
+import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -461,7 +462,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
    *     Note that PG does not have an easy way of adding a server level timeout hint in the single
    *     statement. The client side prepared statement timeout which is set by {@link
-   *     com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions
+   *     ReadWithUniformPartitions
    *     ReadWithUniformPartitions} will help in capping the time query spends in counting the rows.
    * @return Query Statement.
    */

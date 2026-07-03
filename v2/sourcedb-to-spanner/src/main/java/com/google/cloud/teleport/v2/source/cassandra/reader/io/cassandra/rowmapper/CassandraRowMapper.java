@@ -18,9 +18,9 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmap
 import com.datastax.driver.core.Row;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappings.CassandraMappingsProvider;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.time.Instant;

@@ -22,9 +22,9 @@ import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapp
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.AstraDbSourceRowMapperFactoryFn;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraSourceRowMapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraSourceRowMapperFactoryFn;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.SerializableCoder;

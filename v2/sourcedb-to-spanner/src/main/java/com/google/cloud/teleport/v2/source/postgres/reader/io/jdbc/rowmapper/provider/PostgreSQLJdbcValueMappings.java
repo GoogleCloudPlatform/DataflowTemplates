@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.provider;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcMappings;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMapper;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
