@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.schema.typemapping;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.Unsupported;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider;
 
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.Map.Entry;

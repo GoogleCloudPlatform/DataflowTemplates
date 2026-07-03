@@ -17,10 +17,10 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrap
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.common.base.Preconditions;
 import java.util.List;
 import javax.annotation.Nullable;

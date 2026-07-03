@@ -61,8 +61,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Unlike {@link JdbcIO#readAll()}, this transform is designed to handle heterogeneous tables
  * with different schemas, {@link RowMapper}s, and {@link QueryProvider}s. It takes a {@link
- * PCollection} of parameter elements (typically {@link Range} objects), identifies their source
- * table, and executes the appropriate SQL query dynamically.
+ * PCollection} of parameter elements (typically {@link
+ * Range} objects),
+ * identifies their source table, and executes the appropriate SQL query dynamically.
  *
  * <p><b>Timestamp Considerations and {@code TimeStampRow}</b>
  *

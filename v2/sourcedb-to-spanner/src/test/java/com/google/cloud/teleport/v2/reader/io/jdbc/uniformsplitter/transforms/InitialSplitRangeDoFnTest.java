@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Partiti
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.InitialSplitRangeDoFn;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;

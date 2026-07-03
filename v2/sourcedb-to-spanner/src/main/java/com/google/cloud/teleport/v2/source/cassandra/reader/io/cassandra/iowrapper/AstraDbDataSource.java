@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrap
 import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
-import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.exception.AstraDBNotFoundException;
+import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.io.Serializable;
 import javax.annotation.Nullable;

@@ -18,6 +18,12 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Boundary;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.io.Serializable;
 import java.math.BigDecimal;

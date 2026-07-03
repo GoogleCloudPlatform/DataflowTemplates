@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.reader.io.schema;
 
-import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryRetriesExhaustedException;
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;

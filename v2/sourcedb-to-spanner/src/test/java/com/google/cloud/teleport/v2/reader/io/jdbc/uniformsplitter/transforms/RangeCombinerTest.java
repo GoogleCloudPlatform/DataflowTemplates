@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.RangeCombiner;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;

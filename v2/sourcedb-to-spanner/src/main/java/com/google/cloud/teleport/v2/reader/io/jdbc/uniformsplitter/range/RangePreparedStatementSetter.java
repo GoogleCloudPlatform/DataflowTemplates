@@ -58,8 +58,7 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
    * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID).
    */
   private static Object convertIfUuid(Object val, PartitionColumn pc) {
-    if (val instanceof byte[] bytes
-        && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+    if (val instanceof byte[] bytes && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
       java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
       return new java.util.UUID(bb.getLong(), bb.getLong());
     }

@@ -49,7 +49,8 @@ public abstract class TableSplitSpecification implements Serializable {
 
   /**
    * Approximate count of rows in the table. This is used to auto infer {@link
-   * TableSplitSpecification#maxPartitionsHint()} and hence the count for initial split of ranges.
+   * TableSplitSpecification#maxPartitionsHint()}
+   * and hence the count for initial split of ranges.
    */
   public abstract Long approxRowCount();
 

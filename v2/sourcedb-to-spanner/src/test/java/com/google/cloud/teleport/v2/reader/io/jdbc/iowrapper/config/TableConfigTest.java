@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;

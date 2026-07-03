@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourcePro
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.MultiTableReadAll;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import javax.sql.DataSource;

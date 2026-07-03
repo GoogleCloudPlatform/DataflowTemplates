@@ -22,8 +22,9 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIoWrappe
  * Exception thrown when a suitable indexed column that can act as the partition column is not
  * found.
  *
- * <p>Please refer to {@link JdbcIoWrapper#of(JdbcIoWrapperConfigGroup)} for details on the cases
- * where this is thrown.
+ * <p>Please refer to {@link
+ * JdbcIoWrapper#of(JdbcIoWrapperConfigGroup)}
+ * for details on the cases where this is thrown.
  */
 public class SuitableIndexNotFoundException extends SchemaDiscoveryException {
   public SuitableIndexNotFoundException(Throwable cause) {

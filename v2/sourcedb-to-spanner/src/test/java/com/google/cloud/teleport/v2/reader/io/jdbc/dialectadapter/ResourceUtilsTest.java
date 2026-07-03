@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;

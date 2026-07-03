@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.DataSourceManagerImpl;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;

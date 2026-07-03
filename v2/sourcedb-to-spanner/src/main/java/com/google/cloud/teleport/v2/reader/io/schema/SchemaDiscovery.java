@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.reader.io.schema;
 
-import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

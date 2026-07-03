@@ -15,15 +15,12 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import static com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithMySqlDefaults;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithPostgreSQLDefaults;
-
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.LocalCredentialsProvider;
-import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -32,8 +29,6 @@ import com.google.re2j.Pattern;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Map.Entry;
-import javax.annotation.Nullable;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Wait;
@@ -131,9 +126,11 @@ public final class OptionsToConfigBuilder {
       String projectId,
       String workerZone,
       String workerMachineType) {
-    JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
+    IJdbcSrcToSpSourceConnector connector =
+        SourceConnectorFactory.getJdbcSourceConnectorByDialect(sqlDialect);
+    JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =
-        sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
+        connector.getSourceSchemaReference(dbName, namespace);
     builder =
         builder
             .setSourceSchemaReference(sourceSchemaReference)
@@ -157,30 +154,9 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    switch (sqlDialect) {
-      case MYSQL:
-        if (sourceDbURL == null) {
-          sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
-          if (StringUtils.isNotBlank(connectionProperties)) {
-            sourceDbURL = sourceDbURL + "?" + connectionProperties;
-          }
-        }
-        for (Entry<String, String> entry :
-            MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
-          sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
-        }
-        sourceDbURL = mysqlSetCursorModeIfNeeded(sqlDialect, sourceDbURL, fetchSize);
-        break;
-      case POSTGRESQL:
-        if (sourceDbURL == null) {
-          sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
-        }
-        sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.jdbc().namespace();
-        if (StringUtils.isNotBlank(connectionProperties)) {
-          sourceDbURL = sourceDbURL + "&" + connectionProperties;
-        }
-        break;
-    }
+    sourceDbURL =
+        connector.getJdbcUrl(
+            sourceDbURL, host, port, dbName, connectionProperties, namespace, fetchSize);
 
     builder.setSourceDbURL(sourceDbURL);
     if (!StringUtils.isEmpty(shardId)) {
@@ -198,41 +174,8 @@ public final class OptionsToConfigBuilder {
     return builder.build();
   }
 
-  /**
-   * For MySQL Dialect, if Fetchsize is explicitly set by the user or if it's auto-inferred (null),
-   * enables `useCursorFetch`. It is disabled only if user explicitly sets FetchSize to 0.
-   *
-   * @param sqlDialect Sql Dialect.
-   * @param url DB Url from passed configs.
-   * @param fetchSize FetchSize Setting (Null if user has not explicitly set)
-   * @return Updated URL with `useCursorFetch` only if dialect is MySql and Fetchsize is not 0. Same
-   *     as input URL in all other cases.
-   */
   @VisibleForTesting
-  @Nullable
-  protected static String mysqlSetCursorModeIfNeeded(
-      SQLDialect sqlDialect, String url, @Nullable Integer fetchSize) {
-    if (sqlDialect != SQLDialect.MYSQL) {
-      return url;
-    }
-    // For MySQL, to enable streaming/cursor mode, useCursorFetch must be true.
-    // We enable it if fetchSize is NULL (Auto-infer) or > 0.
-    // We only disable it if fetchSize is explicitly 0 (Fetch All).
-    if (fetchSize != null && fetchSize == 0) {
-      LOG.info(
-          "FetchSize is explicitly 0. MySQL cursor mode (useCursorFetch) will not be enabled explicitly.");
-      return url;
-    }
-
-    LOG.info(
-        "FetchSize is {}. Setting MySQL `useCursorFetch=true`.",
-        fetchSize == null ? "Auto" : fetchSize);
-    String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "true");
-    return updatedUrl;
-  }
-
-  @VisibleForTesting
-  protected static String addParamToJdbcUrl(String jdbcUrl, String paramName, String paramValue) {
+  public static String addParamToJdbcUrl(String jdbcUrl, String paramName, String paramValue) {
     // URI/ URL libraries don't seem to handle jdbc URLs well
     Pattern queryPattern = Pattern.compile("\\?(.*?)$");
 
@@ -307,28 +250,6 @@ public final class OptionsToConfigBuilder {
     }
     // Remove '/' before returning.
     return uri.getPath().substring(1);
-  }
-
-  private static JdbcIOWrapperConfig.Builder builderWithDefaultsFor(SQLDialect dialect) {
-    if (dialect == SQLDialect.POSTGRESQL) {
-      return builderWithPostgreSQLDefaults();
-    }
-    return builderWithMySqlDefaults();
-  }
-
-  // TODO(vardhanvthigle): Standardize for Css.
-  private static SourceSchemaReference sourceSchemaReferenceFrom(
-      SQLDialect dialect, String dbName, String namespace) {
-    JdbcSchemaReference.Builder builder = JdbcSchemaReference.builder();
-    // Namespaces are not supported for MySQL
-    if (dialect == SQLDialect.POSTGRESQL) {
-      if (StringUtils.isBlank(namespace)) {
-        builder.setNamespace(DEFAULT_POSTGRESQL_NAMESPACE);
-      } else {
-        builder.setNamespace(namespace);
-      }
-    }
-    return SourceSchemaReference.ofJdbc(builder.setDbName(dbName).build());
   }
 
   private OptionsToConfigBuilder() {}

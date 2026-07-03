@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
@@ -23,7 +24,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMappe
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;

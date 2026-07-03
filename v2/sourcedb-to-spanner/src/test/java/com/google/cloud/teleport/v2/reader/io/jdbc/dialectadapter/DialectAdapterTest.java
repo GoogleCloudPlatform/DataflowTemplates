@@ -19,13 +19,14 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -61,7 +62,8 @@ public class DialectAdapterTest {
         () ->
             new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                 .discoverTableSchema(
-                    DataSource.ofCassandra(mockCassandraDataSource),
+                    DataSource.ofCassandra(
+                        mockCassandraDataSource),
                     SourceSchemaReference.ofCassandra(mockCassandraSchemaReference),
                     ImmutableList.of()));
 
@@ -70,14 +72,16 @@ public class DialectAdapterTest {
         () ->
             new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                 .discoverTables(
-                    DataSource.ofCassandra(mockCassandraDataSource),
+                    DataSource.ofCassandra(
+                        mockCassandraDataSource),
                     SourceSchemaReference.ofCassandra(mockCassandraSchemaReference)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new MysqlDialectAdapter(MySqlVersion.DEFAULT)
                 .discoverTableIndexes(
-                    DataSource.ofCassandra(mockCassandraDataSource),
+                    DataSource.ofCassandra(
+                        mockCassandraDataSource),
                     SourceSchemaReference.ofCassandra(mockCassandraSchemaReference),
                     ImmutableList.of()));
   }

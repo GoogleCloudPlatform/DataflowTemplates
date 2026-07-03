@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unifi
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomLogical;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomLogical.Json;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomLogical.Number;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;

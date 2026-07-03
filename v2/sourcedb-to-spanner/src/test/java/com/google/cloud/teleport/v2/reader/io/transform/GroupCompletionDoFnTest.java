@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.reader.io.transform;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.reader.io.transform.GroupCompletionDoFn;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import org.apache.beam.sdk.testing.PAssert;

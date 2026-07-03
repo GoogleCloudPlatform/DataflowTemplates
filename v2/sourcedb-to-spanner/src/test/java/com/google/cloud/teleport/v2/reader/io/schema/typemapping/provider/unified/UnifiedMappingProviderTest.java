@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unifi
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
