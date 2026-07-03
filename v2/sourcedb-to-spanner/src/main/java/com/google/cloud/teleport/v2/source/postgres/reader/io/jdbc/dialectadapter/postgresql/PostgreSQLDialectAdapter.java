@@ -23,7 +23,6 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.Resourc
 import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.resourceAsString;
 
 import com.google.cloud.teleport.v2.constants.MetricCounters;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
@@ -31,6 +30,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -462,8 +462,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
    *     Note that PG does not have an easy way of adding a server level timeout hint in the single
    *     statement. The client side prepared statement timeout which is set by {@link
-   *     ReadWithUniformPartitions
-   *     ReadWithUniformPartitions} will help in capping the time query spends in counting the rows.
+   *     ReadWithUniformPartitions ReadWithUniformPartitions} will help in capping the time query
+   *     spends in counting the rows.
    * @return Query Statement.
    */
   @Override

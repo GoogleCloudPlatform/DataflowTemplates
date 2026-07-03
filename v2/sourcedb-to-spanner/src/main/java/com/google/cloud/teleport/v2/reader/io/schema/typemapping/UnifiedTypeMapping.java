@@ -22,9 +22,7 @@ import org.apache.avro.Schema;
 
 /**
  * Interface to convert a source schema to {@link Schema Avro Schema} implemented by providers of
- * various source types, like {@link
- * MysqlMappingProvider
- * MysqlMappingProvider}.
+ * various source types, like {@link MysqlMappingProvider MysqlMappingProvider}.
  */
 public interface UnifiedTypeMapping extends Serializable {
 

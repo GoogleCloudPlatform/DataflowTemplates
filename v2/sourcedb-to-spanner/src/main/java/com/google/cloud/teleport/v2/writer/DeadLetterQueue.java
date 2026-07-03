@@ -80,8 +80,7 @@ public class DeadLetterQueue implements Serializable {
    * Creates a {@link DeadLetterQueue} instance.
    *
    * <p>Note: Explicit shard ID and table-to-shard-column mappings are no longer required here as
-   * they are now encapsulated within the {@link
-   * SourceRow} and processed dynamically.
+   * they are now encapsulated within the {@link SourceRow} and processed dynamically.
    */
   public static DeadLetterQueue create(
       String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {

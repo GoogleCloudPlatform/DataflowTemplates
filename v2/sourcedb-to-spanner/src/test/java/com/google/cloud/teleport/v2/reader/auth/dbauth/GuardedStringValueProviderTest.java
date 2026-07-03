@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.auth.dbauth;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;

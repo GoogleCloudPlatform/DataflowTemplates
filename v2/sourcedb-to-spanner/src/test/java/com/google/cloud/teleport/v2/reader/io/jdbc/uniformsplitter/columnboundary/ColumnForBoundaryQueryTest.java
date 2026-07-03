@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.columnbounda
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;

@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Partiti
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.QueryProviderImpl;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.junit.runner.RunWith;

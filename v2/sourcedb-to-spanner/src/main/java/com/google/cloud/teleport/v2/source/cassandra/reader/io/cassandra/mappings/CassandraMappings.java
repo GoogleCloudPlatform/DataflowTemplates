@@ -17,14 +17,14 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappin
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraRowValueArrayMapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraRowValueExtractorV4;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraRowValueMapMapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
@@ -62,8 +62,7 @@ public abstract class CassandraMappings {
      * @param type - Unified mapping type.
      * @param rowValueExtractor - {@link CassandraRowValueExtractor} to extract value from {@link
      *     com.datastax.driver.core.Row Cassandra Row}
-     * @param rowValueMapper - {@link CassandraRowValueMapper} to map value to {@link
-     *     SourceRow}
+     * @param rowValueMapper - {@link CassandraRowValueMapper} to map value to {@link SourceRow}
      * @param typeClass - Class of the extracted value. Generally return type of the
      *     rowValueExtractor.
      * @return Builder
@@ -93,8 +92,7 @@ public abstract class CassandraMappings {
      * @param type - Unified mapping type.
      * @param rowValueExtractor - {@link CassandraRowValueExtractor} to extract value from {@link
      *     com.datastax.driver.core.Row Cassandra Row}
-     * @param rowValueMapper - {@link CassandraRowValueMapper} to map value to {@link
-     *     SourceRow}
+     * @param rowValueMapper - {@link CassandraRowValueMapper} to map value to {@link SourceRow}
      * @param typeClass - Class of the extracted value. Generally return type of the
      *     rowValueExtractor.
      * @return Builder

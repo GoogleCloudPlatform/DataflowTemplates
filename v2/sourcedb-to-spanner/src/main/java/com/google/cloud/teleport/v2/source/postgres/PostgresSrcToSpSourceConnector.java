@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,23 +15,20 @@
  */
 package com.google.cloud.teleport.v2.source.postgres;
 
-import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 
-/**
- * PostgreSQL implementation of {@link
- * IJdbcSrcToSpSourceConnector}.
- */
+/** PostgreSQL implementation of {@link IJdbcSrcToSpSourceConnector}. */
 public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
 
   @Override

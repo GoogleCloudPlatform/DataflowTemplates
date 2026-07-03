@@ -26,9 +26,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.RangeCountDoFn;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
@@ -36,6 +33,8 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Partiti
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;

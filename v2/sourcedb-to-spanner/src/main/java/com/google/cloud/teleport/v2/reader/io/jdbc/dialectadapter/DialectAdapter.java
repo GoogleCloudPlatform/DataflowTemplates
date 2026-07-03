@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter;
 
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.reader.io.schema.RetriableSchemaDiscovery;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;

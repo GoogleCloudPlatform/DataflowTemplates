@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.TimeStampRow;
 import java.io.Serializable;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;

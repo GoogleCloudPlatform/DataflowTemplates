@@ -25,9 +25,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaStatsCols;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
@@ -35,6 +32,9 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaCols;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.InformationSchemaStatsCols;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -107,8 +107,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableSchema(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 ImmutableList.of(table1, table2));
 
@@ -256,8 +255,7 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> tables =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTables(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference));
 
     assertThat(tables).isEqualTo(testTables);
@@ -354,8 +352,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableIndexes(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 testTables);
 
@@ -393,8 +390,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableIndexes(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 ImmutableList.of(table1, table2));
 
@@ -631,8 +627,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableIndexes(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 testTables);
 
@@ -915,8 +910,7 @@ public class MysqlDialectAdapterTest {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
         adapter.discoverTableSchema(
-            com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                mockDataSource),
+            com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
             SourceSchemaReference.ofJdbc(sourceSchemaReference),
             ImmutableList.of());
     assertThat(result).isEmpty();
@@ -930,8 +924,7 @@ public class MysqlDialectAdapterTest {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         adapter.discoverTableIndexes(
-            com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                mockDataSource),
+            com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
             SourceSchemaReference.ofJdbc(sourceSchemaReference),
             ImmutableList.of());
     assertThat(result).isEmpty();
@@ -959,8 +952,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableSchema(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 ImmutableList.of(table1));
 
@@ -999,8 +991,7 @@ public class MysqlDialectAdapterTest {
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
             .discoverTableIndexes(
-                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(
-                    mockDataSource),
+                com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
                 SourceSchemaReference.ofJdbc(sourceSchemaReference),
                 ImmutableList.of(table1));
 

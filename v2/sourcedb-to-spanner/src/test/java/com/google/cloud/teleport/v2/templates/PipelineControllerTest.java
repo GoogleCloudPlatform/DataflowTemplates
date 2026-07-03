@@ -26,12 +26,12 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -384,10 +384,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      JdbcSchemaReference
-                          .builder()
-                          .setDbName("db1")
-                          .build()))
+                      JdbcSchemaReference.builder().setDbName("db1").build()))
               .build();
 
       when(mockJdbcIoWrapper.getTableReaders())
@@ -437,10 +434,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      JdbcSchemaReference
-                          .builder()
-                          .setDbName("db1")
-                          .build()))
+                      JdbcSchemaReference.builder().setDbName("db1").build()))
               .build();
 
       when(mockJdbcIoWrapper.getTableReaders())
@@ -454,10 +448,7 @@ public class PipelineControllerTest {
     }
   }
 
-  @Test(
-      expected =
-          SuitableIndexNotFoundException
-              .class)
+  @Test(expected = SuitableIndexNotFoundException.class)
   public void testSetupLogicalDbMigration_HandlesSuitableIndexNotFoundException() {
     SourceDbToSpannerOptions mockOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
@@ -480,8 +471,7 @@ public class PipelineControllerTest {
 
     // Trigger SuitableIndexNotFoundException
     when(mockJdbcIoWrapper.getTableReaders())
-        .thenThrow(
-            new SuitableIndexNotFoundException(new RuntimeException("No index")));
+        .thenThrow(new SuitableIndexNotFoundException(new RuntimeException("No index")));
 
     Map<Integer, List<String>> levelToSpannerTableList = new HashMap<>();
     levelToSpannerTableList.put(0, List.of("new_cart"));

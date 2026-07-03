@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,22 +16,24 @@
 package com.google.cloud.teleport.v2.source;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 
 /** Factory to create {@link ISrcToSpSourceConnector} instances based on pipeline options. */
 public class SourceConnectorFactory {
 
   /**
-   * Gets the appropriate {@link ISrcToSpSourceConnector} for the configured source database dialect.
+   * Gets the appropriate {@link ISrcToSpSourceConnector} for the configured source database
+   * dialect.
    *
    * @param options Pipeline options.
    * @return The source connector.
    */
-  public static ISrcToSpSourceConnector getJdbcSourceConnectorByDialect(SourceDbToSpannerOptions options) {
+  public static ISrcToSpSourceConnector getJdbcSourceConnectorByDialect(
+      SourceDbToSpannerOptions options) {
     String dialect = options.getSourceDbDialect();
     if (SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT.equals(dialect)
         || SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT.equals(dialect)) {

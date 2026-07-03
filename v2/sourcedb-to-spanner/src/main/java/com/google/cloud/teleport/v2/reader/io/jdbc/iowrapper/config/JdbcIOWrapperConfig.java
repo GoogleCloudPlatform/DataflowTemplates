@@ -18,12 +18,12 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
-import com.google.cloud.teleport.v2.reader.auth.dbauth.DbAuth;
-import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference.Kind;
@@ -40,10 +40,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
 
-/**
- * Configuration for {@link
- * JdbcIoWrapper JdbcIoWrapper}.
- */
+/** Configuration for {@link JdbcIoWrapper JdbcIoWrapper}. */
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
   /** Dialect of the database. */

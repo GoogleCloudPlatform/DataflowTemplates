@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProvider;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper;
 
 import static org.junit.Assert.assertEquals;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.FetchSizeCalculator;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.TableConfig;
 import org.junit.Before;
 import org.junit.Test;

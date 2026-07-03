@@ -21,7 +21,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.JdbcUrl;
 import java.net.URI;
 import org.junit.Test;
 import org.junit.runner.RunWith;

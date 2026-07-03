@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -92,5 +92,38 @@ public class MySqlSourceConnectorTest {
     String url =
         connector.getJdbcUrl("jdbc:mysql://localhost:3306/test_db", null, 0, null, null, null, -1);
     assertThat(url).contains("useCursorFetch=true");
+  }
+
+  @Test
+  public void testMysqlSetCursorModeIfNeeded_withNullFetchSize() {
+    String url = connector.mysqlSetCursorModeIfNeeded("jdbc:mysql://localhost:3306/db", null);
+    assertThat(url).isEqualTo("jdbc:mysql://localhost:3306/db?useCursorFetch=true");
+  }
+
+  @Test
+  public void testMysqlSetCursorModeIfNeeded_withPositiveFetchSize() {
+    String url = connector.mysqlSetCursorModeIfNeeded("jdbc:mysql://localhost:3306/db", 50000);
+    assertThat(url).isEqualTo("jdbc:mysql://localhost:3306/db?useCursorFetch=true");
+  }
+
+  @Test
+  public void testMysqlSetCursorModeIfNeeded_withZeroFetchSize() {
+    String url = connector.mysqlSetCursorModeIfNeeded("jdbc:mysql://localhost:3306/db", 0);
+    assertThat(url).isEqualTo("jdbc:mysql://localhost:3306/db");
+  }
+
+  @Test
+  public void testMysqlSetCursorModeIfNeeded_withNegativeFetchSize() {
+    String url = connector.mysqlSetCursorModeIfNeeded("jdbc:mysql://localhost:3306/db", -1);
+    assertThat(url).isEqualTo("jdbc:mysql://localhost:3306/db?useCursorFetch=true");
+  }
+
+  @Test
+  public void testMysqlSetCursorModeIfNeeded_appendsToExistingProperties() {
+    String url =
+        connector.mysqlSetCursorModeIfNeeded(
+            "jdbc:mysql://localhost:3306/db?allowMultiQueries=true", 1000);
+    assertThat(url)
+        .isEqualTo("jdbc:mysql://localhost:3306/db?allowMultiQueries=true&useCursorFetch=true");
   }
 }

@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.Reparallelize;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;

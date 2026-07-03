@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;

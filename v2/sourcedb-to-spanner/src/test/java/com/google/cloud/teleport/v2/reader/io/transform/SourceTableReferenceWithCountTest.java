@@ -20,7 +20,6 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
-import com.google.cloud.teleport.v2.reader.io.transform.SourceTableReferenceWithCount;
 import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;

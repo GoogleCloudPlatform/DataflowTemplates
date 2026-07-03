@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,15 +16,16 @@
 package com.google.cloud.teleport.v2.source.mysql;
 
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
-import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map.Entry;
@@ -32,9 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MySQL implementation of {@link IJdbcSrcToSpSourceConnector}.
- */
+/** MySQL implementation of {@link IJdbcSrcToSpSourceConnector}. */
 public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlSrcToSpSourceConnector.class);
@@ -118,7 +117,8 @@ public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnec
    * @param fetchSize FetchSize Setting (Null if user has not explicitly set)
    * @return Updated URL with `useCursorFetch` if Fetchsize is not 0. Same as input URL if 0.
    */
-  private String mysqlSetCursorModeIfNeeded(String url, Integer fetchSize) {
+  @VisibleForTesting
+  String mysqlSetCursorModeIfNeeded(String url, Integer fetchSize) {
     // For MySQL, to enable streaming/cursor mode, useCursorFetch must be true.
     // We enable it if fetchSize is NULL (Auto-infer) or > 0.
     // We only disable it if fetchSize is explicitly 0 (Fetch All).

@@ -53,7 +53,6 @@ public class PipelineController {
   private static final Counter tablesCompleted =
       Metrics.counter(PipelineController.class, "tablesCompleted");
 
-  @VisibleForTesting
   public static PipelineResult executeMigrationForDbConfigContainer(
       SourceDbToSpannerOptions options,
       Pipeline pipeline,

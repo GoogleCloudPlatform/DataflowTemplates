@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.reader.io.schema;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import org.junit.Test;
 import org.junit.runner.RunWith;

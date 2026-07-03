@@ -29,8 +29,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
@@ -54,6 +52,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

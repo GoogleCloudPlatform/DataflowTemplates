@@ -18,8 +18,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.junit.Test;
 import org.junit.runner.RunWith;

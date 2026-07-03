@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import junit.framework.TestCase;
 import org.junit.Assert;
 import org.junit.Test;

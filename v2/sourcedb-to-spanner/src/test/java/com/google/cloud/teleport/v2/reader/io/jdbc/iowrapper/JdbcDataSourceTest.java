@@ -17,14 +17,13 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcDataSource;
-import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

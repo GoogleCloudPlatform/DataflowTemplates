@@ -27,11 +27,7 @@ import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryRetriesExhaustedException;
-import com.google.cloud.teleport.v2.reader.io.schema.RetriableSchemaDiscovery;
-import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscoveryImpl;
-import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
-import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -53,14 +49,12 @@ import org.mockito.junit.MockitoJUnitRunner;
 /** Test class for {@link SchemaDiscoveryImpl}. */
 @RunWith(MockitoJUnitRunner.class)
 public class SchemaDiscoveryImplTest {
-  @Mock
-  RetriableSchemaDiscovery mockRetriableSchemaDiscovery;
+  @Mock RetriableSchemaDiscovery mockRetriableSchemaDiscovery;
 
   @Mock DataSource mockDataSource;
   @Mock javax.sql.DataSource mockJdbcDataSource;
 
-  @Mock
-  SourceSchemaReference mockSourceSchemaReference;
+  @Mock SourceSchemaReference mockSourceSchemaReference;
 
   @Test
   public void testConvertException_SchemaDiscoveryException() {

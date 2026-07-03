@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.MysqlMappingProvider;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.Map.Entry;

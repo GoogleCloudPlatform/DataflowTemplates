@@ -23,8 +23,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.FQNComponents;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.JdbcUrl;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;

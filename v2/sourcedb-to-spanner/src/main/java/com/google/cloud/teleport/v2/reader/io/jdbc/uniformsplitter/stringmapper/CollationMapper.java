@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
 
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationIndex.CollationIndexType;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationIndex.CollationIndexType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
