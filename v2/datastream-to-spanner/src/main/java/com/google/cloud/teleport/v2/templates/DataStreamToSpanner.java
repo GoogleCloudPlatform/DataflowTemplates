@@ -863,18 +863,22 @@ public class DataStreamToSpanner {
     TextIO.Write filterEventsWrite;
     if (options.getRunner() != null && options.getRunner().getSimpleName().equals("DirectRunner")) {
       // DirectRunner does not support dynamic sharding for unbounded PCollections
-      filterEventsWrite = TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites().withNumShards(20);
+      filterEventsWrite =
+          TextIO.write()
+              .to(filterEventsDirectory)
+              .withSuffix(".json")
+              .withWindowedWrites()
+              .withNumShards(20);
     } else {
       // Cloud Dataflow natively supports dynamic sharding
-      filterEventsWrite = TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites();
+      filterEventsWrite =
+          TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites();
     }
 
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
         .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
-        .apply(
-            "Write Filtered Events To GCS",
-            filterEventsWrite);
+        .apply("Write Filtered Events To GCS", filterEventsWrite);
 
     spannerConfig =
         SpannerServiceFactoryImpl.createSpannerService(
