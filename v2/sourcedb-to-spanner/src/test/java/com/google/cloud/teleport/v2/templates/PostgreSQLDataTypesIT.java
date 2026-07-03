@@ -160,6 +160,10 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
             "t_tstzmultirange",
             "t_tstzrange",
             "t_tsvector",
+            "t_time_pk",
+            "t_time_without_time_zone_pk",
+            "t_timetz_pk",
+            "t_time_with_time_zone_pk",
             "t_txid_snapshot",
             // "t_uuid_to_bytes",
             // "t_varbit_to_bool_array",
@@ -173,102 +177,188 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
     HashMap<String, List<Map<String, Object>>> result = new HashMap<>();
-    result.put("bigint", createRows("-9223372036854775808", "9223372036854775807", "42", "NULL"));
+    result.put(
+        "bigint",
+        createRows("bigint", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put(
         "bigint_to_string",
-        createRows("-9223372036854775808", "9223372036854775807", "42", "NULL"));
-    result.put("bigserial", createRows("-9223372036854775808", "9223372036854775807", "42"));
+        createRows(
+            "bigint_to_string", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put(
-        "bigserial_to_string", createRows("-9223372036854775808", "9223372036854775807", "42"));
+        "bigserial", createRows("bigserial", "-9223372036854775808", "9223372036854775807", "42"));
+    result.put(
+        "bigserial_to_string",
+        createRows("bigserial_to_string", "-9223372036854775808", "9223372036854775807", "42"));
     // bit is commented out to avoid failing the test case; returned data is bits "00110000" and
     // "00110001" (base64 strings "MA==" and "MQ==")
-    // result.put("bit", createRows("AA==", "gA==", "NULL"));
+    // result.put("bit", createRows("bit", "AA==", "gA==", "NULL"));
     // bit_to_string is commented out to avoid failing the test case; returned data is the literal
     // string "java.nio.HeapByteBuffer[pos=0 lim=32 cap=32]"
-    // result.put("bit_to_string", createRows("0", "1", "NULL"));
+    // result.put("bit_to_string", createRows("bit_to_string", "0", "1", "NULL"));
     // bit_varying is commented out to avoid failing the test case; returned data is bits "00110000
     // 00110001 00110000 00110001" (base64 string "MDEwMQ==")
-    // result.put("bit_varying", createRows("UA==", "NULL"));
+    // result.put("bit_varying", createRows("bit_varying", "UA==", "NULL"));
     // bit_varying_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
-    // result.put("bit_varying_to_string", createRows("5", "NULL"));
-    result.put("bool", createRows("false", "true", "NULL"));
-    result.put("bool_to_string", createRows("false", "true", "NULL"));
-    result.put("boolean", createRows("false", "true", "NULL"));
-    result.put("boolean_to_string", createRows("false", "true", "NULL"));
-    result.put("bytea", createRows("YWJj", "NULL"));
+    // result.put("bit_varying_to_string", createRows("bit_varying_to_string", "5", "NULL"));
+    result.put("bool", createRows("bool", "false", "true", "NULL"));
+    result.put("bool_to_string", createRows("bool_to_string", "false", "true", "NULL"));
+    result.put("boolean", createRows("boolean", "false", "true", "NULL"));
+    result.put("boolean_to_string", createRows("boolean_to_string", "false", "true", "NULL"));
+    result.put("bytea", createRows("bytea", "YWJj", "NULL"));
     // bytea_to_string is commented out to avoid failing the test case; returned data is the literal
     // string "java.nio.HeapByteBuffer[pos=0 lim=3 cap=3]"
-    // result.put("bytea_to_string", createRows("616263", "NULL"));
-    result.put("char", createRows("a", "Θ", "NULL"));
-    result.put("character", createRows("a", "Ξ", "NULL"));
-    result.put("character_varying", createRows("testing character varying", "NULL"));
-    result.put("date", createRows("0001-01-01", "9999-12-31", "NULL"));
-    result.put("date_to_string", createRows("0001-01-01", "9999-12-31", "NULL"));
-    result.put("decimal", createRows("0.12", "NULL"));
-    result.put("decimal_to_string", createRows("0.12", "NULL"));
+    // result.put("bytea_to_string", createRows("bytea_to_string", "616263", "NULL"));
+    result.put("char", createRows("char", "a", "Θ", "NULL"));
+    result.put("character", createRows("character", "a", "Ξ", "NULL"));
+    result.put(
+        "character_varying", createRows("character_varying", "testing character varying", "NULL"));
+    result.put("date", createRows("date", "0001-01-01", "9999-12-31", "NULL"));
+    result.put("date_to_string", createRows("date_to_string", "0001-01-01", "9999-12-31", "NULL"));
+    result.put("decimal", createRows("decimal", "0.12", "NULL"));
+    result.put("decimal_to_string", createRows("decimal_to_string", "0.12", "NULL"));
     result.put(
         "double_precision",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+            "double_precision",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "double_precision_to_string",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+            "double_precision_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float_to_float64",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+            "float_to_float64",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float_to_string",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+            "float_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float4",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+            "float4",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float4_to_float32",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+            "float4_to_float32",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float4_to_string",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+            "float4_to_string",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float8",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
+            "float8",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "3.45",
+            "NULL"));
     result.put(
         "float8_to_string",
         createRows(
-            "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
-    result.put("int", createRows("-2147483648", "2147483647", "1", "NULL"));
-    result.put("int_to_string", createRows("-2147483648", "2147483647", "1", "NULL"));
-    result.put("integer", createRows("-2147483648", "2147483647", "2", "NULL"));
-    result.put("integer_to_string", createRows("-2147483648", "2147483647", "2", "NULL"));
-    result.put("int2", createRows("-32768", "32767", "3", "NULL"));
-    result.put("int2_to_string", createRows("-32768", "32767", "3", "NULL"));
-    result.put("int4", createRows("-2147483648", "2147483647", "4", "NULL"));
-    result.put("int4_to_string", createRows("-2147483648", "2147483647", "4", "NULL"));
-    result.put("int8", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
+            "float8_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "3.45",
+            "NULL"));
+    result.put("int", createRows("int", "-2147483648", "2147483647", "1", "NULL"));
     result.put(
-        "int8_to_string", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
-    result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
+        "int_to_string", createRows("int_to_string", "-2147483648", "2147483647", "1", "NULL"));
+    result.put("integer", createRows("integer", "-2147483648", "2147483647", "2", "NULL"));
+    result.put(
+        "integer_to_string",
+        createRows("integer_to_string", "-2147483648", "2147483647", "2", "NULL"));
+    result.put("int2", createRows("int2", "-32768", "32767", "3", "NULL"));
+    result.put("int2_to_string", createRows("int2_to_string", "-32768", "32767", "3", "NULL"));
+    result.put("int4", createRows("int4", "-2147483648", "2147483647", "4", "NULL"));
+    result.put(
+        "int4_to_string", createRows("int4_to_string", "-2147483648", "2147483647", "4", "NULL"));
+    result.put(
+        "int8", createRows("int8", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
+    result.put(
+        "int8_to_string",
+        createRows("int8_to_string", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
+    result.put("json", createRows("json", "{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string",
-        createRows("{\"duplicate_key\": 1, \"duplicate_k...", "{\"null_key\": null}", "NULL"));
-    result.put("jsonb", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
+        createRows(
+            "json_to_string",
+            "{\"duplicate_key\": 1, \"duplicate_k...",
+            "{\"null_key\": null}",
+            "NULL"));
     result.put(
-        "jsonb_to_string", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
+        "jsonb", createRows("jsonb", "{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
+    result.put(
+        "jsonb_to_string",
+        createRows("jsonb_to_string", "{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     result.put(
         "large_decimal_to_numeric",
         createRows(
+            "large_decimal_to_numeric",
             // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
+            "0.12",
+            "100000000000000000000000",
+            "12345678901234567890.123456789",
+            "NULL"));
     result.put(
         "large_decimal_to_string",
         createRows(
+            "large_decimal_to_string",
             "0.1200000000",
             "99999999999999999999999.9999999999",
             "123456789012345678901234567890.12...",
@@ -276,71 +366,181 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     result.put(
         "large_numeric_to_numeric",
         createRows(
+            "large_numeric_to_numeric",
             // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
+            "0.12",
+            "100000000000000000000000",
+            "12345678901234567890.123456789",
+            "NULL"));
     result.put(
         "large_numeric_to_string",
         createRows(
+            "large_numeric_to_string",
             "0.1200000000",
             "99999999999999999999999.9999999999",
             "123456789012345678901234567890.12...",
             "NULL"));
-    result.put("money", createRows("123.45", "NULL"));
-    result.put("numeric", createRows("4.56", "NULL"));
-    result.put("numeric_to_string", createRows("4.56", "NULL"));
-    result.put("oid", createRows("1000", "NULL"));
+    result.put("money", createRows("money", "123.45", "NULL"));
+    result.put("numeric", createRows("numeric", "4.56", "NULL"));
+    result.put("numeric_to_string", createRows("numeric_to_string", "4.56", "NULL"));
+    result.put("oid", createRows("oid", "1000", "NULL"));
     result.put(
         "real",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+            "real",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
     result.put(
         "real_to_float32",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+            "real_to_float32",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
     result.put(
         "real_to_string",
         createRows(
-            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
-    result.put("serial", createRows("-2147483648", "2147483647", "6"));
-    result.put("serial_to_string", createRows("-2147483648", "2147483647", "6"));
-    result.put("serial2", createRows("-32768", "32767", "7"));
-    result.put("serial2_to_string", createRows("-32768", "32767", "7"));
-    result.put("serial4", createRows("-2147483648", "2147483647", "8"));
-    result.put("serial4_to_string", createRows("-2147483648", "2147483647", "8"));
-    result.put("serial8", createRows("-9223372036854775808", "9223372036854775807", "9"));
-    result.put("serial8_to_string", createRows("-9223372036854775808", "9223372036854775807", "9"));
-    result.put("smallint", createRows("-32768", "32767", "10", "NULL"));
-    result.put("smallint_to_string", createRows("-32768", "32767", "10", "NULL"));
-    result.put("smallserial", createRows("-32768", "32767", "11"));
-    result.put("smallserial_to_string", createRows("-32768", "32767", "11"));
-    result.put("text", createRows("testing text", "NULL"));
-    result.put("timestamp", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
-    result.put("timestamp_to_timestamp", createRows("1970-01-02T03:04:05.123456000Z", "NULL"));
+            "real_to_string",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
+    result.put("serial", createRows("serial", "-2147483648", "2147483647", "6"));
+    result.put(
+        "serial_to_string", createRows("serial_to_string", "-2147483648", "2147483647", "6"));
+    result.put("serial2", createRows("serial2", "-32768", "32767", "7"));
+    result.put("serial2_to_string", createRows("serial2_to_string", "-32768", "32767", "7"));
+    result.put("serial4", createRows("serial4", "-2147483648", "2147483647", "8"));
+    result.put(
+        "serial4_to_string", createRows("serial4_to_string", "-2147483648", "2147483647", "8"));
+    result.put(
+        "serial8", createRows("serial8", "-9223372036854775808", "9223372036854775807", "9"));
+    result.put(
+        "serial8_to_string",
+        createRows("serial8_to_string", "-9223372036854775808", "9223372036854775807", "9"));
+    result.put("smallint", createRows("smallint", "-32768", "32767", "10", "NULL"));
+    result.put(
+        "smallint_to_string", createRows("smallint_to_string", "-32768", "32767", "10", "NULL"));
+    result.put("smallserial", createRows("smallserial", "-32768", "32767", "11"));
+    result.put(
+        "smallserial_to_string", createRows("smallserial_to_string", "-32768", "32767", "11"));
+    result.put("text", createRows("text", "testing text", "NULL"));
+    result.put("timestamp", createRows("timestamp", "1970-01-02T03:04:05.123456Z", "NULL"));
+    result.put(
+        "timestamp_to_timestamp",
+        createRows("timestamp_to_timestamp", "1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
         "timestamptz",
-        createRows("1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
+        createRows(
+            "timestamptz",
+            "1970-02-02T18:05:06.123456000Z",
+            "1970-02-03T05:05:06.123456000Z",
+            "NULL"));
     result.put(
         "timestamptz_to_string",
-        createRows("1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
+        createRows(
+            "timestamptz_to_string",
+            "1970-02-02T18:05:06.123456Z",
+            "1970-02-03T05:05:06.123456Z",
+            "NULL"));
     result.put(
         "timestamp_with_time_zone",
-        createRows("1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
+        createRows(
+            "timestamp_with_time_zone",
+            "1970-02-02T18:05:06.123456000Z",
+            "1970-02-03T05:05:06.123456000Z",
+            "NULL"));
     result.put(
         "timestamp_with_timezone_to_string",
-        createRows("1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
-    result.put("timestamp_without_time_zone", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
-    result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+        createRows(
+            "timestamp_with_timezone_to_string",
+            "1970-02-02T18:05:06.123456Z",
+            "1970-02-03T05:05:06.123456Z",
+            "NULL"));
+    result.put(
+        "timestamp_without_time_zone",
+        createRows("timestamp_without_time_zone", "1970-01-02T03:04:05.123456Z", "NULL"));
+    result.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     // varbit is commented out to avoid failing the test case; returned data is bytes "00110001
     // 00110001 00110000 00110000" (base64 string "MTEwMA==")
-    // result.put("varbit", createRows("wA==", "NULL"));
+    // result.put("varbit", createRows("varbit", "wA==", "NULL"));
     // varbit_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
-    // result.put("varbit_to_string", createRows("c", "NULL"));
-    result.put("varchar", createRows("testing varchar", "NULL"));
+    // result.put("varbit_to_string", createRows("varbit_to_string", "c", "NULL"));
+    result.put("varchar", createRows("varchar", "testing varchar", "NULL"));
+    result.put("int_pk", createRows("int_pk", "-2147483648", "0", "2147483647"));
+    result.put("integer_pk", createRows("integer_pk", "-2147483648", "0", "2147483647"));
+    result.put("int4_pk", createRows("int4_pk", "-2147483648", "0", "2147483647"));
+    result.put(
+        "bigint_pk", createRows("bigint_pk", "-9223372036854775808", "0", "9223372036854775807"));
+    result.put(
+        "int8_pk", createRows("int8_pk", "-9223372036854775808", "0", "9223372036854775807"));
+    result.put("smallint_pk", createRows("smallint_pk", "-32768", "0", "32767"));
+    result.put("int2_pk", createRows("int2_pk", "-32768", "0", "32767"));
+    result.put("serial_pk", createRows("serial_pk", "1", "2", "3"));
+    result.put("serial4_pk", createRows("serial4_pk", "1", "2", "3"));
+    result.put("bigserial_pk", createRows("bigserial_pk", "1", "2", "3"));
+    result.put("serial8_pk", createRows("serial8_pk", "1", "2", "3"));
+    result.put("smallserial_pk", createRows("smallserial_pk", "1", "2", "3"));
+    result.put("serial2_pk", createRows("serial2_pk", "1", "2", "3"));
+    result.put("bytea_pk", createRows("bytea_pk", "AA==", "3q2+7w==", "/w=="));
     result.put(
         "uuid_pk",
         createUuidPkRows(
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
+    result.put("varchar_pk", createRows("varchar_pk", "", "a", "z"));
+    result.put("character_varying_pk", createRows("character_varying_pk", "", "a", "z"));
+    result.put("text_pk", createRows("text_pk", "", "a", "z"));
+    result.put("char_pk", createRows("char_pk", "a", "b", "c"));
+    result.put("character_pk", createRows("character_pk", "a", "b", "c"));
+    result.put(
+        "timestamp_pk",
+        createRows(
+            "timestamp_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamp_without_time_zone_pk",
+        createRows(
+            "timestamp_without_time_zone_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamptz_pk",
+        createRows(
+            "timestamptz_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamp_with_time_zone_pk",
+        createRows(
+            "timestamp_with_time_zone_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
+    result.put("date_pk", createRows("date_pk", "1000-01-01", "2000-01-01", "9999-12-31"));
+    result.put("numeric_pk", createRows("numeric_pk", "-99999999.99", "0.00", "99999999.99"));
+    result.put("decimal_pk", createRows("decimal_pk", "-99999999.99", "0.00", "99999999.99"));
+    result.put("real_pk", createRows("real_pk", "-3.4E38", "0.0", "3.4E38"));
+    result.put("float4_pk", createRows("float4_pk", "-3.4E38", "0.0", "3.4E38"));
+    result.put(
+        "double_precision_pk", createRows("double_precision_pk", "-1.7E308", "0.0", "1.7E308"));
+    result.put("float8_pk", createRows("float8_pk", "-1.7E308", "0.0", "1.7E308"));
     return result;
   }
 
@@ -355,11 +555,15 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     return rows;
   }
 
-  private List<Map<String, Object>> createRows(Object... values) {
+  private List<Map<String, Object>> createRows(String tableName, Object... values) {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < values.length; i++) {
       Map<String, Object> row = new HashMap<>();
-      row.put("id", i + 1);
+      if (tableName.endsWith("_pk")) {
+        row.put("id", values[i]);
+      } else {
+        row.put("id", i + 1);
+      }
       row.put("col", values[i]);
       rows.add(row);
     }
