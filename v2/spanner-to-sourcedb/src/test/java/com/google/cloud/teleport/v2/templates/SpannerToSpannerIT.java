@@ -230,8 +230,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert INSERT
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, "id", 2L);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, "id", 2L);
+    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id"), "id", 2L);
+    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, List.of("id"), "id", 2L);
 
     // UPDATE
     mutations = new ArrayList<>();
@@ -252,8 +252,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert UPDATE (wait for propagation)
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, "column1", 4L);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, "column1", 3L);
+    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id", "column1"), "column1", 4L);
+    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, List.of("id", "column1"), "column1", 3L);
 
     // DELETE
     Mutation m1 =
@@ -273,8 +273,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(Arrays.asList(m1, m2, m3, m4));
 
     // Assert DELETE
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 0, null, null);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 0, null, null);
+    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 0, List.of("id"), null, null);
+    assertReplication(TABLE_WITH_STORED_GEN_COL, 0, List.of("id"), null, null);
   }
 
   @Test
@@ -300,7 +300,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert INSERT
-    assertReplication(TABLE_WITH_IDENTITY_COL, 2, "column1", "id2");
+    assertReplication(TABLE_WITH_IDENTITY_COL, 2, List.of("id", "column1"), "column1", "id2");
   }
 
   @Test
@@ -315,18 +315,20 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutationBuilder.build());
 
     // Assert INSERT
-    assertReplication(BOUNDARY_CHECK_TABLE, 1, "id", 1L);
+    assertReplication(BOUNDARY_CHECK_TABLE, 1, List.of("id"), "id", 1L);
   }
 
   private void assertReplication(
-      String table, int expectedRowCount, String checkCol, Object expectedColValue)
+      String table,
+      int expectedRowCount,
+      List<String> columns,
+      String checkCol,
+      Object expectedColValue)
       throws InterruptedException {
     boolean conditionsMet = false;
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
-      List<Struct> rows =
-          spannerDestinationResourceManager.readTableRecords(
-              table, checkCol == null ? List.of("id") : List.of("id", checkCol));
+      List<Struct> rows = spannerDestinationResourceManager.readTableRecords(table, columns);
 
       if (rows.size() == expectedRowCount) {
         if (expectedRowCount == 0) {
