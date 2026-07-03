@@ -68,8 +68,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
   private static final HashSet<SpannerToSpannerIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static SpannerResourceManager spannerResourceManager; // Source Spanner
-  public static SpannerResourceManager spannerDestinationResourceManager; // Destination Spanner
+  private static SpannerResourceManager spannerResourceManager; // Source Spanner
+  private static SpannerResourceManager spannerDestinationResourceManager; // Destination Spanner
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
