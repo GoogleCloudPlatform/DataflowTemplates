@@ -220,31 +220,103 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put("decimal_to_string", createRows("decimal_to_string", "0.12", "NULL"));
     result.put(
         "double_precision",
-        createRows("double_precision", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+        createRows(
+            "double_precision",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "double_precision_to_string",
-        createRows("double_precision_to_string", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+        createRows(
+            "double_precision_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float_to_float64",
-        createRows("float_to_float64", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+        createRows(
+            "float_to_float64",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float_to_string",
-        createRows("float_to_string", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+        createRows(
+            "float_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "1.23",
+            "NULL"));
     result.put(
         "float4",
-        createRows("float4", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+        createRows(
+            "float4",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float4_to_float32",
-        createRows("float4_to_float32", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+        createRows(
+            "float4_to_float32",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float4_to_string",
-        createRows("float4_to_string", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+        createRows(
+            "float4_to_string",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "2.34",
+            "NULL"));
     result.put(
         "float8",
-        createRows("float8", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
+        createRows(
+            "float8",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "3.45",
+            "NULL"));
     result.put(
         "float8_to_string",
-        createRows("float8_to_string", "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
+        createRows(
+            "float8_to_string",
+            "-1.9876542E307",
+            "1.9876542E307",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "3.45",
+            "NULL"));
     result.put("int", createRows("int", "-2147483648", "2147483647", "1", "NULL"));
     result.put(
         "int_to_string", createRows("int_to_string", "-2147483648", "2147483647", "1", "NULL"));
@@ -260,21 +332,30 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put(
         "int8", createRows("int8", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put(
-        "int8_to_string", createRows("int8_to_string", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
+        "int8_to_string",
+        createRows("int8_to_string", "-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put("json", createRows("json", "{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string",
-        createRows("json_to_string", "{\"duplicate_key\": 1, \"duplicate_k...", "{\"null_key\": null}", "NULL"));
+        createRows(
+            "json_to_string",
+            "{\"duplicate_key\": 1, \"duplicate_k...",
+            "{\"null_key\": null}",
+            "NULL"));
     result.put(
         "jsonb", createRows("jsonb", "{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
-        "jsonb_to_string", createRows("jsonb_to_string", "{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
+        "jsonb_to_string",
+        createRows("jsonb_to_string", "{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     result.put(
         "large_decimal_to_numeric",
         createRows(
             "large_decimal_to_numeric",
             // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
+            "0.12",
+            "100000000000000000000000",
+            "12345678901234567890.123456789",
+            "NULL"));
     result.put(
         "large_decimal_to_string",
         createRows(
@@ -288,7 +369,10 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         createRows(
             "large_numeric_to_numeric",
             // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
+            "0.12",
+            "100000000000000000000000",
+            "12345678901234567890.123456789",
+            "NULL"));
     result.put(
         "large_numeric_to_string",
         createRows(
@@ -304,15 +388,36 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put(
         "real",
         createRows(
-            "real", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+            "real",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
     result.put(
         "real_to_float32",
         createRows(
-            "real_to_float32", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+            "real_to_float32",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
     result.put(
         "real_to_string",
         createRows(
-            "real_to_string", "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+            "real_to_string",
+            "-1.9876542E38",
+            "1.9876542E38",
+            "NaN",
+            "-Infinity",
+            "Infinity",
+            "5.67",
+            "NULL"));
     result.put("serial", createRows("serial", "-2147483648", "2147483647", "6"));
     result.put(
         "serial_to_string", createRows("serial_to_string", "-2147483648", "2147483647", "6"));
@@ -339,16 +444,32 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         createRows("timestamp_to_timestamp", "1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
         "timestamptz",
-        createRows("timestamptz", "1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
+        createRows(
+            "timestamptz",
+            "1970-02-02T18:05:06.123456000Z",
+            "1970-02-03T05:05:06.123456000Z",
+            "NULL"));
     result.put(
         "timestamptz_to_string",
-        createRows("timestamptz_to_string", "1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
+        createRows(
+            "timestamptz_to_string",
+            "1970-02-02T18:05:06.123456Z",
+            "1970-02-03T05:05:06.123456Z",
+            "NULL"));
     result.put(
         "timestamp_with_time_zone",
-        createRows("timestamp_with_time_zone", "1970-02-02T18:05:06.123456000Z", "1970-02-03T05:05:06.123456000Z", "NULL"));
+        createRows(
+            "timestamp_with_time_zone",
+            "1970-02-02T18:05:06.123456000Z",
+            "1970-02-03T05:05:06.123456000Z",
+            "NULL"));
     result.put(
         "timestamp_with_timezone_to_string",
-        createRows("timestamp_with_timezone_to_string", "1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
+        createRows(
+            "timestamp_with_timezone_to_string",
+            "1970-02-02T18:05:06.123456Z",
+            "1970-02-03T05:05:06.123456Z",
+            "NULL"));
     result.put(
         "timestamp_without_time_zone",
         createRows("timestamp_without_time_zone", "1970-01-02T03:04:05.123456Z", "NULL"));
@@ -387,16 +508,32 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put("character_pk", createRows("character_pk", "a", "b", "c"));
     result.put(
         "timestamp_pk",
-        createRows("timestamp_pk", "1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+        createRows(
+            "timestamp_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
     result.put(
         "timestamp_without_time_zone_pk",
-        createRows("timestamp_without_time_zone_pk", "1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+        createRows(
+            "timestamp_without_time_zone_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
     result.put(
         "timestamptz_pk",
-        createRows("timestamptz_pk", "1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+        createRows(
+            "timestamptz_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
     result.put(
         "timestamp_with_time_zone_pk",
-        createRows("timestamp_with_time_zone_pk", "1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+        createRows(
+            "timestamp_with_time_zone_pk",
+            "1970-01-01T00:00:01Z",
+            "2000-01-01T00:00:00Z",
+            "2038-01-19T03:14:07Z"));
     result.put("date_pk", createRows("date_pk", "1000-01-01", "2000-01-01", "9999-12-31"));
     result.put("numeric_pk", createRows("numeric_pk", "-99999999.99", "0.00", "99999999.99"));
     result.put("decimal_pk", createRows("decimal_pk", "-99999999.99", "0.00", "99999999.99"));
