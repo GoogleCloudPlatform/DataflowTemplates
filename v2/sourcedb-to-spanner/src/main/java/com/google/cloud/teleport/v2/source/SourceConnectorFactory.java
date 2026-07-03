@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.source;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 
@@ -49,12 +49,14 @@ public class SourceConnectorFactory {
   }
 
   /**
-   * Gets the appropriate {@link IJdbcSrcToSpSourceConnector} for the given {@link SQLDialect}.
+   * Gets the appropriate {@link AbstractJdbcSrcToSpSourceConnector} for the given {@link
+   * SQLDialect}.
    *
    * @param dialect The SQL dialect.
    * @return The JDBC source connector.
    */
-  public static IJdbcSrcToSpSourceConnector getJdbcSourceConnectorByDialect(SQLDialect dialect) {
+  public static AbstractJdbcSrcToSpSourceConnector getJdbcSourceConnectorByDialect(
+      SQLDialect dialect) {
     if (dialect == SQLDialect.MYSQL) {
       return new MySqlSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.POSTGRESQL) {

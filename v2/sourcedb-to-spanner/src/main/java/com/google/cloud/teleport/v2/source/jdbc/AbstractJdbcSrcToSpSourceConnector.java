@@ -16,7 +16,12 @@
 package com.google.cloud.teleport.v2.source.jdbc;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -31,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Abstract class for JDBC source connectors. Handles sharded vs single instance migration. */
-public abstract class AbstractJdbcSrcToSpSourceConnector implements IJdbcSrcToSpSourceConnector {
+public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSourceConnector {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(AbstractJdbcSrcToSpSourceConnector.class);
@@ -62,4 +67,27 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements IJdbcSrcToSp
     return PipelineController.executeMigrationForDbConfigContainer(
         options, pipeline, spannerConfig, dbConfigContainer);
   }
+
+  /** Gets the dialect adapter for the JDBC source. */
+  public abstract DialectAdapter getDialectAdapter();
+
+  /** Gets the JDBC value mappings provider. */
+  public abstract JdbcValueMappingsProvider getJdbcValueMappingsProvider();
+
+  /** Gets the JDBC IO wrapper configuration builder with source-specific defaults. */
+  public abstract JdbcIOWrapperConfig.Builder getJdbcIOWrapperConfigBuilder();
+
+  // TODO(vardhanvthigle): Standardize for Css.
+  /** Gets the SourceSchemaReference. */
+  public abstract SourceSchemaReference getSourceSchemaReference(String dbName, String namespace);
+
+  /** Gets the JDBC URL with source-specific properties added. */
+  public abstract String getJdbcUrl(
+      String jdbcUrl,
+      String host,
+      int port,
+      String dbName,
+      String connectionProperties,
+      String namespace,
+      Integer fetchSize);
 }

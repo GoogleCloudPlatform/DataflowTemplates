@@ -20,7 +20,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrappe
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -126,7 +126,7 @@ public final class OptionsToConfigBuilder {
       String projectId,
       String workerZone,
       String workerMachineType) {
-    IJdbcSrcToSpSourceConnector connector =
+    AbstractJdbcSrcToSpSourceConnector connector =
         SourceConnectorFactory.getJdbcSourceConnectorByDialect(sqlDialect);
     JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =

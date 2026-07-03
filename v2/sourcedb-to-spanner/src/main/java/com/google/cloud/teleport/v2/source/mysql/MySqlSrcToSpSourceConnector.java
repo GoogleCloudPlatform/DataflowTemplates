@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -33,7 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** MySQL implementation of {@link IJdbcSrcToSpSourceConnector}. */
+/** MySQL implementation of {@link AbstractJdbcSrcToSpSourceConnector}. */
 public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlSrcToSpSourceConnector.class);
