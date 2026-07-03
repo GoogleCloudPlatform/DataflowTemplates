@@ -91,8 +91,7 @@ public class EmbeddedCassandra implements AutoCloseable {
             .addConfigProperty("native_transport_port", 0)
             .addConfigProperty("storage_port", 0)
             .addSystemProperty("cassandra.jmx.local.port", 0)
-            .registerShutdownHook(true)
-            .addJvmOptions("-Xmx1g", "-Xms1g");
+            .registerShutdownHook(true);
     if (clientEncryption) {
 
       // Generate temporary keystore and truststore files

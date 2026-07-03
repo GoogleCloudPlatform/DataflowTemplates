@@ -1,7 +1,7 @@
 # Cassandra storage config YAML for SSL testing.
 # This is a copy of basicConfig.yaml with client_encryption_options.enabled=true
 
-cluster_name: 'Test Cluster SSL'
+cluster_name: 'Test Cluster'
 num_tokens: 256
 hinted_handoff_enabled: true
 max_hint_window_in_ms: 10800000 # 3 hours

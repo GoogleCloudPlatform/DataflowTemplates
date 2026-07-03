@@ -629,8 +629,13 @@ trickle_fsync_interval_in_kb: 10240
 
 # TCP port, for commands and data
 # For security reasons, you should not expose this port to the internet.  Firewall it if needed.
-storage_port: 0
-ssl_storage_port: 0
+# storage_port: 7000
+
+# SSL port, for legacy encrypted communication. This property is unused unless enabled in
+# server_encryption_options (see below). As of cassandra 4.0, this property is deprecated
+# as a single port can be used for either/both secure and insecure connections.
+# For security reasons, you should not expose this port to the internet. Firewall it if needed.
+# ssl_storage_port: 7001
 
 # Address or interface to bind to and tell other Cassandra nodes to connect to.
 # You _must_ change this if you want multiple nodes to be able to communicate!
