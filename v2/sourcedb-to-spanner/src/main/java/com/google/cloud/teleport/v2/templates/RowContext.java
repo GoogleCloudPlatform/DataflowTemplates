@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;

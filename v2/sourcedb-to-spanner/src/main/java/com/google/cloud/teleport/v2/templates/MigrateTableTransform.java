@@ -17,10 +17,10 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.cloud.teleport.v2.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;

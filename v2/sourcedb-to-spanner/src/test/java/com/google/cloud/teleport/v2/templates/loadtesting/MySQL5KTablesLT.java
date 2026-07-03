@@ -21,7 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.io.IOException;
 import java.sql.Connection;

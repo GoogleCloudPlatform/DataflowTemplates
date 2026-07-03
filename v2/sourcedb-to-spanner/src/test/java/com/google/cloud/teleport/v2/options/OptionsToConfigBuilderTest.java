@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.options;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
