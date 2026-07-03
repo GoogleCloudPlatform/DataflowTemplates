@@ -52,6 +52,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -75,6 +76,12 @@ import org.mockito.junit.MockitoJUnitRunner;
 /** Test class for {@link JdbcIoWrapper}. */
 @RunWith(MockitoJUnitRunner.class)
 public class JdbcIoWrapperTest {
+
+  private static JdbcIOWrapperConfig.Builder builderWithMySqlDefaults() {
+    return SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL)
+        .getJdbcIOWrapperConfigBuilder();
+  }
+
   @Mock DialectAdapter mockDialectAdapter;
 
   @Mock BasicDataSource mockBasicDataSource;
@@ -122,7 +129,7 @@ public class JdbcIoWrapperTest {
         JdbcIoWrapper.of(
             JdbcIoWrapperConfigGroup.builder()
                 .addShardConfig(
-                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                    builderWithMySqlDefaults()
                         .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                         .setSourceSchemaReference(testSourceSchemaReference)
                         .setShardID("test")
@@ -177,7 +184,7 @@ public class JdbcIoWrapperTest {
         JdbcIoWrapper.of(
             JdbcIoWrapperConfigGroup.builder()
                 .addShardConfig(
-                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                    builderWithMySqlDefaults()
                         .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                         .setSourceSchemaReference(testSourceSchemaReference)
                         .setShardID("test")
@@ -240,7 +247,7 @@ public class JdbcIoWrapperTest {
             JdbcIoWrapper.of(
                 JdbcIoWrapperConfigGroup.builder()
                     .addShardConfig(
-                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        builderWithMySqlDefaults()
                             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                             .setSourceSchemaReference(testSourceSchemaReference)
                             .setShardID("test")
@@ -289,7 +296,7 @@ public class JdbcIoWrapperTest {
             JdbcIoWrapper.of(
                 JdbcIoWrapperConfigGroup.builder()
                     .addShardConfig(
-                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        builderWithMySqlDefaults()
                             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                             .setSourceSchemaReference(testSourceSchemaReference)
                             .setShardID("test")
@@ -310,7 +317,7 @@ public class JdbcIoWrapperTest {
             JdbcIoWrapper.of(
                 JdbcIoWrapperConfigGroup.builder()
                     .addShardConfig(
-                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        builderWithMySqlDefaults()
                             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                             .setSourceSchemaReference(testSourceSchemaReference)
                             .setShardID("test")
@@ -358,7 +365,7 @@ public class JdbcIoWrapperTest {
         JdbcIoWrapper.of(
             JdbcIoWrapperConfigGroup.builder()
                 .addShardConfig(
-                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                    builderWithMySqlDefaults()
                         .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
                         .setSourceSchemaReference(testSourceSchemaReference)
                         .setShardID("test")
@@ -434,7 +441,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig configWithFeatureEnabled =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -528,7 +535,7 @@ public class JdbcIoWrapperTest {
                 "table2", ImmutableMap.of(testCol, testColType)));
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -587,7 +594,7 @@ public class JdbcIoWrapperTest {
         .thenReturn(ImmutableMap.of("table1", ImmutableMap.of(testCol, testColType)));
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -638,7 +645,7 @@ public class JdbcIoWrapperTest {
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -688,7 +695,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
@@ -780,7 +787,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -829,7 +836,7 @@ public class JdbcIoWrapperTest {
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
 
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
             .setShardID("test")
@@ -892,7 +899,7 @@ public class JdbcIoWrapperTest {
 
     // 1. Legacy Source 1: 0 table configs
     JdbcIOWrapperConfig legacyConfig1 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://localhost/test")
             .setDbAuth(
                 LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
@@ -1113,7 +1120,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig shardConfig1 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
             .setSourceSchemaReference(schemaRef)
             .setShardID("shard1")
@@ -1180,7 +1187,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig shardConfig1 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
             .setSourceSchemaReference(schemaRef)
             .setShardID("shard1")
@@ -1211,7 +1218,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig shardConfig1 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
             .setSourceSchemaReference(schemaRef)
             .setShardID("shard1")
@@ -1272,7 +1279,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig shardConfig =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
             .setSourceSchemaReference(schemaRef)
             .setShardID("shard1")
@@ -1331,7 +1338,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://localhost/test")
             .setDbAuth(
                 LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
@@ -1423,7 +1430,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://localhost/test")
             .setDbAuth(
                 LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
@@ -1462,7 +1469,7 @@ public class JdbcIoWrapperTest {
     SourceSchemaReference schemaRef =
         SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setReadWithUniformPartitionsFeatureEnabled(false)
             .setSourceDbURL("jdbc:mysql://localhost/test")
             .setDbAuth(
@@ -1495,7 +1502,7 @@ public class JdbcIoWrapperTest {
   @Test
   public void testGetDataSourceProvider() {
     JdbcIOWrapperConfig config1 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host1/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")
@@ -1503,7 +1510,7 @@ public class JdbcIoWrapperTest {
             .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
             .build();
     JdbcIOWrapperConfig config2 =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host2/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")
@@ -1548,7 +1555,7 @@ public class JdbcIoWrapperTest {
   @Test
   public void testGetMultiTableReadWithUniformPartitionIO_FeatureDisabled() {
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host1/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")
@@ -1575,7 +1582,7 @@ public class JdbcIoWrapperTest {
   @Test
   public void testGetMultiTableReadWithUniformPartitionIO_EmptyTableConfigs() {
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host1/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")
@@ -1601,7 +1608,7 @@ public class JdbcIoWrapperTest {
   @Test
   public void testGetMultiTableReadWithUniformPartitionIO_Success() {
     JdbcIOWrapperConfig config =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host1/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")
@@ -1644,7 +1651,7 @@ public class JdbcIoWrapperTest {
   @Test
   public void testGetMultiTableReadWithUniformPartitionIO_Mix() {
     JdbcIOWrapperConfig configUniform =
-        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+        builderWithMySqlDefaults()
             .setSourceDbURL("jdbc:mysql://host1/test")
             .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
             .setJdbcDriverJars("")

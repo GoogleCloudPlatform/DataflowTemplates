@@ -21,14 +21,13 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.DbAuth;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference.Kind;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
-import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
-import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -41,10 +40,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
 
-/**
- * Configuration for {@link com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper
- * JdbcIoWrapper}.
- */
+/** Configuration for {@link JdbcIoWrapper JdbcIoWrapper}. */
 @AutoValue
 public abstract class JdbcIOWrapperConfig {
   /** Dialect of the database. */
@@ -154,7 +150,7 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract Integer dbParallelizationForSplitProcess();
 
-  private static final int DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS = 100;
+  public static final int DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS = 100;
 
   /**
    * If not null, maximum number of parallel queries issued to the DB for reads. Ignored if {@link
@@ -178,7 +174,7 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Boolean testOnBorrow();
 
-  private static final Boolean DEFAULT_TEST_ON_BORROW = true;
+  public static final Boolean DEFAULT_TEST_ON_BORROW = true;
 
   /**
    * Sets the {@code testOnCreate} property. This property determines whether or not the pool will
@@ -186,7 +182,7 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Boolean testOnCreate();
 
-  private static final Boolean DEFAULT_TEST_ON_CREATE = true;
+  public static final Boolean DEFAULT_TEST_ON_CREATE = true;
 
   /**
    * Sets the {@code testOnReturn} property. This property determines whether or not the pool will
@@ -194,7 +190,7 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Boolean testOnReturn();
 
-  private static final Boolean DEFAULT_TEST_ON_RETURN = true;
+  public static final Boolean DEFAULT_TEST_ON_RETURN = true;
 
   /**
    * Sets the {@code testWhileIdle} property. This property determines whether or not the idle
@@ -202,17 +198,17 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Boolean testWhileIdle();
 
-  private static final Boolean DEFAULT_TEST_WILE_IDLE = true;
+  public static final Boolean DEFAULT_TEST_WILE_IDLE = true;
 
   /** Sets the {@code validationQuery}. */
   public abstract String validationQuery();
 
-  private static final String DEFAULT_VALIDATEION_QUERY = "SELECT 1";
+  public static final String DEFAULT_VALIDATEION_QUERY = "SELECT 1";
 
   /** Sets the connectivity timeout in seconds during schema discovery. * */
   public abstract Integer schemaDiscoveryConnectivityTimeoutMilliSeconds();
 
-  private static final Integer DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS =
+  public static final Integer DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS =
       30 * 1000;
 
   /**
@@ -238,7 +234,7 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Integer removeAbandonedTimeout();
 
-  private static final Integer DEFAULT_REMOVE_ABANDONED_TIMEOUT = 8 * 3600;
+  public static final Integer DEFAULT_REMOVE_ABANDONED_TIMEOUT = 8 * 3600;
 
   /**
    * The minimum amount of time an object may sit idle in the pool before it is eligible for
@@ -258,7 +254,7 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Long splitStageCountHint();
 
-  private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
+  public static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
   /** Worker Memory in Bytes. */
   @Nullable
@@ -294,69 +290,6 @@ public abstract class JdbcIOWrapperConfig {
   @VisibleForTesting
   public static String generateId() {
     return UUID.randomUUID().toString();
-  }
-
-  public static Builder builderWithMySqlDefaults() {
-    return builder()
-        .setSourceDbDialect(SQLDialect.MYSQL)
-        .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
-        .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
-        .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
-        .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)
-        .setSqlInitSeq(MySqlConfigDefaults.DEFAULT_MYSQL_INIT_SEQ)
-        .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
-        .setTables(ImmutableList.of())
-        .setTableVsPartitionColumns(ImmutableMap.of())
-        .setMaxPartitions(null)
-        .setWaitOn(null)
-        .setDbParallelizationForReads(null)
-        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
-        .setReadWithUniformPartitionsFeatureEnabled(true)
-        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
-        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
-        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
-        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
-        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
-        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
-        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
-        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
-            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L)
-        .setWorkerMemoryBytes(null)
-        .setWorkerCores(null);
-  }
-
-  public static Builder builderWithPostgreSQLDefaults() {
-    return builder()
-        .setSourceDbDialect(SQLDialect.POSTGRESQL)
-        .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
-        .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
-        .setValueMappingsProvider(
-            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER)
-        .setMaxConnections(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_MAX_CONNECTIONS)
-        .setSqlInitSeq(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_INIT_SEQ)
-        .setSchemaDiscoveryBackOff(
-            PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
-        .setTables(ImmutableList.of())
-        .setTableVsPartitionColumns(ImmutableMap.of())
-        .setMaxPartitions(null)
-        .setWaitOn(null)
-        .setMaxFetchSize(null)
-        .setDbParallelizationForReads(null)
-        .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
-        .setReadWithUniformPartitionsFeatureEnabled(true)
-        .setTestOnBorrow(DEFAULT_TEST_ON_BORROW)
-        .setTestOnCreate(DEFAULT_TEST_ON_CREATE)
-        .setTestOnReturn(DEFAULT_TEST_ON_RETURN)
-        .setTestWhileIdle(DEFAULT_TEST_WILE_IDLE)
-        .setValidationQuery(DEFAULT_VALIDATEION_QUERY)
-        .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
-        .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
-        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
-            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L)
-        .setWorkerMemoryBytes(null)
-        .setWorkerCores(null);
   }
 
   @AutoValue.Builder
