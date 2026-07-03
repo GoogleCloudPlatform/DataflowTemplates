@@ -185,7 +185,6 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
     String projectId = TestProperties.project();
-    String region = TestProperties.region();
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
@@ -193,7 +192,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                 projectId,
                 "nam3",
                 dialect)
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+            .setInstancePartition(INSTANCE_PARTITION_ID, "nam6");
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
     }
