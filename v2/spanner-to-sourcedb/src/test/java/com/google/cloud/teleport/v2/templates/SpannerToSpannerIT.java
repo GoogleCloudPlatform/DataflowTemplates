@@ -351,6 +351,34 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
                   && expectedColValue.equals(row.getString(checkCol))) {
                 valueFound = true;
                 break;
+              } else if (expectedColValue instanceof Boolean
+                  && row.getBoolean(checkCol) == ((Boolean) expectedColValue).booleanValue()) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof Double
+                  && row.getDouble(checkCol) == ((Double) expectedColValue).doubleValue()) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof Float
+                  && row.getFloat(checkCol) == ((Float) expectedColValue).floatValue()) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof java.math.BigDecimal
+                  && expectedColValue.equals(row.getBigDecimal(checkCol))) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof com.google.cloud.ByteArray
+                  && expectedColValue.equals(row.getBytes(checkCol))) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof com.google.cloud.Timestamp
+                  && expectedColValue.equals(row.getTimestamp(checkCol))) {
+                valueFound = true;
+                break;
+              } else if (expectedColValue instanceof com.google.cloud.Date
+                  && expectedColValue.equals(row.getDate(checkCol))) {
+                valueFound = true;
+                break;
               }
             }
           }
