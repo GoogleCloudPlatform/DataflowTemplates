@@ -36,7 +36,7 @@ import org.apache.beam.sdk.transforms.Wait;
  * records themselves (see {@link com.google.cloud.teleport.v2.writer.DeadLetterQueue}), allowing
  * for a unified DLQ directory structure. There is no change in the final output format in GCS.
  */
-class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
+public class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
 
   private ImmutableList<Shard> shards;
   private SQLDialect sqlDialect;

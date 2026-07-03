@@ -27,7 +27,7 @@ import org.apache.beam.sdk.transforms.Wait;
  *
  * <p>JDBC specific refinement of {@link DbConfigContainer} that returns {@link JdbcIoWrapper}.
  */
-interface JdbcDbConfigContainer extends DbConfigContainer {
+public interface JdbcDbConfigContainer extends DbConfigContainer {
 
   /**
    * Get the {@link JdbcIoWrapperConfigGroup} for the given source tables and wait signal.

@@ -55,8 +55,7 @@ public class SourceConnectorFactory {
    * @param dialect The SQL dialect.
    * @return The JDBC source connector.
    */
-  public static AbstractJdbcSrcToSpSourceConnector getSourceConnectorByDialect(
-      SQLDialect dialect) {
+  public static AbstractJdbcSrcToSpSourceConnector getSourceConnectorByDialect(SQLDialect dialect) {
     if (dialect == SQLDialect.MYSQL) {
       return new MySqlSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.POSTGRESQL) {

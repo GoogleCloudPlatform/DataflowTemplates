@@ -105,8 +105,7 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
     // Decide type and source of migration
-    ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
     return connector.executeMigration(options, pipeline, spannerConfig);
   }
 

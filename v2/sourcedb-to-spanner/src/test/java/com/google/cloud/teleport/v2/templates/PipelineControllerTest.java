@@ -31,7 +31,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
-import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.ShardedJdbcDbConfigContainer;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -394,7 +394,11 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      new MySqlSrcToSpSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
+      PipelineController.executeMigrationForDbConfigContainer(
+          mockOptions,
+          mockPipeline,
+          spannerConfig,
+          new ShardedJdbcDbConfigContainer(List.of(shard), SQLDialect.MYSQL, mockOptions));
     }
   }
 
@@ -444,7 +448,11 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      new MySqlSrcToSpSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
+      PipelineController.executeMigrationForDbConfigContainer(
+          mockOptions,
+          mockPipeline,
+          spannerConfig,
+          new ShardedJdbcDbConfigContainer(List.of(shard), SQLDialect.MYSQL, mockOptions));
     }
   }
 

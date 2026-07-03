@@ -22,7 +22,7 @@ import java.util.List;
 import org.apache.beam.sdk.transforms.Wait;
 
 /** Implementation of {@link JdbcDbConfigContainer} for single instance JDBC migration. */
-class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
+public class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
   private SourceDbToSpannerOptions options;
 
   public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options) {
