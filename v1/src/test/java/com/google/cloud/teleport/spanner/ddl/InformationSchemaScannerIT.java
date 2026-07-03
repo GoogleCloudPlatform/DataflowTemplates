@@ -34,8 +34,9 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.metadata.SpannerStagingTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.DdlToAvroSchemaConverter;
-import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.tests.TestMessage;
 import com.google.common.collect.HashMultimap;
@@ -53,12 +54,11 @@ import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 
 /**
  * Test coverage for {@link InformationSchemaScanner}. This requires an active GCP project with a
@@ -70,12 +70,10 @@ import org.junit.rules.TestName;
  * comprehensively here is extremely important to complete the loop of testing the Export and Import
  * Pipelines.
  */
-@Category(IntegrationTest.class)
-public class InformationSchemaScannerIT {
+@Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
+public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   public static final String INSTANCE_PARTITION_ID = "mr-partition";
-
-  @Rule public final TestName testName = new TestName();
 
   public static SpannerResourceManager sharedSpannerResourceManager;
   public static SpannerResourceManager sharedPgSpannerResourceManager;
@@ -188,11 +186,10 @@ public class InformationSchemaScannerIT {
   private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
     String projectId = TestProperties.project();
     String region = TestProperties.region();
-    String spannerHost = System.getProperty("spannerHost");
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
-                testName.getMethodName() + "-" + UUID.randomUUID().toString().substring(0, 8),
+                testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
                 "nam3",
                 dialect)
@@ -755,9 +752,9 @@ public class InformationSchemaScannerIT {
           assertThat(udf2, notNullValue());
           assertThat(ddl.udf("s_simpleUdf.u_simpleUdf_default_values"), sameInstance(udf2));
 
-          Udf udf3 = ddl.udf("s1.remote_udf");
+          Udf udf3 = ddl.udf("s_simpleUdf.u_remote_udf");
           assertThat(udf3, notNullValue());
-          assertThat(ddl.udf("S1.REMOTE_UDF"), sameInstance(udf3));
+          assertThat(ddl.udf("S_SIMPLEUDF.U_REMOTE_UDF"), sameInstance(udf3));
 
           assertThat(udf1.name(), equalTo("s_simpleUdf.u_simpleUdf_foo"));
           assertThat(udf1.type(), equalTo("INT64"));
