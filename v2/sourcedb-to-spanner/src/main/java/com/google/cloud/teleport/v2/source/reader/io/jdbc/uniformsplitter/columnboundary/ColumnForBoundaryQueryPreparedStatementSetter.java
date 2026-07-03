@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.colum
 
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;

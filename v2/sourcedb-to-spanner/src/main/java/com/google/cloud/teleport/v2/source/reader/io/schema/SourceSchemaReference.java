@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoOneOf;
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import java.io.Serializable;
 

@@ -25,9 +25,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.provider.PostgreSQLJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.exception.ValueMappingException;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider.PostgreSQLJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
