@@ -169,26 +169,23 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     boolean isReplicated = false;
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
-      try {
-        List<Struct> rows =
-            spannerDestinationResourceManager.readTableRecords(
-                TABLE, List.of("id", "full_name", "from"));
-        for (Struct row : rows) {
-          if (!row.isNull("id")
-              && row.getLong("id") == 101
-              && !row.isNull("full_name")
-              && "Alice".equals(row.getString("full_name"))) {
-            LOG.info("Row successfully found in destination Spanner: id=101, full_name=Alice");
-            isReplicated = true;
-            break;
-          }
-        }
-        if (isReplicated) {
+      List<Struct> rows =
+          spannerDestinationResourceManager.readTableRecords(
+              TABLE, List.of("id", "full_name", "from"));
+      for (Struct row : rows) {
+        if (!row.isNull("id")
+            && row.getLong("id") == 101
+            && !row.isNull("full_name")
+            && "Alice".equals(row.getString("full_name"))) {
+          LOG.info("Row successfully found in destination Spanner: id=101, full_name=Alice");
+          isReplicated = true;
           break;
         }
-      } catch (Exception e) {
-        LOG.info("Waiting for row replication... (Details: {})", e.getMessage());
       }
+      if (isReplicated) {
+        break;
+      }
+      LOG.info("Waiting for row replication...");
       Thread.sleep(10000); // Wait 10 seconds before polling again
     }
 
@@ -327,69 +324,67 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     boolean conditionsMet = false;
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
-      try {
-        List<Struct> rows =
-            spannerDestinationResourceManager.readTableRecords(
-                table, checkCol == null ? List.of("id") : List.of("id", checkCol));
+      List<Struct> rows =
+          spannerDestinationResourceManager.readTableRecords(
+              table, checkCol == null ? List.of("id") : List.of("id", checkCol));
 
-        if (rows.size() == expectedRowCount) {
-          if (expectedRowCount == 0) {
-            conditionsMet = true;
-            break;
-          }
-          boolean valueFound = checkCol == null;
-          if (checkCol != null) {
-            for (Struct row : rows) {
-              if (row.isNull(checkCol)) {
-                continue;
-              }
-              if (expectedColValue instanceof Long
-                  && row.getLong(checkCol) == ((Long) expectedColValue).longValue()) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof String
-                  && expectedColValue.equals(row.getString(checkCol))) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof Boolean
-                  && row.getBoolean(checkCol) == ((Boolean) expectedColValue).booleanValue()) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof Double
-                  && row.getDouble(checkCol) == ((Double) expectedColValue).doubleValue()) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof Float
-                  && row.getFloat(checkCol) == ((Float) expectedColValue).floatValue()) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof java.math.BigDecimal
-                  && expectedColValue.equals(row.getBigDecimal(checkCol))) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof com.google.cloud.ByteArray
-                  && expectedColValue.equals(row.getBytes(checkCol))) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof com.google.cloud.Timestamp
-                  && expectedColValue.equals(row.getTimestamp(checkCol))) {
-                valueFound = true;
-                break;
-              } else if (expectedColValue instanceof com.google.cloud.Date
-                  && expectedColValue.equals(row.getDate(checkCol))) {
-                valueFound = true;
-                break;
-              }
+      if (rows.size() == expectedRowCount) {
+        if (expectedRowCount == 0) {
+          conditionsMet = true;
+          break;
+        }
+        boolean valueFound = checkCol == null;
+        if (checkCol != null) {
+          for (Struct row : rows) {
+            if (row.isNull(checkCol)) {
+              continue;
+            }
+            if (expectedColValue instanceof Long
+                && row.getLong(checkCol) == ((Long) expectedColValue).longValue()) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof String
+                && expectedColValue.equals(row.getString(checkCol))) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof Boolean
+                && row.getBoolean(checkCol) == ((Boolean) expectedColValue).booleanValue()) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof Double
+                && row.getDouble(checkCol) == ((Double) expectedColValue).doubleValue()) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof Float
+                && row.getFloat(checkCol) == ((Float) expectedColValue).floatValue()) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof java.math.BigDecimal
+                && expectedColValue.equals(row.getBigDecimal(checkCol))) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof com.google.cloud.ByteArray
+                && expectedColValue.equals(row.getBytes(checkCol))) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof com.google.cloud.Timestamp
+                && expectedColValue.equals(row.getTimestamp(checkCol))) {
+              valueFound = true;
+              break;
+            } else if (expectedColValue instanceof com.google.cloud.Date
+                && expectedColValue.equals(row.getDate(checkCol))) {
+              valueFound = true;
+              break;
             }
           }
-          if (valueFound) {
-            conditionsMet = true;
-            break;
-          }
         }
-      } catch (Exception e) {
-        LOG.info("Waiting for replication to {}", table);
+        if (valueFound) {
+          conditionsMet = true;
+          break;
+        }
       }
+
+      LOG.info("Waiting for replication to {}", table);
       Thread.sleep(10000);
     }
     org.junit.Assert.assertTrue(
