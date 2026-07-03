@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source.postgres;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
@@ -29,11 +28,6 @@ import org.apache.commons.lang3.StringUtils;
 
 /** PostgreSQL implementation of {@link AbstractJdbcSrcToSpSourceConnector}. */
 public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
-
-  @Override
-  public DialectAdapter getDialectAdapter() {
-    return PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER;
-  }
 
   @Override
   public JdbcValueMappingsProvider getJdbcValueMappingsProvider() {

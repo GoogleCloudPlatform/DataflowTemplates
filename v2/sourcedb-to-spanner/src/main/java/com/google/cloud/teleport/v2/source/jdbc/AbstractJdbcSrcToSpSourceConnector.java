@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source.jdbc;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
@@ -67,9 +66,6 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSour
     return PipelineController.executeMigrationForDbConfigContainer(
         options, pipeline, spannerConfig, dbConfigContainer);
   }
-
-  /** Gets the dialect adapter for the JDBC source. */
-  public abstract DialectAdapter getDialectAdapter();
 
   /** Gets the JDBC value mappings provider. */
   public abstract JdbcValueMappingsProvider getJdbcValueMappingsProvider();
