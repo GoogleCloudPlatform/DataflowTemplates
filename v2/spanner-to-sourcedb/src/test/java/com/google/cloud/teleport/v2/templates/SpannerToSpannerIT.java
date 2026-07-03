@@ -73,7 +73,6 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
 
   @Before
   public void setUp() throws IOException {
@@ -110,7 +109,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
         gcsResourceManager.createArtifact("input/spanner-shard.json", spannerShardConfig);
 
         pubsubResourceManager = setUpPubSubResourceManager();
-        subscriptionName =
+        SubscriptionName subscriptionName =
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
@@ -171,11 +170,14 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
       try {
-        java.util.List<Struct> rows =
+        List<Struct> rows =
             spannerDestinationResourceManager.readTableRecords(
-                TABLE, java.util.List.of("id", "full_name", "from"));
+                TABLE, List.of("id", "full_name", "from"));
         for (Struct row : rows) {
-          if (row.getLong("id") == 101 && "Alice".equals(row.getString("full_name"))) {
+          if (!row.isNull("id")
+              && row.getLong("id") == 101
+              && !row.isNull("full_name")
+              && "Alice".equals(row.getString("full_name"))) {
             LOG.info("Row successfully found in destination Spanner: id=101, full_name=Alice");
             isReplicated = true;
             break;
@@ -338,6 +340,9 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
           boolean valueFound = checkCol == null;
           if (checkCol != null) {
             for (Struct row : rows) {
+              if (row.isNull(checkCol)) {
+                continue;
+              }
               if (expectedColValue instanceof Long
                   && row.getLong(checkCol) == ((Long) expectedColValue).longValue()) {
                 valueFound = true;
