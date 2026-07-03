@@ -15,17 +15,17 @@
  */
 package com.google.cloud.teleport.v2.source.jdbc;
 
-import com.google.cloud.teleport.v2.source.ISourceConnector;
+import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 
 /**
- * Interface for JDBC source connectors. Extends {@link ISourceConnector} with JDBC specific
+ * Interface for JDBC source connectors. Extends {@link ISrcToSpSourceConnector} with JDBC specific
  * methods.
  */
-public interface IJdbcSourceConnector extends ISourceConnector {
+public interface IJdbcSrcToSpSourceConnector extends ISrcToSpSourceConnector {
 
   /** Gets the dialect adapter for the JDBC source. */
   DialectAdapter getDialectAdapter();

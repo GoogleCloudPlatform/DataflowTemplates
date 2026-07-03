@@ -21,7 +21,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
 /** Interface for source database connectors. Encapsulates source-specific migration execution. */
-public interface ISourceConnector {
+public interface ISrcToSpSourceConnector {
 
   /**
    * Executes the migration pipeline for the source database.

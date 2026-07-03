@@ -20,7 +20,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.ISourceConnector;
+import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -105,7 +105,7 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
     // Decide type and source of migration
-    ISourceConnector connector = SourceConnectorFactory.getJdbcSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getJdbcSourceConnectorByDialect(options);
     return connector.executeMigration(options, pipeline, spannerConfig);
   }
 

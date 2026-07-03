@@ -21,11 +21,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test class for {@link MySqlSourceConnector}. */
+/** Test class for {@link MySqlSrcToSpSourceConnector}. */
 @RunWith(JUnit4.class)
 public class MySqlSourceConnectorTest {
 
-  private final MySqlSourceConnector connector = new MySqlSourceConnector();
+  private final MySqlSrcToSpSourceConnector connector = new MySqlSrcToSpSourceConnector();
 
   @Test
   public void testGetJdbcUrl_constructsUrl() {

@@ -16,47 +16,47 @@
 package com.google.cloud.teleport.v2.source;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.cassandra.CassandraSourceConnector;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSourceConnector;
-import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
-import com.google.cloud.teleport.v2.source.postgres.PostgresSourceConnector;
+import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 
-/** Factory to create {@link ISourceConnector} instances based on pipeline options. */
+/** Factory to create {@link ISrcToSpSourceConnector} instances based on pipeline options. */
 public class SourceConnectorFactory {
 
   /**
-   * Gets the appropriate {@link ISourceConnector} for the configured source database dialect.
+   * Gets the appropriate {@link ISrcToSpSourceConnector} for the configured source database dialect.
    *
    * @param options Pipeline options.
    * @return The source connector.
    */
-  public static ISourceConnector getJdbcSourceConnectorByDialect(SourceDbToSpannerOptions options) {
+  public static ISrcToSpSourceConnector getJdbcSourceConnectorByDialect(SourceDbToSpannerOptions options) {
     String dialect = options.getSourceDbDialect();
     if (SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT.equals(dialect)
         || SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT.equals(dialect)) {
-      return new CassandraSourceConnector();
+      return new CassandraSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT.equals(dialect)) {
       /* Making jdbc as default case which includes MYSQL and PG. */
-      return new MySqlSourceConnector();
+      return new MySqlSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
-      return new PostgresSourceConnector();
+      return new PostgresSrcToSpSourceConnector();
     }
     /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
     throw new IllegalArgumentException("Unsupported source database dialect: " + dialect);
   }
 
   /**
-   * Gets the appropriate {@link IJdbcSourceConnector} for the given {@link SQLDialect}.
+   * Gets the appropriate {@link IJdbcSrcToSpSourceConnector} for the given {@link SQLDialect}.
    *
    * @param dialect The SQL dialect.
    * @return The JDBC source connector.
    */
-  public static IJdbcSourceConnector getJdbcSourceConnectorByDialect(SQLDialect dialect) {
+  public static IJdbcSrcToSpSourceConnector getJdbcSourceConnectorByDialect(SQLDialect dialect) {
     if (dialect == SQLDialect.MYSQL) {
-      return new MySqlSourceConnector();
+      return new MySqlSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.POSTGRESQL) {
-      return new PostgresSourceConnector();
+      return new PostgresSrcToSpSourceConnector();
     }
     throw new IllegalArgumentException("Unsupported SQL dialect: " + dialect);
   }

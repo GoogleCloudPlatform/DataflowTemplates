@@ -16,7 +16,8 @@
 package com.google.cloud.teleport.v2.source.mysql;
 
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
-import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
@@ -32,11 +33,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MySQL implementation of {@link com.google.cloud.teleport.v2.source.jdbc.IJdbcSourceConnector}.
+ * MySQL implementation of {@link IJdbcSrcToSpSourceConnector}.
  */
-public class MySqlSourceConnector extends AbstractJdbcSourceConnector {
+public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlSourceConnector.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySqlSrcToSpSourceConnector.class);
 
   @Override
   public DialectAdapter getDialectAdapter() {

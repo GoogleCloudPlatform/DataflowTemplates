@@ -31,9 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Abstract class for JDBC source connectors. Handles sharded vs single instance migration. */
-public abstract class AbstractJdbcSourceConnector implements IJdbcSourceConnector {
+public abstract class AbstractJdbcSrcToSpSourceConnector implements IJdbcSrcToSpSourceConnector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractJdbcSourceConnector.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractJdbcSrcToSpSourceConnector.class);
 
   @Override
   public PipelineResult executeMigration(

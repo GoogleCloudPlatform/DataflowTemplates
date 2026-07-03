@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
-import com.google.cloud.teleport.v2.source.jdbc.IJdbcSourceConnector;
+import com.google.cloud.teleport.v2.source.jdbc.IJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
@@ -126,7 +126,7 @@ public final class OptionsToConfigBuilder {
       String projectId,
       String workerZone,
       String workerMachineType) {
-    IJdbcSourceConnector connector =
+    IJdbcSrcToSpSourceConnector connector =
         SourceConnectorFactory.getJdbcSourceConnectorByDialect(sqlDialect);
     JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =

@@ -24,7 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
@@ -395,7 +395,7 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      new MySqlSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
+      new MySqlSrcToSpSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
     }
   }
 
@@ -448,7 +448,7 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      new MySqlSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
+      new MySqlSrcToSpSourceConnector().executeMigration(mockOptions, mockPipeline, spannerConfig);
     }
   }
 
