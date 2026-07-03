@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.loadtesting;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;

@@ -24,13 +24,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
-import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -493,8 +493,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference
-                          .builder()
+                      com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference.builder()
                           .setDbName("db1")
                           .build()))
               .build();
@@ -547,8 +546,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference
-                          .builder()
+                      com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference.builder()
                           .setDbName("db1")
                           .build()))
               .build();
@@ -567,8 +565,7 @@ public class PipelineControllerTest {
 
   @Test(
       expected =
-          com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException
-              .class)
+          com.google.cloud.teleport.v2.reader.io.exception.SuitableIndexNotFoundException.class)
   public void testSetupLogicalDbMigration_HandlesSuitableIndexNotFoundException() {
     SourceDbToSpannerOptions mockOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
@@ -592,8 +589,8 @@ public class PipelineControllerTest {
     // Trigger SuitableIndexNotFoundException
     when(mockJdbcIoWrapper.getTableReaders())
         .thenThrow(
-            new com.google.cloud.teleport.v2.source.reader.io.exception
-                .SuitableIndexNotFoundException(new RuntimeException("No index")));
+            new com.google.cloud.teleport.v2.reader.io.exception.SuitableIndexNotFoundException(
+                new RuntimeException("No index")));
 
     Map<Integer, List<String>> levelToSpannerTableList = new HashMap<>();
     levelToSpannerTableList.put(0, List.of("new_cart"));

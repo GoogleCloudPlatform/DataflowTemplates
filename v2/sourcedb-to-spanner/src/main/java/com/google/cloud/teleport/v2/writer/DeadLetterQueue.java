@@ -21,7 +21,8 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
@@ -79,8 +80,7 @@ public class DeadLetterQueue implements Serializable {
    * Creates a {@link DeadLetterQueue} instance.
    *
    * <p>Note: Explicit shard ID and table-to-shard-column mappings are no longer required here as
-   * they are now encapsulated within the {@link
-   * com.google.cloud.teleport.v2.source.reader.io.row.SourceRow} and processed dynamically.
+   * they are now encapsulated within the {@link SourceRow} and processed dynamically.
    */
   public static DeadLetterQueue create(
       String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {

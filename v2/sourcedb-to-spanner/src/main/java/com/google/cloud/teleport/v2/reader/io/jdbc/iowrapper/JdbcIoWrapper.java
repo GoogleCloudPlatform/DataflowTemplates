@@ -1,0 +1,890 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper;
+
+import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
+import com.google.cloud.teleport.v2.reader.io.exception.SuitableIndexNotFoundException;
+import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.TableConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscovery;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaDiscoveryImpl;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.Wait.OnSignal;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/*
+ * TODO(vardhanvthigle): Towards M3, make this a reconfigurable class, and expose (if required) the approxRowCounts
+ *  and maxPartitionHints (auto inferred) to the pipeline controller helping a better sequencing of tables.
+ */
+public final class JdbcIoWrapper implements IoWrapper {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcIoWrapper.class);
+  // We parallelize to 4 threads to work well with the default launcher machine we get.
+  // With this for 1024 shards test we have the launcher complete in 4 minutes in the load test.
+  private static final int SOURCE_DISCOVERY_PARALLELISM = 4;
+  // Number of shards per log emitted at the end of discovery.
+  public static final int MAX_SHARDS_PER_LOG = 50;
+
+  private final ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      tableReaders;
+  private final ImmutableList<SourceSchema> sourceSchema;
+
+  private static final Logger logger = LoggerFactory.getLogger(JdbcIoWrapper.class);
+
+  /**
+   * Construct a JdbcIOWrapper from the configuration group.
+   *
+   * <p>This method performs schema discovery for all shards in the group.
+   *
+   * <p><b>Error Isolation:</b> If schema discovery fails for any single shard in the group, this
+   * method will throw an exception, causing the job to fail-fast. This behavior ensures
+   * consistency: if the pipeline is successfully constructed, all required shards and tables are
+   * guaranteed to have been successfully discovered.
+   *
+   * <p><b>Retries:</b> Individual shard discovery operations are automatically retried with
+   * exponential backoff as configured in the {@link JdbcIOWrapperConfig}.
+   *
+   * @param configGroup configurations for reading from a JDBC source.
+   * @return JdbcIOWrapper
+   * @throws SuitableIndexNotFoundException if a suitable index is not found to act as the partition
+   *     column.
+   */
+  public static JdbcIoWrapper of(JdbcIoWrapperConfigGroup configGroup)
+      throws SuitableIndexNotFoundException {
+
+    ImmutableList<PerSourceDiscovery> perSourceDiscoveries = getPerSourceDiscoveries(configGroup);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = buildTableReaders(perSourceDiscoveries);
+    return new JdbcIoWrapper(
+        tableReaders,
+        perSourceDiscoveries.stream()
+            .map(e -> e.sourceSchema())
+            .collect(ImmutableList.toImmutableList()));
+  }
+
+  /**
+   * Executes isolated schema discovery and table inference for a group of shard configurations.
+   *
+   * <p>Discovery for each shard is performed in parallel to reduce startup latency. Failure in any
+   * shard discovery will lead to an overall failure of the discovery process (fail-fast).
+   *
+   * @param configGroup The group of configurations.
+   * @return A list of {@link PerSourceDiscovery} results.
+   */
+  @VisibleForTesting
+  protected static ImmutableList<PerSourceDiscovery> getPerSourceDiscoveries(
+      JdbcIoWrapperConfigGroup configGroup) {
+    ExecutorService executor = Executors.newFixedThreadPool(SOURCE_DISCOVERY_PARALLELISM);
+    try {
+      List<Future<PerSourceDiscovery>> futures =
+          configGroup.shardConfigs().stream()
+              .map(config -> executor.submit(() -> getPerSourceDiscovery(config)))
+              .collect(Collectors.toList());
+
+      ImmutableList.Builder<PerSourceDiscovery> discoveries = ImmutableList.builder();
+      for (Future<PerSourceDiscovery> future : futures) {
+        try {
+          discoveries.add(future.get());
+        } catch (InterruptedException | ExecutionException e) {
+          SchemaDiscoveryImpl.convertException(e);
+        }
+      }
+      return discoveries.build();
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  /**
+   * Executes isolated schema discovery and table inference for a single JdbcIOWrapperConfig.
+   *
+   * @param config The configuration.
+   * @return A {@link PerSourceDiscovery} containing the results of the discovery.
+   */
+  private static PerSourceDiscovery getPerSourceDiscovery(JdbcIOWrapperConfig config) {
+    PerSourceDiscovery.Builder perSourceDiscoveryBuilder = PerSourceDiscovery.builder();
+    DataSourceConfiguration dataSourceConfiguration =
+        getDataSourceConfiguration(
+            config.toBuilder().setMaxConnections(SchemaDiscoveryImpl.getParallelism()).build());
+
+    BasicDataSource dataSource = (BasicDataSource) dataSourceConfiguration.buildDatasource();
+    try {
+      setDataSourceLoginTimeout((BasicDataSource) dataSource, config);
+      SchemaDiscovery schemaDiscovery =
+          new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
+
+      ImmutableList<TableConfig> tableConfigs =
+          autoInferTableConfigs(config, schemaDiscovery, DataSource.ofJdbc(dataSource));
+      SourceSchema sourceSchema =
+          getSourceSchema(config, schemaDiscovery, DataSource.ofJdbc(dataSource), tableConfigs);
+      perSourceDiscoveryBuilder.setConfig(config);
+      perSourceDiscoveryBuilder.setDataSourceConfiguration(getDataSourceConfiguration(config));
+      perSourceDiscoveryBuilder.setSourceSchema(sourceSchema);
+      perSourceDiscoveryBuilder.setTableConfigs(tableConfigs);
+    } finally {
+      try {
+        dataSource.close();
+      } catch (SQLException e) {
+        LOG.warn("Exception while closing datasource {}", dataSource, e);
+      }
+    }
+    return perSourceDiscoveryBuilder.build();
+  }
+
+  /**
+   * Set's the login timeout for the DataSource used for schema and index discoveries. This helps in
+   * early error reporting to the customer in case of unreachable or unavailable source database.
+   * The default login timeout for the {@link BasicDataSource} is infinite. Unfortunately, {@link
+   * BasicDataSource} does not directly support {@link DataSource#setLoginTimeout(int)}. This can be
+   * achieved by setting {@link BasicDataSource#setMaxWaitMillis} and connect timeout at the driver
+   * layer.
+   *
+   * @param dataSource
+   * @param config
+   */
+  @VisibleForTesting
+  protected static void setDataSourceLoginTimeout(
+      BasicDataSource dataSource, JdbcIOWrapperConfig config) {
+
+    dataSource.setMaxWaitMillis(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+
+    String connectivityTimeout;
+    switch (config.sourceDbDialect()) {
+      case MYSQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      case POSTGRESQL:
+        connectivityTimeout =
+            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds() / 1000);
+        setConnectionProperty(dataSource, "loginTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
+        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
+        break;
+      default:
+        logger.error(
+            "No connectivity timeout overrides implemented for dialect {}. In case of misconfigured network connectivity, schema discovery could timeout without correct error reporting.");
+    }
+  }
+
+  private static void setConnectionProperty(
+      BasicDataSource dataSource, String property, String value) {
+
+    String url = dataSource.getUrl();
+    if (!url.contains(property)) {
+      dataSource.addConnectionProperty(property, value);
+      logger.info("Set {} = {}  for schema discovery of {}", property, value, dataSource);
+    } else {
+      logger.warn(
+          "Property {} already set in URL {}. Not overriding with {} for schema discovery. The default over-ride helps in failing fast in case of misconfigured network connectivity.",
+          property,
+          url,
+          value);
+    }
+  }
+
+  /**
+   * Return a read transforms for the tables to migrate.
+   *
+   * @return Read transforms.
+   */
+  @Override
+  public ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      getTableReaders() {
+    return this.tableReaders;
+  }
+
+  /**
+   * Discover the schema of the source database.
+   *
+   * @return SourceSchema.
+   */
+  @Override
+  public ImmutableList<SourceSchema> discoverTableSchema() {
+    return this.sourceSchema;
+  }
+
+  /**
+   * Aggregates reader transforms from all provided source discoveries.
+   *
+   * @param perSourceDiscoveries List of discovery results for all shards.
+   * @return A map of table reference groups to their corresponding reader transforms.
+   */
+  @VisibleForTesting
+  protected static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      buildTableReaders(ImmutableList<PerSourceDiscovery> perSourceDiscoveries) {
+    return ImmutableMap
+        .<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>builder()
+        .putAll(getMultiTableReadWithUniformPartitionIO(perSourceDiscoveries))
+        .putAll(getjdbcIOs(perSourceDiscoveries))
+        .build();
+  }
+
+  /**
+   * Builds legacy {@link JdbcIO} read transforms for shards where uniform partitioning is disabled.
+   *
+   * <p>Ignores Configurations maped for readWithUniformPartitions.
+   *
+   * @param perSourceDiscoveries List of discovery results.
+   * @return A map of single-table references to legacy JdbcIO transforms.
+   */
+  private static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      getjdbcIOs(ImmutableList<PerSourceDiscovery> perSourceDiscoveries) {
+
+    ImmutableMap.Builder<
+            ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReadersBuilder = ImmutableMap.builder();
+    for (PerSourceDiscovery perSourceDiscovery : perSourceDiscoveries) {
+      JdbcIOWrapperConfig config = perSourceDiscovery.config();
+      ImmutableList<TableConfig> tableConfigs = perSourceDiscovery.tableConfigs();
+      DataSourceConfiguration dataSourceConfiguration =
+          perSourceDiscovery.dataSourceConfiguration();
+      SourceSchema sourceSchema = perSourceDiscovery.sourceSchema();
+      if (config.readWithUniformPartitionsFeatureEnabled() || tableConfigs.isEmpty()) {
+        continue;
+      }
+      tableConfigs.stream()
+          .forEach(
+              tableConfig -> {
+                SourceTableSchema sourceTableSchema =
+                    findSourceTableSchema(sourceSchema, tableConfig);
+                int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
+                SourceTableReference sourceTableReference =
+                    SourceTableReference.builder()
+                        .setSourceSchemaReference(sourceSchema.schemaReference())
+                        .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
+                        .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
+                        .build();
+                tableReadersBuilder.put(
+                    ImmutableList.of(sourceTableReference),
+                    getJdbcIO(
+                        config,
+                        dataSourceConfiguration,
+                        sourceSchema.schemaReference(),
+                        tableConfig,
+                        sourceTableSchema,
+                        fetchSize));
+              });
+    }
+    return tableReadersBuilder.build();
+  }
+
+  private static int getFetchSize(
+      JdbcIOWrapperConfig config, TableConfig tableConfig, SourceTableSchema sourceTableSchema) {
+    if (tableConfig.fetchSize() != null) {
+      return tableConfig.fetchSize();
+    }
+    if (config.maxFetchSize() != null) {
+      return config.maxFetchSize();
+    }
+    return FetchSizeCalculator.getFetchSize(
+        tableConfig,
+        sourceTableSchema.estimatedRowSize(),
+        config.workerMemoryBytes(),
+        config.workerCores());
+  }
+
+  static SourceTableSchema findSourceTableSchema(
+      SourceSchema sourceSchema, TableConfig tableConfig) {
+    return sourceSchema.tableSchemas().stream()
+        .filter(schema -> schema.tableName().equals(tableConfig.tableName()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  static SourceSchema getSourceSchema(
+      JdbcIOWrapperConfig config,
+      SchemaDiscovery schemaDiscovery,
+      DataSource dataSource,
+      ImmutableList<TableConfig> tableConfigs) {
+    SourceSchema.Builder sourceSchemaBuilder =
+        SourceSchema.builder().setSchemaReference(config.sourceSchemaReference());
+    ImmutableList<String> tables =
+        tableConfigs.stream().map(TableConfig::tableName).collect(ImmutableList.toImmutableList());
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchemas =
+        schemaDiscovery.discoverTableSchema(dataSource, config.sourceSchemaReference(), tables);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
+        schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
+
+    LOG.info("Found table schemas: {}", tableSchemas);
+    tableSchemas.entrySet().stream()
+        .map(
+            tableEntry -> {
+              SourceTableSchema.Builder sourceTableSchemaBuilder =
+                  SourceTableSchema.builder(config.sourceDbDialect())
+                      .setTableName(tableEntry.getKey());
+              tableEntry
+                  .getValue()
+                  .entrySet()
+                  .forEach(
+                      colEntry ->
+                          sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
+                              colEntry.getKey(), colEntry.getValue()));
+              long estimatedRowSize =
+                  config
+                      .dialectAdapter()
+                      .estimateRowSize(tableEntry.getValue(), config.valueMappingsProvider());
+              sourceTableSchemaBuilder.setEstimatedRowSize(estimatedRowSize);
+
+              if (tableIndexes.containsKey(tableEntry.getKey())) {
+                sourceTableSchemaBuilder.setPrimaryKeyColumns(
+                    tableIndexes.get(tableEntry.getKey()).stream()
+                        .filter(SourceColumnIndexInfo::isPrimary)
+                        .sorted()
+                        .map(SourceColumnIndexInfo::columnName)
+                        .collect(ImmutableList.toImmutableList()));
+              }
+              return sourceTableSchemaBuilder.build();
+            })
+        .forEach(sourceSchemaBuilder::addTableSchema);
+    return sourceSchemaBuilder.build();
+  }
+
+  /**
+   * Auto Infer the Partition Column and build table configuration. {@code autoInferTableConfigs}
+   * discovers the list table index with the help of the passed {@code SchemaDisvovery}
+   * implementation. Fom the list of indexes discovered, currently, it chooses a numeric primary key
+   * column at the first ordinal position as PartitionColumn.
+   *
+   * @param config
+   * @param schemaDiscovery
+   * @param dataSource
+   * @return
+   */
+  private static ImmutableList<TableConfig> autoInferTableConfigs(
+      JdbcIOWrapperConfig config, SchemaDiscovery schemaDiscovery, DataSource dataSource) {
+    ImmutableList<String> discoveredTables =
+        schemaDiscovery.discoverTables(dataSource, config.sourceSchemaReference());
+    ImmutableList<String> tables = getTablesToMigrate(config.tables(), discoveredTables);
+    if (tables.isEmpty()) {
+      logger.info("source does not contain matching tables: {}", config.tables());
+      return ImmutableList.of();
+    }
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
+    ImmutableList.Builder<TableConfig> tableConfigsBuilder = ImmutableList.builder();
+    for (String table : tables) {
+      tableConfigsBuilder.add(getTableConfig(table, config, indexes));
+    }
+    return tableConfigsBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected static TableConfig getTableConfig(
+      String tableName,
+      JdbcIOWrapperConfig config,
+      ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfo) {
+    TableConfig.Builder tableConfigBuilder =
+        TableConfig.builder(tableName).setDataSourceId(config.id());
+    if (config.maxPartitions() != null && config.maxPartitions() != 0) {
+      tableConfigBuilder.setMaxPartitions(config.maxPartitions());
+    }
+    // Set fetch size for the table from global fetch size if configured
+    if (config.maxFetchSize() != null) {
+      tableConfigBuilder.setFetchSize(config.maxFetchSize());
+    }
+    /*
+     * TODO(vardhanvthigle): Add optional support for non-primary indexes.
+     * Note: most of the implementation is generic for any unique index.
+     *  Need to benchmark and do the end to end implementation.
+     */
+    if (indexInfo.containsKey(tableName)) {
+      ImmutableList<SourceColumnIndexInfo> tableIndexInfo = indexInfo.get(tableName);
+
+      // TODO(vardhanvthigle): support for non-primary indexes.
+      tableIndexInfo.stream()
+          .filter(info -> info.isPrimary() && info.ordinalPosition() == 1)
+          .map(SourceColumnIndexInfo::cardinality)
+          .forEach(tableConfigBuilder::setApproxRowCount);
+      if (config.tableVsPartitionColumns().containsKey(tableName)) {
+        config.tableVsPartitionColumns().get(tableName).stream()
+            .map(
+                colName ->
+                    tableIndexInfo.stream()
+                        .filter(info -> info.columnName().equals(colName))
+                        .findFirst()
+                        .get())
+            .sorted()
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
+            .forEach(tableConfigBuilder::withPartitionColum);
+      } else {
+        ImmutableSet<IndexType> supportedIndexTypes =
+            ImmutableSet.of(
+                IndexType.NUMERIC,
+                IndexType.STRING,
+                IndexType.BIG_INT_UNSIGNED,
+                IndexType.BINARY,
+                IndexType.TIME_STAMP,
+                IndexType.DATE,
+                IndexType.DECIMAL,
+                IndexType.FLOAT,
+                IndexType.DOUBLE,
+                IndexType.DURATION);
+        // As of now only Primary key index with Numeric type is supported.
+        // TODO:
+        //    1. support non-primary unique indexes.
+        //        Note: most of the implementation is generic for any unique index.
+        //        Need to benchmark and do the end to end implementation.
+        //    2. support for composite indexes
+        //       Note: though we have most of the code for composite index, since we cap the
+        // splitting stages to 1, additional indexes will not be considered for splitting as of now.
+        tableIndexInfo.stream()
+            .filter(
+                idxInfo ->
+                    (idxInfo.isPrimary() && supportedIndexTypes.contains(idxInfo.indexType())))
+            .sorted()
+            .map(JdbcIoWrapper::partitionColumnFromIndexInfo)
+            .forEach(tableConfigBuilder::withPartitionColum);
+      }
+      TableConfig tableConfig = tableConfigBuilder.build();
+      if (tableConfig.partitionColumns().isEmpty()) {
+        throw new SuitableIndexNotFoundException(
+            new Throwable(
+                "No Suitable Index Found for partition column inference for table " + tableName));
+      }
+      return tableConfig;
+    } else {
+      throw new SuitableIndexNotFoundException(
+          new Throwable("No Index Found for partition column inference for table " + tableName));
+    }
+  }
+
+  @VisibleForTesting
+  protected static java.lang.Class indexTypeToColumnClass(SourceColumnIndexInfo indexInfo)
+      throws SuitableIndexNotFoundException {
+    if (SourceColumnIndexInfo.INDEX_TYPE_TO_CLASS.containsKey(indexInfo.indexType())) {
+      return SourceColumnIndexInfo.INDEX_TYPE_TO_CLASS.get(indexInfo.indexType());
+    } else {
+      throw new SuitableIndexNotFoundException(
+          new Throwable("No class Mapping for IndexType " + indexInfo));
+    }
+  }
+
+  /**
+   * Delimit the Identifiers as per <a
+   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>. This is needed to
+   * handle cases where the user might use reserved keywords as column or table names.
+   *
+   * @param identifier
+   * @return
+   */
+  @VisibleForTesting
+  protected static String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
+  }
+
+  private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
+    return PartitionColumn.builder()
+        .setColumnName(delimitIdentifier(idxInfo.columnName()))
+        .setColumnClass(indexTypeToColumnClass(idxInfo))
+        .setStringCollation(idxInfo.collationReference())
+        .setStringMaxLength(idxInfo.stringMaxLength())
+        .setNumericScale(idxInfo.numericScale())
+        .setDecimalStepSize(idxInfo.decimalStepSize())
+        .setDatetimePrecision(idxInfo.datetimePrecision())
+        .setColumnTypeName(idxInfo.columnTypeName())
+        .build();
+  }
+
+  @VisibleForTesting
+  protected static ImmutableList<String> getTablesToMigrate(
+      ImmutableList<String> configTables, ImmutableList<String> discoveredTables) {
+    List<String> tables = null;
+    if (configTables.isEmpty()) {
+      tables = discoveredTables;
+    } else {
+      tables =
+          configTables.stream()
+              .filter(t -> discoveredTables.contains(t))
+              .collect(Collectors.toList());
+    }
+    LOG.info("final list of tables to migrate: {}", tables);
+    return ImmutableList.copyOf(tables);
+  }
+
+  /**
+   * Private helper to construct {@link JdbcIO} as per the reader configuration.
+   *
+   * @param config Configuration.
+   * @param dataSourceConfiguration dataSourceConfiguration (which is derived earlier from the
+   *     reader configuration)
+   * @param tableConfig discovered table configurations.
+   * @param sourceTableSchema schema of the source table.
+   * @return
+   */
+  private static PTransform<PBegin, PCollection<SourceRow>> getJdbcIO(
+      JdbcIOWrapperConfig config,
+      DataSourceConfiguration dataSourceConfiguration,
+      SourceSchemaReference sourceSchemaReference,
+      TableConfig tableConfig,
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
+    ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
+        JdbcIO.<SourceRow>readWithPartitions()
+            .withTable(delimitIdentifier(tableConfig.tableName()))
+            .withPartitionColumn(tableConfig.partitionColumns().get(0).columnName())
+            .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
+            .withRowMapper(
+                new JdbcSourceRowMapper(
+                    config.valueMappingsProvider(),
+                    sourceSchemaReference,
+                    sourceTableSchema,
+                    config.shardID()));
+    if (tableConfig.maxPartitions() != null) {
+      jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
+    }
+    if (fetchSize != 0) {
+      jdbcIO = jdbcIO.withFetchSize(fetchSize);
+    }
+    return jdbcIO;
+  }
+
+  /**
+   * Private helper to construct {@link ReadWithUniformPartitions} for multiple tables as per the
+   * reader configuration.
+   *
+   * @param config Configuration.
+   * @param dataSourceConfiguration dataSourceConfiguration (which is derived earlier from the
+   *     reader configuration)
+   * @param sourceSchemaReference reference for the source schema.
+   * @param tableConfigs list of discovered table configurations.
+   * @param sourceSchema schema of the source.
+   * @return a map with a single entry where the key is a list of all table references and the value
+   *     is the multi-table reader transform.
+   */
+  /**
+   * Builds optimized {@link ReadWithUniformPartitions} transforms for shards where the feature is
+   * enabled.
+   *
+   * <p>Ignores Configurations maped for legacy JdbcIO.
+   *
+   * @param perSourceDiscoveries List of discovery results.
+   * @return A map of multi-table reference lists to RWUPT transforms.
+   */
+  protected static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      getMultiTableReadWithUniformPartitionIO(
+          ImmutableList<PerSourceDiscovery> perSourceDiscoveries) {
+    ImmutableMap.Builder<
+            ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReadersBuilder = ImmutableMap.builder();
+
+    if (perSourceDiscoveries.isEmpty()) {
+      return ImmutableMap.of();
+    }
+    DialectAdapter dialectAdapter = perSourceDiscoveries.get(0).config().dialectAdapter();
+    OnSignal<?> waitOn = perSourceDiscoveries.get(0).config().waitOn();
+    Integer dbParallelizationForSplitProcess =
+        perSourceDiscoveries.get(0).config().dbParallelizationForSplitProcess();
+    Integer dbParallelizationForReads =
+        perSourceDiscoveries.get(0).config().dbParallelizationForReads();
+    PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?> additionalOperationsOnRanges =
+        perSourceDiscoveries.get(0).config().additionalOperationsOnRanges();
+
+    /* Todo  in subsequent PR for multishard graphsize support, pass this to table reader. */
+    DataSourceProvider dataSourceProvider = getDataSourceProvider(perSourceDiscoveries);
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+    accumulateSpecs(
+        perSourceDiscoveries, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+
+    ImmutableList<SourceTableReference> tableReferences = tableReferencesBuilder.build();
+    if (tableReferences.isEmpty()) {
+      return ImmutableMap.of();
+    }
+
+    ReadWithUniformPartitions<SourceRow> readWithUniformPartitions =
+        ReadWithUniformPartitions.<SourceRow>builder()
+            .setTableSplitSpecifications(splitSpecsBuilder.build())
+            .setTableReadSpecifications(readSpecsBuilder.build())
+            .setDataSourceProvider(dataSourceProvider)
+            .setDbAdapter(dialectAdapter)
+            .setWaitOn(waitOn)
+            .setDbParallelizationForSplitProcess(dbParallelizationForSplitProcess)
+            .setDbParallelizationForReads(dbParallelizationForReads)
+            .setAdditionalOperationsOnRanges(additionalOperationsOnRanges)
+            .build();
+
+    // We batch the partitions in groups of MAX_SHARDS_PER_LOG batches for
+    // enhanced log readability and debuggability at the same time containing
+    // the number of logs emitted.
+    Lists.partition(perSourceDiscoveries, MAX_SHARDS_PER_LOG)
+        .forEach(
+            batch ->
+                LOG.info(
+                    "Configured Multi-Table ReadWithUniformPartitions for sources batch: {}",
+                    batch.stream()
+                        .map(
+                            d ->
+                                "id="
+                                    + d.config().id()
+                                    + ":"
+                                    + "shard_id="
+                                    + d.config().shardID()
+                                    + ":'"
+                                    + d.sourceSchema().schemaReference().jdbc().toString())
+                        .collect(Collectors.joining(","))));
+    tableReadersBuilder.put(tableReferences, readWithUniformPartitions);
+    return tableReadersBuilder.build();
+  }
+
+  /**
+   * Accumulates table-specific specifications (read specs, split specs, and table references) from
+   * a source discovery into the provided builders.
+   *
+   * <p>This method iterates over the table configurations in the {@link PerSourceDiscovery} and
+   * constructs:
+   *
+   * <ul>
+   *   <li>{@link TableSplitSpecification}: Used for partitioning the table.
+   *   <li>{@link TableReadSpecification}: Used for reading data from the table.
+   *   <li>{@link SourceTableReference}: Used for identifying the table in the source schema.
+   * </ul>
+   *
+   * @param perSourceDiscovery The discovery results for a single source database.
+   * @param tableReferencesBuilder A builder to collect the resulting {@link SourceTableReference}s.
+   * @param splitSpecsBuilder A builder to collect the resulting {@link TableSplitSpecification}s.
+   * @param readSpecsBuilder A builder to collect the resulting {@link TableReadSpecification}s,
+   *     mapped by {@link TableIdentifier}.
+   */
+  /* Todo  in subsequent PR for multishard graphsize support accumulate specs across a list of sourceDiscovereies */
+  @VisibleForTesting
+  protected static void accumulateSpecs(
+      ImmutableList<PerSourceDiscovery> perSourceDiscoveries,
+      ImmutableList.Builder<SourceTableReference> tableReferencesBuilder,
+      ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder,
+      ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder) {
+
+    for (PerSourceDiscovery perSourceDiscovery : perSourceDiscoveries) {
+      JdbcIOWrapperConfig config = perSourceDiscovery.config();
+      SourceSchemaReference sourceSchemaReference =
+          perSourceDiscovery.sourceSchema().schemaReference();
+      ImmutableList<TableConfig> tableConfigs = perSourceDiscovery.tableConfigs();
+      if (!config.readWithUniformPartitionsFeatureEnabled() || tableConfigs.isEmpty()) {
+        continue;
+      }
+      for (TableConfig tableConfig : tableConfigs) {
+
+        SourceTableSchema sourceTableSchema =
+            findSourceTableSchema(perSourceDiscovery.sourceSchema(), tableConfig);
+        // This returns configured fetchSize if user has configured it in pipeline options,
+        // otherwise it auto-infers the fetchsize.
+        int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
+        TableIdentifier tableIdentifier = getTableIdentifier(tableConfig);
+
+        TableSplitSpecification.Builder tableSplitSpecificationBuilder =
+            TableSplitSpecification.builder()
+                .setTableIdentifier(tableIdentifier)
+                .setPartitionColumns(tableConfig.partitionColumns())
+                .setApproxRowCount(tableConfig.approxRowCount());
+        if (tableConfig.maxPartitions() != null) {
+          tableSplitSpecificationBuilder =
+              tableSplitSpecificationBuilder.setMaxPartitionsHint(
+                  (long) tableConfig.maxPartitions());
+        }
+        // If the splitStageCountHint is not overridden,
+        // it's auto inferred by ReadWithUniformPartitions.
+        // Please see Javadocs of ReadWithUniformPartitions for additional information.
+        if (config.splitStageCountHint() >= 0) {
+          tableSplitSpecificationBuilder =
+              tableSplitSpecificationBuilder.setSplitStagesCount(
+                  (long) config.splitStageCountHint());
+        }
+        splitSpecsBuilder.add(tableSplitSpecificationBuilder.build());
+
+        TableReadSpecification.Builder<SourceRow> tableReadSpecificationBuilder =
+            TableReadSpecification.<SourceRow>builder()
+                .setFetchSize(fetchSize)
+                .setTableIdentifier(tableIdentifier)
+                .setRowMapper(
+                    new JdbcSourceRowMapper(
+                        config.valueMappingsProvider(),
+                        sourceSchemaReference,
+                        sourceTableSchema,
+                        config.shardID()));
+        readSpecsBuilder.put(tableIdentifier, tableReadSpecificationBuilder.build());
+
+        tableReferencesBuilder.add(
+            SourceTableReference.builder()
+                .setSourceSchemaReference(sourceSchemaReference)
+                .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
+                .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
+                .build());
+        LOG.info(
+            "Configuring Multi-Table ReadWithUniformPartitions for source-id {} tables {} with config {}",
+            config.id(),
+            tableConfigs.stream().map(TableConfig::tableName).collect(Collectors.toList()),
+            config);
+      }
+    }
+  }
+
+  /**
+   * Creates a {@link DataSourceProvider} from a list of source discoveries.
+   *
+   * <p>Each discovery provides a {@link DataSourceConfiguration} which is used to create a poolable
+   * data source. The data sources are mapped by their corresponding configuration's unique ID.
+   *
+   * @param perSourceDiscoveries A list of discovery results for one or more source databases.
+   * @return A {@link DataSourceProvider} that can provide {@link javax.sql.DataSource}s for each
+   *     source.
+   */
+  @VisibleForTesting
+  protected static DataSourceProvider getDataSourceProvider(
+      ImmutableList<PerSourceDiscovery> perSourceDiscoveries) {
+    DataSourceProviderImpl.Builder datasourceProviderBuilder = DataSourceProviderImpl.builder();
+    for (PerSourceDiscovery perSourceDiscovery : perSourceDiscoveries) {
+      DataSourceConfiguration dataSourceConfiguration =
+          perSourceDiscovery.dataSourceConfiguration();
+
+      SerializableFunction<Void, javax.sql.DataSource> fn =
+          JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration);
+      datasourceProviderBuilder.addDataSource(perSourceDiscovery.config().id(), fn);
+    }
+    return datasourceProviderBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected static TableIdentifier getTableIdentifier(TableConfig tableConfig) {
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setTableName(delimitIdentifier(tableConfig.tableName()))
+            .setDataSourceId(tableConfig.dataSourceId())
+            .build();
+    return tableIdentifier;
+  }
+
+  /**
+   * Build the {@link DataSourceConfiguration} from the reader configuration.
+   *
+   * @param config reader configuration.
+   * @return {@link DataSourceConfiguration}
+   */
+  private static DataSourceConfiguration getDataSourceConfiguration(JdbcIOWrapperConfig config) {
+    DataSourceConfiguration dataSourceConfig =
+        DataSourceConfiguration.create(new JdbcDataSource(config));
+    return dataSourceConfig;
+  }
+
+  /**
+   * Private constructor for {@link JdbcIoWrapper}.
+   *
+   * @param tableReaders readers constructed from the reader configuration.
+   * @param sourceSchema sourceSchema discoverd based on the reader configuration.
+   *     <p>Note (implementation detail):
+   *     <p>The external code should use the {@link JdbcIoWrapper#of} static method to construct the
+   *     {@link JdbcIoWrapper} from the configuration. A private constructor and a public `of`
+   *     method allows us to keep minimal logic in the constructor. This pattern is also followed by
+   *     Beam classes like {@link JdbcIO}
+   */
+  private JdbcIoWrapper(
+      ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+          tableReaders,
+      ImmutableList<SourceSchema> sourceSchema) {
+    this.tableReaders = tableReaders;
+    this.sourceSchema = sourceSchema;
+  }
+
+  /**
+   * Value class that encapsulates all metadata discovered for a specific data source.
+   *
+   * <p>This includes the original configuration specific to the source, the table configurations,
+   * the discovered schema, and the {@link DataSourceConfiguration}.
+   */
+  @AutoValue
+  abstract static class PerSourceDiscovery {
+    abstract JdbcIOWrapperConfig config();
+
+    abstract DataSourceConfiguration dataSourceConfiguration();
+
+    abstract ImmutableList<TableConfig> tableConfigs();
+
+    abstract SourceSchema sourceSchema();
+
+    static Builder builder() {
+      return new AutoValue_JdbcIoWrapper_PerSourceDiscovery.Builder();
+    }
+
+    /** Builder for {@link PerSourceDiscovery}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract Builder setConfig(JdbcIOWrapperConfig value);
+
+      public abstract Builder setDataSourceConfiguration(DataSourceConfiguration value);
+
+      public abstract Builder setTableConfigs(ImmutableList<TableConfig> value);
+
+      public abstract Builder setSourceSchema(SourceSchema value);
+
+      public abstract PerSourceDiscovery build();
+    }
+  }
+}
