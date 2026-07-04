@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -84,4 +85,35 @@ public class SourceDbToSpannerTest {
     config = SourceDbToSpanner.createSpannerConfig(mockOptions);
     assertEquals(config.getMaxCommitDelay().get(), Duration.millis(42L));
   }
+
+  @Test
+  public void testValidateOptions_PostgresThrowsExceptionForCustomNamespace() {
+    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
+    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
+    when(mockOptions.getNamespace()).thenReturn("sales");
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class, () -> SourceDbToSpanner.validateOptions(mockOptions));
+
+    assertThat(exception.getMessage())
+        .isEqualTo("Non-public namespaces are currently unsupported for PostgreSQL migrations.");
+  }
+
+  @Test
+  public void testValidateOptions_PostgresSucceedsForEmptyNamespace() {
+    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
+    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
+    when(mockOptions.getNamespace()).thenReturn("");
+    SourceDbToSpanner.validateOptions(mockOptions);
+  }
+
+  @Test
+  public void testValidateOptions_PostgresSucceedsForPublicNamespace() {
+    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
+    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
+    when(mockOptions.getNamespace()).thenReturn("public");
+    SourceDbToSpanner.validateOptions(mockOptions);
+  }
+
 }

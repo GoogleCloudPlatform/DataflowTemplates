@@ -30,6 +30,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -89,6 +90,22 @@ public class SourceDbToSpanner {
   }
 
   /**
+   * Validates the provided pipeline options.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
+   */
+  @VisibleForTesting
+  static void validateOptions(SourceDbToSpannerOptions options) {
+    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(options.getSourceDbDialect())
+        && StringUtils.isNotBlank(options.getNamespace())
+        && !options.getNamespace().equals("public")) {
+      throw new IllegalArgumentException(
+          "Non-public namespaces are currently unsupported for PostgreSQL migrations.");
+    }
+  }
+
+  /**
    * Create the pipeline with the supplied options.
    *
    * @param options The execution parameters to the pipeline.
@@ -97,6 +114,7 @@ public class SourceDbToSpanner {
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
     // TODO - Validate if options are as expected
+    validateOptions(options);
     Pipeline pipeline = Pipeline.create(options);
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
