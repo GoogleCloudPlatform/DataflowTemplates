@@ -115,5 +115,4 @@ public class SourceDbToSpannerTest {
     when(mockOptions.getNamespace()).thenReturn("public");
     SourceDbToSpanner.validateOptions(mockOptions);
   }
-
 }
