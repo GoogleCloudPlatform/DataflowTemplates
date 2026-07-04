@@ -115,4 +115,11 @@ public class SourceDbToSpannerTest {
     when(mockOptions.getNamespace()).thenReturn("public");
     SourceDbToSpanner.validateOptions(mockOptions);
   }
+  
+  @Test
+  public void testValidateOptions_NonPostgresDialectSucceeds() {
+    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
+    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
+    SourceDbToSpanner.validateOptions(mockOptions);
+  }
 }
