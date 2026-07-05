@@ -150,8 +150,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                 region,
                 Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .setProtoDescriptors(protoDescriptorBytes.toByteArray())
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+            .setProtoDescriptors(protoDescriptorBytes.toByteArray());
     if (spannerHost != null) {
       builder.useCustomHost(spannerHost);
     }
@@ -163,8 +162,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                 projectId,
                 region,
                 Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+            .maybeUseStaticInstance();
     if (spannerHost != null) {
       pgBuilder.useCustomHost(spannerHost);
     }
@@ -187,15 +185,13 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
     String projectId = TestProperties.project();
-    String region = TestProperties.region();
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
                 testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
-                region,
+                "nam6",
                 dialect)
-            .maybeUseStaticInstance()
             .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
