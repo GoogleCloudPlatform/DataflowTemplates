@@ -190,9 +190,9 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         SpannerResourceManager.builder(
                 testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
-                "nam3",
+                "nam6",
                 dialect)
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam6");
+            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
     }
