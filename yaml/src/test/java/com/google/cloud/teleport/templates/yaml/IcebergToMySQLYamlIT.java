@@ -94,6 +94,12 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
 
   @Test
   public void testIcebergToMySQL() throws IOException {
+    // Iceberg setup
+
+    // Re-invoke createNamespace to act as a propagation barrier and cache-warming step for BigLake
+    // REST catalog before Dataflow launches. Do not remove: prevents eventual consistency failures.
+    icebergResourceManager.createNamespace(namespace);
+    LOG.info("Namespace '{}' created/verified successfully", namespace);
 
     // Define Iceberg table schema
     Schema icebergSchema =
