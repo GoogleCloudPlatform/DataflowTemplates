@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -166,31 +168,28 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(m);
     LOG.info("Successfully wrote row to source Spanner Users table");
 
-    boolean isReplicated = false;
-    long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
-      List<Struct> rows =
-          spannerDestinationResourceManager.readTableRecords(
-              TABLE, List.of("id", "full_name", "from"));
-      for (Struct row : rows) {
-        if (!row.isNull("id")
-            && row.getLong("id") == 101
-            && !row.isNull("full_name")
-            && "Alice".equals(row.getString("full_name"))) {
-          LOG.info("Row successfully found in destination Spanner: id=101, full_name=Alice");
-          isReplicated = true;
-          break;
-        }
-      }
-      if (isReplicated) {
-        break;
-      }
-      LOG.info("Waiting for row replication...");
-      Thread.sleep(10000); // Wait 10 seconds before polling again
-    }
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                () -> {
+                  List<Struct> rows =
+                      spannerDestinationResourceManager.readTableRecords(
+                          TABLE, List.of("id", "full_name", "from"));
+                  for (Struct row : rows) {
+                    if (!row.isNull("id")
+                        && row.getLong("id") == 101
+                        && !row.isNull("full_name")
+                        && "Alice".equals(row.getString("full_name"))) {
+                      LOG.info(
+                          "Row successfully found in destination Spanner: id=101, full_name=Alice");
+                      return true;
+                    }
+                  }
+                  return false;
+                });
 
-    org.junit.Assert.assertTrue(
-        "Row was not replicated to destination Spanner within timeout", isReplicated);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
@@ -323,73 +322,59 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
       int expectedRowCount,
       List<String> columns,
       String checkCol,
-      Object expectedColValue)
-      throws InterruptedException {
-    boolean conditionsMet = false;
-    long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < TEST_TIMEOUT.toMillis()) {
-      List<Struct> rows = spannerDestinationResourceManager.readTableRecords(table, columns);
+      Object expectedColValue) {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                () -> {
+                  List<Struct> rows =
+                      spannerDestinationResourceManager.readTableRecords(table, columns);
 
-      if (rows.size() == expectedRowCount) {
-        if (expectedRowCount == 0) {
-          conditionsMet = true;
-          break;
-        }
-        boolean valueFound = checkCol == null;
-        if (checkCol != null) {
-          for (Struct row : rows) {
-            if (row.isNull(checkCol)) {
-              continue;
-            }
-            if (expectedColValue instanceof Long
-                && row.getLong(checkCol) == ((Long) expectedColValue).longValue()) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof String
-                && expectedColValue.equals(row.getString(checkCol))) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof Boolean
-                && row.getBoolean(checkCol) == ((Boolean) expectedColValue).booleanValue()) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof Double
-                && row.getDouble(checkCol) == ((Double) expectedColValue).doubleValue()) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof Float
-                && row.getFloat(checkCol) == ((Float) expectedColValue).floatValue()) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof java.math.BigDecimal
-                && expectedColValue.equals(row.getBigDecimal(checkCol))) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof com.google.cloud.ByteArray
-                && expectedColValue.equals(row.getBytes(checkCol))) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof com.google.cloud.Timestamp
-                && expectedColValue.equals(row.getTimestamp(checkCol))) {
-              valueFound = true;
-              break;
-            } else if (expectedColValue instanceof com.google.cloud.Date
-                && expectedColValue.equals(row.getDate(checkCol))) {
-              valueFound = true;
-              break;
-            }
-          }
-        }
-        if (valueFound) {
-          conditionsMet = true;
-          break;
-        }
-      }
-
-      LOG.info("Waiting for replication to {}", table);
-      Thread.sleep(10000);
-    }
-    org.junit.Assert.assertTrue(
-        "Replication assertions not met for table " + table + " within timeout", conditionsMet);
+                  if (rows.size() == expectedRowCount) {
+                    if (expectedRowCount == 0) {
+                      return true;
+                    }
+                    if (checkCol == null) {
+                      return true;
+                    }
+                    for (Struct row : rows) {
+                      if (row.isNull(checkCol)) {
+                        continue;
+                      }
+                      if (expectedColValue instanceof Long
+                          && row.getLong(checkCol) == ((Long) expectedColValue).longValue()) {
+                        return true;
+                      } else if (expectedColValue instanceof String
+                          && expectedColValue.equals(row.getString(checkCol))) {
+                        return true;
+                      } else if (expectedColValue instanceof Boolean
+                          && row.getBoolean(checkCol)
+                              == ((Boolean) expectedColValue).booleanValue()) {
+                        return true;
+                      } else if (expectedColValue instanceof Double
+                          && row.getDouble(checkCol) == ((Double) expectedColValue).doubleValue()) {
+                        return true;
+                      } else if (expectedColValue instanceof Float
+                          && row.getFloat(checkCol) == ((Float) expectedColValue).floatValue()) {
+                        return true;
+                      } else if (expectedColValue instanceof java.math.BigDecimal
+                          && expectedColValue.equals(row.getBigDecimal(checkCol))) {
+                        return true;
+                      } else if (expectedColValue instanceof com.google.cloud.ByteArray
+                          && expectedColValue.equals(row.getBytes(checkCol))) {
+                        return true;
+                      } else if (expectedColValue instanceof com.google.cloud.Timestamp
+                          && expectedColValue.equals(row.getTimestamp(checkCol))) {
+                        return true;
+                      } else if (expectedColValue instanceof com.google.cloud.Date
+                          && expectedColValue.equals(row.getDate(checkCol))) {
+                        return true;
+                      }
+                    }
+                  }
+                  return false;
+                });
+    assertThatResult(result).meetsConditions();
   }
 }
