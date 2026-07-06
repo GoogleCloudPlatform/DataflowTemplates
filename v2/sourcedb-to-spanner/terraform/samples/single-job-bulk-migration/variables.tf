@@ -49,7 +49,7 @@ variable "jdbc_driver_class_name" {
 
 variable "source_config_url" {
   type        = string
-  description = "JDBC connection url for the source database. Ex- jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8"
+  description = "Source connection config file URL. The file format is dependent on the source type."
 }
 
 variable "username" {
