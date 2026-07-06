@@ -102,11 +102,6 @@ public class IcebergToSQLServerYamlIT extends TemplateTestBase {
 
   @Test
   public void testIcebergToSQLServer() throws IOException {
-    // Iceberg setup
-
-    // Create namespace in the REST catalog
-    icebergResourceManager.createNamespace(namespace);
-    LOG.info("Namespace '{}' created successfully", namespace);
 
     // Define Iceberg table schema
     Schema icebergSchema =

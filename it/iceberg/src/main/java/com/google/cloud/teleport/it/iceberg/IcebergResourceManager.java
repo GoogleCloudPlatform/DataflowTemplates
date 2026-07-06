@@ -292,7 +292,11 @@ public class IcebergResourceManager implements ResourceManager {
    */
   @Override
   public synchronized void cleanupAll() throws IcebergResourceManagerException {
-    for (String namespace : List.copyOf(createdNamespaces)) {
+    List<String> namespacesToClean;
+    synchronized (createdNamespaces) {
+      namespacesToClean = List.copyOf(createdNamespaces);
+    }
+    for (String namespace : namespacesToClean) {
       dropNamespace(namespace, true);
     }
     createdNamespaces.clear();

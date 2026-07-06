@@ -102,11 +102,6 @@ public class IcebergToPostgreSQLYamlIT extends TemplateTestBase {
 
   @Test
   public void testIcebergToPostgres() throws IOException {
-    // Iceberg setup
-
-    // Create namespace in the REST catalog
-    icebergResourceManager.createNamespace(namespace);
-    LOG.info("Namespace '{}' created successfully", namespace);
 
     // Define Iceberg table schema
     Schema icebergSchema =
