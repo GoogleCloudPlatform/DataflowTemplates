@@ -27,11 +27,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.iceberg.Schema;
@@ -52,49 +54,65 @@ public class IcebergToAlloyDBYamlIT extends TemplateTestBase {
 
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
+  private GcsResourceManager warehouseGcsResourceManager;
   private static final Logger LOG = LoggerFactory.getLogger(IcebergToAlloyDBYamlIT.class);
 
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
+  private final String namespace =
+      "iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
-  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
   private static final String ALLOYDB_TABLE_NAME = "alloydb_table";
 
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
-    gcsClient.registerTempDir(NAMESPACE);
+    warehouseGcsResourceManager =
+        artifactBucketName != null && !artifactBucketName.isEmpty()
+            ? GcsResourceManager.builder(
+                    artifactBucketName, getClass().getSimpleName(), credentials)
+                .build()
+            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(namespace);
+    LOG.info("Warehouse bucket created: {}", warehouseGcsResourceManager.getBucket());
 
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
+    icebergResourceManager.createNamespace(namespace);
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(postgresResourceManager, icebergResourceManager);
+    ResourceManagerUtils.cleanResources(
+        postgresResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
   public void testIcebergToAlloyDB() throws IOException {
     // Iceberg setup
-    icebergResourceManager.createNamespace(NAMESPACE);
+
+    // Re-invoke createNamespace to act as a propagation barrier and cache-warming step for BigLake
+    // REST catalog before Dataflow launches. Do not remove: prevents eventual consistency failures.
+    icebergResourceManager.createNamespace(namespace);
+    LOG.info("Namespace '{}' created/verified successfully", namespace);
+
     Schema icebergSchema =
         new Schema(
             Types.NestedField.required(1, "id", Types.IntegerType.get()),
             Types.NestedField.required(2, "name", Types.StringType.get()),
             Types.NestedField.optional(3, "active", Types.IntegerType.get()));
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
+    icebergResourceManager.createTable(icebergTableIdentifier, icebergSchema);
 
     List<Map<String, Object>> icebergRecords =
         List.of(
             Map.of("id", 1, "name", "Alice", "active", 1),
             Map.of("id", 2, "name", "Bob", "active", 0),
             Map.of("id", 3, "name", "Charlie", "active", 1));
-    icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
+    icebergResourceManager.write(icebergTableIdentifier, icebergRecords);
 
     // AlloyDB (Postgres) setup
     HashMap<String, String> columns = new HashMap<>();
@@ -106,7 +124,7 @@ public class IcebergToAlloyDBYamlIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
@@ -147,7 +165,7 @@ public class IcebergToAlloyDBYamlIT extends TemplateTestBase {
     return Map.of(
         "type", "rest",
         "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
-        "warehouse", "gs://" + gcsClient.getBucket(),
+        "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project", PROJECT,
         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
         "rest-metrics-reporting-enabled", "false");
