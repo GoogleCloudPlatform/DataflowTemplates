@@ -71,6 +71,6 @@ runs:
         cache-key: ${{ inputs.java-cache-key }}
         java-version: ${{ inputs.java-version }}
     - name: Setup Python
-      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
           python-version: ${{ inputs.python-version }}

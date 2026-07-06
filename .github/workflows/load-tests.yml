@@ -43,13 +43,24 @@ jobs:
         HOST_IP: ${{ steps.variables.outputs.hostIP }}
     - name: Create Github issue on failure
       if: failure()
-      uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         DATE: ${{ steps.date.outputs.date }}
       with:
-        filename: .github/ISSUE_TEMPLATE/load-test-failure-issue-template.md
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const date = process.env.DATE || '';
+          const jobUrl = process.env.JOB_URL || '';
+          const issueTitle = `Load Test Failure: ${date}`;
+          const issueBody = `**Load Test Failed**\n\n**Date:** ${date}\n**Job URL:** [Link to GitHub Actions Run](${jobUrl})\n\n**Error Details:**\n\nPlease provide any relevant error messages, logs, or context below.\n`;
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['bug', 'load-test-failure']
+          });
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
