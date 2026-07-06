@@ -22,6 +22,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
@@ -134,7 +135,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                "spanner", // sourceType = "spanner"
+                Constants.SOURCE_SPANNER,
                 jobParameters);
       }
     }
