@@ -37,6 +37,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import google.auth
 from google.auth.transport.requests import AuthorizedSession
@@ -378,13 +380,27 @@ _SINK_SCHEMA = {
 }
 
 
-def _anomaly_id(value):
+def _anomaly_id(keyed_value):
   """Stable hashable identity per anomaly. Used as AsyncWrapper's id_fn
-  for dedup across runner replays — must survive a serialize/deserialize
-  round-trip, hence (window_micros, model_id) rather than object identity."""
+  for dedup across runner replays, must survive a serialize/deserialize
+  round-trip, hence (key, window_micros, model_id) rather than object
+  identity.
+
+  ``keyed_value`` is the ``(key, AnomalyResult)`` pair that
+  ``_nest_key_for_webhook_id`` copies into the element value. The key
+  MUST be part of the identity: AsyncWrapper tracks in-flight work in a
+  worker-global map indexed by this id alone (its id_fn never sees the
+  element's key), so without it two group-by keys anomalous in the same
+  window with the same detector alias each other,  one alert is silently
+  dropped and the other posted twice. Unkeyed pipelines carry the
+  ``_UNKEYED_SENTINEL`` key, where same-id elements really are replays
+  of the same anomaly.
+  """
+  key, value = keyed_value
   example = value.example
   prediction = value.predictions[0]
   return (
+      key,
       example.window_start.micros,
       example.window_end.micros,
       prediction.model_id or '',
@@ -400,6 +416,34 @@ def _key_anomaly_for_async(element):
     key, value = element
     return (str(key), value)
   return (_UNKEYED_SENTINEL, element)
+
+
+def _nest_key_for_webhook_id(
+    element: Tuple[str, AnomalyResult]
+) -> Tuple[str, Tuple[str, AnomalyResult]]:
+  """Copies the key into the value: ``(key, v)`` -> ``(key, (key, v))``.
+
+  AsyncWrapper computes its dedup id as ``id_fn(element[1])``, from the
+  value only, so the key must ride inside the value for ``_anomaly_id``
+  to include it. See ``_anomaly_id`` for why omitting the key drops or
+  double-posts same-window anomalies on keyed pipelines."""
+  key, value = element
+  return (key, (key, value))
+
+
+def _unnest_key_for_webhook_id(
+    element: Union[Tuple[str, Tuple[str, AnomalyResult]],
+                   Tuple[str, AnomalyResult],
+                   AnomalyResult]
+) -> Tuple[Optional[str], AnomalyResult]:
+  """Inverse of ``_nest_key_for_webhook_id``: returns ``(key, result)``
+  with sentinel keys mapped to None. Also accepts un-nested elements,
+  a bare ``AnomalyResult`` is a dataclass, never a 2-tuple, so the two
+  shapes are unambiguous."""
+  key, result = _unpack_result(element)
+  if _is_keyed_pair(result):
+    key, result = _unpack_result(result)
+  return key, result
 
 
 def _is_outlier(element):
@@ -492,7 +536,7 @@ class _PostAnomalyToWebhook(beam.DoFn):
     self._session = AuthorizedSession(creds)
 
   def process(self, element):
-    key, result = _unpack_result(element)
+    key, result = _unnest_key_for_webhook_id(element)
     fields = _build_anomaly_fields(key, result)
     anomaly_message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
@@ -1340,6 +1384,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
     )
     _ = (
         alert_anomalies
+        | 'NestKeyForWebhookId' >> beam.Map(_nest_key_for_webhook_id)
         | 'PostAnomaliesToWebhook' >> beam.ParDo(async_webhook_dofn))
 
   if options.sink_table:
