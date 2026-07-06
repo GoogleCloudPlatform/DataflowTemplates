@@ -40,8 +40,8 @@ import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import com.google.cloud.teleport.v2.neo4j.providers.Provider;
-import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamBlock;
 import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
@@ -178,8 +178,8 @@ public class GoogleCloudToNeo4j {
     // Source specific validations
     for (Source source : importSpecification.getSources()) {
       // get provider implementation for source
-      Provider providerImpl = ProviderFactory.of(source, targetSequence);
-      providerImpl.configure(optionsParams);
+      SourceProvider sourceProvider = SourceProviderFactory.of(source, targetSequence);
+      sourceProvider.configure(optionsParams);
     }
   }
 
@@ -293,11 +293,11 @@ public class GoogleCloudToNeo4j {
       }
 
       // get provider implementation for source
-      Provider provider = ProviderFactory.of(source, targetSequence);
-      provider.configure(optionsParams);
+      SourceProvider sourceProvider = SourceProviderFactory.of(source, targetSequence);
+      sourceProvider.configure(optionsParams);
       PCollection<Row> sourceMetadata =
           pipeline.apply(
-              String.format("Metadata for source %s", sourceName), provider.queryMetadata());
+              String.format("Metadata for source %s", sourceName), sourceProvider.queryMetadata());
       sourceRows.add(sourceMetadata);
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(ArtifactType.source, sourceName, defaultActionContext);
@@ -308,12 +308,12 @@ public class GoogleCloudToNeo4j {
       // - or the source provider does not support SQL pushdown
       // then the source PCollection can be defined here and reused across all the relevant targets
       PCollection<Row> nullableSourceBeamRows = null;
-      if (!provider.supportsSqlPushDown()
+      if (!sourceProvider.supportsSqlPushDown()
           || activeSourceTargets.stream()
               .anyMatch(target -> !ModelUtils.targetHasTransforms(target))) {
         nullableSourceBeamRows =
             pipeline
-                .apply("Query " + sourceName, provider.querySourceBeamRows(sourceBeamSchema))
+                .apply("Query " + sourceName, sourceProvider.querySourceRows(sourceBeamSchema))
                 .setRowSchema(sourceBeamSchema);
       }
 
@@ -334,7 +334,8 @@ public class GoogleCloudToNeo4j {
                 + " nodes";
         PCollection<Row> preInsertBeamRows =
             pipeline.apply(
-                "Query " + nodeStepDescription, provider.queryTargetBeamRows(targetQuerySpec));
+                "Query " + nodeStepDescription,
+                sourceProvider.querySourceRowsForTarget(targetQuerySpec));
 
         List<PCollection<?>> dependencies =
             new ArrayList<>(preActionRows.getOrDefault(ActionStage.PRE_NODES, List.of()));
@@ -397,7 +398,7 @@ public class GoogleCloudToNeo4j {
           preInsertBeamRows =
               pipeline.apply(
                   "Query " + relationshipStepDescription,
-                  provider.queryTargetBeamRows(targetQuerySpec));
+                  sourceProvider.querySourceRowsForTarget(targetQuerySpec));
         } else {
           preInsertBeamRows = nullableSourceBeamRows;
         }
