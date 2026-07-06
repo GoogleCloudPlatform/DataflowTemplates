@@ -18,7 +18,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ## Parameters
 
 #### Required Parameters
-* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf)
+* **sourceConfigURL** (Source connection config file URL.): The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required.
 * **username** (username of the source database): The username which can be used to connect to the source database.
 * **password** (username of the source database): The username which can be used to connect to the source database.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
@@ -519,7 +519,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
-    sourceConfigURL = "jdbc:mysql://some-host:3306/sampledb"
+    sourceConfigURL = "gs://your-bucket/source-config.json"
     username = "<username>"
     password = "<password>"
     outputDirectory = "gs://your-bucket/dir"
