@@ -69,19 +69,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   @TemplateParameter.Text(
       order = 4,
       optional = true,
-      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*|^$)"},
+      regexes = {"(^.+$)"},
       groupName = "Source",
-      description = "Source database connection URL or shard config path.",
+      description = "Source connection config file URL.",
       helpText =
-          "The URL to connect to the source database host. This can be either:"
-              + " 1. A JDBC connection URL for a single source database, which"
-              + " must contain the  host, port and source db name and can"
-              + " optionally contain properties like  autoReconnect,"
-              + " maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`."
-              + " For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
-              + " 2. A Cloud Storage path to a shard config file for sharded"
-              + " migrations. For example, `gs://my-bucket/my-shard-config.yaml`."
-              + " This parameter is required except for ASTRA_DB source.")
+          "The URL of the source connection config file. The file format is dependent on the source type."
+              + " For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json))."
+              + " For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json))."
+              + " For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf))."
+              + " This parameter is required.")
   @Default.String("")
   String getSourceConfigURL();
 
