@@ -358,8 +358,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             } catch (IOException e) {
               throw new RuntimeException(e);
             }
-            put("username", jdbcResourceManager.getUsername());
-            put("password", jdbcResourceManager.getPassword());
             put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
           }
         };

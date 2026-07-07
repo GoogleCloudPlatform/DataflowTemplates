@@ -58,11 +58,7 @@ public final class OptionsToConfigBuilder {
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
-      SourceDbToSpannerOptions options,
-      Shard shard,
-      List<String> tables,
-      String shardId,
-      Wait.OnSignal<?> waitOn) {
+      SourceDbToSpannerOptions options, Shard shard, List<String> tables, Wait.OnSignal<?> waitOn) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
@@ -80,14 +76,7 @@ public final class OptionsToConfigBuilder {
     return getJdbcIOWrapperConfig(
         sqlDialect,
         tables,
-        shard.getHost(),
-        shard.getConnectionProperties(),
-        Integer.parseInt(shard.getPort()),
-        shard.getUserName(),
-        shard.getPassword(),
-        shard.getDbName(),
-        shard.getNamespace(),
-        shardId,
+        shard,
         jdbcDriverClassName,
         jdbcDriverJars,
         maxConnections,
@@ -103,14 +92,7 @@ public final class OptionsToConfigBuilder {
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
       SQLDialect sqlDialect,
       List<String> tables,
-      String host,
-      String connectionProperties,
-      int port,
-      String username,
-      String password,
-      String dbName,
-      String namespace,
-      String shardId,
+      Shard shard,
       String jdbcDriverClassName,
       String jdbcDriverJars,
       long maxConnections,
@@ -125,15 +107,16 @@ public final class OptionsToConfigBuilder {
         SourceConnectorFactory.getSourceJdbcConnectorByDialect(sqlDialect);
     JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =
-        connector.getSourceSchemaReference(dbName, namespace);
+        connector.getSourceSchemaReference(shard.getDbName(), shard.getNamespace());
     builder =
         builder
             .setSourceSchemaReference(sourceSchemaReference)
             .setDbAuth(
                 LocalCredentialsProvider.builder()
                     .setUserName(
-                        username) // TODO - support taking username and password from url as well
-                    .setPassword(password)
+                        shard.getUserName()) // TODO - support taking username and password from url
+                    // as well
+                    .setPassword(shard.getPassword())
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
             .setJdbcDriverJars(jdbcDriverJars);
@@ -150,11 +133,17 @@ public final class OptionsToConfigBuilder {
     }
 
     String sourceDbURL =
-        connector.getJdbcUrl(host, port, dbName, connectionProperties, namespace, fetchSize);
+        connector.getJdbcUrl(
+            shard.getHost(),
+            Integer.parseInt(shard.getPort()),
+            shard.getDbName(),
+            shard.getConnectionProperties(),
+            shard.getNamespace(),
+            fetchSize);
 
     builder.setSourceDbURL(sourceDbURL);
-    if (!StringUtils.isEmpty(shardId)) {
-      builder.setShardID(shardId);
+    if (!StringUtils.isEmpty(shard.getLogicalShardId())) {
+      builder.setShardID(shard.getLogicalShardId());
     }
 
     if (waitOn != null) {
