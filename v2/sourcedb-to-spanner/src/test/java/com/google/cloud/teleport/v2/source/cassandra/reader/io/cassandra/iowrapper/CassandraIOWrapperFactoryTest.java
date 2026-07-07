@@ -188,4 +188,24 @@ public class CassandraIOWrapperFactoryTest {
         IllegalArgumentException.class,
         () -> CassandraIOWrapperFactory.fromConfig(mockOptions, mockConfig));
   }
+
+  @Test
+  public void testCassandraIoWrapperFactoryOssWithOptionsMap() {
+    SourceDbToSpannerOptions mockOptions =
+        mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
+    when(mockOptions.getSourceDbDialect()).thenReturn("CASSANDRA");
+    when(mockOptions.getNumPartitions()).thenReturn(null);
+    CassandraConnectionConfig mockSourceConfig = mock(CassandraConnectionConfig.class);
+    OptionsMap mockOptionsMap = OptionsMap.driverDefaults();
+    when(mockSourceConfig.getOptionsMap()).thenReturn(mockOptionsMap);
+    CassandraIOWrapperFactory cassandraIOWrapperFactory =
+        CassandraIOWrapperFactory.fromConfig(mockOptions, mockSourceConfig);
+    assertThat(cassandraIOWrapperFactory.optionsMap()).isEqualTo(mockOptionsMap);
+    assertThat(cassandraIOWrapperFactory.cassandraDialect()).isEqualTo(CassandraDialect.OSS);
+    assertThat(cassandraIOWrapperFactory.astraDBKeyspace()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBRegion()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBDatabaseId()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBToken())
+        .isEqualTo(GuardedStringValueProvider.create(""));
+  }
 }

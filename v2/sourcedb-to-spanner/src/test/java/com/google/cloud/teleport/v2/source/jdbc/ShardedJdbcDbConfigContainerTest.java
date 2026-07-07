@@ -76,8 +76,6 @@ public class ShardedJdbcDbConfigContainerTest {
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
     mockedStaticJdbcIoWrapper
         .when(() -> JdbcIoWrapper.of(any(JdbcIoWrapperConfigGroup.class)))
@@ -139,8 +137,6 @@ public class ShardedJdbcDbConfigContainerTest {
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
 
     Shard shard =

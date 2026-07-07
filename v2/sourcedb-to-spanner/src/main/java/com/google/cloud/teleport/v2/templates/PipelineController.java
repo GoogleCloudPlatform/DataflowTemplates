@@ -24,15 +24,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -223,19 +220,19 @@ public class PipelineController {
     return schemaMapper;
   }
 
-    public static SourceConnectionConfig getSourceConnectionConfig(
-            String sourceType, String sourceShardsFilePath) {
-        ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
-        SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
-        SourceConnectionConfig sourceConnectionConfig;
-        try {
-            // Parse the source shards configuration file to respective
-            // SourceConnectionConfig.
-            LOG.info("Parsing source shards configuration file: {}", sourceShardsFilePath);
-            return sourceConfigParser.parseConfiguration(sourceType, sourceShardsFilePath);
-        } catch (Exception e) {
-            LOG.error("Error parsing source config", e);
-            throw new RuntimeException("Error parsing source config", e);
-        }
+  public static SourceConnectionConfig getSourceConnectionConfig(
+      String sourceType, String sourceShardsFilePath) {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig;
+    try {
+      // Parse the source shards configuration file to respective
+      // SourceConnectionConfig.
+      LOG.info("Parsing source shards configuration file: {}", sourceShardsFilePath);
+      return sourceConfigParser.parseConfiguration(sourceType, sourceShardsFilePath);
+    } catch (Exception e) {
+      LOG.error("Error parsing source config", e);
+      throw new RuntimeException("Error parsing source config", e);
     }
+  }
 }
