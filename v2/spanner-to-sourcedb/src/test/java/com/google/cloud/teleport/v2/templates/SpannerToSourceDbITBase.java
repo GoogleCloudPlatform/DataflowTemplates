@@ -234,6 +234,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
+  protected String getSpannerServerTime(
+      SpannerResourceManager spannerResourceManager, Dialect dialect) {
+    String query =
+        dialect == Dialect.POSTGRESQL ? "SELECT CURRENT_TIMESTAMP" : "SELECT CURRENT_TIMESTAMP()";
+    return spannerResourceManager.runQuery(query).get(0).getTimestamp(0).toString();
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -246,6 +253,35 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String sourceType,
       Map<String, String> jobParameters)
+      throws IOException {
+    return launchDataflowJob(
+        gcsResourceManager,
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        subscriptionName,
+        identifierSuffix,
+        shardingCustomJarPath,
+        shardingCustomClassName,
+        sourceDbTimezoneOffset,
+        customTransformation,
+        sourceType,
+        jobParameters,
+        Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String subscriptionName,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation,
+      String sourceType,
+      Map<String, String> jobParameters,
+      Dialect dialect)
       throws IOException {
 
     Map<String, String> params =
@@ -274,6 +310,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("numWorkers", "1");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
+            // Query Spanner server time to bypass local clock skew and set as startTimestamp
+            // to ensure the DirectRunner catches all test mutations during initialization.
+            put("startTimestamp", getSpannerServerTime(spannerResourceManager, dialect));
           }
         };
 
