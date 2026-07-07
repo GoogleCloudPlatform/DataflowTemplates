@@ -360,7 +360,7 @@ def build_changes_query(
     select = f"SELECT * EXCEPT(_CHANGE_TYPE, _CHANGE_TIMESTAMP), {pseudo}"
   else:
     quoted = ', '.join(_quote_identifier(c) for c in columns)
-    select = f"SELECT {quoted}, {pseudo}"
+    select = f"SELECT {quoted}, {pseudo}" if quoted else f"SELECT {pseudo}"
   from_clause = (
       f"FROM {change_function}"
       f"(TABLE `{table}`, "
