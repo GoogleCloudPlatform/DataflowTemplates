@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -48,5 +49,8 @@ public interface ISrcToSpSourceConnector {
    * @return The pipeline result.
    */
   PipelineResult executeMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig);
+      SourceDbToSpannerOptions options,
+      SourceConnectionConfig sourceConnectionConfig,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig);
 }

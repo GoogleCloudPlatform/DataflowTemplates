@@ -22,11 +22,9 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
-import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -130,7 +128,7 @@ public class SourceDbToSpanner {
 
     // Decide type and source of migration
     ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
-    return connector.executeMigration(options, pipeline, spannerConfig);
+    return connector.executeMigration(options, sourceConnectionConfig, pipeline, spannerConfig);
   }
 
   @VisibleForTesting

@@ -150,8 +150,7 @@ public final class OptionsToConfigBuilder {
     }
 
     String sourceDbURL =
-        connector.getJdbcUrl(
-            sourceDbURL, host, port, dbName, connectionProperties, namespace, fetchSize);
+        connector.getJdbcUrl(host, port, dbName, connectionProperties, namespace, fetchSize);
 
     builder.setSourceDbURL(sourceDbURL);
     if (!StringUtils.isEmpty(shardId)) {

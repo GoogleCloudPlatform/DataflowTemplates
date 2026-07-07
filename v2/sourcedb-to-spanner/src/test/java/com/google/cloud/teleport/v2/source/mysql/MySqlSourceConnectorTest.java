@@ -35,7 +35,7 @@ public class MySqlSourceConnectorTest {
 
   @Test
   public void testGetJdbcUrl_constructsUrl() {
-    String url = connector.getJdbcUrl(null, "localhost", 3306, "test_db", null, null, null);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", null, null, null);
     assertThat(url).startsWith("jdbc:mysql://localhost:3306/test_db");
     // Should contain defaults
     assertThat(url).contains("allowMultiQueries=true");
@@ -47,8 +47,7 @@ public class MySqlSourceConnectorTest {
 
   @Test
   public void testGetJdbcUrl_withConnectionProperties() {
-    String url =
-        connector.getJdbcUrl(null, "localhost", 3306, "test_db", "param1=value1", null, null);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", "param1=value1", null, null);
     assertThat(url).startsWith("jdbc:mysql://localhost:3306/test_db?param1=value1");
     assertThat(url).contains("allowMultiQueries=true");
     assertThat(url).contains("useCursorFetch=true");
@@ -56,31 +55,25 @@ public class MySqlSourceConnectorTest {
 
   @Test
   public void testGetJdbcUrl_withFetchSizeNull_enablesCursorFetch() {
-    String url =
-        connector.getJdbcUrl(
-            "jdbc:mysql://localhost:3306/test_db", null, 0, null, null, null, null);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", null, null, null);
     assertThat(url).contains("useCursorFetch=true");
   }
 
   @Test
   public void testGetJdbcUrl_withFetchSizePositive_enablesCursorFetch() {
-    String url =
-        connector.getJdbcUrl("jdbc:mysql://localhost:3306/test_db", null, 0, null, null, null, 42);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", null, null, 42);
     assertThat(url).contains("useCursorFetch=true");
   }
 
   @Test
   public void testGetJdbcUrl_withFetchSizeZero_disablesCursorFetch() {
-    String url =
-        connector.getJdbcUrl("jdbc:mysql://localhost:3306/test_db", null, 0, null, null, null, 0);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", null, null, 0);
     assertThat(url).doesNotContain("useCursorFetch");
   }
 
   @Test
   public void testGetJdbcUrl_preservesExistingParams() {
-    String url =
-        connector.getJdbcUrl(
-            "jdbc:mysql://localhost:3306/test_db?param=value", null, 0, null, null, null, null);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", "param=value", null, null);
     assertThat(url).startsWith("jdbc:mysql://localhost:3306/test_db?param=value");
     assertThat(url).contains("allowMultiQueries=true");
     assertThat(url).contains("useCursorFetch=true");
@@ -95,8 +88,7 @@ public class MySqlSourceConnectorTest {
     // it would be treated as != 0, so it would enable cursor mode.
     // However, the main propagation test testFetchSizeMinusOneBehavesLikeNull
     // covers the normalization.
-    String url =
-        connector.getJdbcUrl("jdbc:mysql://localhost:3306/test_db", null, 0, null, null, null, -1);
+    String url = connector.getJdbcUrl("localhost", 3306, "test_db", null, null, -1);
     assertThat(url).contains("useCursorFetch=true");
   }
 

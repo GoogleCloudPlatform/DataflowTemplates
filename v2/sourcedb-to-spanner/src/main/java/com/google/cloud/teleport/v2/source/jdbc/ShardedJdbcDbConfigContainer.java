@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.transforms.Wait;
 
@@ -63,20 +62,18 @@ public class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
 
         // If a namespace is configured for a shard uses that, otherwise uses the namespace
         // configured in the options if there is one.
-        String namespace = Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
         String dbName = entry.getKey();
         JdbcIOWrapperConfig shardConfig =
             OptionsToConfigBuilder.getJdbcIOWrapperConfig(
                 sqlDialect,
                 sourceTables,
-                null,
                 shard.getHost(),
                 shard.getConnectionProperties(),
                 Integer.parseInt(shard.getPort()),
                 shard.getUserName(),
                 shard.getPassword(),
                 dbName,
-                namespace,
+                shard.getNamespace(),
                 shardId,
                 options.getJdbcDriverClassName(),
                 options.getJdbcDriverJars(),
