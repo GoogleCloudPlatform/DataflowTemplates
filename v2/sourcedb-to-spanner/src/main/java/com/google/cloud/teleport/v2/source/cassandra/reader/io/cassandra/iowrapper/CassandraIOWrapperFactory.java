@@ -60,29 +60,6 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   /** Astra DB Region. * */
   public abstract String astraDBRegion();
 
-  private static CassandraIOWrapperFactory create(
-      OptionsMap optionsMap,
-      Integer numPartions,
-      String sourceDialect,
-      GuardedStringValueProvider astraDBToken,
-      String astraDBDatabaseId,
-      String astraDBKeyspace,
-      String astraDBRegion) {
-    CassandraDataSource.CassandraDialect cassandraDialect =
-        switch (sourceDialect) {
-          case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT -> CassandraDialect.ASTRA;
-          default -> CassandraDialect.OSS;
-        };
-    return new AutoValue_CassandraIOWrapperFactory(
-        optionsMap,
-        numPartions,
-        cassandraDialect,
-        astraDBToken,
-        astraDBDatabaseId,
-        astraDBKeyspace,
-        astraDBRegion);
-  }
-
   public static CassandraIOWrapperFactory fromConfig(
       SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
     Preconditions.checkArgument(
@@ -110,11 +87,15 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
       throw new IllegalArgumentException(
           "Unsupported source connection config type: " + sourceConnectionConfig);
     }
-
-    return CassandraIOWrapperFactory.create(
+    CassandraDataSource.CassandraDialect cassandraDialect =
+        switch (options.getSourceDbDialect()) {
+          case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT -> CassandraDialect.ASTRA;
+          default -> CassandraDialect.OSS;
+        };
+    return new AutoValue_CassandraIOWrapperFactory(
         optionsMap,
         options.getNumPartitions(),
-        options.getSourceDbDialect(),
+        cassandraDialect,
         astraDBToken,
         astraDBDatabaseId,
         astraDBKeyspace,

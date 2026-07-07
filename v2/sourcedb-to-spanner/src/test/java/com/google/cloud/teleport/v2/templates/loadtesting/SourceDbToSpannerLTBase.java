@@ -221,8 +221,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     Map<String, String> params = new HashMap<>();
     params.put("sourceDbDialect", dialect.name());
     params.put("sourceConfigURL", connectionUrl);
-    params.put("username", username);
-    params.put("password", password);
     params.put("jdbcDriverClassName", driverClassName);
     return params;
   }

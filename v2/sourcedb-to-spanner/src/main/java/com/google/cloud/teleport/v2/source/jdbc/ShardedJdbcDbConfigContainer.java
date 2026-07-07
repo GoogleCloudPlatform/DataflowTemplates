@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.transforms.Wait;
 
@@ -56,37 +55,22 @@ public class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
         JdbcIoWrapperConfigGroup.builder().setSourceDbDialect(sqlDialect);
     for (Shard shard : shards) {
       // TODO Move towards clubbing all physical shards together in a single connection pool.
-      for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
-        // Read data from source
-        String shardId = entry.getValue();
-
-        // If a namespace is configured for a shard uses that, otherwise uses the namespace
-        // configured in the options if there is one.
-        String dbName = entry.getKey();
-        JdbcIOWrapperConfig shardConfig =
-            OptionsToConfigBuilder.getJdbcIOWrapperConfig(
-                sqlDialect,
-                sourceTables,
-                shard.getHost(),
-                shard.getConnectionProperties(),
-                Integer.parseInt(shard.getPort()),
-                shard.getUserName(),
-                shard.getPassword(),
-                dbName,
-                shard.getNamespace(),
-                shardId,
-                options.getJdbcDriverClassName(),
-                options.getJdbcDriverJars(),
-                options.getMaxConnections(),
-                options.getNumPartitions(),
-                waitOnSignal,
-                options.getFetchSize(),
-                options.getUniformizationStageCountHint(),
-                options.getProjectId(),
-                workerZone,
-                options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType());
-        jdbcIoWrapperConfigGroupBuilder.addShardConfig(shardConfig);
-      }
+      JdbcIOWrapperConfig shardConfig =
+          OptionsToConfigBuilder.getJdbcIOWrapperConfig(
+              sqlDialect,
+              sourceTables,
+              shard,
+              options.getJdbcDriverClassName(),
+              options.getJdbcDriverJars(),
+              options.getMaxConnections(),
+              options.getNumPartitions(),
+              waitOnSignal,
+              options.getFetchSize(),
+              options.getUniformizationStageCountHint(),
+              options.getProjectId(),
+              workerZone,
+              options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType());
+      jdbcIoWrapperConfigGroupBuilder.addShardConfig(shardConfig);
     }
     return jdbcIoWrapperConfigGroupBuilder.build();
   }
