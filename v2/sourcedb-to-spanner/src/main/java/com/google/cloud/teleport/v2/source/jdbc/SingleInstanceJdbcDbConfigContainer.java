@@ -38,7 +38,7 @@ public class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContaine
     return JdbcIoWrapperConfigGroup.builder()
         .addShardConfig(
             OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                options, shard, sourceTables, null, waitOnSignal))
+                options, shard, sourceTables, waitOnSignal))
         .build();
   }
 }

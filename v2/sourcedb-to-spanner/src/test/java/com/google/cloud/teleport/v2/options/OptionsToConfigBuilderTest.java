@@ -59,7 +59,6 @@ public class OptionsToConfigBuilderTest {
             sourceDbToSpannerOptions,
             shard,
             List.of("table1", "table2"),
-            null,
             Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
@@ -77,7 +76,6 @@ public class OptionsToConfigBuilderTest {
                     sourceDbToSpannerOptions,
                     shard,
                     List.of("table1", "table2"),
-                    null,
                     Wait.on(dummyPCollection))
                 .maxFetchSize())
         .isEqualTo(42);
@@ -91,14 +89,17 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
             List.of("table1", "table2"),
-            "myhost",
-            "testParam=testValue",
-            3306,
-            "myuser",
-            "mypassword",
-            "mydb",
-            null,
-            null,
+            new Shard(
+                null,
+                "myhost",
+                "3306",
+                "myuser",
+                "mypassword",
+                "mydb",
+                null,
+                null,
+                "testParam=testValue",
+                ""),
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -114,14 +115,7 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
             List.of("table1", "table2"),
-            "myhost",
-            null,
-            3306,
-            "myuser",
-            "mypassword",
-            "mydb",
-            null,
-            null,
+            new Shard(null, "myhost", "3306", "myuser", "mypassword", "mydb", null, null, null, ""),
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -162,7 +156,6 @@ public class OptionsToConfigBuilderTest {
             sourceDbToSpannerOptions,
             shard,
             List.of("table1", "table2", "table3"),
-            null,
             Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?currentSchema=public");
@@ -181,14 +174,17 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            "myhost",
-            "testParam=testValue",
-            5432,
-            "myuser",
-            "mypassword",
-            "mydb",
-            null,
-            null,
+            new Shard(
+                null,
+                "myhost",
+                "5432",
+                "myuser",
+                "mypassword",
+                "mydb",
+                null,
+                null,
+                "testParam=testValue",
+                ""),
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -203,14 +199,7 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            "myhost",
-            "",
-            5432,
-            "myuser",
-            "mypassword",
-            "mydb",
-            null,
-            null,
+            new Shard(null, "myhost", "5432", "myuser", "mypassword", "mydb", null, null, "", ""),
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -237,14 +226,17 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            "myhost",
-            "",
-            5432,
-            "myuser",
-            "mypassword",
-            "mydb",
-            "mynamespace",
-            null,
+            new Shard(
+                null,
+                "myhost",
+                "5432",
+                "myuser",
+                "mypassword",
+                "mydb",
+                "mynamespace",
+                null,
+                "",
+                ""),
             "com.mysql.jdbc.Driver",
             "mysql-jar",
             10,
@@ -327,7 +319,7 @@ public class OptionsToConfigBuilderTest {
     Shard shard = new Shard("", "localhost", "5432", "user", "password", "testDB", "", "", "");
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-            options, shard, List.of("table1"), null, null);
+            options, shard, List.of("table1"), null);
 
     assertThat(config.maxFetchSize()).isNull();
   }
