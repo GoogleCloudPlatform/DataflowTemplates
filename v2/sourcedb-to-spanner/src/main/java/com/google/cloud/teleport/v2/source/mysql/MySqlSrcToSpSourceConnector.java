@@ -142,18 +142,15 @@ public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnec
 
   @Override
   public String getJdbcUrl(
-      String jdbcUrl,
       String host,
       int port,
       String dbName,
       String connectionProperties,
       String namespace,
       Integer fetchSize) {
-    if (jdbcUrl == null) {
-      jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
-      if (StringUtils.isNotBlank(connectionProperties)) {
-        jdbcUrl = jdbcUrl + "?" + connectionProperties;
-      }
+    String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+    if (StringUtils.isNotBlank(connectionProperties)) {
+      jdbcUrl = jdbcUrl + "?" + connectionProperties;
     }
     for (Entry<String, String> entry :
         MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {

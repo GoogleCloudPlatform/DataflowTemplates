@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraIOWrapperFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.templates.DbConfigContainerDefaultImpl;
 import com.google.cloud.teleport.v2.templates.PipelineController;
 import org.apache.beam.sdk.Pipeline;
@@ -39,11 +40,15 @@ public class CassandraSrcToSpSourceConnector implements ISrcToSpSourceConnector 
 
   @Override
   public PipelineResult executeMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+      SourceDbToSpannerOptions options,
+      SourceConnectionConfig sourceConnectionConfig,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig) {
     return PipelineController.executeMigrationForDbConfigContainer(
         options,
         pipeline,
         spannerConfig,
-        new DbConfigContainerDefaultImpl(CassandraIOWrapperFactory.fromPipelineOptions(options)));
+        new DbConfigContainerDefaultImpl(
+            CassandraIOWrapperFactory.fromConfig(options, sourceConnectionConfig)));
   }
 }

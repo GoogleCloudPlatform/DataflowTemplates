@@ -91,11 +91,13 @@ public class CassandraIoWrapperTest {
             ImmutableMap.of(ImmutableList.of(mockSourceTableReference), mockTableReader);
 
     try (MockedStatic mockCassandraIoWrapperHelper = mockStatic(CassandraIOWrapperHelper.class)) {
+      OptionsMap mockOptionsMap = Mockito.mock(OptionsMap.class);
+
       mockCassandraIoWrapperHelper
           .when(
               () ->
                   CassandraIOWrapperHelper.buildDataSource(
-                      null,
+                      mockOptionsMap,
                       null,
                       CassandraDialect.OSS,
                       GuardedStringValueProvider.create(""),
@@ -151,7 +153,7 @@ public class CassandraIoWrapperTest {
 
       CassandraIoWrapper cassandraIoWrapper =
           new CassandraIoWrapper(
-              null,
+              mockOptionsMap,
               tablesToRead,
               null,
               CassandraDialect.OSS,

@@ -68,8 +68,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
-      optional = true,
-      regexes = {"(^.+$)"},
       groupName = "Source",
       description = "Source connection config file URL.",
       helpText =
@@ -77,32 +75,12 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
               + " For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json))."
               + " For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json))."
               + " For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf))."
-              + " This parameter is required.")
+              + " This parameter is required.",
+      example = "gs://your-bucket/source-config.json")
   @Default.String("")
   String getSourceConfigURL();
 
   void setSourceConfigURL(String url);
-
-  @TemplateParameter.Text(
-      order = 5,
-      optional = true,
-      regexes = {"^.+$"},
-      description = "JDBC connection username.",
-      helpText = "The username to be used for the JDBC connection.")
-  @Default.String("")
-  String getUsername(); // Make optional
-
-  void setUsername(String username);
-
-  @TemplateParameter.Password(
-      order = 6,
-      optional = true,
-      description = "JDBC connection password.",
-      helpText = "The password to be used for the JDBC connection.")
-  @Default.String("")
-  String getPassword(); // make optional
-
-  void setPassword(String password);
 
   @TemplateParameter.Text(
       order = 7,
@@ -349,47 +327,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Long getUniformizationStageCountHint();
 
   void setUniformizationStageCountHint(Long value);
-
-  @TemplateParameter.Text(
-      order = 28,
-      optional = true,
-      description = "Astra DB token",
-      helpText =
-          "AstraDB token, ignored for non-AstraDB dialects. This token is used to automatically download the securebundle by the tempalte.")
-  @Default.String("")
-  String getAstraDBToken();
-
-  void setAstraDBToken(String value);
-
-  @TemplateParameter.Text(
-      order = 29,
-      optional = true,
-      description = "Astra DB databaseID",
-      helpText = "AstraDB databaseID, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBDatabaseId();
-
-  void setAstraDBDatabaseId(String value);
-
-  @TemplateParameter.Text(
-      order = 30,
-      optional = true,
-      description = "Astra DB keySpace",
-      helpText = "AstraDB keySpace, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBKeySpace();
-
-  void setAstraDBKeySpace(String value);
-
-  @TemplateParameter.Text(
-      order = 31,
-      optional = true,
-      description = "Astra DB Region",
-      helpText = "AstraDB region, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBRegion();
-
-  void setAstraDBRegion(String value);
 
   @TemplateParameter.Text(
       order = 32,
