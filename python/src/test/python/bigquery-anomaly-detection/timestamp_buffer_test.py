@@ -642,6 +642,45 @@ class TimestampBufferTest(unittest.TestCase):
               ("k", (5, 50)),
           ]))
 
+  def test_fresh_elements_after_late_element_still_processed(self):
+    """Regression: a late element must not wedge the key.
+
+    Previously _do_process buffered the late element and let it regress
+    min_event_time below safe_watermark BEFORE the late check ran. Every
+    subsequent fresh element then failed the
+    ``min_event_time > safe_watermark`` guard, so MIN_WM was never armed
+    again and the key stopped emitting forever. The fresh element at t=8
+    here never appeared in the output under the old code.
+    """
+    test_stream = (
+        TestStream()
+        # Cycle 1: t=1, t=2 processed normally (safe_watermark >= 2).
+        .add_elements([10], event_timestamp=1)
+        .add_elements([20], event_timestamp=2)
+        .advance_watermark_to(5)
+        .advance_processing_time(10)
+        # Late element behind safe_watermark: must be dropped WITHOUT
+        # poisoning min_event_time.
+        .add_elements([999], event_timestamp=1)
+        # Fresh element: must still start a new cycle and be emitted.
+        .add_elements([80], event_timestamp=8)
+        .advance_watermark_to(9)
+        .advance_processing_time(10))
+    _finalize_test_stream(test_stream)
+    with TestPipeline(options=self.options) as p:
+      result = (
+          p
+          | test_stream
+          | beam.WithKeys("k")
+          | beam.ParDo(self.collect_dofn()))
+      assert_that(
+          result,
+          equal_to([
+              ("k", (1, 10)),
+              ("k", (2, 20)),
+              ("k", (8, 80)),
+          ]))
+
 
 
   def test_elements_arrive_during_batch_wait(self):

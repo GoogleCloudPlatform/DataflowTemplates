@@ -1473,7 +1473,7 @@ class AsyncWebhookWiringTest(unittest.TestCase):
 
   def test_outlier_posts_via_async_wrapper(self):
     async_dofn, _, stub = self._build({'q': 'value={value}'})
-    # Production shape: NestKeyForWebhookId copies the key into the value
+    # NestKeyForWebhookId copies the key into the value
     # so _anomaly_id (AsyncWrapper's id_fn, which only sees the value)
     # can include it.
     result_obj = self._make_result(label=1, value=99.0)

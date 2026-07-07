@@ -73,6 +73,8 @@ from apache_beam.ml.anomaly.detectors import zscore  # noqa: F401
 from apache_beam.ml.anomaly.detectors import iqr  # noqa: F401
 from apache_beam.ml.anomaly.detectors import robust_zscore  # noqa: F401
 
+from bqmonitor.cdc import _quote_identifier
+
 _LOGGER = logging.getLogger(__name__)
 
 _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
@@ -1087,7 +1089,9 @@ def _check_bq_source_table(project, dataset, table_name, options,
 
   # Dry-run a CDC query selecting the metric's required columns.
   # This validates CDC function access and column existence in one step.
-  select_clause = ', '.join(required_columns) if required_columns else '1'
+  select_clause = (
+      ', '.join(_quote_identifier(c) for c in required_columns)
+      if required_columns else '1')
   try:
     sql = (
         f"SELECT {select_clause} FROM {options.change_function}"
