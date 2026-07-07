@@ -51,9 +51,10 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Go
-      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
       with:
         go-version: ${{ inputs.go-version }}
+        check-latest: true
         cache: false
     # It shouldn't take too long to build all of this, and it will at least
     # make running the target program easier
@@ -71,6 +72,6 @@ runs:
         cache-key: ${{ inputs.java-cache-key }}
         java-version: ${{ inputs.java-version }}
     - name: Setup Python
-      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
           python-version: ${{ inputs.python-version }}
