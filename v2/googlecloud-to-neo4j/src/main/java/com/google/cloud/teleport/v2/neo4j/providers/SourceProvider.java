@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.providers;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -26,7 +26,7 @@ import org.apache.beam.sdk.values.Row;
 /** Provider interface, implemented for every source. */
 public interface SourceProvider {
 
-  void configure(OptionsParams optionsParams);
+  void configure(OverlayTokens optionsParams);
 
   /**
    * Push down capability determine whether groupings and aggregations are executed as SQL queries.
