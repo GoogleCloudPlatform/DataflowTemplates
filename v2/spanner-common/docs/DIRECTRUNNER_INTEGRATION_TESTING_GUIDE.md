@@ -35,7 +35,7 @@ To instruct the IT framework to use the local `DirectRunner` instead of launchin
 
 **Standard Command:**
 ```bash
-mvn clean test -pl v2/<your-module-name> -Dtest=<your-test-class-name> -DdirectRunnerTest=true
+mvn clean verify -pl v2/<your-module-name> -PtemplatesIntegrationTests -Dtest=<your-test-class-name> -DdirectRunnerTest=true
 ```
 
 ### Example:
