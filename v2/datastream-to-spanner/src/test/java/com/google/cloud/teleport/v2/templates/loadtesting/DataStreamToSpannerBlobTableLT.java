@@ -39,7 +39,7 @@ public class DataStreamToSpannerBlobTableLT extends DataStreamToSpannerLTBase {
 
     // Setup Datastream
     String hostIp =
-        secretClient.accessSecret("projects/269744978479/secrets/blob-table-ip/versions/2");
+        secretClient.accessSecret("projects/269744978479/secrets/blob-table-ip/versions/1");
     String username =
         secretClient.accessSecret("projects/269744978479/secrets/blob-table-user/versions/1");
     String password =
@@ -47,10 +47,5 @@ public class DataStreamToSpannerBlobTableLT extends DataStreamToSpannerLTBase {
 
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);
-  }
-
-  @Override
-  protected boolean shouldUsePrivateConnectivity() {
-    return true;
   }
 }
