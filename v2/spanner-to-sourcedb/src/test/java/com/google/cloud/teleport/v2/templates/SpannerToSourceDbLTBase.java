@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.templates.utils.LTMySQLResourceManager;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
@@ -46,7 +47,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +91,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
     for (int i = 0; i < numShards; ++i) {
-      jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
+      jdbcResourceManagers.add(LTMySQLResourceManager.builder(testName).build());
     }
 
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
@@ -215,8 +215,9 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     List<Shard> shards = new ArrayList<>();
     for (int i = 0; i < 1; ++i) {
-      if (jdbcResourceManagers.get(i) instanceof MySQLResourceManager) {
-        MySQLResourceManager resourceManager = (MySQLResourceManager) jdbcResourceManagers.get(i);
+      if (jdbcResourceManagers.get(i) instanceof LTMySQLResourceManager) {
+        LTMySQLResourceManager resourceManager =
+            (LTMySQLResourceManager) jdbcResourceManagers.get(i);
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard" + (i + 1));
         shard.setUser(jdbcResourceManagers.get(i).getUsername());

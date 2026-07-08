@@ -48,4 +48,9 @@ public class DataStreamToSpannerBlobTableLT extends DataStreamToSpannerLTBase {
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);
   }
+
+  @Override
+  protected boolean shouldUsePrivateConnectivity() {
+    return true;
+  }
 }
