@@ -31,7 +31,7 @@ Before running the tests locally, ensure your environment is configured properly
 
 ## 3. Running the Tests
 
-To instruct the IT framework to use the local `DirectRunner` instead of launching a Cloud Dataflow job, pass the `-DdirectRunnerTest=true` system property to your Maven command.
+To instruct the IT framework to use the local `DirectRunner` instead of launching a Cloud Dataflow job, pass the `-DdirectRunnerTest=true` system property to your Maven command. This flag bypasses the `@SkipDirectRunner` annotation on test cases, allowing you to execute those tests with the DirectRunner as well.
 
 **Standard Command:**
 ```bash
@@ -47,18 +47,18 @@ export TEST_ARTIFACT_BUCKET="<your-gcs-artifact-bucket>"
 export TEST_STAGE_BUCKET="<your-gcs-stage-bucket>"
 export TEST_PROJECT="<your-gcp-project-id>"
 export TEST_REGION="<your-gcp-region>"
-export TEST_SPANNER_INSTANCE="<your-spanner-instance-id>"
+export TEST_SPANNER_INSTANCE_ID="<your-spanner-instance-id>"
 export TEST_HOST_IP="<your-source-db-host-ip>"
 export TEST_PRIVATE_CONNECTIVITY="<your-datastream-private-connectivity-id>"
-export TEST_CLOUD_PROXY_IP="<your-cloud-sql-proxy-ip>"
-export TEST_CLOUD_USERNAME="<your-cloud-sql-username>"
-export TEST_CLOUD_PASSWORD="<your-cloud-sql-password>"
+export TEST_CLOUD_PROXY_HOST="<your-cloud-sql-proxy-ip>"
+export TEST_CLOUD_PROXY_USERNAME="<your-cloud-sql-username>"
+export TEST_CLOUD_PROXY_PASSWORD="<your-cloud-sql-password>"
 ```
 
 Then, you can run the integration tests using this highly optimized Maven command:
 
 ```bash
-mvn clean verify -f pom.xml -U -PtemplatesIntegrationTests -pl v2/<your-module-name> -am -Dtest=<your-test-class-name> -DdirectRunnerTest=true -Dsurefire.useFile=false -e -Dmdep.analyze.skip -Dcheckstyle.skip -Dspotless.check.skip=true -Djib.skip -DskipShade -Dsurefire.failIfNoSpecifiedTests=false -DartifactBucket=${TEST_ARTIFACT_BUCKET} -DstageBucket=${TEST_STAGE_BUCKET} -Dproject=${TEST_PROJECT} -Dregion=${TEST_REGION} -DspannerInstanceId=${TEST_SPANNER_INSTANCE} -DhostIp=${TEST_HOST_IP}
+mvn clean verify -f pom.xml -U -PtemplatesIntegrationTests -pl v2/<your-module-name> -am -Dtest=<your-test-class-name> -DdirectRunnerTest=true -Dsurefire.useFile=false -e -Dmdep.analyze.skip -Dcheckstyle.skip -Dspotless.check.skip=true -Djib.skip -DskipShade -Dsurefire.failIfNoSpecifiedTests=false -DartifactBucket=${TEST_ARTIFACT_BUCKET} -DstageBucket=${TEST_STAGE_BUCKET} -Dproject=${TEST_PROJECT} -Dregion=${TEST_REGION} -DspannerInstanceId=${TEST_SPANNER_INSTANCE_ID} -DhostIp=${TEST_HOST_IP}
 ```
 
-*(Note: If you are running a live migration test such as `datastream-to-spanner`, append `-DprivateConnectivity=${TEST_PRIVATE_CONNECTIVITY} -DcloudProxyHost=${TEST_CLOUD_PROXY_IP} -DcloudProxyUsername=${TEST_CLOUD_USERNAME} -DcloudProxyPassword=${TEST_CLOUD_PASSWORD}` to the command above).*
+*(Note: If you are running a live migration test such as `datastream-to-spanner`, append `-DprivateConnectivity=${TEST_PRIVATE_CONNECTIVITY} -DcloudProxyHost=${TEST_CLOUD_PROXY_HOST} -DcloudProxyUsername=${TEST_CLOUD_PROXY_USERNAME} -DcloudProxyPassword=${TEST_CLOUD_PROXY_PASSWORD}` to the command above).*
