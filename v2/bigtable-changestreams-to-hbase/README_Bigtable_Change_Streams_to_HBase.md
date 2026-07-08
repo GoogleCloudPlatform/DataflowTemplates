@@ -6,40 +6,41 @@ A streaming pipeline that replicates Bigtable change stream mutations to HBase.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **hbaseRootDir** : Hbase root directory, corresponds to hbase.rootdir.
-* **hbaseZookeeperQuorumHost** : Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host.
-* **bigtableChangeStreamAppProfile** : The application profile is used to distinguish workload in Cloud Bigtable.
-* **bigtableReadInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableReadTableId** : The Cloud Bigtable table to read from.
+* **hbaseRootDir**: Hbase root directory, corresponds to hbase.rootdir.
+* **hbaseZookeeperQuorumHost**: Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host.
+* **bigtableChangeStreamAppProfile**: The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
+* **bigtableReadInstanceId**: The source Bigtable instance ID.
+* **bigtableReadTableId**: The source Bigtable table ID.
 
 ### Optional parameters
 
-* **bidirectionalReplicationEnabled** : Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false.
-* **cbtQualifier** : Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT.
-* **dryRunEnabled** : When dry run is enabled, pipeline will not write to Hbase. Defaults to: false.
-* **filterGCMutations** : Filters out garbage collection Delete mutations from CBT. Defaults to: false.
-* **hbaseQualifier** : Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE.
-* **hbaseZookeeperQuorumPort** : Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181.
-* **bigtableChangeStreamMetadataInstanceId** : The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** : The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
-* **bigtableChangeStreamCharset** : Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
-* **bigtableChangeStreamStartTimestamp** : The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
-* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column names changes to which won't be captured. Defaults to empty.
-* **bigtableChangeStreamName** : Allows to resume processing from the point where a previously running pipeline stopped.
-* **bigtableChangeStreamResume** : When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
-* **bigtableReadProjectId** : Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
-* **bigtableReadAppProfile** : Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile.
-* **bigtableRpcAttemptTimeoutMs** : This sets the timeout for an RPC attempt in milliseconds.
-* **bigtableRpcTimeoutMs** : This sets the total timeout for an RPC operation in milliseconds.
-* **bigtableAdditionalRetryCodes** : This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED).
+* **bidirectionalReplicationEnabled**: Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false.
+* **cbtQualifier**: Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT.
+* **dryRunEnabled**: When dry run is enabled, pipeline will not write to Hbase. Defaults to: false.
+* **filterGCMutations**: Filters out garbage collection Delete mutations from CBT. Defaults to: false.
+* **hbaseQualifier**: Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE.
+* **hbaseZookeeperQuorumPort**: Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181.
+* **bigtableChangeStreamMetadataInstanceId**: The Bigtable change streams metadata instance ID. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId**: The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
+* **bigtableChangeStreamCharset**: The Bigtable change streams charset name. Defaults to: UTF-8.
+* **bigtableChangeStreamStartTimestamp**: The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
+* **bigtableChangeStreamIgnoreColumnFamilies**: A comma-separated list of column family name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns**: A comma-separated list of column name changes to ignore. Example: "cf1:col1,cf2:col2". Defaults to empty.
+* **bigtableChangeStreamName**: A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
+* **bigtableChangeStreamResume**: When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
+* **bigtableReadChangeStreamTimeoutMs**: The timeout for Bigtable ReadChangeStream requests in milliseconds.
+* **bigtableReadProjectId**: The Bigtable project ID. The default is the project for the Dataflow job.
+* **bigtableReadAppProfile**: Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile.
+* **bigtableRpcAttemptTimeoutMs**: The timeout for each Bigtable RPC attempt in milliseconds.
+* **bigtableRpcTimeoutMs**: The total timeout for a Bigtable RPC operation in milliseconds.
+* **bigtableAdditionalRetryCodes**: The additional retry codes. For example, `RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED`.
 
 
 
@@ -47,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -61,7 +62,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/bigtable-changestreams-to-hbase
+```
 
 ### Building Template
 
@@ -80,16 +91,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Bigtable_Change_Streams_to_HBase" \
--f v2/bigtable-changestreams-to-hbase
+-pl v2/bigtable-changestreams-to-hbase -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -139,6 +154,7 @@ export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
 export BIGTABLE_CHANGE_STREAM_RESUME=false
+export BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS=<bigtableReadChangeStreamTimeoutMs>
 export BIGTABLE_READ_PROJECT_ID=""
 export BIGTABLE_READ_APP_PROFILE=default
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
@@ -166,6 +182,7 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-hbase-job" \
   --parameters "bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS" \
   --parameters "bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME" \
   --parameters "bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME" \
+  --parameters "bigtableReadChangeStreamTimeoutMs=$BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS" \
   --parameters "bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID" \
   --parameters "bigtableReadTableId=$BIGTABLE_READ_TABLE_ID" \
   --parameters "bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
@@ -212,6 +229,7 @@ export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
 export BIGTABLE_CHANGE_STREAM_RESUME=false
+export BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS=<bigtableReadChangeStreamTimeoutMs>
 export BIGTABLE_READ_PROJECT_ID=""
 export BIGTABLE_READ_APP_PROFILE=default
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
@@ -225,7 +243,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigtable-change-streams-to-hbase-job" \
 -DtemplateName="Bigtable_Change_Streams_to_HBase" \
--Dparameters="bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION_ENABLED,cbtQualifier=$CBT_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED,filterGCMutations=$FILTER_GCMUTATIONS,hbaseQualifier=$HBASE_QUALIFIER,hbaseRootDir=$HBASE_ROOT_DIR,hbaseZookeeperQuorumHost=$HBASE_ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$HBASE_ZOOKEEPER_QUORUM_PORT,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
+-Dparameters="bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION_ENABLED,cbtQualifier=$CBT_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED,filterGCMutations=$FILTER_GCMUTATIONS,hbaseQualifier=$HBASE_QUALIFIER,hbaseRootDir=$HBASE_ROOT_DIR,hbaseZookeeperQuorumHost=$HBASE_ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$HBASE_ZOOKEEPER_QUORUM_PORT,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadChangeStreamTimeoutMs=$BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
 -f v2/bigtable-changestreams-to-hbase
 ```
 
@@ -289,11 +307,12 @@ resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_hbase" 
     # bigtableChangeStreamIgnoreColumns = ""
     # bigtableChangeStreamName = "<bigtableChangeStreamName>"
     # bigtableChangeStreamResume = "false"
+    # bigtableReadChangeStreamTimeoutMs = "<bigtableReadChangeStreamTimeoutMs>"
     # bigtableReadProjectId = ""
     # bigtableReadAppProfile = "default"
     # bigtableRpcAttemptTimeoutMs = "<bigtableRpcAttemptTimeoutMs>"
     # bigtableRpcTimeoutMs = "<bigtableRpcTimeoutMs>"
-    # bigtableAdditionalRetryCodes = "RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED"
+    # bigtableAdditionalRetryCodes = "<bigtableAdditionalRetryCodes>"
   }
 }
 ```

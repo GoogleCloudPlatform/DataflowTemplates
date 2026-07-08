@@ -16,26 +16,32 @@
 package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Given a Cloud Spanner {@link Ddl} generates a "read all" operation per table. */
 class BuildReadFromTableOperations
     extends PTransform<PCollection<Ddl>, PCollection<ReadOperation>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(BuildReadFromTableOperations.class);
 
   // The number of read partitions have to be capped so that in case the Partition token is large
   // (which can happen with a table with a lot of columns), the PartitionResponse size is bounded.
@@ -75,7 +81,7 @@ class BuildReadFromTableOperations
                           .filter(x -> !x.isGenerated())
                           .map(x -> createColumnExpression(x))
                           .collect(Collectors.joining(","));
-
+                  LOG.info("BuildReadFromTableOperations {}.", table.name());
                   PartitionOptions partitionOptions =
                       PartitionOptions.newBuilder().setMaxPartitions(MAX_PARTITIONS).build();
 
@@ -88,8 +94,10 @@ class BuildReadFromTableOperations
                           ReadOperation.create()
                               .withQuery(
                                   String.format(
-                                      "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
-                                      table.name(), columnsListAsString, table.name()))
+                                      "SELECT \"%s\" AS _spanner_table, %s FROM %s AS t",
+                                      table.name(),
+                                      columnsListAsString,
+                                      quoteIdentifier(table.name(), Dialect.GOOGLE_STANDARD_SQL)))
                               .withPartitionOptions(partitionOptions);
                       break;
                     case POSTGRESQL:
@@ -97,8 +105,10 @@ class BuildReadFromTableOperations
                           ReadOperation.create()
                               .withQuery(
                                   String.format(
-                                      "SELECT '%s' AS _spanner_table, %s FROM \"%s\" AS t",
-                                      table.name(), columnsListAsString, table.name()))
+                                      "SELECT '%s' AS _spanner_table, %s FROM %s AS t",
+                                      table.name(),
+                                      columnsListAsString,
+                                      quoteIdentifier(table.name(), Dialect.POSTGRESQL)))
                               .withPartitionOptions(partitionOptions);
                       break;
                     default:
@@ -116,26 +126,66 @@ class BuildReadFromTableOperations
     switch (col.dialect()) {
       case GOOGLE_STANDARD_SQL:
         if (col.typeString().equals("JSON")) {
-          return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
-        }
-        if (col.typeString().equals("ARRAY<NUMERIC>")) {
-          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
+          return "CASE WHEN "
               + "t.`"
               + col.name()
               + "`"
-              + ") AS num) AS "
+              + " IS NULL THEN NULL ELSE "
+              + "TO_JSON_STRING("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") END AS "
+              + col.name();
+        }
+        if (col.typeString().equals("ARRAY<NUMERIC>")) {
+          return "CASE WHEN "
+              + "t.`"
+              + col.name()
+              + "`"
+              + " IS NULL THEN NULL ELSE "
+              + "IFNULL((SELECT ARRAY_AGG(CASE WHEN num IS NULL THEN NULL ELSE CAST(num AS STRING) END) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS num), []) END AS "
               + col.name();
         }
         if (col.typeString().equals("ARRAY<JSON>")) {
-          return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
+          return "CASE WHEN "
               + "t.`"
               + col.name()
               + "`"
-              + ") AS element) AS "
+              + " IS NULL THEN NULL ELSE "
+              + "IFNULL((SELECT ARRAY_AGG(CASE WHEN element IS NULL THEN NULL ELSE TO_JSON_STRING(element) END) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS element), []) END AS "
               + col.name();
+        }
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+        if (col.typeString().equals("UUID")) {
+          return String.format("CAST(t.`%s` AS STRING) AS %s", col.name(), col.name());
+        }
+        if (col.typeString().equals("ARRAY<UUID>")) {
+          return String.format(
+              "CASE WHEN t.`%s` IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(%s) AS e) END AS %s",
+              col.name(), col.name(), col.name());
         }
         return "t.`" + col.name() + "`";
       case POSTGRESQL:
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+        if (col.typeString().equals("uuid")) {
+          return String.format("t.\"%s\"::text AS \"%s\"", col.name(), col.name());
+        }
+        if (col.typeString().equals("uuid[]")) {
+          return String.format(
+              "CASE WHEN t.\"%s\" IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT e::text FROM UNNEST(t.\"%s\") AS e) END AS \"%s\"",
+              col.name(), col.name(), col.name());
+        }
         return "t.\"" + col.name() + "\"";
       default:
         throw new IllegalArgumentException(

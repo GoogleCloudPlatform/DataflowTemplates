@@ -49,6 +49,7 @@ public class PubsubMessageToTableRow implements TemplateTransform<TransformOptio
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
+        groupName = "Target",
         helpText =
             "BigQuery table location to write the output to. The table's schema must match the "
                 + "input JSON objects.")

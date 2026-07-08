@@ -27,9 +27,10 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 1,
+      groupName = "Target",
       description = "Elasticsearch URL or CloudID if using Elastic Cloud",
       helpText =
-          "Elasticsearch URL in the format 'https://hostname:[port]' or specify CloudID if using Elastic Cloud",
+          "The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID.",
       example = "https://elasticsearch-host:9200")
   @Validation.Required
   String getConnectionUrl();
@@ -39,8 +40,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 2,
       description = "Base64 Encoded API Key for access without requiring basic authentication",
-      helpText =
-          "Base64 Encoded API key used for authentication. Refer to: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
+      helpText = "The Base64-encoded API key to use for authentication.")
   @Validation.Required
   String getApiKey();
 
@@ -51,17 +51,17 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Username for Elasticsearch endpoint",
       helpText =
-          "The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored")
+          "The Elasticsearch username to authenticate with. If specified, the value of `apiKey` is ignored")
   String getElasticsearchUsername();
 
   void setElasticsearchUsername(String elasticsearchUsername);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Password(
       order = 4,
       optional = true,
       description = "Password for Elasticsearch endpoint",
       helpText =
-          "The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.")
+          "The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored.")
   String getElasticsearchPassword();
 
   void setElasticsearchPassword(String elasticsearchPassword);
@@ -71,7 +71,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = false,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Elasticsearch index",
-      helpText = "The index toward which the requests will be issued",
+      helpText = "The Elasticsearch index that the requests are issued to.",
       example = "my-index")
   String getIndex();
 
@@ -81,7 +81,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 6,
       optional = true,
       description = "Batch Size",
-      helpText = "Batch size in number of documents. Default: '1000'.")
+      helpText = "The batch size in number of documents. Defaults to `1000`.")
   @Default.Long(1000)
   Long getBatchSize();
 
@@ -91,8 +91,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 7,
       optional = true,
       description = "Batch Size in Bytes",
-      helpText =
-          "Batch Size in bytes used for batch insertion of messages into elasticsearch. Default: '5242880 (5mb)'")
+      helpText = "The batch size in number of bytes. Defaults to `5242880` (5mb).")
   @Default.Long(5242880)
   Long getBatchSizeBytes();
 
@@ -102,7 +101,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 8,
       optional = true,
       description = "Max retry attempts.",
-      helpText = "Max retry attempts, must be > 0. Default: 'no retries'")
+      helpText =
+          "The maximum number of retry attempts. Must be greater than zero. Defaults to `5`.")
+  @Default.Integer(5)
   Integer getMaxRetryAttempts();
 
   void setMaxRetryAttempts(Integer maxRetryAttempts);
@@ -111,7 +112,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       order = 9,
       optional = true,
       description = "Max retry duration.",
-      helpText = "Max retry duration in milliseconds, must be > 0. Default: 'no retries'")
+      helpText =
+          "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `60000` (1 minute).")
+  @Default.Long(60000)
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
@@ -121,7 +124,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Document property to specify _index metadata",
       helpText =
-          "A property in the document being indexed whose value will specify '_index' metadata to be included with document in bulk request (takes precedence over an '_index' UDF). Default: none")
+          "The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to `none`.")
   String getPropertyAsIndex();
 
   void setPropertyAsIndex(String propertyAsIndex);
@@ -131,7 +134,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _index metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for a function that will specify '_index' metadata to be included with document in bulk request. Default: none")
+          "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.")
   String getJavaScriptIndexFnGcsPath();
 
   void setJavaScriptIndexFnGcsPath(String javaScriptTextTransformGcsPath);
@@ -141,7 +144,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for _index metadata",
       helpText =
-          "UDF JavaScript function Name for function that will specify _index metadata to be included with document in bulk request. Default: none")
+          "The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.")
   String getJavaScriptIndexFnName();
 
   void setJavaScriptIndexFnName(String javaScriptTextTransformFunctionName);
@@ -151,7 +154,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Document property to specify _id metadata",
       helpText =
-          "A property in the document being indexed whose value will specify '_id' metadata to be included with document in bulk request (takes precedence over an '_id' UDF). Default: none")
+          "A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to `none`.")
   String getPropertyAsId();
 
   void setPropertyAsId(String propertyAsId);
@@ -161,7 +164,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _id metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for a function that will specify '_id' metadata to be included with document in bulk request.Default: none")
+          "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to `none`.")
   String getJavaScriptIdFnGcsPath();
 
   void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
@@ -171,7 +174,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for _id metadata",
       helpText =
-          "UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request. Default: none")
+          "The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to `none`.")
   String getJavaScriptIdFnName();
 
   void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
@@ -181,7 +184,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for _type metadata",
       helpText =
-          "The Cloud Storage path to the JavaScript UDF source for function that will specify '_type' metadata to be included with document in bulk request. Default: none")
+          "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Defaults to `none`.")
   String getJavaScriptTypeFnGcsPath();
 
   void setJavaScriptTypeFnGcsPath(String javaScriptTextTransformGcsPath);
@@ -191,7 +194,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for _type metadata",
       helpText =
-          "UDF JavaScript function Name for function that will specify '_type' metadata to be included with document in bulk request. Default: none")
+          "The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to `none`.")
   String getJavaScriptTypeFnName();
 
   void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
@@ -201,7 +204,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Cloud Storage path to JavaScript UDF source for isDelete function",
       helpText =
-          "The Cloud Storage path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated. The function should return string value \"true\" or \"false\". Default: none")
+          "The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.")
   String getJavaScriptIsDeleteFnGcsPath();
 
   void setJavaScriptIsDeleteFnGcsPath(String javaScriptTextTransformGcsPath);
@@ -211,7 +214,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "UDF JavaScript Function Name for isDelete",
       helpText =
-          "UDF JavaScript function Name for function that will determine if document should be deleted rather than inserted or updated. The function should return string value \"true\" or \"false\". Default: none")
+          "The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.")
   String getJavaScriptIsDeleteFnName();
 
   void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);
@@ -221,7 +224,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Use partial updates",
       helpText =
-          "Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests. Default: 'false'")
+          "Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getUsePartialUpdate();
 
@@ -233,7 +236,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Build insert method",
       helpText =
-          "Whether to use 'INDEX' (index, allows upsert) or 'CREATE' (create, errors on duplicate _id) with Elasticsearch bulk requests. Default: 'CREATE'")
+          "Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to `CREATE`.")
   @Default.Enum("CREATE")
   BulkInsertMethodOptions getBulkInsertMethod();
 
@@ -244,7 +247,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Trust self-signed certificate",
       helpText =
-          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False)")
+          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`)")
   @Default.Boolean(false)
   Boolean getTrustSelfSignedCerts();
 
@@ -255,26 +258,25 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Disable SSL certificate validation.",
       helpText =
-          "If 'true', trust the self-signed SSL certificate. An Elasticsearch instance might have a "
-              + "self-signed certificate. To bypass validation for the certificate, set this parameter to 'true'. Default: false.")
+          "If `true`, trust the self-signed SSL certificate. An Elasticsearch instance might have a "
+              + "self-signed certificate. To bypass validation for the certificate, set this parameter to `true`. Defaults to `false`.")
   @Default.Boolean(false)
   Boolean getDisableCertificateValidation();
 
   void setDisableCertificateValidation(Boolean disableCertificateValidation);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.KmsEncryptionKey(
       order = 24,
       optional = true,
-      regexes = {
-        "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-      },
+      parentName = "apiKeySource",
+      parentTriggerValues = {"KMS"},
       description = "Google Cloud KMS encryption key for the API key",
       helpText =
-          "The Cloud KMS key to decrypt the API key. This parameter must be "
-              + "provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey "
-              + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
-              + "endpoint. The Key should be in the format "
-              + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. "
+          "The Cloud KMS key to decrypt the API key. This parameter is required "
+              + "if the `apiKeySource` is set to `KMS`. If this parameter is provided, pass in an encrypted `apiKey` string."
+              + " Encrypt parameters using the KMS API encrypt "
+              + "endpoint. For the key, use the format "
+              + "`projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. "
               + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
       example =
           "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
@@ -285,10 +287,12 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 25,
       optional = true,
+      parentName = "apiKeySource",
+      parentTriggerValues = {"SECRET_MANAGER"},
       regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
       description = "Google Cloud Secret Manager ID.",
       helpText =
-          "Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+          "The Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>.",
       example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
   String getApiKeySecretId();
 
@@ -304,13 +308,23 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       },
       description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
       helpText =
-          "Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "
-              + "must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, "
-              + "apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to "
-              + "SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, "
-              + "apiKey must be provided.")
+          "The source of the API key. Allowed values are `PLAINTEXT`, `KMS` orand `SECRET_MANAGER`. This parameter "
+              + "is required when you use Secret Manager or KMS. If `apiKeySource` is set to `KMS`, "
+              + "`apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to "
+              + "`SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, "
+              + "`apiKey` must be provided.")
   @Default.String("PLAINTEXT")
   String getApiKeySource();
 
   void setApiKeySource(String apiKeySource);
+
+  @TemplateParameter.Integer(
+      order = 27,
+      optional = true,
+      description = "Socket timeout.",
+      helpText =
+          "If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient")
+  Integer getSocketTimeout();
+
+  void setSocketTimeout(Integer socketTimeout);
 }

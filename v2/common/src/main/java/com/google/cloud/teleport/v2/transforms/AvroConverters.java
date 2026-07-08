@@ -57,7 +57,8 @@ public class AvroConverters {
 
     @TemplateParameter.GcsReadFile(
         order = 3,
-        description = "Path of the Avro schema file used for the conversion.",
+        description =
+            "Path of the Avro schema file used for the conversion (used by Avro and Parquet file formats).",
         helpText = "Cloud storage path to the avro schema file.",
         example = "gs://your-bucket/your-path/schema.avsc")
     String getSchema();

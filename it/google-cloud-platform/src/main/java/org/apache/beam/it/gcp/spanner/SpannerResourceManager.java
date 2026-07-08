@@ -23,10 +23,12 @@ import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.g
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 
 import com.google.auth.Credentials;
+import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.DatabaseInfo;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
@@ -42,17 +44,35 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.monitoring.v3.Aggregation.Aligner;
+import com.google.monitoring.v3.TimeInterval;
+import com.google.protobuf.Timestamp;
+import com.google.spanner.admin.instance.v1.CreateInstancePartitionRequest;
+import com.google.spanner.admin.instance.v1.Instance.Edition;
+import com.google.spanner.admin.instance.v1.InstanceConfigName;
+import com.google.spanner.admin.instance.v1.InstanceName;
+import com.google.spanner.admin.instance.v1.InstancePartition;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
-import java.util.concurrent.ExecutionException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
+import org.apache.beam.it.gcp.TestConstants;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
+import org.apache.parquet.Strings;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +94,10 @@ public final class SpannerResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
+  public static final String DEFAULT_SPANNER_HOST = "https://batch-spanner.googleapis.com";
+  public static final String STAGING_SPANNER_HOST =
+      "https://staging-wrenchworks.sandbox.googleapis.com";
+
   // Retry settings for instance creation
   private static final int CREATE_MAX_RETRIES = 5;
   private static final Duration CREATE_BACKOFF_DELAY = Duration.ofSeconds(10);
@@ -82,18 +106,29 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private boolean hasInstance = false;
   private boolean hasDatabase = false;
+  private final String instancePartitionId;
+  private final String instancePartitionConfig;
+  private final com.google.cloud.spanner.admin.instance.v1.InstanceAdminClient
+      v1InstanceAdminClient;
+  private boolean hasInstancePartition = false;
 
   private final String projectId;
   private final String instanceId;
   private final boolean usingStaticInstance;
   private final String databaseId;
   private final String region;
+  private final String spannerHost;
 
   private final Dialect dialect;
 
   private final Spanner spanner;
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
+  private final int nodeCount;
+  private final byte[] protoDescriptors;
+  private Timestamp startTime;
+  private MonitoringClient monitoringClient;
+  private final boolean suppressVerboseLogs;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -101,7 +136,7 @@ public final class SpannerResourceManager implements ResourceManager {
         ((Supplier<Spanner>)
                 () -> {
                   SpannerOptions.Builder optionsBuilder = SpannerOptions.newBuilder();
-                  optionsBuilder.setProjectId(builder.projectId);
+                  optionsBuilder.setProjectId(builder.projectId).setHost(builder.host);
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
@@ -121,6 +156,7 @@ public final class SpannerResourceManager implements ResourceManager {
     }
     this.projectId = builder.projectId;
     this.databaseId = generateDatabaseId(testId);
+    this.suppressVerboseLogs = builder.suppressVerboseLogs;
 
     if (builder.useStaticInstance) {
       if (builder.instanceId == null) {
@@ -135,9 +171,16 @@ public final class SpannerResourceManager implements ResourceManager {
 
     this.region = builder.region;
     this.dialect = builder.dialect;
+    this.spannerHost = builder.host;
     this.spanner = spanner;
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
+    this.nodeCount = builder.nodeCount;
+    this.protoDescriptors = builder.protoDescriptors;
+    this.monitoringClient = builder.monitoringClient;
+    this.instancePartitionId = builder.instancePartitionId;
+    this.instancePartitionConfig = builder.instancePartitionConfig;
+    this.v1InstanceAdminClient = spanner.createInstanceAdminClient();
   }
 
   public static Builder builder(String testId, String projectId, String region) {
@@ -154,37 +197,75 @@ public final class SpannerResourceManager implements ResourceManager {
     if (usingStaticInstance) {
       LOG.info("Not creating Spanner instance - reusing static {}", instanceId);
       hasInstance = true;
-      return;
+    } else if (!hasInstance) {
+      LOG.info("Creating instance {} in project {}.", instanceId, projectId);
+      try {
+        InstanceInfo instanceInfo =
+            InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
+                .setInstanceConfigId(
+                    InstanceConfigId.of(
+                        projectId,
+                        (region.startsWith("nam")
+                                || region.startsWith("eur")
+                                || region.startsWith("asia"))
+                            ? region
+                            : "regional-" + region))
+                .setDisplayName(instanceId)
+                .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
+                .setNodeCount(nodeCount)
+                .build();
+
+        // Retry creation if there's a quota error
+        Instance instance =
+            Failsafe.with(
+                    retryOnQuotaException(5, Duration.ofMinutes(1), Duration.ofMinutes(2), 0.5))
+                .get(() -> instanceAdminClient.createInstance(instanceInfo).get());
+
+        hasInstance = true;
+        LOG.info("Successfully created instance {}: {}.", instanceId, instance.getState());
+      } catch (Exception e) {
+        cleanupAll();
+        throw new SpannerResourceManagerException("Failed to create instance.", e);
+      }
     }
 
-    if (hasInstance) {
-      return;
-    }
-
-    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
-    try {
-      InstanceInfo instanceInfo =
-          InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
-              .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
-              .setDisplayName(instanceId)
-              .setNodeCount(1)
-              .build();
-
-      // Retry creation if there's a quota error
-      Instance instance =
-          Failsafe.with(retryOnQuotaException())
-              .get(() -> instanceAdminClient.createInstance(instanceInfo).get());
-
-      hasInstance = true;
-      LOG.info("Successfully created instance {}: {}.", instanceId, instance.getState());
-    } catch (Exception e) {
-      cleanupAll();
-      throw new SpannerResourceManagerException("Failed to create instance.", e);
+    if (!hasInstancePartition && instancePartitionId != null && instancePartitionConfig != null) {
+      LOG.info(
+          "Creating instance partition {} with config {}",
+          instancePartitionId,
+          instancePartitionConfig);
+      try {
+        InstancePartition instancePartition =
+            InstancePartition.newBuilder()
+                .setDisplayName(instancePartitionId)
+                .setNodeCount(1)
+                .setConfig(InstanceConfigName.of(projectId, instancePartitionConfig).toString())
+                .build();
+        v1InstanceAdminClient
+            .createInstancePartitionAsync(
+                CreateInstancePartitionRequest.newBuilder()
+                    .setParent(InstanceName.of(projectId, instanceId).toString())
+                    .setInstancePartitionId(instancePartitionId)
+                    .setInstancePartition(instancePartition)
+                    .build())
+            .get();
+        hasInstancePartition = true;
+        LOG.info("Successfully created instance partition {}.", instancePartitionId);
+      } catch (Exception e) {
+        if (e.getMessage() != null && e.getMessage().contains("ALREADY_EXISTS")) {
+          LOG.info("Instance partition {} already exists.", instancePartitionId);
+          hasInstancePartition = true;
+        } else {
+          cleanupAll();
+          throw new SpannerResourceManagerException("Failed to create instance partition.", e);
+        }
+      }
     }
   }
 
   private synchronized void maybeCreateDatabase() {
     checkIsUsable();
+    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
     if (hasDatabase) {
       return;
     }
@@ -194,16 +275,18 @@ public final class SpannerResourceManager implements ResourceManager {
       Database database =
           Failsafe.with(retryOnQuotaException())
               .get(
-                  () ->
-                      databaseAdminClient
-                          .createDatabase(
-                              databaseAdminClient
-                                  .newDatabaseBuilder(
-                                      DatabaseId.of(projectId, instanceId, databaseId))
-                                  .setDialect(dialect)
-                                  .build(),
-                              ImmutableList.of())
-                          .get());
+                  () -> {
+                    DatabaseInfo.Builder dbBuilder =
+                        databaseAdminClient
+                            .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, databaseId))
+                            .setDialect(dialect);
+                    if (protoDescriptors != null) {
+                      dbBuilder.setProtoDescriptors(protoDescriptors);
+                    }
+                    return databaseAdminClient
+                        .createDatabase(dbBuilder.build(), ImmutableList.of())
+                        .get();
+                  });
 
       hasDatabase = true;
       LOG.info("Successfully created database {}: {}.", databaseId, database.getState());
@@ -214,11 +297,21 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   private static <T> RetryPolicy<T> retryOnQuotaException() {
+    return retryOnQuotaException(
+        CREATE_MAX_RETRIES, CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY, CREATE_BACKOFF_JITTER);
+  }
+
+  private static <T> RetryPolicy<T> retryOnQuotaException(
+      int maxRetries, Duration backoffDelay, Duration maxBackoffDelay, double backoffJitter) {
     return RetryPolicy.<T>builder()
-        .handleIf(exception -> ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
-        .withMaxRetries(CREATE_MAX_RETRIES)
-        .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
-        .withJitter(CREATE_BACKOFF_JITTER)
+        .handleIf(
+            exception -> {
+              LOG.warn("Error from spanner:", exception);
+              return ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED");
+            })
+        .withMaxRetries(maxRetries)
+        .withBackoff(backoffDelay, maxBackoffDelay)
+        .withJitter(backoffJitter)
         .build();
   }
 
@@ -256,6 +349,15 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
+   * Return the Spanner host that is servicing API requests.
+   *
+   * @return Spanner host.
+   */
+  public String getSpannerHost() {
+    return this.spannerHost;
+  }
+
+  /**
    * Executes a DDL statement.
    *
    * <p>Note: Implementations may do instance creation and database creation here.
@@ -264,20 +366,86 @@ public final class SpannerResourceManager implements ResourceManager {
    * @throws IllegalStateException if method is called after resources have been cleaned up.
    */
   public synchronized void executeDdlStatement(String statement) throws IllegalStateException {
+    executeDdlStatements(ImmutableList.of(statement));
+  }
+
+  /**
+   * Executes a list of DDL statements.
+   *
+   * <p>Note: Implementations may do instance creation and database creation here.
+   *
+   * @param statements The DDL statements.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
+  public synchronized void executeDdlStatements(List<String> statements)
+      throws IllegalStateException {
+    ensureUsableAndCreateResources();
+
+    if (statements.isEmpty()) {
+      return;
+    }
+
+    if (suppressVerboseLogs) {
+      LOG.info("Executing {} DDL statements on database {}.", statements.size(), databaseId);
+    } else {
+      LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
+    }
+    try {
+      // executeDdlStatments can fail for spanner staging because of failfast.
+      Failsafe.with(retryOnQuotaException())
+          .run(
+              () -> {
+                DatabaseInfo.Builder dbBuilder =
+                    databaseAdminClient.newDatabaseBuilder(
+                        DatabaseId.of(projectId, instanceId, databaseId));
+                if (protoDescriptors != null) {
+                  dbBuilder.setProtoDescriptors(protoDescriptors);
+                }
+                Database database = dbBuilder.build();
+                databaseAdminClient
+                    .updateDatabaseDdl(database, statements, /* operationId= */ null)
+                    .get();
+              });
+      if (suppressVerboseLogs) {
+        LOG.info(
+            "Successfully executed {} DDL statements on database {}.",
+            statements.size(),
+            databaseId);
+      } else {
+        LOG.info(
+            "Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
+      }
+    } catch (Exception e) {
+      throw new SpannerResourceManagerException("Failed to execute statement.", e);
+    }
+  }
+
+  public synchronized void ensureUsableAndCreateResources() {
     checkIsUsable();
     maybeCreateInstance();
     maybeCreateDatabase();
+  }
 
-    LOG.info("Executing DDL statement '{}' on database {}.", statement, databaseId);
-    try {
-      databaseAdminClient
-          .updateDatabaseDdl(
-              instanceId, databaseId, ImmutableList.of(statement), /* operationId= */ null)
-          .get();
-      LOG.info("Successfully executed DDL statement '{}' on database {}.", statement, databaseId);
-    } catch (ExecutionException | InterruptedException | SpannerException e) {
-      throw new SpannerResourceManagerException("Failed to execute statement.", e);
-    }
+  /**
+   * Creates and returns Spanner Database Client.
+   *
+   * @return Spanner Database Client
+   */
+  public synchronized DatabaseClient getDatabaseClient() {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+    return spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+  }
+
+  /**
+   * Creates and returns Spanner Batch Client.
+   *
+   * @return Spanner Batch Client
+   */
+  public synchronized BatchClient getBatchClient() {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+    return spanner.getBatchClient(DatabaseId.of(projectId, instanceId, databaseId));
   }
 
   /**
@@ -318,6 +486,75 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
+   * Writes a collection of mutations into one or more tables inside a ReadWriteTransaction. This
+   * method requires {@link SpannerResourceManager#executeDdlStatement(String)} to be called
+   * beforehand.
+   *
+   * @param mutations A collection of mutation objects.
+   */
+  public void writeInTransaction(Iterable<Mutation> mutations) {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+
+    LOG.info("Sending {} mutations to {}.{}", Iterables.size(mutations), instanceId, databaseId);
+    DatabaseClient databaseClient =
+        spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+    databaseClient
+        .readWriteTransaction()
+        .run(
+            (TransactionCallable<Void>)
+                transaction -> {
+                  transaction.buffer(mutations);
+                  return null;
+                });
+    LOG.info("Successfully sent mutations to {}.{}", instanceId, databaseId);
+  }
+
+  /**
+   * Executes a list of DML statements. This method requires {@link
+   * SpannerResourceManager#executeDdlStatement(String)} to be called beforehand.
+   *
+   * @param statements The DML statements.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
+  public synchronized void executeDMLStatements(List<String> statements)
+      throws IllegalStateException {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+
+    if (suppressVerboseLogs) {
+      LOG.info("Executing {} DML statements on database {}.", statements.size(), databaseId);
+    } else {
+      LOG.info("Executing DML statements '{}' on database {}.", statements, databaseId);
+    }
+    List<Statement> statementsList =
+        statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
+    try {
+      DatabaseClient databaseClient =
+          spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+      databaseClient
+          .readWriteTransaction()
+          .run(
+              (TransactionCallable<Void>)
+                  transaction -> {
+                    transaction.batchUpdate(statementsList);
+                    return null;
+                  });
+      if (suppressVerboseLogs) {
+        LOG.debug(
+            "Successfully executed {} DML statements on database {}.",
+            statements.size(),
+            databaseId);
+      } else {
+        LOG.debug(
+            "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+      }
+    } catch (Exception e) {
+      throw new SpannerResourceManagerException("Failed to execute statement.", e);
+    }
+  }
+
+  /**
    * Runs the specified query.
    *
    * @param query the query to execute
@@ -333,7 +570,9 @@ public final class SpannerResourceManager implements ResourceManager {
       }
       ImmutableList<Struct> tableRecords = tableRecordsBuilder.build();
 
-      LOG.info("Loaded {} rows from {}", tableRecords.size(), query);
+      if (!suppressVerboseLogs) {
+        LOG.info("Loaded {} rows from {}", tableRecords.size(), query);
+      }
       return tableRecords;
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to read query " + query, e);
@@ -407,6 +646,10 @@ public final class SpannerResourceManager implements ResourceManager {
     }
   }
 
+  public List<String> getDatabaseDdl() {
+    return databaseAdminClient.getDatabaseDdl(instanceId, databaseId);
+  }
+
   /**
    * Deletes all created resources (instance, database, and tables) and cleans up all Spanner
    * sessions, making the manager object unusable.
@@ -420,7 +663,9 @@ public final class SpannerResourceManager implements ResourceManager {
           Failsafe.with(retryOnQuotaException())
               .run(() -> databaseAdminClient.dropDatabase(instanceId, databaseId));
         }
+
       } else {
+
         LOG.info("Deleting instance {}...", instanceId);
 
         if (instanceAdminClient != null) {
@@ -434,11 +679,62 @@ public final class SpannerResourceManager implements ResourceManager {
     } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Failed to delete instance.", e);
     } finally {
+      if (v1InstanceAdminClient != null && !v1InstanceAdminClient.isShutdown()) {
+        v1InstanceAdminClient.shutdown();
+      }
+
       if (!spanner.isClosed()) {
         spanner.close();
       }
     }
     LOG.info("Manager successfully cleaned up.");
+  }
+
+  /**
+   * Collects the performance metrics for the spanner database resource like Average CPU
+   * utilization.
+   *
+   * @param metrics The spanner metrics will be populated in this map
+   */
+  public void collectMetrics(@NonNull Map<String, Double> metrics) {
+    hasMonitoringClient();
+    checkHasInstanceAndDatabase();
+    metrics.put(
+        "Spanner_AverageCpuUtilization",
+        getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MEAN));
+    metrics.put(
+        "Spanner_MaxCpuUtilization",
+        getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MAX));
+  }
+
+  private void hasMonitoringClient() {
+    if (monitoringClient == null) {
+      throw new SpannerResourceManagerException(
+          "SpannerResourceManager needs to be initialized with Monitoring client in order to export"
+              + " metrics. Please use SpannerResourceManager.Builder(...).setMonitoringClient(...) "
+              + "to initialize the monitoring client.");
+    }
+  }
+
+  private Double getAggregateCpuUtilization(
+      MonitoringClient monitoringClient, Aligner aggregationFunction) {
+    String metricType = "spanner.googleapis.com/instance/cpu/utilization";
+
+    TimeInterval interval =
+        TimeInterval.newBuilder()
+            .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
+            .setStartTime(this.startTime)
+            .build();
+
+    String filter =
+        "metric.type=\"%s\" AND "
+            + "resource.type=\"spanner_instance\" AND "
+            + "resource.label.instance_id=\"%s\" AND metric.label.database=\"%s\"";
+
+    filter = String.format(filter, metricType, this.instanceId, this.databaseId);
+
+    return monitoringClient.getAggregatedMetric(
+        this.projectId, filter, interval, aggregationFunction);
   }
 
   /** Builder for {@link SpannerResourceManager}. */
@@ -451,6 +747,13 @@ public final class SpannerResourceManager implements ResourceManager {
     private @Nullable String instanceId;
     private boolean useStaticInstance;
     private Credentials credentials;
+    private String host;
+    private int nodeCount;
+    private byte[] protoDescriptors;
+    private MonitoringClient monitoringClient;
+    private boolean suppressVerboseLogs;
+    private String instancePartitionId;
+    private String instancePartitionConfig;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -459,6 +762,15 @@ public final class SpannerResourceManager implements ResourceManager {
       this.dialect = dialect;
       this.instanceId = null;
       this.useStaticInstance = false;
+      this.host = DEFAULT_SPANNER_HOST;
+      this.nodeCount = 1;
+    }
+
+    public Builder setInstancePartition(
+        String instancePartitionId, String instancePartitionConfig) {
+      this.instancePartitionId = instancePartitionId;
+      this.instancePartitionConfig = instancePartitionConfig;
+      return this;
     }
 
     public Builder setCredentials(Credentials credentials) {
@@ -484,10 +796,22 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      if (System.getProperty("spannerInstanceId") != null) {
+      String spannerInstanceId = System.getProperty("spannerInstanceId");
+      boolean isTestProject =
+          Objects.equals(projectId, "cloud-teleport-testing")
+              || Objects.equals(projectId, "span-cloud-teleport-testing");
+      boolean shouldPickRandomInstance =
+          Strings.isNullOrEmpty(spannerInstanceId) || Objects.equals(spannerInstanceId, "teleport");
+
+      if (isTestProject && shouldPickRandomInstance) {
         this.useStaticInstance = true;
-        this.instanceId = System.getProperty("spannerInstanceId");
+        List<String> staticInstanceList = TestConstants.SPANNER_TEST_INSTANCES;
+        this.instanceId = staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+      } else if (spannerInstanceId != null) {
+        this.useStaticInstance = true;
+        this.instanceId = spannerInstanceId;
       }
+      // Else useStaticInstance would remain false and a new Spanner test instance would be created.
       return this;
     }
 
@@ -498,6 +822,60 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setInstanceId(String instanceId) {
       this.instanceId = instanceId;
+      return this;
+    }
+
+    /**
+     * Overrides spanner host, uses it for Spanner API calls.
+     *
+     * @param spannerHost spanner host URL
+     * @return this builder with host set.
+     */
+    public Builder useCustomHost(String spannerHost) {
+      this.host = spannerHost;
+      return this;
+    }
+
+    /**
+     * Configures the node count of the spanner instance if creating a new one.
+     *
+     * @param nodeCount
+     * @return
+     */
+    public Builder setNodeCount(int nodeCount) {
+      this.nodeCount = nodeCount;
+      return this;
+    }
+
+    /**
+     * Configures proto descriptors for database creation.
+     *
+     * @param protoDescriptors
+     * @return
+     */
+    public Builder setProtoDescriptors(byte[] protoDescriptors) {
+      this.protoDescriptors = protoDescriptors;
+      return this;
+    }
+
+    /**
+     * Sets Monitoring Client instance to be used for getMetrics method.
+     *
+     * @return monitoring client
+     */
+    public Builder setMonitoringClient(MonitoringClient monitoringClient) {
+      this.monitoringClient = monitoringClient;
+      return this;
+    }
+
+    /**
+     * Sets whether to suppress verbose logs such as full DDL statements and query strings.
+     *
+     * @param suppressVerboseLogs whether to suppress verbose logs.
+     * @return this builder object with the suppressVerboseLogs option set.
+     */
+    public Builder setSuppressVerboseLogs(boolean suppressVerboseLogs) {
+      this.suppressVerboseLogs = suppressVerboseLogs;
       return this;
     }
 

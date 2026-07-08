@@ -18,60 +18,113 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sc
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link SpannerToBigQueryUtils} provides methods that convert Spanner types to BigQuery types.
  */
 public class SpannerToBigQueryUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToBigQueryUtils.class);
 
-  public static List<TableFieldSchema> spannerColumnsToBigQueryIOFields(
-      List<TrackedSpannerColumn> spannerColumns) {
-    final List<TableFieldSchema> bigQueryFields = new ArrayList<>(spannerColumns.size());
-    for (TrackedSpannerColumn spannerColumn : spannerColumns) {
-      bigQueryFields.add(spannerColumnToBigQueryIOField(spannerColumn));
+  // Convert user columns in TableRow to BigQueryIO TableFieldSchema.
+  public static List<TableFieldSchema> tableRowColumnsToBigQueryIOFields(
+      TableRow tableRow, boolean useStorageWriteApi) {
+    // Filter out the metadataColumns in building TableFieldSchema for user column tables in
+    // tableRowColumnsToBigQueryIOFields().
+    HashSet<String> metadataColumns =
+        new HashSet<>(
+            Arrays.asList(
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_MOD_TYPE,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_SPANNER_COMMIT_TIMESTAMP,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_SERVER_TRANSACTION_ID,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_RECORD_SEQUENCE,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_IS_LAST_RECORD_IN_TRANSACTION_IN_PARTITION,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_NUMBER_OF_RECORDS_IN_TRANSACTION,
+                BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_NUMBER_OF_PARTITIONS_IN_TRANSACTION));
+    if (!useStorageWriteApi) {
+      metadataColumns.add(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_BIGQUERY_COMMIT_TIMESTAMP);
     }
-
+    List<TableFieldSchema> bigQueryFields = new ArrayList<>();
+    for (String colName : tableRow.keySet()) {
+      // Only create TableFieldSchema for user columns which has type information stored in the
+      // TableRow as well.
+      if (!metadataColumns.contains(colName) && tableRow.containsKey("_type_" + colName)) {
+        bigQueryFields.add(
+            tableRowColumnsToBigQueryIOField(colName, (String) tableRow.get("_type_" + colName)));
+      }
+    }
     return bigQueryFields;
   }
 
-  private static TableFieldSchema spannerColumnToBigQueryIOField(
-      TrackedSpannerColumn spannerColumn) {
-    TableFieldSchema bigQueryField =
-        new TableFieldSchema().setName(spannerColumn.getName()).setMode(Field.Mode.REPEATED.name());
-    Type spannerType = spannerColumn.getType();
+  private static void setBigQueryFieldType(
+      Set<String> supportedTypes, TableFieldSchema bigQueryField, String type) {
+    if (supportedTypes.contains(type)) {
+      bigQueryField.setType(type);
+      if (type.equals("PG_NUMERIC")) {
+        bigQueryField.setType("STRING");
+      } else if (type.equals("PG_JSONB")) {
+        bigQueryField.setType("JSON");
+      }
+    } else {
+      throw new IllegalArgumentException(String.format("Unsupported Spanner type: %s", type));
+    }
+  }
 
-    if (spannerType.equals(Type.array(Type.bool()))) {
-      bigQueryField.setType("BOOL");
-    } else if (spannerType.equals(Type.array(Type.bytes()))) {
-      bigQueryField.setType("BYTES");
-    } else if (spannerType.equals(Type.array(Type.date()))) {
-      bigQueryField.setType("DATE");
-    } else if (spannerType.equals(Type.array(Type.float64()))) {
-      bigQueryField.setType("FLOAT64");
-    } else if (spannerType.equals(Type.array(Type.int64()))) {
-      bigQueryField.setType("INT64");
-    } else if (spannerType.equals(Type.array(Type.json()))) {
-      bigQueryField.setType("JSON");
-    } else if (spannerType.equals(Type.array(Type.numeric()))) {
-      bigQueryField.setType("NUMERIC");
-    } else if (spannerType.equals(Type.array(Type.pgNumeric()))) {
-      bigQueryField.setType("STRING");
-    } else if (spannerType.equals(Type.array(Type.pgJsonb()))) {
-      bigQueryField.setType("JSON");
-    } else if (spannerType.equals(Type.array(Type.string()))) {
-      bigQueryField.setType("STRING");
-    } else if (spannerType.equals(Type.array(Type.timestamp()))) {
-      bigQueryField.setType("TIMESTAMP");
+  private static TableFieldSchema tableRowColumnsToBigQueryIOField(String name, String type) {
+    TableFieldSchema bigQueryField =
+        new TableFieldSchema().setName(name).setMode(Field.Mode.REPEATED.name());
+    String[] supportedTypesArr =
+        new String[] {
+          "BOOL",
+          "BYTES",
+          "DATE",
+          "FLOAT64",
+          "FLOAT32",
+          "INT64",
+          "JSON",
+          "NUMERIC",
+          "PG_NUMERIC",
+          "PG_JSONB",
+          "STRING",
+          "TIMESTAMP",
+          "UUID"
+        };
+    Set<String> supportedTypes = Set.of(supportedTypesArr);
+    if (type.startsWith("ARRAY")) {
+      String arrayItemType = type.substring(6, type.length() - 1);
+
+      if (supportedTypes.contains(arrayItemType)) {
+        if (arrayItemType.equals("PG_NUMERIC")) {
+          bigQueryField.setType("STRING");
+        } else if (arrayItemType.equals("PG_JSONB")) {
+          bigQueryField.setType("JSON");
+        } else if (arrayItemType.equals("FLOAT32")) {
+          // BigQuery does not support the FLOAT32 type.
+          bigQueryField.setType("FLOAT64");
+        } else if (arrayItemType.equals("UUID")) {
+          bigQueryField.setType("STRING");
+        } else {
+          bigQueryField.setType(arrayItemType);
+        }
+      } else {
+        throw new IllegalArgumentException(
+            String.format("Unsupported Spanner type: %s", arrayItemType));
+      }
     } else {
       // Set NULLABLE for all non-array types, since we only insert primary key columns for deleted
       // rows, which leaves non-primary key columns always null.
@@ -79,46 +132,22 @@ public class SpannerToBigQueryUtils {
       // set the same field to NOT NULL in BigQuery, when we delete the Spanner row, we will not
       // populate "FirstName" field in BigQuery, which violates the constraints.
       bigQueryField.setMode(Field.Mode.NULLABLE.name());
-      StandardSQLTypeName bigQueryType;
-      switch (spannerType.getCode()) {
-        case BOOL:
-          bigQueryType = StandardSQLTypeName.BOOL;
-          break;
-        case BYTES:
-          bigQueryType = StandardSQLTypeName.BYTES;
-          break;
-        case DATE:
-          bigQueryType = StandardSQLTypeName.DATE;
-          break;
-        case FLOAT64:
-          bigQueryType = StandardSQLTypeName.FLOAT64;
-          break;
-        case INT64:
-          bigQueryType = StandardSQLTypeName.INT64;
-          break;
-        case JSON:
-          bigQueryType = StandardSQLTypeName.JSON;
-          break;
-        case NUMERIC:
-          bigQueryType = StandardSQLTypeName.NUMERIC;
-          break;
-        case PG_NUMERIC:
-          bigQueryType = StandardSQLTypeName.STRING;
-          break;
-        case PG_JSONB:
-          bigQueryType = StandardSQLTypeName.JSON;
-          break;
-        case STRING:
-          bigQueryType = StandardSQLTypeName.STRING;
-          break;
-        case TIMESTAMP:
-          bigQueryType = StandardSQLTypeName.TIMESTAMP;
-          break;
-        default:
-          throw new IllegalArgumentException(
-              String.format("Unsupported Spanner type: %s", spannerType));
+      if (supportedTypes.contains(type)) {
+        if (type.equals("PG_NUMERIC")) {
+          bigQueryField.setType("STRING");
+        } else if (type.equals("PG_JSONB")) {
+          bigQueryField.setType("JSON");
+        } else if (type.equals("FLOAT32")) {
+          // BigQuery does not support the FLOAT32 type.
+          bigQueryField.setType("FLOAT64");
+        } else if (type.equals("UUID")) {
+          bigQueryField.setType("STRING");
+        } else {
+          bigQueryField.setType(type);
+        }
+      } else {
+        throw new IllegalArgumentException(String.format("Unsupported Spanner type: %s", type));
       }
-      bigQueryField.setType(bigQueryType.name());
     }
 
     return bigQueryField;
@@ -164,6 +193,8 @@ public class SpannerToBigQueryUtils {
       return removeNulls(resultSet.getDateList(columnName)).stream()
           .map(e -> e.toString())
           .collect(Collectors.toList());
+    } else if (columnType.equals(Type.array(Type.float32()))) {
+      return removeNulls(resultSet.getFloatList(columnName));
     } else if (columnType.equals(Type.array(Type.float64()))) {
       return removeNulls(resultSet.getDoubleList(columnName));
     } else if (columnType.equals(Type.array(Type.int64()))) {
@@ -178,6 +209,10 @@ public class SpannerToBigQueryUtils {
       return removeNulls(resultSet.getPgJsonbList(columnName));
     } else if (columnType.equals(Type.array(Type.string()))) {
       return removeNulls(resultSet.getStringList(columnName));
+    } else if (columnType.equals(Type.array(Type.uuid()))) {
+      return removeNulls(resultSet.getUuidList(columnName)).stream()
+          .map(Object::toString)
+          .collect(Collectors.toList());
     } else if (columnType.equals(Type.array(Type.timestamp()))) {
       return removeNulls(resultSet.getTimestampList(columnName)).stream()
           .map(e -> e.toString())
@@ -185,12 +220,16 @@ public class SpannerToBigQueryUtils {
     } else {
       Type.Code columnTypeCode = columnType.getCode();
       switch (columnTypeCode) {
+        case UUID:
+          return resultSet.getUuid(columnName).toString();
         case BOOL:
           return resultSet.getBoolean(columnName);
         case BYTES:
           return resultSet.getBytes(columnName).toBase64();
         case DATE:
           return resultSet.getDate(columnName).toString();
+        case FLOAT32:
+          return resultSet.getFloat(columnName);
         case FLOAT64:
           return resultSet.getDouble(columnName);
         case INT64:
@@ -215,22 +254,68 @@ public class SpannerToBigQueryUtils {
   }
 
   private static <T> List<T> removeNulls(List<T> list) {
+
     return list.stream().filter(Objects::nonNull).collect(Collectors.toList());
   }
 
+  public static void addSpannerPkColumnsToTableRow(
+      JSONObject keysJsonObject, List<TrackedSpannerColumn> spannerPkColumns, TableRow tableRow) {
+    for (TrackedSpannerColumn spannerColumn : spannerPkColumns) {
+      String spannerColumnName = spannerColumn.getName();
+      if (keysJsonObject.has(spannerColumnName)) {
+        tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
+        tableRow.set("_type_" + spannerColumnName, spannerColumn.getType().toString());
+      } else {
+        throw new IllegalArgumentException("Cannot find value for key column " + spannerColumnName);
+      }
+    }
+  }
+
+  public static String cleanSpannerType(String typeStr) {
+    // Remove type annotation, e.g. NUMERIC<PG_NUMERIC> -> NUMERIC; ARRAY<NUMERIC<PG_NUMERIC>> ->
+    // ARRAY<NUMERIC>
+    if (typeStr.startsWith("ARRAY")) {
+      String arrayItemType = typeStr.substring(6, typeStr.length() - 1);
+      return "ARRAY<" + cleanSpannerType(arrayItemType) + ">";
+    } else {
+      int idx = typeStr.indexOf("<");
+      if (idx != -1) {
+        typeStr = typeStr.substring(0, idx);
+      }
+    }
+    return typeStr;
+  }
+
   public static void addSpannerNonPkColumnsToTableRow(
-      String newValuesJson, List<TrackedSpannerColumn> spannerNonPkColumns, TableRow tableRow) {
-    JSONObject newValuesJsonObject = new JSONObject(newValuesJson);
+      String newValuesJson,
+      List<TrackedSpannerColumn> spannerNonPkColumns,
+      TableRow tableRow,
+      ModType modType) {
+    JSONObject newValuesJsonObject =
+        new JSONObject(modType == ModType.DELETE ? "{}" : newValuesJson);
     for (TrackedSpannerColumn spannerColumn : spannerNonPkColumns) {
       String columnName = spannerColumn.getName();
       Type columnType = spannerColumn.getType();
-      if (!newValuesJsonObject.has(columnName) || newValuesJsonObject.isNull(columnName)) {
+      // For "DELETE" mod, fill the tracking non-key column with null
+      if (modType == ModType.DELETE) {
+        tableRow.set(columnName, null);
+        tableRow.set("_type_" + columnName, cleanSpannerType(columnType.toString()));
         continue;
       }
-
-      if (columnType.equals(Type.array(Type.bool()))
+      // This scenario only happens for UPDATE in OLD_AND_NEW_VALUES or NEW_VALUES. If a tracked
+      // column is not updated, we should still populate that column with type information to ensure
+      // initial bigquery dynamic destination contains this column.
+      if (!newValuesJsonObject.has(columnName)) {
+        tableRow.set(columnName, null);
+        tableRow.set("_type_" + columnName, cleanSpannerType(columnType.toString()));
+        continue;
+      }
+      if (newValuesJsonObject.isNull(columnName)) {
+        tableRow.set(columnName, null);
+      } else if (columnType.equals(Type.array(Type.bool()))
           || columnType.equals(Type.array(Type.bytes()))
           || columnType.equals(Type.array(Type.date()))
+          || columnType.equals(Type.array(Type.float32()))
           || columnType.equals(Type.array(Type.float64()))
           || columnType.equals(Type.array(Type.int64()))
           || columnType.equals(Type.array(Type.json()))
@@ -238,7 +323,8 @@ public class SpannerToBigQueryUtils {
           || columnType.equals(Type.array(Type.pgNumeric()))
           || columnType.equals(Type.array(Type.pgJsonb()))
           || columnType.equals(Type.array(Type.string()))
-          || columnType.equals(Type.array(Type.timestamp()))) {
+          || columnType.equals(Type.array(Type.timestamp()))
+          || columnType.equals(Type.array(Type.uuid()))) {
         JSONArray jsonArray = newValuesJsonObject.getJSONArray(columnName);
         List<Object> objects = new ArrayList<>(jsonArray.length());
         for (int i = 0; i < jsonArray.length(); i++) {
@@ -251,6 +337,7 @@ public class SpannerToBigQueryUtils {
       } else {
         tableRow.set(columnName, newValuesJsonObject.get(columnName));
       }
+      tableRow.set("_type_" + columnName, cleanSpannerType(columnType.toString()));
     }
   }
 }

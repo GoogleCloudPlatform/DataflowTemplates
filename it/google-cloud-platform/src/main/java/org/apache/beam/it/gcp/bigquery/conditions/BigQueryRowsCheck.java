@@ -20,6 +20,7 @@ package org.apache.beam.it.gcp.bigquery.conditions;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.TableId;
 import javax.annotation.Nullable;
+import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 
@@ -36,6 +37,9 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
   @Nullable
   abstract Integer maxRows();
 
+  @Nullable
+  abstract Boolean usingDynamicTable();
+
   @Override
   public String getDescription() {
     if (maxRows() != null) {
@@ -49,7 +53,17 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
   @Override
   @SuppressWarnings("unboxing.of.nullable")
   public CheckResult check() {
-    long totalRows = getRowCount();
+    long totalRows;
+    try {
+      totalRows = getRowCount();
+    } catch (Exception e) {
+      if (ExceptionUtils.containsMessage(e, "Not found: Table")) {
+        return new CheckResult(
+            false, String.format("Table %s has not been created", tableId().getTable()));
+      } else {
+        throw e;
+      }
+    }
     if (totalRows < minRows()) {
       return new CheckResult(
           false, String.format("Expected %d but has only %d", minRows(), totalRows));
@@ -91,6 +105,8 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
     public abstract Builder setMinRows(Integer minRows);
 
     public abstract Builder setMaxRows(Integer maxRows);
+
+    public abstract Builder setUsingDynamicTable(Boolean usingDynamicTable);
 
     abstract BigQueryRowsCheck autoBuild();
 

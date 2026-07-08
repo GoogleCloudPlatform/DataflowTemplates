@@ -26,28 +26,29 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Spanner_to_GCS_Avro).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **instanceId** : The instance ID of the Cloud Spanner database that you want to export.
-* **databaseId** : The database ID of the Cloud Spanner database that you want to export.
-* **outputDir** : The Cloud Storage path where the Avro files should be exported to. A new directory will be created under this path that contains the export. (Example: gs://your-bucket/your-path).
+* **instanceId**: The instance ID of the Spanner database that you want to export.
+* **databaseId**: The database ID of the Spanner database that you want to export.
+* **outputDir**: The Cloud Storage path to export Avro files to. The export job creates a new directory under this path that contains the exported files. For example, `gs://your-bucket/your-path`.
 
 ### Optional parameters
 
-* **avroTempDirectory** : The Cloud Storage path where the temporary Avro files can be created. Ex: gs://your-bucket/your-path.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **snapshotTime** : Specifies the snapshot time as RFC 3339 format in UTC time without the timezone offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp staleness applies. See https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:59Z). Defaults to empty.
-* **spannerProjectId** : The project ID of the Cloud Spanner instance.
-* **shouldExportTimestampAsLogicalType** : If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as ISO8601 strings at nanosecond precision by default.
-* **tableNames** : If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export. Defaults to empty.
-* **shouldExportRelatedTables** : Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export. Defaults to: false.
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
-* **dataBoostEnabled** : Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
+* **avroTempDirectory**: The Cloud Storage path where temporary Avro files are written.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
+* **snapshotTime**: The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified by using RFC 3339 UTC `Zulu` format. The timestamp must be in the past, and maximum timestamp staleness applies. For example, `1990-12-31T23:59:60Z`. Defaults to empty.
+* **spannerProjectId**: The ID of the Google Cloud project that contains the Spanner database that you want to read data from.
+* **shouldExportTimestampAsLogicalType**: If `true`, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, this parameter is set to `false` and timestamps are exported as ISO-8601 strings at nanosecond precision.
+* **tableNames**: A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`.If the table is in named schema, please use fully qualified name. For example: `sch1.foo` in which `sch1` is the schema name and `foo` is the table name. Defaults to empty.
+* **shouldExportRelatedTables**: Whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter. Defaults to: false.
+* **spannerPriority**: The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.
+* **dataBoostEnabled**: Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When set to `true`, you also need the `spanner.databases.useDataBoost` IAM permission. For more information, see the Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
+* **checksumAlgorithm**: The checksum algorithm to use for the exported files. Possible values are MD5 and CRC32C. The default value is MD5.
 
 
 
@@ -55,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -69,7 +70,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -95,7 +106,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Spanner_to_GCS_Avro" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -142,6 +153,7 @@ export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
 export DATA_BOOST_ENABLED=false
+export CHECKSUM_ALGORITHM=<checksumAlgorithm>
 
 gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --project "$PROJECT" \
@@ -158,7 +170,8 @@ gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --parameters "tableNames=$TABLE_NAMES" \
   --parameters "shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
-  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED"
+  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED" \
+  --parameters "checksumAlgorithm=$CHECKSUM_ALGORITHM"
 ```
 
 For more information about the command, please check:
@@ -191,6 +204,7 @@ export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
 export DATA_BOOST_ENABLED=false
+export CHECKSUM_ALGORITHM=<checksumAlgorithm>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -199,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-spanner-to-gcs-avro-job" \
 -DtemplateName="Cloud_Spanner_to_GCS_Avro" \
--Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY,dataBoostEnabled=$DATA_BOOST_ENABLED" \
+-Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY,dataBoostEnabled=$DATA_BOOST_ENABLED,checksumAlgorithm=$CHECKSUM_ALGORITHM" \
 -f v1
 ```
 
@@ -247,16 +261,17 @@ resource "google_dataflow_job" "cloud_spanner_to_gcs_avro" {
   parameters        = {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
-    outputDir = "gs://your-bucket/your-path"
+    outputDir = "<outputDir>"
     # avroTempDirectory = "<avroTempDirectory>"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # snapshotTime = "1990-12-31T23:59:59Z"
+    # snapshotTime = ""
     # spannerProjectId = "<spannerProjectId>"
     # shouldExportTimestampAsLogicalType = "false"
     # tableNames = ""
     # shouldExportRelatedTables = "false"
     # spannerPriority = "<spannerPriority>"
     # dataBoostEnabled = "false"
+    # checksumAlgorithm = "<checksumAlgorithm>"
   }
 }
 ```

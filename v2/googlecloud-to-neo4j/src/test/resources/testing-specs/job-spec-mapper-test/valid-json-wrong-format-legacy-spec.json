@@ -1,0 +1,51 @@
+{
+    "config": {
+        "node_write_batch_size": 5000,
+        "edge_write_batch_size": 1000
+    },
+    "sources": [
+        {
+            "type": "text",
+            "format": "EXCEL",
+            "name": "source_csv",
+            "uri": "gs://some/rels.csv",
+            "delimiter": ",",
+            "ordered_field_names": "source,source_ts,target,target_ts,rel_id_1,rel_id_2,timestamp"
+        }
+    ],
+    "targets": [
+        {
+            "edge": {
+                "source": "source_csv",
+                "name": "Source CSV rel file",
+                "mode": "merge",
+                "edge_nodes_match_mode": "create",
+                "transform": {
+                    "group": true
+                },
+                "mappings": {
+                    "name": "LINK",
+                    "source": {
+                        "name": {
+                            "source": "source_id"
+                        },
+                        "label": "SrcLabel"
+                    },
+                    "target": {
+                        "key": {
+                            "target": "target_id"
+                        },
+                        "label": "TgtLabel"
+                    },
+                    "properties": {
+                        "longs": [
+                            {
+                                "invalid_timestamp": "ts"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}

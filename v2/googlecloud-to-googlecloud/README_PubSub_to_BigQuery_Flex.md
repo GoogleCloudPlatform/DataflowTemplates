@@ -13,27 +13,27 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_BigQuery_Flex).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **outputTableSpec** : BigQuery table location to write the output to. The table’s schema must match the input JSON objects.
+* **outputTableSpec**: The BigQuery table to write to, formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`.
 
 ### Optional parameters
 
-* **inputTopic** : The Pub/Sub topic to read the input from.
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'.
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-* **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **inputTopic**: The Pub/Sub topic to read from, formatted as `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **inputSubscription**: The Pub/Sub subscription to read from, formatted as `projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>`.
+* **outputDeadletterTable**: The BigQuery table to use for messages that failed to reach the output table, formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the value `OUTPUT_TABLE_SPEC_error_records` is used instead.
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
 
 ## User-Defined functions (UDFs)
@@ -51,7 +51,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -65,7 +65,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/googlecloud-to-googlecloud
+```
 
 ### Building Template
 
@@ -84,16 +94,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_BigQuery_Flex" \
--f v2/googlecloud-to-googlecloud
+-pl v2/googlecloud-to-googlecloud -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -243,8 +257,8 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigquery_flex" {
     # useStorageWriteApi = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }

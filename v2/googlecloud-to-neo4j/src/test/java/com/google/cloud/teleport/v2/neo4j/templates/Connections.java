@@ -20,6 +20,10 @@ import org.apache.beam.it.neo4j.Neo4jResourceManager;
 class Connections {
 
   public static String jsonBasicPayload(Neo4jResourceManager neo4jClient) {
+    return jsonBasicPayload(neo4jClient, neo4jClient.getDatabaseName());
+  }
+
+  public static String jsonBasicPayload(Neo4jResourceManager neo4jClient, String databaseName) {
     return String.format(
         "{\n"
             + "  \"server_url\": \"%s\",\n"
@@ -28,6 +32,6 @@ class Connections {
             + "  \"username\": \"neo4j\",\n"
             + "  \"pwd\": \"%s\"\n"
             + "}",
-        neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword());
+        neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword());
   }
 }

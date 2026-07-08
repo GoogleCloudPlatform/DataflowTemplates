@@ -29,25 +29,25 @@ public abstract class Index implements Serializable {
 
   private static final long serialVersionUID = 7435575480487550039L;
 
-  abstract String name();
+  public abstract String name();
 
-  abstract Dialect dialect();
+  public abstract Dialect dialect();
 
-  abstract String table();
+  public abstract String table();
 
-  abstract ImmutableList<IndexColumn> indexColumns();
+  public abstract ImmutableList<IndexColumn> indexColumns();
 
-  abstract boolean unique();
+  public abstract boolean unique();
 
   // restricted for gsql
-  abstract boolean nullFiltered();
+  public abstract boolean nullFiltered();
 
   // restricted for pg
   @Nullable
-  abstract String filter();
+  public abstract String filter();
 
   @Nullable
-  abstract String interleaveIn();
+  public abstract String interleaveIn();
 
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);

@@ -1,0 +1,13 @@
+{
+  "renamedTables":{
+    "srcTable":"destTable"
+  },
+  "renamedColumns":{
+    "srcTable1":{
+      "srcCol1":"destCol1"
+    },
+    "srcTable2":{
+      "srcCol2":"destCol2"
+    }
+  }
+}

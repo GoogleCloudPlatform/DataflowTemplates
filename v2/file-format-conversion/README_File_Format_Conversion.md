@@ -16,31 +16,31 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=File_Format_Conversion).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFileFormat** : File format of the input files. Needs to be either avro, parquet or csv.
-* **outputFileFormat** : File format of the output files. Needs to be either avro or parquet.
-* **inputFileSpec** : Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv.
-* **outputBucket** : Cloud storage directory for writing output files. This value must end in a slash. (Example: gs://your-bucket/path/).
-* **schema** : Cloud storage path to the avro schema file. (Example: gs://your-bucket/your-path/schema.avsc).
+* **inputFileFormat**: File format of the input files. Needs to be either avro, parquet or csv.
+* **outputFileFormat**: File format of the output files. Needs to be either avro or parquet.
+* **inputFileSpec**: The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`.
+* **outputBucket**: Cloud storage directory for writing output files. This value must end in a slash. For example, `gs://your-bucket/path/`.
+* **schema**: Cloud storage path to the avro schema file. For example, `gs://your-bucket/your-path/schema.avsc`.
 
 ### Optional parameters
 
-* **containsHeaders** : Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
-* **deadletterTable** : Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name).
-* **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
-* **csvFormat** : CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
-* **jsonSchemaPath** : Path to JSON schema. Default: null. (Example: gs://path/to/schema).
-* **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: false.
-* **csvFileEncoding** : CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8.
-* **logDetailedCsvConversionErrors** : Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false.
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
-* **outputFilePrefix** : The prefix of the files to write to. Defaults to: output.
+* **containsHeaders**: Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
+* **deadletterTable**: Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. For example, `your-project:your-dataset.your-table-name`.
+* **delimiter**: The column delimiter of the input text files. Default: `,` For example, `,`.
+* **csvFormat**: CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
+* **jsonSchemaPath**: The path to the JSON schema. Defaults to `null`. For example, `gs://path/to/schema`.
+* **largeNumFiles**: Set to true if number of files is in the tens of thousands. Defaults to `false`.
+* **csvFileEncoding**: The CSV file character encoding format. Allowed values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
+* **logDetailedCsvConversionErrors**: Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`.
+* **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
+* **outputFilePrefix**: The prefix of the files to write to. Defaults to: output.
 
 
 
@@ -48,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -62,7 +62,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/file-format-conversion
+```
 
 ### Building Template
 
@@ -81,16 +91,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="File_Format_Conversion" \
--f v2/file-format-conversion
+-pl v2/file-format-conversion -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -247,13 +261,13 @@ resource "google_dataflow_flex_template_job" "file_format_conversion" {
     inputFileFormat = "<inputFileFormat>"
     outputFileFormat = "<outputFileFormat>"
     inputFileSpec = "<inputFileSpec>"
-    outputBucket = "gs://your-bucket/path/"
-    schema = "gs://your-bucket/your-path/schema.avsc"
+    outputBucket = "<outputBucket>"
+    schema = "<schema>"
     # containsHeaders = "false"
-    # deadletterTable = "your-project:your-dataset.your-table-name"
-    # delimiter = ","
+    # deadletterTable = "<deadletterTable>"
+    # delimiter = "<delimiter>"
     # csvFormat = "Default"
-    # jsonSchemaPath = "gs://path/to/schema"
+    # jsonSchemaPath = "<jsonSchemaPath>"
     # largeNumFiles = "false"
     # csvFileEncoding = "UTF-8"
     # logDetailedCsvConversionErrors = "false"

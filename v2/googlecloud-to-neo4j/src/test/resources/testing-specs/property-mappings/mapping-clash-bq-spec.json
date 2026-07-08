@@ -1,0 +1,35 @@
+{
+  "source": {
+    "type": "bigquery",
+    "name": "stations",
+    "query": "SELECT Station, Latitude, Longitude, Zone FROM $bqtable"
+  },
+  "targets": [
+    {
+      "node": {
+        "source": "stations",
+        "name": "Station",
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "mappings": {
+          "labels": [
+            "\"Station\""
+          ],
+          "properties": {
+            "keys": [
+              {"Station": "name"}
+            ],
+            "strings": [
+              {"Zone": "zone"}
+            ],
+            "floats": [
+              {"Longitude": "longitude"},
+              {"Latitude": "latitude"}
+            ]
+          }
+        }
+      }
+    }
+  ]}

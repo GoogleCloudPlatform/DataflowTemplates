@@ -12,22 +12,22 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Firestore_to_GCS_Text).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **firestoreReadGqlQuery** : Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’.
-* **firestoreReadProjectId** : The Google Cloud project ID of the Firestore instance to read from.
-* **textWritePrefix** : The path and filename prefix for writing output files. (Example: gs://your-bucket/your-path).
+* **firestoreReadGqlQuery**: A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`.
+* **firestoreReadProjectId**: The ID of the Google Cloud project that contains the Firestore instance that you want to read data from.
+* **textWritePrefix**: The Cloud Storage path prefix that specifies where the data is written. For example, `gs://mybucket/somefolder/`.
 
 ### Optional parameters
 
-* **firestoreReadNamespace** : Namespace of requested Firestore entities. Leave blank to use default namespace.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **firestoreReadNamespace**: The namespace of the requested entities. To use the default namespace, leave this parameter blank.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 
 
 ## User-Defined functions (UDFs)
@@ -45,7 +45,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -59,7 +59,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -85,7 +95,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Firestore_to_GCS_Text" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -219,10 +229,10 @@ resource "google_dataflow_job" "firestore_to_gcs_text" {
   parameters        = {
     firestoreReadGqlQuery = "<firestoreReadGqlQuery>"
     firestoreReadProjectId = "<firestoreReadProjectId>"
-    textWritePrefix = "gs://your-bucket/your-path"
+    textWritePrefix = "<textWritePrefix>"
     # firestoreReadNamespace = "<firestoreReadNamespace>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
   }
 }
 ```

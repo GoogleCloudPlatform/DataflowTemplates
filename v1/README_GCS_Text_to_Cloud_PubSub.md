@@ -17,15 +17,15 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Cloud_PubSub).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **inputFilePattern**: The input file pattern to read from. For example, `gs://bucket-name/files/*.json`.
+* **outputTopic**: The Pub/Sub input topic to write to. The name must be in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. For example, `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional parameters
 
@@ -36,7 +36,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -50,7 +50,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -76,7 +86,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_Text_to_Cloud_PubSub" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -196,8 +206,8 @@ resource "google_dataflow_job" "gcs_text_to_cloud_pubsub" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/path/*.txt"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    inputFilePattern = "<inputFilePattern>"
+    outputTopic = "<outputTopic>"
   }
 }
 ```

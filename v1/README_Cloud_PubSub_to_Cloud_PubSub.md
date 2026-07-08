@@ -14,20 +14,20 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Cloud_PubSub).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **inputSubscription**: The Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **outputTopic**: The Pub/Sub topic to write the output to. For example, `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional parameters
 
-* **filterKey** : Attribute key by which events are filtered. No filters are applied if no key is specified.
-* **filterValue** : Filter attribute value to use if an event filter key is provided. Accepts a valid Java Regex string as an event filter value. In case a regex is provided, the complete expression should match in order for the message to be filtered. Partial matches (e.g. substring) will not be filtered. A null event filter value is used by default.
+* **filterKey**: The attribute key to use to filter events. No filters are applied if `filterKey` is not specified.
+* **filterValue**: The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used.
 
 
 
@@ -35,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -49,7 +49,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -75,7 +85,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_PubSub_to_Cloud_PubSub" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -201,8 +211,8 @@ resource "google_dataflow_job" "cloud_pubsub_to_cloud_pubsub" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    inputSubscription = "<inputSubscription>"
+    outputTopic = "<outputTopic>"
     # filterKey = "<filterKey>"
     # filterValue = "<filterValue>"
   }

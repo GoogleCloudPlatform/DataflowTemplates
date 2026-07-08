@@ -34,8 +34,8 @@
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
   <properties>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
 
   <dependencies>
@@ -51,6 +51,19 @@
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
       <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -70,6 +83,74 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>bqmonitorPythonTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>${exec-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>bqmonitor-pip-install</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>pip</executable>
+                  <arguments>
+                    <argument>install</argument>
+                    <argument>-r</argument>
+                    <argument>src/test/python/bigquery-anomaly-detection/requirements-test.txt</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>bqmonitor-pip-install-pkg</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>pip</executable>
+                  <arguments>
+                    <argument>install</argument>
+                    <argument>-e</argument>
+                    <argument>src/main/python/bigquery-anomaly-detection</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>bqmonitor-python-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>python</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>-m</argument>
+                    <argument>unittest</argument>
+                    <argument>discover</argument>
+                    <argument>-s</argument>
+                    <argument>src/test/python/bigquery-anomaly-detection</argument>
+                    <argument>-p</argument>
+                    <argument>*_test.py</argument>
+                    <argument>-v</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>templatesValidate</id>
       <activation>

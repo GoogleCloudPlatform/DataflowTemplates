@@ -1,5 +1,5 @@
 
-Cloud Storage Text to BigQuery (Stream) template
+Cloud Storage Text to BigQuery (Stream) Classic template
 ---
 The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that
 allows you to stream text files stored in Cloud Storage, transform them using a
@@ -23,15 +23,15 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Stream_GCS_Text_to_BigQuery).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv).
-* **JSONPath** : JSON file with BigQuery Schema description. JSON Example: {
+* **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.csv`.
+* **JSONPath**: JSON file with BigQuery Schema description. JSON Example: {
 	"BigQuery Schema": [
 		{
 			"name": "location",
@@ -55,20 +55,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 		}
 	]
 }.
-* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **outputTable**: BigQuery table location to write the output to. The table's schema must match the input objects.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`.
 
 ### Optional parameters
 
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)
 
-The Cloud Storage Text to BigQuery (Stream) Template supports User-Defined functions (UDFs).
+The Cloud Storage Text to BigQuery (Stream) Classic Template supports User-Defined functions (UDFs).
 UDFs allow you to customize functionality by providing a JavaScript function
 without having to maintain or build the entire template code.
 
@@ -81,7 +81,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -95,7 +95,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -121,7 +131,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Stream_GCS_Text_to_BigQuery" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -259,13 +269,13 @@ resource "google_dataflow_job" "stream_gcs_text_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/path/*.csv"
+    inputFilePattern = "<inputFilePattern>"
     JSONPath = "<JSONPath>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
+    # outputDeadletterTable = "<outputDeadletterTable>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }

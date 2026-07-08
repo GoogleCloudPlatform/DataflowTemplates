@@ -1,0 +1,2701 @@
+{
+  "SpSchema": {
+    "t100": {
+      "Name": "child22",
+      "ColIds": [
+        "c157",
+        "c158",
+        "c159",
+        "c173"
+      ],
+      "ShardIdColumn": "c173",
+      "ColDefs": {
+        "c157": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c157"
+        },
+        "c158": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c158"
+        },
+        "c159": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c159"
+        },
+        "c173": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c173"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c157",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c173",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child22_ibfk_1",
+          "ColIds": [
+            "c173",
+            "c158"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c180",
+            "c128"
+          ],
+          "Id": "f121"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_14",
+          "TableId": "t100",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c158",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i171",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child22",
+      "Id": "t100"
+    },
+    "t101": {
+      "Name": "child13",
+      "ColIds": [
+        "c143",
+        "c144",
+        "c145",
+        "c183"
+      ],
+      "ShardIdColumn": "c183",
+      "ColDefs": {
+        "c143": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c143"
+        },
+        "c144": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c144"
+        },
+        "c145": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c145"
+        },
+        "c183": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c183"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c143",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c183",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child13_ibfk_1",
+          "ColIds": [
+            "c183",
+            "c144"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c179",
+            "c154"
+          ],
+          "Id": "f116"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_8",
+          "TableId": "t101",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c144",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i168",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child13",
+      "Id": "t101"
+    },
+    "t102": {
+      "Name": "child31",
+      "ColIds": [
+        "c124",
+        "c125",
+        "c126",
+        "c174"
+      ],
+      "ShardIdColumn": "c174",
+      "ColDefs": {
+        "c124": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c124"
+        },
+        "c125": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c125"
+        },
+        "c126": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c126"
+        },
+        "c174": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c174"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c124",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c174",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child31_ibfk_1",
+          "ColIds": [
+            "c174",
+            "c125"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c176",
+            "c151"
+          ],
+          "Id": "f115"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_20",
+          "TableId": "t102",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c125",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i165",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child31",
+      "Id": "t102"
+    },
+    "t103": {
+      "Name": "child33",
+      "ColIds": [
+        "c135",
+        "c136",
+        "c137",
+        "c178"
+      ],
+      "ShardIdColumn": "c178",
+      "ColDefs": {
+        "c135": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c135"
+        },
+        "c136": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c136"
+        },
+        "c137": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c137"
+        },
+        "c178": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c178"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c135",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c178",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child33_ibfk_1",
+          "ColIds": [
+            "c178",
+            "c136"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c176",
+            "c151"
+          ],
+          "Id": "f118"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_26",
+          "TableId": "t103",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c136",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i167",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child33",
+      "Id": "t103"
+    },
+    "t104": {
+      "Name": "parent3",
+      "ColIds": [
+        "c151",
+        "c152",
+        "c176"
+      ],
+      "ShardIdColumn": "c176",
+      "ColDefs": {
+        "c151": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c151"
+        },
+        "c152": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c152"
+        },
+        "c176": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c176"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c151",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c176",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table parent3",
+      "Id": "t104"
+    },
+    "t105": {
+      "Name": "child21",
+      "ColIds": [
+        "c147",
+        "c148",
+        "c149",
+        "c184"
+      ],
+      "ShardIdColumn": "c184",
+      "ColDefs": {
+        "c147": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c147"
+        },
+        "c148": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c148"
+        },
+        "c149": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c149"
+        },
+        "c184": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c184"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c147",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c184",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child21_ibfk_1",
+          "ColIds": [
+            "c184",
+            "c148"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c180",
+            "c128"
+          ],
+          "Id": "f117"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_11",
+          "TableId": "t105",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c148",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i169",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child21",
+      "Id": "t105"
+    },
+    "t106": {
+      "Name": "child32",
+      "ColIds": [
+        "c161",
+        "c162",
+        "c163",
+        "c175"
+      ],
+      "ShardIdColumn": "c175",
+      "ColDefs": {
+        "c161": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c161"
+        },
+        "c162": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c162"
+        },
+        "c163": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c163"
+        },
+        "c175": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c175"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c161",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c175",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child32_ibfk_1",
+          "ColIds": [
+            "c175",
+            "c162"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c176",
+            "c151"
+          ],
+          "Id": "f122"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_23",
+          "TableId": "t106",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c162",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i172",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child32",
+      "Id": "t106"
+    },
+    "t107": {
+      "Name": "parent1",
+      "ColIds": [
+        "c154",
+        "c155",
+        "c179",
+        "c500"
+      ],
+      "ShardIdColumn": "c179",
+      "ColDefs": {
+        "c154": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c154"
+        },
+        "c155": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c155"
+        },
+        "c179": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c179"
+        },
+        "c500": {
+          "Name": "from",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: from int(10)",
+          "Id": "c500"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c154",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c179",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table parent1",
+      "Id": "t107"
+    },
+    "t108": {
+      "Name": "parent2",
+      "ColIds": [
+        "c128",
+        "c129",
+        "c180"
+      ],
+      "ShardIdColumn": "c180",
+      "ColDefs": {
+        "c128": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c128"
+        },
+        "c129": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c129"
+        },
+        "c180": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c180"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c128",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c180",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table parent2",
+      "Id": "t108"
+    },
+    "t109": {
+      "Name": "child23",
+      "ColIds": [
+        "c131",
+        "c132",
+        "c133",
+        "c177"
+      ],
+      "ShardIdColumn": "c177",
+      "ColDefs": {
+        "c131": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c131"
+        },
+        "c132": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c132"
+        },
+        "c133": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c133"
+        },
+        "c177": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c177"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c131",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c177",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child23_ibfk_1",
+          "ColIds": [
+            "c177",
+            "c132"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c180",
+            "c128"
+          ],
+          "Id": "f119"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_17",
+          "TableId": "t109",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c132",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i166",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child23",
+      "Id": "t109"
+    },
+    "t98": {
+      "Name": "child11",
+      "ColIds": [
+        "c111",
+        "c112",
+        "c113",
+        "c181"
+      ],
+      "ShardIdColumn": "c181",
+      "ColDefs": {
+        "c111": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c111"
+        },
+        "c112": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c112"
+        },
+        "c113": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c113"
+        },
+        "c181": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c181"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c111",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c181",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child11_ibfk_1",
+          "ColIds": [
+            "c181",
+            "c112"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c179",
+            "c154"
+          ],
+          "Id": "f110"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "TableId": "t98",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c112",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i123",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child11",
+      "Id": "t98"
+    },
+    "t99": {
+      "Name": "child12",
+      "ColIds": [
+        "c139",
+        "c140",
+        "c141",
+        "c182"
+      ],
+      "ShardIdColumn": "c182",
+      "ColDefs": {
+        "c139": {
+          "Name": "child_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: child_id int(10)",
+          "Id": "c139"
+        },
+        "c140": {
+          "Name": "parent_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: parent_id int(10)",
+          "Id": "c140"
+        },
+        "c141": {
+          "Name": "update_ts",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: update_ts timestamp",
+          "Id": "c141"
+        },
+        "c182": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c182"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c139",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c182",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child12_ibfk_1",
+          "ColIds": [
+            "c182",
+            "c140"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c179",
+            "c154"
+          ],
+          "Id": "f120"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind_5",
+          "TableId": "t99",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c140",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i170",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table child12",
+      "Id": "t99"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t100": {
+      "Name": "child22",
+      "Schema": "pchild",
+      "ColIds": [
+        "c157",
+        "c158",
+        "c159",
+        "c160"
+      ],
+      "ColDefs": {
+        "c157": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c157"
+        },
+        "c158": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c158"
+        },
+        "c159": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c159"
+        },
+        "c160": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c160"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c157",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child22_ibfk_1",
+          "ColIds": [
+            "c158"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c128"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f121"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c158",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i171",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t100"
+    },
+    "t101": {
+      "Name": "child13",
+      "Schema": "pchild",
+      "ColIds": [
+        "c143",
+        "c144",
+        "c145",
+        "c146"
+      ],
+      "ColDefs": {
+        "c143": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c143"
+        },
+        "c144": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c144"
+        },
+        "c145": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c145"
+        },
+        "c146": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c146"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c143",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child13_ibfk_1",
+          "ColIds": [
+            "c144"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c154"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f116"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c144",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i168",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t101"
+    },
+    "t102": {
+      "Name": "child31",
+      "Schema": "pchild",
+      "ColIds": [
+        "c124",
+        "c125",
+        "c126",
+        "c127"
+      ],
+      "ColDefs": {
+        "c124": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c124"
+        },
+        "c125": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c125"
+        },
+        "c126": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c126"
+        },
+        "c127": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c127"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c124",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child31_ibfk_1",
+          "ColIds": [
+            "c125"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c151"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f115"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c125",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i165",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t102"
+    },
+    "t103": {
+      "Name": "child33",
+      "Schema": "pchild",
+      "ColIds": [
+        "c135",
+        "c136",
+        "c137",
+        "c138"
+      ],
+      "ColDefs": {
+        "c135": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c135"
+        },
+        "c136": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c136"
+        },
+        "c137": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c137"
+        },
+        "c138": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c138"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c135",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child33_ibfk_1",
+          "ColIds": [
+            "c136"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c151"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f118"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c136",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i167",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t103"
+    },
+    "t104": {
+      "Name": "parent3",
+      "Schema": "pchild",
+      "ColIds": [
+        "c151",
+        "c152",
+        "c153"
+      ],
+      "ColDefs": {
+        "c151": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c151"
+        },
+        "c152": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c152"
+        },
+        "c153": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c153"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c151",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t104"
+    },
+    "t105": {
+      "Name": "child21",
+      "Schema": "pchild",
+      "ColIds": [
+        "c147",
+        "c148",
+        "c149",
+        "c150"
+      ],
+      "ColDefs": {
+        "c147": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c147"
+        },
+        "c148": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c148"
+        },
+        "c149": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c149"
+        },
+        "c150": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c150"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c147",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child21_ibfk_1",
+          "ColIds": [
+            "c148"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c128"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f117"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c148",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i169",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t105"
+    },
+    "t106": {
+      "Name": "child32",
+      "Schema": "pchild",
+      "ColIds": [
+        "c161",
+        "c162",
+        "c163",
+        "c164"
+      ],
+      "ColDefs": {
+        "c161": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c161"
+        },
+        "c162": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c162"
+        },
+        "c163": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c163"
+        },
+        "c164": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c164"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c161",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child32_ibfk_1",
+          "ColIds": [
+            "c162"
+          ],
+          "ReferTableId": "t104",
+          "ReferColumnIds": [
+            "c151"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f122"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c162",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i172",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t106"
+    },
+    "t107": {
+      "Name": "parent1",
+      "Schema": "pchild",
+      "ColIds": [
+        "c154",
+        "c155",
+        "c156",
+        "c500"
+      ],
+      "ColDefs": {
+        "c154": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c154"
+        },
+        "c155": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c155"
+        },
+        "c156": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c156"
+        },
+        "c500": {
+          "Name": "`from`",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c500"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c154",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t107"
+    },
+    "t108": {
+      "Name": "parent2",
+      "Schema": "pchild",
+      "ColIds": [
+        "c128",
+        "c129",
+        "c130"
+      ],
+      "ColDefs": {
+        "c128": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c128"
+        },
+        "c129": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c129"
+        },
+        "c130": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c130"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c128",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t108"
+    },
+    "t109": {
+      "Name": "child23",
+      "Schema": "pchild",
+      "ColIds": [
+        "c131",
+        "c132",
+        "c133",
+        "c134"
+      ],
+      "ColDefs": {
+        "c131": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c131"
+        },
+        "c132": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c132"
+        },
+        "c133": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c133"
+        },
+        "c134": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c134"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c131",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child23_ibfk_1",
+          "ColIds": [
+            "c132"
+          ],
+          "ReferTableId": "t108",
+          "ReferColumnIds": [
+            "c128"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f119"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c132",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i166",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t109"
+    },
+    "t98": {
+      "Name": "child11",
+      "Schema": "pchild",
+      "ColIds": [
+        "c111",
+        "c112",
+        "c113",
+        "c114"
+      ],
+      "ColDefs": {
+        "c111": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c111"
+        },
+        "c112": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c112"
+        },
+        "c113": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c113"
+        },
+        "c114": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c114"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c111",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child11_ibfk_1",
+          "ColIds": [
+            "c112"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c154"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f110"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c112",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i123",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t98"
+    },
+    "t99": {
+      "Name": "child12",
+      "Schema": "pchild",
+      "ColIds": [
+        "c139",
+        "c140",
+        "c141",
+        "c142"
+      ],
+      "ColDefs": {
+        "c139": {
+          "Name": "child_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c139"
+        },
+        "c140": {
+          "Name": "parent_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c140"
+        },
+        "c141": {
+          "Name": "update_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c141"
+        },
+        "c142": {
+          "Name": "in_ts",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c142"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c139",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "child12_ibfk_1",
+          "ColIds": [
+            "c140"
+          ],
+          "ReferTableId": "t107",
+          "ReferColumnIds": [
+            "c154"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f120"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "par_ind",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c140",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i170",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t99"
+    }
+  },
+  "SchemaIssues": {
+    "t100": {
+      "ColumnLevelIssues": {
+        "c157": [
+          14
+        ],
+        "c158": [
+          14
+        ],
+        "c159": [],
+        "c173": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t101": {
+      "ColumnLevelIssues": {
+        "c143": [
+          14
+        ],
+        "c144": [
+          14
+        ],
+        "c145": [],
+        "c183": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t102": {
+      "ColumnLevelIssues": {
+        "c124": [
+          14
+        ],
+        "c125": [
+          14
+        ],
+        "c126": [],
+        "c174": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t103": {
+      "ColumnLevelIssues": {
+        "c135": [
+          14
+        ],
+        "c136": [
+          14
+        ],
+        "c137": [],
+        "c178": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t104": {
+      "ColumnLevelIssues": {
+        "c151": [
+          14
+        ],
+        "c152": [],
+        "c176": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t105": {
+      "ColumnLevelIssues": {
+        "c147": [
+          14
+        ],
+        "c148": [
+          14
+        ],
+        "c149": [],
+        "c184": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t106": {
+      "ColumnLevelIssues": {
+        "c161": [
+          14
+        ],
+        "c162": [
+          14
+        ],
+        "c163": [],
+        "c175": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t107": {
+      "ColumnLevelIssues": {
+        "c154": [
+          14
+        ],
+        "c155": [],
+        "c179": [
+          29
+        ],
+        "c500": []
+      },
+      "TableLevelIssues": null
+    },
+    "t108": {
+      "ColumnLevelIssues": {
+        "c128": [
+          14
+        ],
+        "c129": [],
+        "c180": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t109": {
+      "ColumnLevelIssues": {
+        "c131": [
+          14
+        ],
+        "c132": [
+          14
+        ],
+        "c133": [],
+        "c177": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t98": {
+      "ColumnLevelIssues": {
+        "c111": [
+          14
+        ],
+        "c112": [
+          14
+        ],
+        "c113": [],
+        "c181": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t99": {
+      "ColumnLevelIssues": {
+        "c139": [
+          14
+        ],
+        "c140": [
+          14
+        ],
+        "c141": [],
+        "c182": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r185",
+      "Name": "r185",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": {
+        "TimeOffset": null
+      }
+    }
+  ],
+  "IsSharded": true
+}

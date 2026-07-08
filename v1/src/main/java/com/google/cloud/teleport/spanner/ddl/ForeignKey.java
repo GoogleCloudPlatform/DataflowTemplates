@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL;
+import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 import com.google.auto.value.AutoValue;
@@ -24,11 +26,12 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
 /** Cloud Spanner foreign key definition. */
 @AutoValue
 public abstract class ForeignKey implements Serializable {
-  private static final long serialVersionUID = 519932875L;
+  private static final long serialVersionUID = 779301367L;
 
   /** Referential actions supported in Foreign Keys. */
   public enum ReferentialAction {
@@ -91,6 +94,9 @@ public abstract class ForeignKey implements Serializable {
 
   abstract Optional<ReferentialAction> referentialAction();
 
+  @Nullable
+  abstract Boolean isEnforced();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_ForeignKey.Builder().dialect(dialect);
   }
@@ -100,25 +106,24 @@ public abstract class ForeignKey implements Serializable {
   }
 
   private void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     String columnsString =
         columns().stream()
-            .map(c -> identifierQuote + c + identifierQuote)
+            .map(c -> quoteIdentifier(c, dialect()))
             .collect(Collectors.joining(", "));
     String referencedColumnsString =
         referencedColumns().stream()
-            .map(c -> identifierQuote + c + identifierQuote)
+            .map(c -> quoteIdentifier(c, dialect()))
             .collect(Collectors.joining(", "));
     appendable
-        .append("ALTER TABLE " + identifierQuote)
-        .append(table())
-        .append(identifierQuote + " ADD CONSTRAINT " + identifierQuote)
-        .append(name())
-        .append(identifierQuote + " FOREIGN KEY (")
+        .append("ALTER TABLE ")
+        .append(quoteIdentifier(table(), dialect()))
+        .append(" ADD CONSTRAINT ")
+        .append(quoteIdentifier(name(), dialect()))
+        .append(" FOREIGN KEY (")
         .append(columnsString)
-        .append(") REFERENCES " + identifierQuote)
-        .append(referencedTable())
-        .append((identifierQuote + " ("))
+        .append(") REFERENCES ")
+        .append(quoteIdentifier(referencedTable(), dialect()))
+        .append(" (")
         .append(referencedColumnsString)
         .append(")");
     Optional<ReferentialAction> action = referentialAction();
@@ -132,6 +137,10 @@ public abstract class ForeignKey implements Serializable {
           throw new IllegalArgumentException(
               "Foreign Key action not supported: " + action.get().getSqlString());
       }
+    }
+    if (dialect() == GOOGLE_STANDARD_SQL && isEnforced() != null && !isEnforced()) {
+      // TODO: Add Postgresql support for NOT ENFORCED foreign keys
+      appendable.append(" NOT ENFORCED");
     }
   }
 
@@ -167,6 +176,8 @@ public abstract class ForeignKey implements Serializable {
     public abstract ImmutableList.Builder<String> referencedColumnsBuilder();
 
     public abstract Builder referentialAction(Optional<ReferentialAction> action);
+
+    public abstract Builder isEnforced(Boolean enforced);
 
     public abstract ForeignKey build();
   }

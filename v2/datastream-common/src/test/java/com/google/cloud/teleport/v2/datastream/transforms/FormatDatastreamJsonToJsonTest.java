@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.datastream.transforms;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
@@ -23,6 +27,7 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
@@ -43,14 +48,111 @@ public class FormatDatastreamJsonToJsonTest {
           + " Relations Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500}}";
 
   private static final String EXAMPLE_DATASTREAM_RECORD =
-      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_schema\":\"HR\",\"_metadata_row_id\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
+      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_database\":\"XE\",\"_metadata_schema\":\"HR\",\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_uuid\":\"00c32134-f50e-4460-a6c0-399900010010\",\"_metadata_row_id\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
           + " Relations"
           + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
 
+  private static final String EXAMPLE_SQLSERVER_JSON =
+      "{\"uuid\":\"00c32134-f50e-4460-a6c0-399900010011\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"dbo_EMPLOYEES\","
+          + "\"read_method\":\"sqlserver-cdc\","
+          + "\"stream_name\":\"projects/123456/locations/us-central1/streams/sqlserver-stream\","
+          + "\"schema_key\":\"abc123\","
+          + "\"sort_keys\":[1640410924408],"
+          + "\"source_metadata\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"EMPLOYEES\","
+          + "\"database\":\"mydb\","
+          + "\"lsn\":\"00000025:00000728:0003\","
+          + "\"tx_id\":\"1234\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"primary_keys\":[\"EMPLOYEE_ID\"]},"
+          + "\"payload\":{\"EMPLOYEE_ID\":101,\"FIRST_NAME\":\"John\",\"LAST_NAME\":\"Doe\"}}";
+
+  private static final String EXPECTED_SQLSERVER_RECORD =
+      "{\"_metadata_stream\":\"my-stream\","
+          + "\"_metadata_timestamp\":1640410924,"
+          + "\"_metadata_read_timestamp\":1640410924,"
+          + "\"_metadata_read_method\":\"sqlserver-cdc\","
+          + "\"_metadata_source_type\":\"sqlserver\","
+          + "\"_metadata_deleted\":false,"
+          + "\"_metadata_database\":\"mydb\","
+          + "\"_metadata_schema\":\"dbo\","
+          + "\"_metadata_table\":\"EMPLOYEES\","
+          + "\"_metadata_change_type\":\"INSERT\","
+          + "\"_metadata_primary_keys\":[\"EMPLOYEE_ID\"],"
+          + "\"_metadata_uuid\":\"00c32134-f50e-4460-a6c0-399900010011\","
+          + "\"_metadata_lsn\":\"00000025:00000728:0003\","
+          + "\"_metadata_tx_id\":\"1234\","
+          + "\"EMPLOYEE_ID\":101,"
+          + "\"FIRST_NAME\":\"John\","
+          + "\"LAST_NAME\":\"Doe\","
+          + "\"_metadata_source\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"EMPLOYEES\","
+          + "\"database\":\"mydb\","
+          + "\"lsn\":\"00000025:00000728:0003\","
+          + "\"tx_id\":\"1234\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"primary_keys\":[\"EMPLOYEE_ID\"]}}";
+
   private static final String EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID =
-      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_schema\":\"HR\",\"_metadata_row_id\":1019670290924988842,\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
+      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_database\":\"XE\",\"_metadata_schema\":\"HR\",\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_uuid\":\"00c32134-f50e-4460-a6c0-399900010010\",\"_metadata_row_id\":1019670290924988842,\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
           + " Relations"
           + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":1019670290924988842,\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
+
+  private static final String SQLSERVER_JSON_WITH_REPLICATION_INDEX =
+      "{\"uuid\":\"test-uuid-ri\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"dbo_ORDERS\","
+          + "\"read_method\":\"sqlserver-cdc\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"source_metadata\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"ORDERS\","
+          + "\"database\":\"mydb\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"replication_index\":[\"order_id\"]},"
+          + "\"payload\":{\"ORDER_ID\":1}}";
+
+  private static final String ORACLE_JSON_WITH_NO_KEYS =
+      "{\"uuid\":\"test-uuid-none\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"HR_EMPLOYEES\","
+          + "\"read_method\":\"oracle-backfill\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"sort_keys\":[1640410924408,0,\"\",0],"
+          + "\"source_metadata\":{"
+          + "\"schema\":\"HR\","
+          + "\"table\":\"EMPLOYEES\","
+          + "\"database\":\"XE\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\"},"
+          + "\"payload\":{\"EMP_ID\":1}}";
+
+  private static final String JSON_WITH_BOTH_KEYS =
+      "{\"uuid\":\"test-uuid-both\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"dbo_ITEMS\","
+          + "\"read_method\":\"sqlserver-cdc\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"source_metadata\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"ITEMS\","
+          + "\"database\":\"mydb\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"primary_keys\":[\"id\"],"
+          + "\"replication_index\":[\"repl_col\"]},"
+          + "\"payload\":{\"ID\":1}}";
 
   @Test
   public void testProcessElement_validJson() {
@@ -58,6 +160,9 @@ public class FormatDatastreamJsonToJsonTest {
 
     FailsafeElement<String, String> expectedElement =
         FailsafeElement.of(EXAMPLE_DATASTREAM_RECORD, EXAMPLE_DATASTREAM_RECORD);
+
+    FailsafeElementCoder<String, String> failsafeElementCoder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
     PCollection<FailsafeElement<String, String>> pCollection =
         pipeline
@@ -70,7 +175,9 @@ public class FormatDatastreamJsonToJsonTest {
                             .withStreamName("my-stream")
                             .withRenameColumnValues(renameColumns)
                             .withLowercaseSourceColumns(false)))
-            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+            .setCoder(failsafeElementCoder)
+            .apply("RemoveTimestampProperty", ParDo.of(new RemoveTimestampPropertyFn()))
+            .setCoder(failsafeElementCoder);
 
     PAssert.that(pCollection).containsInAnyOrder(expectedElement);
 
@@ -85,6 +192,9 @@ public class FormatDatastreamJsonToJsonTest {
         FailsafeElement.of(
             EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID, EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID);
 
+    FailsafeElementCoder<String, String> failsafeElementCoder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
     PCollection<FailsafeElement<String, String>> pCollection =
         pipeline
             .apply("CreateInput", Create.of(EXAMPLE_DATASTREAM_JSON))
@@ -97,10 +207,134 @@ public class FormatDatastreamJsonToJsonTest {
                             .withRenameColumnValues(renameColumns)
                             .withHashRowId(true)
                             .withLowercaseSourceColumns(false)))
-            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+            .setCoder(failsafeElementCoder)
+            .apply("RemoveDataflowTimestampProperty", ParDo.of(new RemoveTimestampPropertyFn()))
+            .setCoder(failsafeElementCoder);
 
     PAssert.that(pCollection).containsInAnyOrder(expectedElement);
 
     pipeline.run();
+  }
+
+  @Test
+  public void testProcessElement_sqlServer() {
+    FailsafeElement<String, String> expectedElement =
+        FailsafeElement.of(EXPECTED_SQLSERVER_RECORD, EXPECTED_SQLSERVER_RECORD);
+
+    FailsafeElementCoder<String, String> failsafeElementCoder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<FailsafeElement<String, String>> pCollection =
+        pipeline
+            .apply("CreateInput", Create.of(EXAMPLE_SQLSERVER_JSON))
+            .apply(
+                "FormatDatastreamJsonToJson",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(failsafeElementCoder)
+            .apply("RemoveTimestampProperty", ParDo.of(new RemoveTimestampPropertyFn()))
+            .setCoder(failsafeElementCoder);
+
+    PAssert.that(pCollection).containsInAnyOrder(expectedElement);
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetPrimaryKeys_sqlServerReplicationIndexFallback() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(SQLSERVER_JSON_WITH_REPLICATION_INDEX))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("[\"order_id\"]");
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetPrimaryKeys_nullWhenNeitherFieldPresent() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(ORACLE_JSON_WITH_NO_KEYS))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("null");
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetPrimaryKeys_prefersPrimaryKeysWhenBothPresent() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(JSON_WITH_BOTH_KEYS))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("[\"id\"]");
+    pipeline.run();
+  }
+
+  // Static nested DoFn class to remove timestamp property
+  static class RemoveTimestampPropertyFn
+      extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
+
+    @ProcessElement
+    public void processElement(
+        @Element FailsafeElement<String, String> element,
+        OutputReceiver<FailsafeElement<String, String>> out)
+        throws JsonProcessingException {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode changeEvent = mapper.readTree(element.getPayload());
+      if (changeEvent instanceof ObjectNode) {
+        ((ObjectNode) changeEvent).remove("_metadata_dataflow_timestamp");
+      }
+      out.output(FailsafeElement.of(changeEvent.toString(), changeEvent.toString()));
+    }
+  }
+
+  static class ExtractPrimaryKeysFn extends DoFn<FailsafeElement<String, String>, String> {
+    @ProcessElement
+    public void processElement(
+        @Element FailsafeElement<String, String> element, OutputReceiver<String> out)
+        throws JsonProcessingException {
+      JsonNode changeEvent = new ObjectMapper().readTree(element.getPayload());
+      JsonNode primaryKeys = changeEvent.get("_metadata_primary_keys");
+      out.output(primaryKeys != null ? primaryKeys.toString() : "null");
+    }
   }
 }

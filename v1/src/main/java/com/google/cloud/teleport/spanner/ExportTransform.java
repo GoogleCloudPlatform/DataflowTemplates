@@ -24,12 +24,20 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Udf;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -77,10 +85,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
@@ -137,6 +141,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<Boolean> exportRelatedTables;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
   private final ValueProvider<String> avroTempDirectory;
+  private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
+      checksumAlgorithm;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
@@ -150,7 +156,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /* tableNames= */ ValueProvider.StaticValueProvider.of(""),
         /* exportRelatedTables= */ ValueProvider.StaticValueProvider.of(false),
         /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
-        outputDir);
+        outputDir,
+        /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
   }
 
   public ExportTransform(
@@ -162,6 +170,29 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
       ValueProvider<String> avroTempDirectory) {
+    this(
+        spannerConfig,
+        outputDir,
+        testJobId,
+        snapshotTime,
+        tableNames,
+        exportRelatedTables,
+        shouldExportTimestampAsLogicalType,
+        avroTempDirectory,
+        /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+  }
+
+  public ExportTransform(
+      SpannerConfig spannerConfig,
+      ValueProvider<String> outputDir,
+      ValueProvider<String> testJobId,
+      ValueProvider<String> snapshotTime,
+      ValueProvider<String> tableNames,
+      ValueProvider<Boolean> exportRelatedTables,
+      ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
+      ValueProvider<String> avroTempDirectory,
+      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
@@ -170,6 +201,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     this.exportRelatedTables = exportRelatedTables;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
     this.avroTempDirectory = avroTempDirectory;
+    this.checksumAlgorithm = checksumAlgorithm;
   }
 
   /**
@@ -182,7 +214,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     /*
      * Allow users to specify read timestamp.
-     * CreateTransaction and CreateTransactionFn classes in LocalSpannerIO
+     * CreateTransaction and CreateTransactionFn classes in SpannerIO
      * only take a timestamp object for exact staleness which works when
      * parameters are provided during template compile time. They do not work with
      * a Timestamp valueProvider which can take parameters at runtime. Hence a new
@@ -279,7 +311,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     c.output(ddl);
                   }
                 }));
-    PCollection<ReadOperation> tables =
+    PCollection<ReadOperation> tableReadOperations =
         ddl.apply("Build table read operations", new BuildReadFromTableOperations(tableNames));
 
     PCollection<KV<String, Void>> allTableAndViewNames =
@@ -318,6 +350,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allPropertyGraphNames =
+        ddl.apply(
+            "List all property graph names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (PropertyGraph graph : ddl.propertyGraphs()) {
+                      c.output(graph.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allChangeStreamNames =
         ddl.apply(
             "List all change stream names",
@@ -344,6 +391,51 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     Ddl ddl = c.element();
                     for (Sequence sequence : ddl.sequences()) {
                       c.output(sequence.name());
+                    }
+                  }
+                }));
+
+    PCollection<String> allNamedSchemaNames =
+        ddl.apply(
+            "List all named schema names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (NamedSchema t : ddl.schemas()) {
+                      c.output(t.name());
+                    }
+                  }
+                }));
+
+    PCollection<String> allPlacementNames =
+        ddl.apply(
+            "List all placement names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Placement placement : ddl.placements()) {
+                      c.output(placement.name());
+                    }
+                  }
+                }));
+
+    PCollection<String> allUdfNames =
+        ddl.apply(
+            "List all user-defined function names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Udf udf : ddl.udfs()) {
+                      c.output(udf.specificName());
                     }
                   }
                 }));
@@ -394,16 +486,22 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                                     shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
-                          c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));
+                          // Here we need to use the real spanner object name which the name will be
+                          // used as the write
+                          // destination in SchemaBasedDynamicDestinations
+                          c.output(
+                              KV.of(
+                                  AvroUtil.getSpannerObjectName(schema),
+                                  new SerializableSchemaSupplier(schema)));
                         }
                       }
                     }))
             .apply("As view", View.asMap());
 
     PCollection<Struct> rows =
-        tables.apply(
+        tableReadOperations.apply(
             "Read all rows from Spanner",
-            LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
+            SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
 
     ValueProvider<ResourceId> resource =
         ValueProvider.NestedValueProvider.of(
@@ -477,6 +575,24 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> propertyGraphs =
+        allPropertyGraphNames.apply(
+            "Export property graphs",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String propertyGraphName = c.element();
+                    LOG.info("Exporting property graph: " + propertyGraphName);
+                    // This file will contain the schema definition for the propertyGraph.
+                    c.output(
+                        KV.of(
+                            propertyGraphName,
+                            Collections.singleton(propertyGraphName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> changeStreams =
         allChangeStreamNames.apply(
             "Export change streams",
@@ -513,13 +629,69 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
-    // Empty tables, views, models, change streams and sequences are handled together,
+    PCollection<KV<String, Iterable<String>>> namedSchemas =
+        allNamedSchemaNames.apply(
+            "Export named schemas",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String namedSchema = c.element();
+                    LOG.info("Exporting named schema: " + namedSchema);
+                    // This file will contain the schema definition for the named schema.
+                    c.output(
+                        KV.of(
+                            namedSchema,
+                            Collections.singleton(namedSchema + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    PCollection<KV<String, Iterable<String>>> placements =
+        allPlacementNames.apply(
+            "Export placements",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String placementName = c.element();
+                    LOG.info("Exporting placement: " + placementName);
+                    // This file will contain the schema definition for the placement.
+                    c.output(
+                        KV.of(
+                            placementName,
+                            Collections.singleton(placementName + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    PCollection<KV<String, Iterable<String>>> udfs =
+        allUdfNames.apply(
+            "Export user-defined functions",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String udfName = c.element();
+                    LOG.info("Exporting user-defined function: " + udfName);
+                    // This file will contain the schema definition for the UDF.
+                    c.output(
+                        KV.of(udfName, Collections.singleton(udfName + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    // Empty tables, views, models, change streams, sequences and named schema are handled together,
     // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
         PCollectionList.of(emptyTablesAndViews)
             .and(models)
             .and(changeStreams)
             .and(sequences)
+            .and(namedSchemas)
+            .and(placements)
+            .and(udfs)
+            .and(propertyGraphs)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
     emptySchemaFiles =
@@ -609,7 +781,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =
-        allFiles.apply("Build table manifests", ParDo.of(new BuildTableManifests()));
+        allFiles.apply(
+            "Build table manifests", ParDo.of(new BuildTableManifests(checksumAlgorithm)));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> tableManifestNaming =
         (element, c) ->
@@ -690,7 +863,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         // The EMPTY_EXPORT_FILE still needs to have a rudimentary schema for it to be created.
         return SchemaBuilder.record("Empty").fields().endRecord();
       }
-      return si.get(tableName).get();
+      SerializableSchemaSupplier supplier = si.get(tableName);
+      if (supplier == null) {
+        LOG.warn("Can not find supplier using {}", tableName);
+      }
+      return supplier.get();
     }
 
     @Override
@@ -857,12 +1034,20 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
           exportManifest.addChangeStreams(obj);
         } else if (ddl.sequence(obj.getName()) != null) {
           exportManifest.addSequences(obj);
+        } else if (ddl.placement(obj.getName()) != null) {
+          exportManifest.addPlacements(obj);
+        } else if (ddl.udf(obj.getName()) != null) {
+          exportManifest.addUdfs(obj);
         } else {
           exportManifest.addTables(obj);
         }
       }
       exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
       exportManifest.setDialect(ProtoDialect.valueOf(dialect.name()));
+      if (ddl.protoDescriptors() != null) {
+        exportManifest.setProtoDescriptors(ddl.protoDescriptors().toByteString());
+      }
+      exportManifest.addAllProtoBundle(ddl.protoBundle());
       try {
         out.output(JsonFormat.printer().print(exportManifest.build()));
       } catch (InvalidProtocolBufferException e) {
@@ -914,6 +1099,14 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
    */
   static class BuildTableManifests extends DoFn<KV<String, Iterable<String>>, KV<String, String>> {
 
+    private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
+        checksumAlgorithm;
+
+    BuildTableManifests(
+        ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
+      this.checksumAlgorithm = checksumAlgorithm;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) {
       if (Objects.equals(c.element().getKey(), EMPTY_EXPORT_FILE)) {
@@ -939,9 +1132,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     private TableManifest buildLocalManifest(Iterable<Path> files) {
       TableManifest.Builder result = TableManifest.newBuilder();
+      ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm algorithm = getChecksumAlgorithm();
       for (Path filePath : files) {
-        String hash = FileChecksum.getLocalFileChecksum(filePath);
-        result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
+        if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+          String hash = FileChecksum.getLocalFileChecksum(filePath);
+          result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
+        } else if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.CRC32C) {
+          String hash = FileChecksum.getLocalFileChecksumCrc32c(filePath);
+          result.addFilesBuilder().setName(filePath.getFileName().toString()).setCrc32C(hash);
+        }
       }
       return result.build();
     }
@@ -954,14 +1153,30 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       List<GcsPath> gcsPaths = new ArrayList<>();
       files.forEach(gcsPaths::add);
 
-      // Fetch object metadata from GCS
-      List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+      ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm algorithm = getChecksumAlgorithm();
+      List<String> checksums;
+      if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+        checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+      } else {
+        checksums = FileChecksum.getGcsFileChecksumsCrc32c(gcsUtil, gcsPaths);
+      }
+
       for (int i = 0; i < gcsPaths.size(); i++) {
         String fileName = gcsPaths.get(i).getFileName().getObject();
         String hash = checksums.get(i);
-        result.addFilesBuilder().setName(fileName).setMd5(hash);
+        if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+          result.addFilesBuilder().setName(fileName).setMd5(hash);
+        } else {
+          result.addFilesBuilder().setName(fileName).setCrc32C(hash);
+        }
       }
       return result.build();
+    }
+
+    private ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm getChecksumAlgorithm() {
+      return checksumAlgorithm.get() == null
+          ? ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5
+          : checksumAlgorithm.get();
     }
   }
 }

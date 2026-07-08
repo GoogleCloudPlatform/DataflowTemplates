@@ -154,12 +154,9 @@ public final class SplunkConverters {
 
     void setTokenSource(String tokenSource);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.KmsEncryptionKey(
         order = 7,
         optional = true,
-        regexes = {
-          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
-        },
         description = "Google Cloud KMS encryption key for the token",
         helpText =
             "The Cloud KMS key to decrypt the HEC token string. This parameter must be "
@@ -188,7 +185,7 @@ public final class SplunkConverters {
 
     void setTokenSecretId(String secretId);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 9,
         optional = true,
         description = "Cloud Storage path to root CA certificate.",

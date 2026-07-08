@@ -119,7 +119,7 @@ export IMAGE_NAME=neo4j-dataflow
 export IMAGE_NAME_VERSION=b0.12
 export BUCKET_NAME= [URI FOR CLOUD STORAGE BUCKET AND FOLDER (ex. gs://bucket-name/folder-name)] 
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java17-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_POM_MODULE=googlecloud-to-neo4j
 export APP_ROOT=/template/${APP_NAME}
@@ -196,17 +196,16 @@ echo "{
        \"language\": \"JAVA\"
     }
   }" > ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json
-gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
+gcloud storage cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 ## Rewrite default image to latest
 ```sh
 cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec.json
-gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
+gcloud storage cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
 ```
 
 ## Other resources
 
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/build
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
-

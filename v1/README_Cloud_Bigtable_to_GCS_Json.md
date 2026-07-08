@@ -10,23 +10,24 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Bigtable_to_GCS_Json).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to read.
-* **filenamePrefix** : The prefix of the JSON file name. For example, "table1-". Defaults to: part.
+* **bigtableProjectId**: The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to read from.
+* **outputDirectory**: The Cloud Storage path where the output JSON files are stored. For example, `gs://your-bucket/your-path/`.
 
 ### Optional parameters
 
-* **outputDirectory** : The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
-* **userOption** : User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to: NONE.
-* **columnsAliases** : Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently, `cf:my_embedding;embedding` and `rowkey;id` should be specified. Only used when FLATTEN user option is specified.
+* **filenamePrefix**: The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.
+* **userOption**: Possible values are `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to `NONE`.
+* **columnsAliases**: A comma-separated list of columns that are required for the Vertex AI Vector Search index. The columns `id` and `embedding` are required for Vertex AI Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, where `rowkey` has a different name than the embedding column, specify `cf:my_embedding;embedding` and, `rowkey;id`. Only use this option when the value for `userOption` is `FLATTEN`.
+* **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
 
 
 
@@ -34,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -48,7 +49,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -74,7 +85,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -110,12 +121,13 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/Cloud_Bigtable_to_GCS_
 export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
-export FILENAME_PREFIX=part
+export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional
-export OUTPUT_DIRECTORY=<outputDirectory>
+export FILENAME_PREFIX=part
 export USER_OPTION=NONE
 export COLUMNS_ALIASES=<columnsAliases>
+export BIGTABLE_APP_PROFILE_ID=default
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --project "$PROJECT" \
@@ -127,7 +139,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "filenamePrefix=$FILENAME_PREFIX" \
   --parameters "userOption=$USER_OPTION" \
-  --parameters "columnsAliases=$COLUMNS_ALIASES"
+  --parameters "columnsAliases=$COLUMNS_ALIASES" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
 ```
 
 For more information about the command, please check:
@@ -149,12 +162,13 @@ export REGION=us-central1
 export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
-export FILENAME_PREFIX=part
+export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional
-export OUTPUT_DIRECTORY=<outputDirectory>
+export FILENAME_PREFIX=part
 export USER_OPTION=NONE
 export COLUMNS_ALIASES=<columnsAliases>
+export BIGTABLE_APP_PROFILE_ID=default
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -163,7 +177,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-json-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
 -f v1
 ```
 
@@ -212,10 +226,11 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_json" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    filenamePrefix = "part"
-    # outputDirectory = "gs://your-bucket/your-path/"
+    outputDirectory = "<outputDirectory>"
+    # filenamePrefix = "part"
     # userOption = "NONE"
     # columnsAliases = "<columnsAliases>"
+    # bigtableAppProfileId = "default"
   }
 }
 ```

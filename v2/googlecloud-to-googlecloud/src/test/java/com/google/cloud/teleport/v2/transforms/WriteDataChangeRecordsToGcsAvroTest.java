@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAvro.DataChangeRecordToAvroFn;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,7 +86,8 @@ public class WriteDataChangeRecordsToGcsAvroTest {
             AvroIO.read(com.google.cloud.teleport.v2.DataChangeRecord.class)
                 .from(fakeDir + "/avro-output-GlobalWindow-pane-0-last-00-of-01.avro"));
     PAssert.that(dataChangeRecords)
-        .containsInAnyOrder(WriteDataChangeRecordsToAvro.dataChangeRecordToAvro(dataChangeRecord));
+        .containsInAnyOrder(
+            new DataChangeRecordToAvroFn().dataChangeRecordToAvro(dataChangeRecord));
     pipeline.run();
   }
 

@@ -51,6 +51,7 @@ import java.util.Collections;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.sdk.util.ReleaseInfo;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -139,7 +140,12 @@ public final class FlexTemplateClientTest {
                     .setJobName(JOB_NAME)
                     .setContainerSpecGcsPath(SPEC_PATH)
                     .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
-                    .setEnvironment(new FlexTemplateRuntimeEnvironment()));
+                    .setEnvironment(
+                        new FlexTemplateRuntimeEnvironment()
+                            .setAdditionalPipelineOptions(
+                                Collections.singletonList(
+                                    "updateCompatibilityVersion="
+                                        + ReleaseInfo.getReleaseInfo().getVersion()))));
     verify(getFlexTemplates(client), times(2))
         .launch(projectCaptor.capture(), regionCaptor.capture(), requestCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);

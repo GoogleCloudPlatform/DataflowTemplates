@@ -30,7 +30,7 @@ inputs:
     type: string
     description: 'The version of Java to install'
     required: false
-    default: '11'
+    default: '17'
 outputs:
   cache-hit:
     description: 'Whether or not there was a cache hit'
@@ -40,29 +40,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Java
-      uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
-    - name: Prepare Key
-      shell: bash
-      env:
-        KEY: ${{ inputs.cache-key }}
-      run: |
-        if [[ "$KEY" == "" || "$KEY" == "''" ]]; then
-          echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
-          echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
-        else
-          echo "TODAY=$KEY" >> $GITHUB_ENV
-          echo "YESTERDAY=$KEY" >> $GITHUB_ENV
-        fi
-    - name: Setup Cache
-      uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
-      id: setup-cache
-      with:
-        path: |
-          ~/.m2
-        key: java-maven-cache-${{ env.TODAY }}
-        restore-keys: |
-          java-maven-cache-${{ env.YESTERDAY }}
-          java-maven-cache

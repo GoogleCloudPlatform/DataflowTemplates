@@ -19,9 +19,9 @@ steps:
 ###########################################################
 # Step 1: Retrieve the cached .m2 directory from GCS
 ###########################################################
-- name: 'gcr.io/cloud-builders/gsutil'
+- name: 'gcr.io/cloud-builders/gcloud'
   args:
-  - '-m'
+  - 'storage'
   - 'rsync'
   - '-r'
   - 'gs://${_BUCKET}/cache/.m2'
@@ -49,9 +49,9 @@ steps:
 #         additional dependencies downloaded during the
 #         build.
 ###########################################################
-- name: 'gcr.io/cloud-builders/gsutil'
+- name: 'gcr.io/cloud-builders/gcloud'
   args:
-  - '-m'
+  - 'storage'
   - 'rsync'
   - '-r'
   - '/cache/.m2'

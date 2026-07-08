@@ -53,7 +53,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Test
   public void testCompressGzip() throws IOException {
     baseCompress(
-        Compression.GZIP, "81f7b7afd932b4754caaa9ba6ced7a8bcb2cbfec6857cf823e4d112125c6e939");
+        Compression.GZIP, "050f90e5523bc0ed37beb817f1ff7c68f48a537bd6246dd309132576bab009fd");
   }
 
   @Test

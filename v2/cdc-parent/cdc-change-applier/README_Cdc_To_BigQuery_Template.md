@@ -9,26 +9,26 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cdc_To_BigQuery_Template).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputSubscriptions** : Comma-separated list of Pub/Sub subscriptions where CDC data is available.
-* **changeLogDataset** : Name of the BigQuery dataset where Staging / Change Log tables are to be kept.
-* **replicaDataset** : Name of the BigQuery dataset where the Replica tables are to be kept.
+* **inputSubscriptions**: The comma-separated list of Pub/Sub input subscriptions to read from, in the format `<SUBSCRIPTION_NAME>,<SUBSCRIPTION_NAME>, ...`.
+* **changeLogDataset**: The BigQuery dataset to store the staging tables in, in the format <DATASET_NAME>.
+* **replicaDataset**: The location of the BigQuery dataset to store the replica tables in, in the format <DATASET_NAME>.
 
 ### Optional parameters
 
-* **inputTopics** : Comma-separated list of PubSub topics to where CDC data is being pushed.
-* **updateFrequencySecs** : How often the pipeline will issue updates to the BigQuery replica table.
-* **useSingleTopic** : Set this to true if you have configured your Debezium connector to publish all table updates to a single topic. Defaults to: false.
-* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
+* **inputTopics**: Comma-separated list of PubSub topics to where CDC data is being pushed.
+* **updateFrequencySecs**: The interval at which the pipeline updates the BigQuery table replicating the MySQL database.
+* **useSingleTopic**: Set this to `true` if you configure your Debezium connector to publish all table updates to a single topic. Defaults to: false.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**:  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
 
 
@@ -36,7 +36,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -50,7 +50,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/cdc-change-applier
+```
 
 ### Building Template
 
@@ -69,16 +79,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cdc_To_BigQuery_Template" \
--f v2/cdc-change-applier
+-pl v2/cdc-change-applier -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:

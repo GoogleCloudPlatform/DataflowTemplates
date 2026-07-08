@@ -1,0 +1,388 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.plugin.maven;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+class PromoteHelper {
+  private static final Logger LOG = LoggerFactory.getLogger(PromoteHelper.class);
+  private final ArtifactRegImageSpec sourceSpec;
+  private final ArtifactRegImageSpec targetSpec;
+  // needed for adding tag
+  private final String targetPath;
+  private final String sourceDigest;
+  private final String token;
+  private final String imageTag;
+  private final @Nullable String additionalTag;
+  private final @Nullable String replacementTag;
+
+  /**
+   * Promote the staged flex template image using MOSS promote API.
+   *
+   * @param sourcePath - spec for source image without tag
+   * @param targetPath - spec for target image without tag
+   * @param imageTag - image tag
+   * @param additionalTag - additional destination tag, used by repo managements, e.g.
+   *     public-image-latest
+   * @param replacementTag - tag to put on original holder of additionalTag, used by repo
+   *     managements, e.g. no-new-use-public-image-
+   * @param sourceDigest - source image digest, e.g. sha256:xxxxx
+   */
+  public PromoteHelper(
+      String sourcePath,
+      String targetPath,
+      String imageTag,
+      @Nullable String additionalTag,
+      @Nullable String replacementTag,
+      String sourceDigest)
+      throws IOException, InterruptedException {
+    this(
+        sourcePath,
+        targetPath,
+        imageTag,
+        additionalTag,
+        replacementTag,
+        sourceDigest,
+        accessToken());
+  }
+
+  @VisibleForTesting
+  PromoteHelper(
+      String sourcePath,
+      String targetPath,
+      String imageTag,
+      @Nullable String additionalTag,
+      @Nullable String replacementTag,
+      String sourceDigest,
+      String token) {
+    this.sourceSpec = new ArtifactRegImageSpec(sourcePath);
+    this.targetSpec = new ArtifactRegImageSpec(targetPath);
+    this.imageTag = imageTag;
+    this.additionalTag = additionalTag;
+    this.replacementTag = replacementTag;
+    this.sourceDigest = sourceDigest;
+    this.token = token;
+    this.targetPath = targetPath;
+  }
+
+  /** Promote the artifact. */
+  public void promote() throws IOException, InterruptedException {
+    String originalDigest = null;
+    if (!Strings.isNullOrEmpty(additionalTag) && !Strings.isNullOrEmpty(replacementTag)) {
+      originalDigest = getDigestFromTag(additionalTag);
+    }
+    String[] promoteArtifactCmd = getPromoteFlexTemplateImageCmd();
+    // promote API returns a long-running-operation
+    String responseRLO = TemplatesStageMojo.runCommandCapturesOutput(promoteArtifactCmd, null);
+    JsonElement parsed = JsonParser.parseString(responseRLO);
+    String operation = parsed.getAsJsonObject().get("name").getAsString();
+    waitForComplete(operation);
+    addTag(imageTag, sourceDigest);
+    // override latest (for pull default tag) and additionalTag (for vul scan, if present)
+    addTag("latest", sourceDigest);
+    if (additionalTag != null) {
+      addTag(additionalTag, sourceDigest);
+    }
+    if (!Strings.isNullOrEmpty(originalDigest)) {
+      addTag(replacementTag, originalDigest);
+    }
+  }
+
+  @VisibleForTesting
+  String[] getPromoteFlexTemplateImageCmd() {
+    Preconditions.checkNotNull(targetSpec.imageName, "Target image name can not be null");
+    String authHeader = String.format("Authorization: Bearer %s", token);
+    String contentTypeHeader = "Content-Type: application/json";
+    String sourceRepo =
+        String.format(
+            "projects/%s/locations/%s/repositories/%s",
+            sourceSpec.project, sourceSpec.location, sourceSpec.repository);
+    String sourceVersion =
+        String.format(
+            "%s/packages/%s/versions/%s",
+            sourceRepo,
+            URLEncoder.encode(targetSpec.imageName, StandardCharsets.UTF_8),
+            sourceDigest);
+    String url =
+        String.format(
+            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s:promoteArtifact",
+            targetSpec.project, targetSpec.location, targetSpec.repository);
+    ImmutableMap<String, String> postDataCollect =
+        ImmutableMap.<String, String>builder()
+            .put("source_repository", sourceRepo)
+            .put("source_version", sourceVersion)
+            .put("attachment_behavior", "PUBLIC_BCID_VSA_ONLY")
+            .build();
+    String postData = new Gson().toJson(postDataCollect);
+    return new String[] {
+      "wget",
+      "-O-",
+      "--content-on-error",
+      "--header=" + authHeader,
+      "--header=" + contentTypeHeader,
+      "--post-data=" + postData,
+      url
+    };
+  }
+
+  /** Wait for long-running operation to complete. */
+  private void waitForComplete(String operation) {
+    String[] command =
+        new String[] {
+          "wget",
+          "-O-",
+          "--content-on-error",
+          String.format("--header=Authorization: Bearer %s", token),
+          "https://artifactregistry.googleapis.com/v1/" + operation
+        };
+
+    RetryPolicy<?> retry =
+        RetryPolicy.builder()
+            .handleIf(throwable -> throwable instanceof QueryOperationRunnable.RetryableException)
+            .withBackoff(Duration.ofSeconds(5), Duration.ofSeconds(30))
+            .withMaxRetries(5)
+            .build();
+
+    QueryOperationRunnable runnable = new QueryOperationRunnable(command);
+    Failsafe.with(retry).run(runnable);
+  }
+
+  /** Add tag after promotion. */
+  private void addTag(String tag, String digest) throws IOException, InterruptedException {
+    // TODO: remove this once copy tag is supported by promote API
+    String[] command;
+    if (targetSpec.repository.endsWith("gcr.io")) {
+      // gcr.io repository needs to use `gcloud container` to add tag
+      command =
+          new String[] {
+            "gcloud",
+            "container",
+            "images",
+            "add-tag",
+            "-q",
+            String.format("%s@%s", targetPath, digest),
+            String.format("%s:%s", targetPath, tag)
+          };
+    } else {
+      command =
+          new String[] {
+            "gcloud",
+            "artifacts",
+            "docker",
+            "tags",
+            "add",
+            String.format("%s@%s", targetPath, digest),
+            String.format("%s:%s", targetPath, tag)
+          };
+    }
+    TemplatesStageMojo.runCommandCapturesOutput(command, null);
+  }
+
+  /**
+   * Get the digest of an image with a specific tag.
+   *
+   * @param tag - The tag of the image to retrieve.
+   * @return The digest of the image.
+   */
+  @VisibleForTesting
+  String getDigestFromTag(String tag) {
+    String[] command;
+    String imageReference = String.format("%s:%s", targetPath, tag);
+
+    if (targetSpec.repository.endsWith("gcr.io")) {
+      // gcr.io repository needs to use `gcloud container` to list tags
+      command =
+          new String[] {
+            "gcloud",
+            "container",
+            "images",
+            "list-tags",
+            targetPath, // This is the image name, e.g., us.gcr.io/my-project/my-image
+            "--filter=tags=" + tag,
+            "--format",
+            "get(digest)"
+          };
+    } else {
+      // Artifact Registry repository needs to use `gcloud artifacts docker images describe`
+      command =
+          new String[] {
+            "gcloud",
+            "artifacts",
+            "docker",
+            "images",
+            "describe",
+            imageReference, // This is the full image reference including tag, e.g.,
+            // us-central1-docker.pkg.dev/my-project/my-repo/my-image:tag
+            "--format",
+            "get(image_summary.digest)"
+          };
+    }
+
+    String response = "";
+    try {
+      response = TemplatesStageMojo.runCommandCapturesOutput(command, null);
+    } catch (Exception e) {
+      // Swallow exceptions here - usually this means that the image does not exist with the tag
+      return "";
+    }
+    // The response is expected to be just the digest, e.g., "sha256:..."
+    // Trim any leading/trailing whitespace.
+    response = response.trim();
+    if (response.startsWith("sha256:")) {
+      return response;
+    }
+    // gcloud container doesn't fail on image not found
+    LOG.warn("Unable to get digest from tag: {}", response);
+    return "";
+  }
+
+  private static class QueryOperationRunnable implements dev.failsafe.function.CheckedRunnable {
+    String[] command;
+
+    public QueryOperationRunnable(String[] command) {
+      this.command = command;
+    }
+
+    @Override
+    public void run() throws RetryableException, IOException, InterruptedException {
+      String response = TemplatesStageMojo.runCommandCapturesOutput(command, null);
+      JsonObject parsed = JsonParser.parseString(response).getAsJsonObject();
+      if (parsed.get("done") == null || !parsed.get("done").getAsBoolean()) {
+        throw new RetryableException("Operation not yet finished, will poll later.");
+      }
+      if (parsed.get("error") != null) {
+        int errorCode = parsed.get("error").getAsJsonObject().get("code").getAsInt();
+        if (errorCode == 6) {
+          // already exist
+          return;
+        }
+        throw new RuntimeException("Operation failed: " + response);
+      }
+    }
+
+    public static class RetryableException extends Exception {
+      public RetryableException(String message) {
+        super(message);
+      }
+    }
+  }
+
+  private static String accessToken() throws IOException, InterruptedException {
+    // do not use runCommand to avoid print token to log
+    Process process =
+        Runtime.getRuntime().exec(new String[] {"gcloud", "auth", "print-access-token"});
+    if (process.waitFor() != 0) {
+      throw new RuntimeException(
+          "Error fetching access token for request: "
+              + new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+    return new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+  }
+
+  /** Artifact registry image spec. */
+  static class ArtifactRegImageSpec {
+    public final String project;
+    public final String repository;
+    public final String location;
+
+    public final @Nullable String imageName;
+
+    /**
+     * Construct an {@code ArtifactRegImageSpec} from an image url. Supported image urls include
+     * [region.]gcr.io/projectId[/...] and region-docker.pkg.dev/projectId[/...]. See {@code
+     * PromoteHelperTest#testArtifactRegImageSpec} for example image urls.
+     */
+    public ArtifactRegImageSpec(String imagePath) {
+      String[] segments = imagePath.split("/", 3);
+      if (segments.length < 3) {
+        segments = new String[] {segments[0], segments[1], null};
+      }
+      if ("google.com".equals(segments[1])) {
+        String[] repoSegments = segments[2].split("/", 2);
+        segments =
+            new String[] {
+              segments[0],
+              segments[1] + ":" + repoSegments[0],
+              repoSegments.length < 2 ? null : repoSegments[1]
+            };
+      }
+      this.project = segments[1];
+      if (segments[0].endsWith("gcr.io")) {
+        this.repository = segments[0];
+        this.imageName = segments[2];
+        if ("gcr.io".equals(segments[0])) {
+          this.location = "us";
+        } else {
+          this.location = segments[0].substring(0, segments[0].length() - ".gcr.io".length());
+        }
+      } else if (segments[0].endsWith("-docker.pkg.dev")) {
+        String[] repoSegments = segments[2].split("/", 2);
+        this.repository = repoSegments[0];
+        if (repoSegments.length > 1) {
+          this.imageName = repoSegments[1];
+        } else {
+          this.imageName = null;
+        }
+        this.location = segments[0].substring(0, segments[0].length() - "-docker.pkg.dev".length());
+      } else {
+        throw new RuntimeException("Unsupported artifact registry image path: " + imagePath);
+      }
+    }
+
+    public ArtifactRegImageSpec(
+        String project, String repository, String location, @Nullable String imageName) {
+      this.project = project;
+      this.repository = repository;
+      this.location = location;
+      this.imageName = imageName;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (other instanceof ArtifactRegImageSpec t) {
+        return project.equals(t.project)
+            && repository.equals(t.repository)
+            && location.equals(t.location)
+            && Objects.equal(imageName, t.imageName);
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          "ArtifactRegImageSpec(%s, %s, %s, %s)", project, repository, location, imageName);
+    }
+  }
+}

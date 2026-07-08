@@ -1,0 +1,449 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "tableName",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20",
+        "c21"
+      ],
+      "ColDefs": {
+        "c1": {
+          "Name": "accountId",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c2": {
+          "Name": "accountName",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c3": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c4": {
+          "Name": "accountNumber",
+          "T": {
+            "Name": "INT64",
+            "IsArray": false
+          }
+        },
+        "c5": {
+          "Name": "bool_col_null",
+          "T": {
+            "Name": "BOOL",
+            "IsArray": false
+          }
+        },
+        "c6": {
+          "Name": "float_32_col_nan",
+          "T": {
+            "Name": "FLOAT32",
+            "IsArray": false
+          }
+        },
+        "c7": {
+          "Name": "bool_col",
+          "T": {
+            "Name": "BOOL",
+            "IsArray": false
+          }
+        },
+        "c8": {
+          "Name": "timestamp_col_null",
+          "T": {
+            "Name": "TIMESTAMP",
+            "IsArray": false
+          }
+        },
+        "c9": {
+          "Name": "float_64_col_neg_infinity",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c10": {
+          "Name": "float_32_col_neg_infinity",
+          "T": {
+            "Name": "FLOAT32",
+            "IsArray": false
+          }
+        },
+        "c11": {
+          "Name": "bytes_col_null",
+          "T": {
+            "Name": "BYTES",
+            "IsArray": false
+          }
+        },
+        "c12": {
+          "Name": "string_col_null",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c13": {
+          "Name": "bytesCol",
+          "T": {
+            "Name": "BYTES",
+            "IsArray": false
+          }
+        },
+        "c14": {
+          "Name": "int_64_col_null",
+          "T": {
+            "Name": "INT64",
+            "IsArray": false
+          }
+        },
+        "c15": {
+          "Name": "float_64_col",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c16": {
+          "Name": "float_32_col_infinity",
+          "T": {
+            "Name": "FLOAT32",
+            "IsArray": false
+          }
+        },
+        "c17": {
+          "Name": "float_32_col",
+          "T": {
+            "Name": "FLOAT32",
+            "IsArray": false
+          }
+        },
+        "c18": {
+          "Name": "float_64_col_infinity",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c19": {
+          "Name": "float_64_col_null",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c20": {
+          "Name": "float_64_col_nan",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c21": {
+          "Name": "float_32_col_null",
+          "T": {
+            "Name": "FLOAT32",
+            "IsArray": false
+          }
+        }
+      },
+      "ShardIdColumn": "c3"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "tableName",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20",
+        "c21"
+      ],
+      "ColDefs": {
+        "c1": {
+          "Name": "accountId",
+          "Type": {
+            "Name": "VARCHAR",
+            "Mods": [
+              255
+            ]
+          }
+        },
+        "c2": {
+          "Name": "accountName",
+          "Type": {
+            "Name": "VARCHAR",
+            "Mods": [
+              255
+            ]
+          }
+        },
+        "c4": {
+          "Name": "accountNumber",
+          "Type": {
+            "Name": "BIGINT"
+          }
+        },
+        "c5": {
+          "Name": "bool_col_null",
+          "Type": {
+            "Name": "BOOL"
+          }
+        },
+        "c6": {
+          "Name": "float_32_col_nan",
+          "Type": {
+            "Name": "FLOAT"
+          }
+        },
+        "c7": {
+          "Name": "bool_col",
+          "Type": {
+            "Name": "BOOL"
+          }
+        },
+        "c8": {
+          "Name": "timestamp_col_null",
+          "Type": {
+            "Name": "TIMESTAMP"
+          }
+        },
+        "c9": {
+          "Name": "float_64_col_neg_infinity",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c10": {
+          "Name": "float_32_col_neg_infinity",
+          "Type": {
+            "Name": "FLOAT"
+          }
+        },
+        "c11": {
+          "Name": "bytes_col_null",
+          "Type": {
+            "Name": "BLOB"
+          }
+        },
+        "c12": {
+          "Name": "string_col_null",
+          "Type": {
+            "Name": "VARCHAR",
+            "Mods": [
+              255
+            ]
+          }
+        },
+        "c13": {
+          "Name": "bytesCol",
+          "Type": {
+            "Name": "BLOB"
+          }
+        },
+        "c14": {
+          "Name": "int_64_col_null",
+          "Type": {
+            "Name": "BIGINT"
+          }
+        },
+        "c15": {
+          "Name": "float_64_col",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c16": {
+          "Name": "float_32_col_infinity",
+          "Type": {
+            "Name": "FLOAT"
+          }
+        },
+        "c17": {
+          "Name": "float_32_col",
+          "Type": {
+            "Name": "FLOAT"
+          }
+        },
+        "c18": {
+          "Name": "float_64_col_infinity",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c19": {
+          "Name": "float_64_col_null",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c20": {
+          "Name": "float_64_col_nan",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c21": {
+          "Name": "float_32_col_null",
+          "Type": {
+            "Name": "FLOAT"
+          }
+        }
+      }
+    }
+  },
+  "ToSpanner": {
+    "tableName": {
+      "Name": "tableName",
+      "Cols": {
+        "accountId": "accountId",
+        "accountName": "accountName",
+        "accountNumber": "accountNumber",
+        "bool_col_null": "bool_col_null",
+        "float_32_col_nan": "float_32_col_nan",
+        "bool_col": "bool_col",
+        "timestamp_col_null": "timestamp_col_null",
+        "float_64_col_neg_infinity": "float_64_col_neg_infinity",
+        "float_32_col_neg_infinity": "float_32_col_neg_infinity",
+        "bytes_col_null": "bytes_col_null",
+        "string_col_null": "string_col_null",
+        "bytesCol": "bytesCol",
+        "int_64_col_null": "int_64_col_null",
+        "float_64_col": "float_64_col",
+        "float_32_col_infinity": "float_32_col_infinity",
+        "float_32_col": "float_32_col",
+        "float_64_col_infinity": "float_64_col_infinity",
+        "float_64_col_null": "float_64_col_null",
+        "float_64_col_nan": "float_64_col_nan",
+        "float_32_col_null": "float_32_col_null"
+      }
+    }
+  },
+  "ToSource": {
+    "tableName": {
+      "Name": "tableName",
+      "Cols": {
+        "accountId": "accountId",
+        "accountName": "accountName",
+        "accountNumber": "accountNumber",
+        "bool_col_null": "bool_col_null",
+        "float_32_col_nan": "float_32_col_nan",
+        "bool_col": "bool_col",
+        "timestamp_col_null": "timestamp_col_null",
+        "float_64_col_neg_infinity": "float_64_col_neg_infinity",
+        "float_32_col_neg_infinity": "float_32_col_neg_infinity",
+        "bytes_col_null": "bytes_col_null",
+        "string_col_null": "string_col_null",
+        "bytesCol": "bytesCol",
+        "int_64_col_null": "int_64_col_null",
+        "float_64_col": "float_64_col",
+        "float_32_col_infinity": "float_32_col_infinity",
+        "float_32_col": "float_32_col",
+        "float_64_col_infinity": "float_64_col_infinity",
+        "float_64_col_null": "float_64_col_null",
+        "float_64_col_nan": "float_64_col_nan",
+        "float_32_col_null": "float_32_col_null"
+      }
+    }
+  },
+  "SrcToID": {
+    "tableName": {
+      "Name": "t1",
+      "Cols": {
+        "accountId": "c1",
+        "accountName": "c2",
+        "accountNumber": "c4",
+        "bool_col_null": "c5",
+        "float_32_col_nan": "c6",
+        "bool_col": "c7",
+        "timestamp_col_null": "c8",
+        "float_64_col_neg_infinity": "c9",
+        "float_32_col_neg_infinity": "c10",
+        "bytes_col_null": "c11",
+        "string_col_null": "c12",
+        "bytesCol": "c13",
+        "int_64_col_null": "c14",
+        "float_64_col": "c15",
+        "float_32_col_infinity": "c16",
+        "float_32_col": "c17",
+        "float_64_col_infinity": "c18",
+        "float_64_col_null": "c19",
+        "float_64_col_nan": "c20",
+        "float_32_col_null": "c21"
+      }
+    }
+  },
+  "SpannerToID": {
+    "tableName": {
+      "Name": "t1",
+      "Cols": {
+        "accountId": "c1",
+        "migration_shard_id": "c3",
+        "accountName": "c2",
+        "accountNumber": "c4",
+        "bool_col_null": "c5",
+        "float_32_col_nan": "c6",
+        "bool_col": "c7",
+        "timestamp_col_null": "c8",
+        "float_64_col_neg_infinity": "c9",
+        "float_32_col_neg_infinity": "c10",
+        "bytes_col_null": "c11",
+        "string_col_null": "c12",
+        "bytesCol": "c13",
+        "int_64_col_null": "c14",
+        "float_64_col": "c15",
+        "float_32_col_infinity": "c16",
+        "float_32_col": "c17",
+        "float_64_col_infinity": "c18",
+        "float_64_col_null": "c19",
+        "float_64_col_nan": "c20",
+        "float_32_col_null": "c21"
+      }
+    }
+  },
+  "Empty": false
+}

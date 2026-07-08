@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -77,6 +78,15 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
         b ->
             b.addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "identity"));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = TextToBigQueryStreaming.class,
+      template = "Stream_GCS_Text_to_BigQuery_Flex")
+  @Category(DirectRunnerTest.class)
+  public void testTextToBigQueryNoUdf() throws IOException {
+    testTextToBigQuery(Function.identity());
   }
 
   @Test

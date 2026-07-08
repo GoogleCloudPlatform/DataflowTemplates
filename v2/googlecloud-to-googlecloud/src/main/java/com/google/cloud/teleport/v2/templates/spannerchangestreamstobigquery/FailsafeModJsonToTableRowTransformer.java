@@ -29,6 +29,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key.Builder;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.SpannerOptions.CallContextConfigurator;
@@ -38,6 +39,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SchemaUpdateUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -109,7 +111,11 @@ public final class FailsafeModJsonToTableRowTransformer {
                           failsafeModJsonToTableRowOptions.getIgnoreFields(),
                           transformOut,
                           transformDeadLetterOut,
-                          failsafeModJsonToTableRowOptions.getUseStorageWriteApi()))
+                          failsafeModJsonToTableRowOptions.getUseStorageWriteApi(),
+                          failsafeModJsonToTableRowOptions
+                              .getSpannerConfig()
+                              .getRpcPriority()
+                              .get()))
                   .withOutputTags(transformOut, TupleTagList.of(transformDeadLetterOut)));
       out.get(transformDeadLetterOut).setCoder(failsafeModJsonToTableRowOptions.getCoder());
       return out;
@@ -132,6 +138,8 @@ public final class FailsafeModJsonToTableRowTransformer {
       private transient CallContextConfigurator callContextConfigurator;
       private transient boolean seenException;
       private Boolean useStorageWriteApi;
+      private RpcPriority rpcPriority;
+      private Dialect dialect;
 
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
@@ -139,13 +147,16 @@ public final class FailsafeModJsonToTableRowTransformer {
           ImmutableSet<String> ignoreFields,
           TupleTag<TableRow> transformOut,
           TupleTag<FailsafeElement<String, String>> transformDeadLetterOut,
-          Boolean useStorageWriteApi) {
+          Boolean useStorageWriteApi,
+          RpcPriority rpcPriority) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
         this.ignoreFields = ignoreFields;
         this.useStorageWriteApi = useStorageWriteApi;
+        this.rpcPriority = rpcPriority;
+        this.dialect = getDialect(spannerConfig);
       }
 
       private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -167,14 +178,25 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       @Setup
       public void setUp() {
-        Dialect dialect = getDialect(spannerConfig);
-        spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-        spannerTableByName =
-            new SpannerChangeStreamsUtils(
-                    spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
-                .getSpannerTableByName();
-        setUpCallContextConfigurator();
         seenException = false;
+        try {
+          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+          spannerTableByName =
+              new SpannerChangeStreamsUtils(
+                      spannerAccessor.getDatabaseClient(),
+                      spannerChangeStream,
+                      dialect,
+                      rpcPriority)
+                  .getSpannerTableByName();
+        } catch (RuntimeException e) {
+          LOG.error(
+              String.format(
+                  "Caught exception when setting up FailsafeModJsonToTableRowFn, message: %s,"
+                      + " cause: %s",
+                  Optional.ofNullable(e.getMessage()), e.getCause()));
+          throw new RuntimeException(e);
+        }
+        setUpCallContextConfigurator();
       }
 
       @Teardown
@@ -222,6 +244,7 @@ public final class FailsafeModJsonToTableRowTransformer {
               String.format(
                   "error parsing modJsonString input into %s; %s",
                   ObjectNode.class, deadLetterMessage);
+          LOG.error(errorMessage);
           throw new RuntimeException(errorMessage, e);
         }
         for (String excludeFieldName : BigQueryUtils.getBigQueryIntermediateMetadataFieldNames()) {
@@ -237,14 +260,43 @@ public final class FailsafeModJsonToTableRowTransformer {
           String errorMessage =
               String.format(
                   "error converting %s to %s; %s", ObjectNode.class, Mod.class, deadLetterMessage);
+          LOG.error(errorMessage);
           throw new RuntimeException(errorMessage, e);
         }
         String spannerTableName = mod.getTableName();
-        TrackedSpannerTable spannerTable =
-            checkStateNotNull(spannerTableByName.get(spannerTableName));
+        TrackedSpannerTable spannerTable;
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
+
+        // Detect schema updates (newly added tables/columns) from mod and propagate changes into
+        // spannerTableByName which stores schema information by table name.
+        // Not able to get schema update from DELETE mods as they have empty newValuesJson.
+        // However, if the table is not in spannerTableByName, we should still try to update
+        // schema to avoid failure, especially for NEW_VALUES capture type where we can query
+        // INFORMATION_SCHEMA.
+        if (mod.getModType() != ModType.DELETE
+            || !spannerTableByName.containsKey(mod.getTableName())) {
+          spannerTableByName =
+              SchemaUpdateUtils.updateStoredSchemaIfNeeded(
+                  spannerAccessor,
+                  spannerChangeStream,
+                  dialect,
+                  mod,
+                  spannerTableByName,
+                  rpcPriority);
+        }
+
+        try {
+          spannerTable = checkStateNotNull(spannerTableByName.get(spannerTableName));
+
+        } catch (IllegalStateException e) {
+          String errorMessage =
+              String.format(
+                  "Can not find spanner table %s in spannerTableByName", spannerTableName);
+          LOG.error(errorMessage);
+          throw new RuntimeException(errorMessage, e);
+        }
 
         // Set metadata fields of the tableRow.
         TableRow tableRow = new TableRow();
@@ -257,27 +309,17 @@ public final class FailsafeModJsonToTableRowTransformer {
             useStorageWriteApi);
         JSONObject keysJsonObject = new JSONObject(mod.getKeysJson());
         // Set Spanner key columns of the tableRow.
-        for (TrackedSpannerColumn spannerColumn : spannerTable.getPkColumns()) {
-          String spannerColumnName = spannerColumn.getName();
-          if (keysJsonObject.has(spannerColumnName)) {
-            tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
-          } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
-          }
-        }
-
-        // For "DELETE" mod, we only need to set the key columns.
-        if (mod.getModType() == ModType.DELETE) {
-          return tableRow;
-        }
+        SpannerToBigQueryUtils.addSpannerPkColumnsToTableRow(
+            keysJsonObject, spannerTable.getPkColumns(), tableRow);
 
         // Set non-key columns of the tableRow.
         SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
-            mod.getNewValuesJson(), spannerTable.getNonPkColumns(), tableRow);
+            mod.getNewValuesJson(), spannerTable.getNonPkColumns(), tableRow, mod.getModType());
 
         // For "INSERT" mod, we can get all columns from mod.
-        if (mod.getModType() == ModType.INSERT) {
+        // For "DELETE" mod, we only set the key columns. For all non-key columns, we already
+        // populated "null".
+        if (mod.getModType() == ModType.INSERT || mod.getModType() == ModType.DELETE) {
           return tableRow;
         }
 
@@ -304,8 +346,13 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (keysJsonObject.has(spannerColumnName)) {
             SpannerChangeStreamsUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
           } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
+            String errorMessage =
+                String.format(
+                    "Caught exception when snapshot reading key column for UPDATE mod: Cannot find"
+                        + " value for key column %s",
+                    spannerColumnName);
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
           }
         }
 
@@ -353,8 +400,7 @@ public final class FailsafeModJsonToTableRowTransformer {
         return tableRow;
       }
 
-      // Do a Spanner read to retrieve full row. The schema change is currently not supported. so we
-      // assume the schema isn't changed while the pipeline is running,
+      // Do a Spanner read to retrieve full row. Schema can change while the pipeline is running.
       private void readSpannerRow(
           String spannerTableName,
           com.google.cloud.spanner.Key key,
@@ -362,8 +408,7 @@ public final class FailsafeModJsonToTableRowTransformer {
           List<String> spannerNonPkColumnNames,
           com.google.cloud.Timestamp spannerCommitTimestamp,
           TableRow tableRow) {
-        Options.ReadQueryUpdateTransactionOption options =
-            Options.priority(spannerConfig.getRpcPriority().get());
+        Options.ReadQueryUpdateTransactionOption options = Options.priority(rpcPriority);
         // Create a context that uses the custom call configuration.
         Context context =
             Context.current()

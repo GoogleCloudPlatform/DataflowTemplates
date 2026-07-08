@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,6 +59,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -75,18 +77,23 @@ public class ErrorConverters {
       extends PTransform<PCollection<FailsafeElement<String, String>>, WriteResult> {
 
     public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_WriteStringMessageErrors.Builder();
+      return new AutoValue_ErrorConverters_WriteStringMessageErrors.Builder()
+          .setUseWindowedTimestamp(true);
     }
 
     public abstract String getErrorRecordsTable();
 
     public abstract String getErrorRecordsTableSchema();
 
+    public abstract boolean getUseWindowedTimestamp();
+
     @Override
     public WriteResult expand(PCollection<FailsafeElement<String, String>> failedRecords) {
 
       return failedRecords
-          .apply("FailedRecordToTableRow", ParDo.of(new FailedStringToTableRowFn()))
+          .apply(
+              "FailedRecordToTableRow",
+              ParDo.of(new FailedStringToTableRowFn(getUseWindowedTimestamp())))
           .apply(
               "WriteFailedRecordsToBigQuery",
               BigQueryIO.writeTableRows()
@@ -103,6 +110,8 @@ public class ErrorConverters {
 
       public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
 
+      public abstract Builder setUseWindowedTimestamp(boolean useWindowedTimestamp);
+
       public abstract WriteStringMessageErrors build();
     }
   }
@@ -113,6 +122,16 @@ public class ErrorConverters {
    */
   public static class FailedStringToTableRowFn
       extends DoFn<FailsafeElement<String, String>, TableRow> {
+
+    private boolean useWindowedTimestamp;
+
+    public FailedStringToTableRowFn() {
+      this(true);
+    }
+
+    public FailedStringToTableRowFn(boolean useWindowedTimestamp) {
+      this.useWindowedTimestamp = useWindowedTimestamp;
+    }
 
     /**
      * The formatter used to convert timestamps into a BigQuery compatible <a
@@ -128,7 +147,9 @@ public class ErrorConverters {
 
       // Format the timestamp for insertion
       String timestamp =
-          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+          TIMESTAMP_FORMATTER.print(
+              (useWindowedTimestamp ? context.timestamp() : Instant.now())
+                  .toDateTime(DateTimeZone.UTC));
 
       // Build the table row
       TableRow failedRow =
@@ -177,30 +198,55 @@ public class ErrorConverters {
     }
   }
 
-  /**
-   * The {@link WriteKafkaMessageErrors} class is a transform which can be used to write messages
-   * which failed processing to an error records table. Each record is saved to the error table is
-   * enriched with the timestamp of that record and the details of the error including an error
-   * message and stacktrace for debugging.
-   */
   @AutoValue
-  public abstract static class WriteKafkaMessageErrors
-      extends PTransform<PCollection<FailsafeElement<KV<String, String>, String>>, WriteResult> {
-
-    public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_WriteKafkaMessageErrors.Builder();
-    }
-
+  public abstract static class WriteStringKVMessageErrors
+      extends WriteAbstractMessageErrors<KV<String, String>> {
     public abstract String getErrorRecordsTable();
 
     public abstract String getErrorRecordsTableSchema();
 
     @Override
-    public WriteResult expand(
-        PCollection<FailsafeElement<KV<String, String>, String>> failedRecords) {
+    protected PayloadExtractor<KV<String, String>> createPayloadExtractor() {
+      return new KVPayloadExtractor();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WriteStringKVMessageErrors.Builder();
+    }
+
+    /** Builder for {@link WriteStringKVMessageErrors}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTable(String errorRecordsTable);
+
+      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
+
+      public abstract WriteStringKVMessageErrors build();
+    }
+  }
+
+  /**
+   * The {@link WriteAbstractMessageErrors} class is a transform which can be used to write messages
+   * which failed processing to an error records table. Each record is saved to the error table is
+   * enriched with the timestamp of that record and the details of the error including an error
+   * message and stacktrace for debugging.
+   */
+  public abstract static class WriteAbstractMessageErrors<T>
+      extends PTransform<PCollection<FailsafeElement<T, String>>, WriteResult> {
+
+    public abstract String getErrorRecordsTable();
+
+    public abstract String getErrorRecordsTableSchema();
+
+    protected abstract PayloadExtractor<T> createPayloadExtractor();
+
+    @Override
+    public WriteResult expand(PCollection<FailsafeElement<T, String>> failedRecords) {
 
       return failedRecords
-          .apply("FailedRecordToTableRow", ParDo.of(new FailedMessageToTableRowFn()))
+          .apply(
+              "FailedRecordToTableRow",
+              ParDo.of(new FailedMessageToTableRowFn<T>(createPayloadExtractor())))
           .apply(
               "WriteFailedRecordsToBigQuery",
               BigQueryIO.writeTableRows()
@@ -208,16 +254,6 @@ public class ErrorConverters {
                   .withJsonSchema(getErrorRecordsTableSchema())
                   .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                   .withWriteDisposition(WriteDisposition.WRITE_APPEND));
-    }
-
-    /** Builder for {@link WriteKafkaMessageErrors}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setErrorRecordsTable(String errorRecordsTable);
-
-      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
-
-      public abstract WriteKafkaMessageErrors build();
     }
   }
 
@@ -268,8 +304,14 @@ public class ErrorConverters {
    * The {@link FailedMessageToTableRowFn} converts Kafka message which have failed processing into
    * {@link TableRow} objects which can be output to a dead-letter table.
    */
-  public static class FailedMessageToTableRowFn
-      extends DoFn<FailsafeElement<KV<String, String>, String>, TableRow> {
+  public static class FailedMessageToTableRowFn<T>
+      extends DoFn<FailsafeElement<T, String>, TableRow> {
+
+    private final PayloadExtractor<T> payloadExtractor;
+
+    public FailedMessageToTableRowFn(PayloadExtractor<T> payloadExtractor) {
+      this.payloadExtractor = payloadExtractor;
+    }
 
     /**
      * The formatter used to convert timestamps into a BigQuery compatible <a
@@ -280,23 +322,15 @@ public class ErrorConverters {
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      FailsafeElement<KV<String, String>, String> failsafeElement = context.element();
-      KV<String, String> message = failsafeElement.getOriginalPayload();
+      FailsafeElement<T, String> failsafeElement = context.element();
+      T message = failsafeElement.getOriginalPayload();
 
       // Format the timestamp for insertion
       String timestamp =
           TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
 
-      String payloadString =
-          "key: "
-              + (message.getKey() == null ? "" : message.getKey())
-              + "value: "
-              + (message.getValue() == null ? "" : message.getValue());
-
-      byte[] payloadBytes =
-          (message.getValue() == null
-              ? "".getBytes(StandardCharsets.UTF_8)
-              : message.getValue().getBytes(StandardCharsets.UTF_8));
+      String payloadString = payloadExtractor.getPayloadString(message);
+      byte[] payloadBytes = payloadExtractor.getPayloadBytes(message);
 
       // Build the table row
       TableRow failedRow =
@@ -308,6 +342,36 @@ public class ErrorConverters {
               .set("payloadBytes", payloadBytes);
 
       context.output(failedRow);
+    }
+  }
+
+  public interface PayloadExtractor<T> {
+    String getPayloadString(T message);
+
+    byte[] getPayloadBytes(T message);
+  }
+
+  public static class KVPayloadExtractor
+      implements PayloadExtractor<KV<String, String>>, Serializable {
+    @Override
+    public String getPayloadString(KV<String, String> message) {
+      if (message == null) {
+        return null;
+      }
+      return "key: "
+          + (message.getKey() == null ? "" : message.getKey())
+          + "value: "
+          + (message.getValue() == null ? "" : message.getValue());
+    }
+
+    @Override
+    public byte[] getPayloadBytes(KV<String, String> message) {
+      if (message == null) {
+        return null;
+      }
+      return (message.getValue() == null
+          ? "".getBytes(StandardCharsets.UTF_8)
+          : message.getValue().getBytes(StandardCharsets.UTF_8));
     }
   }
 

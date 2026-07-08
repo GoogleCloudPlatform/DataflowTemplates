@@ -9,48 +9,25 @@ https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/io/Compress
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv).
-* **schemaJSONPath** : JSON file with BigQuery Schema description. JSON Example: {
-	"BigQuery Schema": [
-		{
-			"name": "location",
-			"type": "STRING"
-		},
-		{
-			"name": "name",
-			"type": "STRING"
-		},
-		{
-			"name": "age",
-			"type": "STRING"
-		},
-		{
-			"name": "color",
-			"type": "STRING"
-		},
-		{
-			"name": "coffee",
-			"type": "STRING"
-		}
-	]
-}.
-* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
-* **badRecordsOutputTable** : BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}.
-* **delimiter** : The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,).
-* **csvFormat** : CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
+* **inputFilePattern**: The Cloud Storage path to the CSV file that contains the text to process. For example, `gs://your-bucket/path/*.csv`.
+* **schemaJSONPath**: The Cloud Storage path to the JSON file that defines your BigQuery schema.
+* **outputTable**: The name of the BigQuery table that stores your processed data. If you reuse an existing BigQuery table, the data is appended to the destination table.
+* **bigQueryLoadingTemporaryDirectory**: The temporary directory to use during the BigQuery loading process. For example, `gs://your-bucket/your-files/temp_dir`.
+* **badRecordsOutputTable**: The name of the BigQuery table to use to store the rejected data when processing the CSV files. If you reuse an existing BigQuery table, the data is appended to the destination table. The schema of this table must match the error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).
+* **delimiter**: The column delimiter that the CSV file uses. For example, `,`.
+* **csvFormat**: The CSV format according to Apache Commons CSV format. Defaults to: `Default`.
 
 ### Optional parameters
 
-* **containsHeaders** : Input CSV files contain a header record (true/false). Defaults to: false.
-* **csvFileEncoding** : CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8.
+* **containsHeaders**: Whether headers are included in the CSV file. Defaults to: `false`.
+* **csvFileEncoding**: The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
 
 
 
@@ -58,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -72,7 +49,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -98,7 +85,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_CSV_to_BigQuery" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -239,12 +226,12 @@ resource "google_dataflow_job" "gcs_csv_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/path/*.csv"
+    inputFilePattern = "<inputFilePattern>"
     schemaJSONPath = "<schemaJSONPath>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
     badRecordsOutputTable = "<badRecordsOutputTable>"
-    delimiter = ","
+    delimiter = "<delimiter>"
     csvFormat = "<csvFormat>"
     # containsHeaders = "false"
     # csvFileEncoding = "UTF-8"

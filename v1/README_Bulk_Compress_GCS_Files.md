@@ -20,21 +20,21 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bulk_Compress_GCS_Files).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.txt).
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
-* **outputFailureFile** : The error log output file to use for write failures that occur during compression. The contents will be one line for each file which failed compression. Note that this parameter will allow the pipeline to continue processing in the event of a failure. (Example: gs://your-bucket/compressed/failed.csv).
-* **compression** : The compression algorithm used to compress the matched files. Valid algorithms: BZIP2, DEFLATE, GZIP.
+* **inputFilePattern**: The Cloud Storage location of the files you'd like to process. For example, `gs://your-bucket/your-files/*.txt`.
+* **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path`.
+* **outputFailureFile**: The error log output file to use for write failures that occur during compression. The contents will be one line for each file which failed compression. Note that this parameter will allow the pipeline to continue processing in the event of a failure. For example, `gs://your-bucket/compressed/failed.csv`.
+* **compression**: The compression algorithm used to compress the matched files. Valid algorithms: BZIP2, DEFLATE, GZIP.
 
 ### Optional parameters
 
-* **outputFilenameSuffix** : Output filename suffix of the files to write. Defaults to .bzip2, .deflate or .gz depending on the compression algorithm.
+* **outputFilenameSuffix**: Output filename suffix of the files to write. Defaults to .bzip2, .deflate or .gz depending on the compression algorithm.
 
 
 
@@ -42,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -56,7 +56,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -82,7 +92,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Bulk_Compress_GCS_Files" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -211,9 +221,9 @@ resource "google_dataflow_job" "bulk_compress_gcs_files" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-files/*.txt"
-    outputDirectory = "gs://your-bucket/your-path"
-    outputFailureFile = "gs://your-bucket/compressed/failed.csv"
+    inputFilePattern = "<inputFilePattern>"
+    outputDirectory = "<outputDirectory>"
+    outputFailureFile = "<outputFailureFile>"
     compression = "<compression>"
     # outputFilenameSuffix = "<outputFilenameSuffix>"
   }

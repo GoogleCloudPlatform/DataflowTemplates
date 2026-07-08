@@ -30,7 +30,8 @@ public final class TemplatePluginUtils {
    * @param inputStream The InputStream to redirect.
    * @param log The logger to redirect the InputStream to.
    */
-  public static void redirectLinesLog(InputStream inputStream, Logger log) {
+  public static void redirectLinesLog(
+      InputStream inputStream, Logger log, StringBuilder cloudBuildLogs) {
     new Thread(
             () -> {
               try (InputStreamReader isr =
@@ -40,6 +41,9 @@ public final class TemplatePluginUtils {
                 String line;
                 while ((line = bis.readLine()) != null) {
                   log.info(line);
+                  if (cloudBuildLogs != null && line.contains("Logs are available at")) {
+                    cloudBuildLogs.append(line);
+                  }
                 }
               } catch (Exception e) {
                 log.error("Error redirecting stream", e);

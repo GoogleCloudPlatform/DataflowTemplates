@@ -1,0 +1,7 @@
+{
+  "tables": [{
+    "name": "UuidTable",
+    "manifestFile": "UuidTable-manifest.json"
+  }],
+  "dialect": "POSTGRESQL"
+}

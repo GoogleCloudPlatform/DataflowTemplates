@@ -11,30 +11,31 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Bigtable_to_Vector_Embeddings).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to read.
-* **filenamePrefix** : The prefix of the JSON file name. For example, "table1-". Defaults to: part.
-* **idColumn** : The fully qualified column name where the ID is stored. In the format cf:col or _key.
-* **embeddingColumn** : The fully qualified column name where the embeddings are stored. In the format cf:col or _key.
+* **bigtableProjectId**: The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to read from.
+* **outputDirectory**: The Cloud Storage path where the output JSON files are stored. For example, `gs://your-bucket/your-path/`.
+* **idColumn**: The fully qualified column name where the ID is stored. In the format `cf:col` or `_key`.
+* **embeddingColumn**: The fully qualified column name where the embeddings are stored. In the format `cf:col` or `_key`.
 
 ### Optional parameters
 
-* **outputDirectory** : The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
-* **crowdingTagColumn** : The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.
-* **embeddingByteSize** : The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4.
-* **allowRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.
-* **denyRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.
-* **intNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
-* **floatNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
-* **doubleNumericRestrictsMappings** : The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **filenamePrefix**: The prefix of the JSON filename. For example: `table1-`. If no value is provided, defaults to `part`.
+* **crowdingTagColumn**: The fully qualified column name where the crowding tag is stored. In the format `cf:col` or `_key`.
+* **embeddingByteSize**: The byte size of each entry in the embeddings array. For float, use the value `4`. For double, use the value `8`. Defaults to `4`.
+* **allowRestrictsMappings**: The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format `cf:col->alias`.
+* **denyRestrictsMappings**: The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format `cf:col->alias`.
+* **intNumericRestrictsMappings**: The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format `cf:col->alias`.
+* **floatNumericRestrictsMappings**: The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.
+* **doubleNumericRestrictsMappings**: The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.
+* **bigtableAppProfileId**: The ID of the Cloud Bigtable app profile to be used for the export. Defaults to: default.
 
 
 
@@ -42,7 +43,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -56,7 +57,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -82,7 +93,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Bigtable_to_Vector_Embeddings" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -118,12 +129,12 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/Cloud_Bigtable_to_Vect
 export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
-export FILENAME_PREFIX=part
+export OUTPUT_DIRECTORY=<outputDirectory>
 export ID_COLUMN=<idColumn>
 export EMBEDDING_COLUMN=<embeddingColumn>
 
 ### Optional
-export OUTPUT_DIRECTORY=<outputDirectory>
+export FILENAME_PREFIX=part
 export CROWDING_TAG_COLUMN=<crowdingTagColumn>
 export EMBEDDING_BYTE_SIZE=4
 export ALLOW_RESTRICTS_MAPPINGS=<allowRestrictsMappings>
@@ -131,6 +142,7 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
+export BIGTABLE_APP_PROFILE_ID=default
 
 gcloud dataflow jobs run "cloud-bigtable-to-vector-embeddings-job" \
   --project "$PROJECT" \
@@ -149,7 +161,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-vector-embeddings-job" \
   --parameters "denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS" \
   --parameters "intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS" \
   --parameters "floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS" \
-  --parameters "doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS"
+  --parameters "doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
 ```
 
 For more information about the command, please check:
@@ -171,12 +184,12 @@ export REGION=us-central1
 export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
-export FILENAME_PREFIX=part
+export OUTPUT_DIRECTORY=<outputDirectory>
 export ID_COLUMN=<idColumn>
 export EMBEDDING_COLUMN=<embeddingColumn>
 
 ### Optional
-export OUTPUT_DIRECTORY=<outputDirectory>
+export FILENAME_PREFIX=part
 export CROWDING_TAG_COLUMN=<crowdingTagColumn>
 export EMBEDDING_BYTE_SIZE=4
 export ALLOW_RESTRICTS_MAPPINGS=<allowRestrictsMappings>
@@ -184,6 +197,7 @@ export DENY_RESTRICTS_MAPPINGS=<denyRestrictsMappings>
 export INT_NUMERIC_RESTRICTS_MAPPINGS=<intNumericRestrictsMappings>
 export FLOAT_NUMERIC_RESTRICTS_MAPPINGS=<floatNumericRestrictsMappings>
 export DOUBLE_NUMERIC_RESTRICTS_MAPPINGS=<doubleNumericRestrictsMappings>
+export BIGTABLE_APP_PROFILE_ID=default
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -192,7 +206,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-vector-embeddings-job" \
 -DtemplateName="Cloud_Bigtable_to_Vector_Embeddings" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,idColumn=$ID_COLUMN,embeddingColumn=$EMBEDDING_COLUMN,crowdingTagColumn=$CROWDING_TAG_COLUMN,embeddingByteSize=$EMBEDDING_BYTE_SIZE,allowRestrictsMappings=$ALLOW_RESTRICTS_MAPPINGS,denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS,intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS,floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS,doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,idColumn=$ID_COLUMN,embeddingColumn=$EMBEDDING_COLUMN,crowdingTagColumn=$CROWDING_TAG_COLUMN,embeddingByteSize=$EMBEDDING_BYTE_SIZE,allowRestrictsMappings=$ALLOW_RESTRICTS_MAPPINGS,denyRestrictsMappings=$DENY_RESTRICTS_MAPPINGS,intNumericRestrictsMappings=$INT_NUMERIC_RESTRICTS_MAPPINGS,floatNumericRestrictsMappings=$FLOAT_NUMERIC_RESTRICTS_MAPPINGS,doubleNumericRestrictsMappings=$DOUBLE_NUMERIC_RESTRICTS_MAPPINGS,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
 -f v1
 ```
 
@@ -241,10 +255,10 @@ resource "google_dataflow_job" "cloud_bigtable_to_vector_embeddings" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    filenamePrefix = "part"
+    outputDirectory = "<outputDirectory>"
     idColumn = "<idColumn>"
     embeddingColumn = "<embeddingColumn>"
-    # outputDirectory = "gs://your-bucket/your-path/"
+    # filenamePrefix = "part"
     # crowdingTagColumn = "<crowdingTagColumn>"
     # embeddingByteSize = "4"
     # allowRestrictsMappings = "<allowRestrictsMappings>"
@@ -252,6 +266,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_vector_embeddings" {
     # intNumericRestrictsMappings = "<intNumericRestrictsMappings>"
     # floatNumericRestrictsMappings = "<floatNumericRestrictsMappings>"
     # doubleNumericRestrictsMappings = "<doubleNumericRestrictsMappings>"
+    # bigtableAppProfileId = "default"
   }
 }
 ```

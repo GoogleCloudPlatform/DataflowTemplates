@@ -20,6 +20,16 @@ package org.apache.beam.it.gcp.datastream;
 import static org.apache.beam.it.gcp.datastream.DatastreamResourceManagerUtils.generateDatastreamId;
 
 import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.longrunning.OperationTimedPollAlgorithm;
+import com.google.api.gax.retrying.RetrySettings;
+import com.google.api.gax.rpc.AbortedException;
+import com.google.api.gax.rpc.AlreadyExistsException;
+import com.google.api.gax.rpc.DeadlineExceededException;
+import com.google.api.gax.rpc.InternalException;
+import com.google.api.gax.rpc.NotFoundException;
+import com.google.api.gax.rpc.ResourceExhaustedException;
+import com.google.api.gax.rpc.UnavailableException;
+import com.google.api.gax.rpc.UnknownException;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.datastream.v1.AvroFileFormat;
 import com.google.cloud.datastream.v1.BigQueryDestinationConfig;
@@ -51,13 +61,17 @@ import com.google.cloud.datastream.v1.StreamName;
 import com.google.cloud.datastream.v1.UpdateStreamRequest;
 import com.google.protobuf.Duration;
 import com.google.protobuf.FieldMask;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.beam.it.common.ResourceManager;
+import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +86,13 @@ public final class DatastreamResourceManager implements ResourceManager {
 
   private static final java.time.Duration DEFAULT_BQ_STALENESS_DURATION =
       java.time.Duration.ofMinutes(15);
+
+  // Retry settings for client operations
+  private static final int FAILSAFE_MAX_RETRIES = 5;
+  private static final java.time.Duration FAILSAFE_RETRY_DELAY = java.time.Duration.ofSeconds(10);
+  private static final java.time.Duration FAILSAFE_RETRY_MAX_DELAY =
+      java.time.Duration.ofSeconds(180);
+  private static final double FAILSAFE_RETRY_JITTER = 0.1;
 
   private final String testId;
   private final String projectId;
@@ -90,12 +111,38 @@ public final class DatastreamResourceManager implements ResourceManager {
   }
 
   private DatastreamResourceManager(Builder builder) throws IOException {
-    this(
-        DatastreamClient.create(
-            DatastreamSettings.newBuilder()
-                .setCredentialsProvider(builder.credentialsProvider)
-                .build()),
-        builder);
+    this(createDatastreamClient(builder), builder);
+  }
+
+  private static DatastreamClient createDatastreamClient(Builder builder) throws IOException {
+    DatastreamSettings.Builder settingsBuilder = DatastreamSettings.newBuilder();
+    settingsBuilder.setCredentialsProvider(builder.credentialsProvider);
+
+    RetrySettings lroRetrySettings =
+        RetrySettings.newBuilder()
+            .setInitialRetryDelay(org.threeten.bp.Duration.ofSeconds(5))
+            .setRetryDelayMultiplier(1.5)
+            .setMaxRetryDelay(org.threeten.bp.Duration.ofSeconds(45))
+            .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(1))
+            .setRpcTimeoutMultiplier(1.5)
+            .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(1))
+            .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(15))
+            .build();
+
+    OperationTimedPollAlgorithm lroPollingAlgorithm =
+        OperationTimedPollAlgorithm.create(lroRetrySettings);
+
+    settingsBuilder.createStreamOperationSettings().setPollingAlgorithm(lroPollingAlgorithm);
+    settingsBuilder.updateStreamOperationSettings().setPollingAlgorithm(lroPollingAlgorithm);
+    settingsBuilder.deleteStreamOperationSettings().setPollingAlgorithm(lroPollingAlgorithm);
+    settingsBuilder
+        .createConnectionProfileOperationSettings()
+        .setPollingAlgorithm(lroPollingAlgorithm);
+    settingsBuilder
+        .deleteConnectionProfileOperationSettings()
+        .setPollingAlgorithm(lroPollingAlgorithm);
+
+    return DatastreamClient.create(settingsBuilder.build());
   }
 
   @VisibleForTesting
@@ -140,9 +187,25 @@ public final class DatastreamResourceManager implements ResourceManager {
             .setConnectionProfileId(connectionProfileId)
             .build();
 
-    ConnectionProfile reference = datastreamClient.createConnectionProfileAsync(request).get();
-    createdConnectionProfileIds.add(connectionProfileId);
-    return reference;
+    try {
+      ConnectionProfile reference =
+          Failsafe.with(retryOnException())
+              .get(() -> datastreamClient.createConnectionProfileAsync(request).get());
+      createdConnectionProfileIds.add(connectionProfileId);
+      return reference;
+    } catch (Exception e) {
+      if (ExceptionUtils.containsType(e, AlreadyExistsException.class)
+          || ExceptionUtils.containsMessage(e, "ALREADY_EXISTS")) {
+        LOG.warn(
+            "Connection Profile {} already exists in project {}. Using existing connection profile.",
+            connectionProfileId,
+            projectId);
+        createdConnectionProfileIds.add(connectionProfileId);
+        return datastreamClient.getConnectionProfile(
+            ConnectionProfileName.format(projectId, location, connectionProfileId));
+      }
+      throw new DatastreamResourceManagerException("Failed to create connection profile. ", e);
+    }
   }
 
   /**
@@ -238,7 +301,8 @@ public final class DatastreamResourceManager implements ResourceManager {
         sourceConfigBuilder.setMysqlSourceConfig((MysqlSourceConfig) source.config());
         break;
       case POSTGRESQL:
-        sourceConfigBuilder.setPostgresqlSourceConfig((PostgresqlSourceConfig) source.config());
+        sourceConfigBuilder.setPostgresqlSourceConfig(
+            ((PostgresqlSourceConfig.Builder) source.config()).build());
         break;
       case ORACLE:
         sourceConfigBuilder.setOracleSourceConfig((OracleSourceConfig) source.config());
@@ -445,12 +509,89 @@ public final class DatastreamResourceManager implements ResourceManager {
                       .build())
               .build();
 
-      Stream reference = datastreamClient.createStreamAsync(request).get();
+      Stream reference =
+          Failsafe.with(retryOnException())
+              .get(() -> datastreamClient.createStreamAsync(request).get());
       createdStreamIds.add(streamId);
 
       LOG.info("Successfully created Stream {} in project {}.", streamId, projectId);
       return reference;
     } catch (Exception e) {
+      if (ExceptionUtils.containsType(e, AlreadyExistsException.class)
+          || ExceptionUtils.containsMessage(e, "ALREADY_EXISTS")) {
+        LOG.warn(
+            "Stream {} already exists in project {}. Using existing stream.", streamId, projectId);
+        createdStreamIds.add(streamId);
+        return datastreamClient.getStream(StreamName.format(projectId, location, streamId));
+      }
+      throw new DatastreamResourceManagerException("Failed to create stream. ", e);
+    }
+  }
+
+  /**
+   * Creates a Datastream stream from the given source to the given destination for only cdc events.
+   *
+   * @param streamId The ID of the stream.
+   * @param sourceConfig A SourceConfig object representing the source configuration.
+   * @param destinationConfig A DestinationConfig object representing the destination configuration.
+   * @return A Datastream stream object.
+   */
+  public synchronized Stream createStreamWoBackfill(
+      String streamId, SourceConfig sourceConfig, DestinationConfig destinationConfig) {
+    return createStreamWoBackfill(
+        streamId,
+        sourceConfig,
+        destinationConfig,
+        Stream.BackfillNoneStrategy.getDefaultInstance());
+  }
+
+  /**
+   * Creates a Datastream stream from the given source to the given destination for only cdc events.
+   *
+   * @param streamId The ID of the stream.
+   * @param sourceConfig A SourceConfig object representing the source configuration.
+   * @param destinationConfig A DestinationConfig object representing the destination configuration.
+   * @param backfillNoneStrategy
+   * @return A Datastream stream object.
+   */
+  public synchronized Stream createStreamWoBackfill(
+      String streamId,
+      SourceConfig sourceConfig,
+      DestinationConfig destinationConfig,
+      Stream.BackfillNoneStrategy backfillNoneStrategy) {
+
+    streamId = generateDatastreamId(testId + "-" + streamId);
+    LOG.info("Creating Stream {} in project {}.", streamId, projectId);
+
+    try {
+      CreateStreamRequest request =
+          CreateStreamRequest.newBuilder()
+              .setParent(LocationName.format(projectId, location))
+              .setStreamId(streamId)
+              .setStream(
+                  Stream.newBuilder()
+                      .setDisplayName(streamId)
+                      .setSourceConfig(sourceConfig)
+                      .setDestinationConfig(destinationConfig)
+                      .setBackfillNone(backfillNoneStrategy)
+                      .build())
+              .build();
+
+      Stream reference =
+          Failsafe.with(retryOnException())
+              .get(() -> datastreamClient.createStreamAsync(request).get());
+      createdStreamIds.add(streamId);
+
+      LOG.info("Successfully created Stream {} in project {}.", streamId, projectId);
+      return reference;
+    } catch (Exception e) {
+      if (ExceptionUtils.containsType(e, AlreadyExistsException.class)
+          || ExceptionUtils.containsMessage(e, "ALREADY_EXISTS")) {
+        LOG.warn(
+            "Stream {} already exists in project {}. Using existing stream.", streamId, projectId);
+        createdStreamIds.add(streamId);
+        return datastreamClient.getStream(StreamName.format(projectId, location, streamId));
+      }
       throw new DatastreamResourceManagerException("Failed to create stream. ", e);
     }
   }
@@ -469,7 +610,9 @@ public final class DatastreamResourceManager implements ResourceManager {
               .setUpdateMask(fieldMaskBuilder)
               .build();
 
-      Stream reference = datastreamClient.updateStreamAsync(request).get();
+      Stream reference =
+          Failsafe.with(retryOnException())
+              .get(() -> datastreamClient.updateStreamAsync(request).get());
 
       LOG.info(
           "Successfully updated {}'s state to {} in project {}.",
@@ -497,35 +640,57 @@ public final class DatastreamResourceManager implements ResourceManager {
     LOG.info("Cleaning up Datastream resource manager.");
     boolean producedError = false;
 
-    try {
-      for (String stream : createdStreamIds) {
-        datastreamClient
-            .deleteStreamAsync(
-                DeleteStreamRequest.newBuilder()
-                    .setName(StreamName.format(projectId, location, stream))
-                    .build())
-            .get();
+    for (String stream : createdStreamIds) {
+      try {
+        Failsafe.with(retryOnException())
+            .get(
+                () ->
+                    datastreamClient
+                        .deleteStreamAsync(
+                            DeleteStreamRequest.newBuilder()
+                                .setName(StreamName.format(projectId, location, stream))
+                                .build())
+                        .get());
+      } catch (Exception e) {
+        if (ExceptionUtils.containsType(e, NotFoundException.class)
+            || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
+          LOG.warn(
+              "Stream {} not found in project {}. Assuming already deleted.", stream, projectId);
+        } else {
+          LOG.error("Failed to delete stream {}.", stream, e);
+          producedError = true;
+        }
       }
-      LOG.info("Successfully deleted stream(s). ");
-    } catch (InterruptedException | ExecutionException e) {
-      LOG.error("Failed to delete stream(s).");
-      producedError = true;
     }
+    LOG.info("Successfully deleted stream(s). ");
 
-    try {
-      for (String connectionProfile : createdConnectionProfileIds) {
-        datastreamClient
-            .deleteConnectionProfileAsync(
-                DeleteConnectionProfileRequest.newBuilder()
-                    .setName(ConnectionProfileName.format(projectId, location, connectionProfile))
-                    .build())
-            .get();
+    for (String connectionProfile : createdConnectionProfileIds) {
+      try {
+        Failsafe.with(retryOnException())
+            .get(
+                () ->
+                    datastreamClient
+                        .deleteConnectionProfileAsync(
+                            DeleteConnectionProfileRequest.newBuilder()
+                                .setName(
+                                    ConnectionProfileName.format(
+                                        projectId, location, connectionProfile))
+                                .build())
+                        .get());
+      } catch (Exception e) {
+        if (ExceptionUtils.containsType(e, NotFoundException.class)
+            || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
+          LOG.warn(
+              "Connection Profile {} not found in project {}. Assuming already deleted.",
+              connectionProfile,
+              projectId);
+        } else {
+          LOG.error("Failed to delete connection profile {}.", connectionProfile, e);
+          producedError = true;
+        }
       }
-      LOG.info("Successfully deleted connection profile(s). ");
-    } catch (InterruptedException | ExecutionException e) {
-      LOG.error("Failed to delete connection profile(s).");
-      producedError = true;
     }
+    LOG.info("Successfully deleted connection profile(s). ");
 
     try {
       datastreamClient.close();
@@ -540,6 +705,27 @@ public final class DatastreamResourceManager implements ResourceManager {
     }
 
     LOG.info("Successfully cleaned up Datastream resource manager.");
+  }
+
+  private static <T> RetryPolicy<T> retryOnException() {
+    return RetryPolicy.<T>builder()
+        .handleIf(
+            exception ->
+                ExceptionUtils.containsType(exception, CancellationException.class)
+                    || ExceptionUtils.containsType(exception, UnavailableException.class)
+                    || ExceptionUtils.containsType(exception, DeadlineExceededException.class)
+                    || ExceptionUtils.containsType(exception, ResourceExhaustedException.class)
+                    || ExceptionUtils.containsType(exception, AbortedException.class)
+                    || ExceptionUtils.containsType(exception, InternalException.class)
+                    || ExceptionUtils.containsType(exception, UnknownException.class)
+                    || ExceptionUtils.containsMessage(exception, "CONNECTION_TIMEOUT")
+                    || ExceptionUtils.containsMessage(exception, "CONNECTIVITY")
+                    || ExceptionUtils.containsMessage(exception, "INTERNAL")
+                    || ExceptionUtils.containsMessage(exception, "Unknown Error"))
+        .withMaxRetries(FAILSAFE_MAX_RETRIES)
+        .withBackoff(FAILSAFE_RETRY_DELAY, FAILSAFE_RETRY_MAX_DELAY)
+        .withJitter(FAILSAFE_RETRY_JITTER)
+        .build();
   }
 
   /** Builder for {@link DatastreamResourceManager}. */

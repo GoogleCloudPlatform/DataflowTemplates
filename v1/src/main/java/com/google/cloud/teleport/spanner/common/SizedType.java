@@ -49,6 +49,18 @@ public final class SizedType {
   }
 
   public static String typeString(Type type, Integer size) {
+    return typeString(type, size, /* outputAsDdlRepresentation= */ false);
+  }
+
+  /**
+   * @param type spanner type to be written as string
+   * @param size Size of type (Used for string/bytes types)
+   * @param outputAsDdlRepresentation Whether the typeString output should be a type's ddl
+   *     representation or cloud spanner model. (Used for proto/enum types where the model
+   *     representation uses PROTO and ENUM keywords while ddl doesn't.)
+   * @return The string representation of spanner type
+   */
+  public static String typeString(Type type, Integer size, boolean outputAsDdlRepresentation) {
     switch (type.getCode()) {
       case BOOL:
         return "BOOL";
@@ -66,6 +78,10 @@ public final class SizedType {
         return "FLOAT64";
       case PG_FLOAT8:
         return "double precision";
+      case UUID:
+        return "UUID";
+      case PG_UUID:
+        return "uuid";
       case STRING:
         return "STRING(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
       case PG_VARCHAR:
@@ -74,6 +90,8 @@ public final class SizedType {
         return "text";
       case BYTES:
         return "BYTES(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+      case TOKENLIST:
+        return "TOKENLIST";
       case PG_BYTEA:
         return "bytea";
       case DATE:
@@ -94,10 +112,26 @@ public final class SizedType {
         return "JSON";
       case PG_JSONB:
         return "jsonb";
+      case PG_SPANNER_TOKENLIST:
+        return "spanner.tokenlist";
+      case PROTO:
+        if (outputAsDdlRepresentation) {
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
+        } else {
+          return "PROTO<" + type.getProtoTypeFqn() + ">";
+        }
+      case ENUM:
+        if (outputAsDdlRepresentation) {
+          String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+          return quote + type.getProtoTypeFqn() + quote;
+        } else {
+          return "ENUM<" + type.getProtoTypeFqn() + ">";
+        }
       case ARRAY:
         {
           Type arrayType = type.getArrayElementType();
-          return "ARRAY<" + typeString(arrayType, size) + ">";
+          return "ARRAY<" + typeString(arrayType, size, outputAsDdlRepresentation) + ">";
         }
       case STRUCT:
         {
@@ -107,7 +141,7 @@ public final class SizedType {
             sb.append(i > 0 ? ", " : "")
                 .append(field.getName())
                 .append(" ")
-                .append(typeString(field.getType(), -1));
+                .append(typeString(field.getType(), -1, outputAsDdlRepresentation));
           }
           return "STRUCT<" + sb.toString() + ">";
         }
@@ -121,15 +155,21 @@ public final class SizedType {
     throw new IllegalArgumentException("Unknown type " + type);
   }
 
-  public static String typeString(Type type, Integer size, int arrayLength) {
+  public static String typeString(
+      Type type, Integer size, int arrayLength, boolean outputAsDdlRepresentation) {
     switch (type.getCode()) {
       case ARRAY:
         {
-          return typeString(type, size) + "(vector_length=>" + Integer.toString(arrayLength) + ")";
+          return typeString(type, size, outputAsDdlRepresentation)
+              + "(vector_length=>"
+              + Integer.toString(arrayLength)
+              + ")";
         }
       case PG_ARRAY:
         {
-          return typeString(type, size) + " vector length " + Integer.toString(arrayLength);
+          return typeString(type, size, outputAsDdlRepresentation)
+              + " vector length "
+              + Integer.toString(arrayLength);
         }
     }
     throw new IllegalArgumentException("arrayLength not supported for " + type);
@@ -159,6 +199,9 @@ public final class SizedType {
           if (spannerType.equals("FLOAT64")) {
             return t(Type.float64(), null);
           }
+          if (spannerType.equals("UUID")) {
+            return t(Type.uuid(), null);
+          }
           if (spannerType.startsWith("STRING")) {
             String sizeStr = spannerType.substring(7, spannerType.length() - 1);
             int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
@@ -181,6 +224,9 @@ public final class SizedType {
           if (spannerType.equals("JSON")) {
             return t(Type.json(), null);
           }
+          if (spannerType.equals("TOKENLIST")) {
+            return t(Type.tokenlist(), null);
+          }
           if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx> or ARRAY<xxx>(vector_length)"
 
@@ -196,6 +242,16 @@ public final class SizedType {
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
+          }
+          if (spannerType.startsWith("PROTO<")) {
+            // Substring "PROTO<xxx>"
+            String spannerProtoType = spannerType.substring(6, spannerType.length() - 1);
+            return t(Type.proto(spannerProtoType), null);
+          }
+          if (spannerType.startsWith("ENUM<")) {
+            // Substring "ENUM<xxx>"
+            String spannerEnumType = spannerType.substring(5, spannerType.length() - 1);
+            return t(Type.protoEnum(spannerEnumType), null);
           }
           if (spannerType.startsWith("STRUCT<")) {
             // Substring "STRUCT<xxx>"
@@ -280,6 +336,9 @@ public final class SizedType {
           if (spannerType.equals("text")) {
             return t(Type.pgText(), -1);
           }
+          if (spannerType.equals("uuid")) {
+            return t(Type.pgUuid(), null);
+          }
           if (spannerType.startsWith("character varying")) {
             int size = -1;
             if (spannerType.length() > 18) {
@@ -305,6 +364,9 @@ public final class SizedType {
           }
           if (spannerType.equals("spanner.commit_timestamp")) {
             return t(Type.pgSpannerCommitTimestamp(), null);
+          }
+          if (spannerType.equals("spanner.tokenlist")) {
+            return t(Type.pgSpannerTokenlist(), null);
           }
           break;
         }

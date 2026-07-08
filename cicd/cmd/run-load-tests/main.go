@@ -41,7 +41,8 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(4))
+		mvnFlags.ThreadCount(4),
+		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -57,6 +58,9 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunLoadTests(),
+		mvnFlags.ThreadCount(4),
+		mvnFlags.InternalMaven(),
+		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
@@ -64,7 +68,15 @@ func main() {
 		flags.PrivateConnectivity(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
-		flags.ExportTable())
+		flags.ExportTable(),
+		flags.StaticOracleHost(),
+		flags.StaticOracleSysPassword(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyMySqlPort(),
+		flags.CloudProxyPostgresPort(),
+		flags.CloudProxyPassword(),
+		mvnFlags.SpecificTest(flags.TestToRun()),
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

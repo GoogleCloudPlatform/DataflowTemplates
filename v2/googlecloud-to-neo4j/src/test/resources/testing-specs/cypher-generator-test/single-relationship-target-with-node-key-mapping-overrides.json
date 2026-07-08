@@ -1,0 +1,98 @@
+{
+  "version": "1",
+  "sources": [
+    {
+      "type": "text",
+      "name": "persons",
+      "header": [
+        "id",
+        "name"
+      ],
+      "data": [
+        [42, "Jane Doe"],
+        [84, "John Doe"]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "topics",
+      "header": [
+        "id",
+        "name"
+      ],
+      "data": [
+        [1, "Literature"],
+        [2, "Music"],
+        [3, "Sports"]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "persons_like_topics",
+      "header": [
+        "person_id",
+        "topic_id"
+      ],
+      "data": [
+        [42, 1],
+        [42, 3],
+        [84, 2]
+      ]
+    }
+  ],
+  "targets": {
+    "nodes": [
+      {
+        "name": "person_nodes",
+        "write_mode": "CREATE",
+        "source": "persons",
+        "labels": ["Person"],
+        "properties": [
+          {"source_field": "id", "target_property": "id"},
+          {"source_field": "name", "target_property": "name"}
+        ],
+        "schema": {
+          "key_constraints": [
+            {"name": "person_key_id", "label": "Person", "properties":  ["id"]}
+          ]
+        }
+      },
+      {
+        "name": "topic_nodes",
+        "write_mode": "CREATE",
+        "source": "topics",
+        "labels": ["Topic"],
+        "properties": [
+          {"source_field": "id", "target_property": "id"},
+          {"source_field": "name", "target_property": "name"}
+        ],
+        "schema": {
+          "key_constraints": [
+            {"name": "topic_key_id", "label": "Topic", "properties":  ["id"]}
+          ]
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "name": "persons_like_topics_relationships",
+        "write_mode": "CREATE",
+        "node_match_mode": "MATCH",
+        "source": "persons_like_topics",
+        "type": "LIKES",
+        "start_node_reference": {
+          "name": "person_nodes",
+          "key_mappings": [
+            {"source_field": "person_id", "node_property": "id"}
+          ]
+        },
+        "end_node_reference": {
+          "name": "topic_nodes",
+          "key_mappings": [
+            {"source_field": "topic_id", "node_property": "id"}
+          ]
+        }
+      }
+    ]
+  }
+}

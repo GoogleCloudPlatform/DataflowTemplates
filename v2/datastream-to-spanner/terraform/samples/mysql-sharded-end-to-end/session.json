@@ -1,0 +1,7 @@
+{
+  "SessionName": "NewSession",
+  "DatabaseType": "mysql",
+  "Dialect": "google_standard_sql",
+  "SpSchema": {},
+  "SrcSchema": {}
+}

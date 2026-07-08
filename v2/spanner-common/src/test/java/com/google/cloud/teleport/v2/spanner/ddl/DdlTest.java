@@ -22,12 +22,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType.Kind;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.junit.Rule;
@@ -58,7 +63,13 @@ public class DdlTest {
 
   @Test
   public void testDdlGSQL() {
+    ForeignKey.Builder usersForeignKeyBuilder =
+        ForeignKey.builder().name("fk").table("Users").referencedTable("AllowedNames");
+    usersForeignKeyBuilder.columnsBuilder().add("first_name");
+    usersForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
+
     Ddl.Builder builder = Ddl.builder();
+
     builder
         .createTable("Users")
         .column("id")
@@ -79,14 +90,25 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("balance")
+        .type(Type.float32())
+        .endColumn()
         .primaryKey()
         .asc("id")
         .end()
-        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
-        .foreignKeys(
+        .indexes(
             ImmutableList.of(
-                "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                    + " REFERENCES `AllowedNames` (`first_name`)"))
+                Index.builder()
+                    .name("UsersByFirstName")
+                    .table("Users")
+                    .columns()
+                    .create()
+                    .name("first_name")
+                    .asc()
+                    .endIndexColumn()
+                    .end()
+                    .build()))
+        .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
     Ddl ddl = builder.build();
@@ -98,9 +120,10 @@ public class DdlTest {
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `balance` FLOAT32,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC)"
-                + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
     List<String> statements = ddl.statements();
@@ -113,21 +136,61 @@ public class DdlTest {
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `balance` FLOAT32,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC)"));
     assertThat(
         statements.get(1),
-        equalToCompressingWhiteSpace(" CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
+        equalToCompressingWhiteSpace(
+            " CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC)"));
     assertThat(
         statements.get(2),
         equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) REFERENCES"
                 + " `AllowedNames` (`first_name`)"));
     assertNotNull(ddl.hashCode());
+    assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
+    assertEquals(1, ddl.tablesReferenced("Users").size());
+  }
+
+  @Test
+  public void testDdlCassandraOptions() {
+
+    Ddl.Builder builder = Ddl.builder();
+
+    builder
+        .createTable("Users")
+        .column("id")
+        .int64()
+        .notNull()
+        .columnOptions(ImmutableList.of("CASSANDRA_TYPE=\"int\"", "SOME_UNKNOWN_OPTION"))
+        .endColumn()
+        .column("first_name")
+        .string()
+        .size(10)
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .endTable();
+    Ddl ddl = builder.build();
+    assertEquals(
+        ddl.table("Users").column("id").cassandraAnnotation().cassandraType(),
+        CassandraType.fromAnnotation("int"));
+    assertEquals(
+        ddl.table("Users").column("first_name").cassandraAnnotation().cassandraType().getKind(),
+        Kind.NONE);
   }
 
   @Test
   public void testDdlPG() {
+    ForeignKey.Builder usersForeignKeyBuilder =
+        ForeignKey.builder(Dialect.POSTGRESQL)
+            .name("fk")
+            .table("Users")
+            .referencedTable("AllowedNames");
+    usersForeignKeyBuilder.columnsBuilder().add("first_name");
+    usersForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
     Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
     builder
         .createTable("Users")
@@ -149,15 +212,25 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("balance")
+        .type(Type.pgFloat4())
+        .endColumn()
         .primaryKey()
         .asc("id")
         .end()
         .indexes(
-            ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
-        .foreignKeys(
             ImmutableList.of(
-                "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                    + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+                Index.builder(Dialect.POSTGRESQL)
+                    .name("UsersByFirstName")
+                    .table("Users")
+                    .columns()
+                    .create()
+                    .name("first_name")
+                    .asc()
+                    .endIndexColumn()
+                    .end()
+                    .build()))
+        .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(
             ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
         .endTable();
@@ -171,17 +244,20 @@ public class DdlTest {
                 + " \"last_name\" character varying,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"balance\" real,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
-                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\"(\"first_name\" ASC)"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"));
     assertNotNull(ddl.hashCode());
+    assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
+    assertEquals(1, ddl.tablesReferenced("Users").size());
   }
 
   @Test
-  public void testInterleavingGSQL() {
+  public void testInterleaveInParentGSQL() {
     Ddl ddl =
         Ddl.builder()
             .createTable("Users")
@@ -217,7 +293,8 @@ public class DdlTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
             .onDeleteCascade()
             .endTable()
             .build();
@@ -245,10 +322,14 @@ public class DdlTest {
     assertTrue(perLevelView.containsKey(1));
     assertEquals("account", perLevelView.get(1).iterator().next());
     assertNotNull(ddl.hashCode());
+
+    List<String> tablesReferenced = ddl.tablesReferenced("Account");
+    assertTrue(tablesReferenced.contains("Users"));
+    assertEquals(1, tablesReferenced.size());
   }
 
   @Test
-  public void testInterleavingPG() {
+  public void testInterleaveInParentPG() {
     Ddl ddl =
         Ddl.builder(Dialect.POSTGRESQL)
             .createTable("Users")
@@ -284,7 +365,8 @@ public class DdlTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
             .onDeleteCascade()
             .endTable()
             .build();
@@ -305,6 +387,375 @@ public class DdlTest {
                 + " ) "
                 + " INTERLEAVE IN PARENT \"Users\" ON DELETE CASCADE"));
     assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void testInterleaveInGSQL() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .float64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleavingParent("Users")
+            .interleaveType("IN")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE TABLE `Account` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `balanceId`                             INT64 NOT NULL,"
+                + " `balance`                               FLOAT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC), "
+                + " INTERLEAVE IN `Users`"));
+    Collection<Table> rootTables = ddl.rootTables();
+    assertEquals(1, rootTables.size());
+    assertEquals("Users", rootTables.iterator().next().name());
+    HashMultimap<Integer, String> perLevelView = ddl.perLevelView();
+    assertEquals(2, perLevelView.size());
+    assertTrue(perLevelView.containsKey(0));
+    assertEquals("users", perLevelView.get(0).iterator().next());
+    assertTrue(perLevelView.containsKey(1));
+    assertEquals("account", perLevelView.get(1).iterator().next());
+    assertNotNull(ddl.hashCode());
+
+    List<String> tablesReferenced = ddl.tablesReferenced("Account");
+  }
+
+  @Test
+  public void testInterleaveInPG() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.pgVarchar())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .pgFloat8()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleavingParent("Users")
+            .interleaveType("IN")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " CREATE TABLE \"Account\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"balanceId\"                             bigint NOT NULL,"
+                + " \"balance\"                               double precision NOT NULL,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " INTERLEAVE IN \"Users\""));
+    assertNotNull(ddl.hashCode());
+  }
+
+  /**
+   * Generates a Spanner DDL object representing a schema from a directed acyclic graph (DAG) of
+   * table dependencies.
+   *
+   * <p>This method creates a simplified DDL with minimal schema information. Each table has only an
+   * "id" column as the primary key. Foreign key relationships are established based on the provided
+   * dependencies.
+   *
+   * @param tableNames A list of table names in the schema.
+   * @param dependencies A list of foreign key dependencies, where each dependency is represented as
+   *     a list of two strings: the child table name and the parent table name, where child
+   *     references the parent.
+   */
+  private Ddl generateDdlFromDAG(List<String> tableNames, List<List<String>> dependencies) {
+    Ddl.Builder builder = Ddl.builder();
+    for (String tableName : tableNames) {
+      Table.Builder tableBuilder =
+          builder
+              .createTable(tableName)
+              .column("id")
+              .int64()
+              .endColumn()
+              .primaryKey()
+              .asc("id")
+              .end();
+
+      // Add foreign keys based on dependencies.
+      List<ForeignKey> fks = new ArrayList<>();
+      for (List<String> dependency : dependencies) {
+        if (dependency.get(0).equals(tableName)) {
+          String parentTable = dependency.get(1);
+
+          ForeignKey.Builder fkBuilder =
+              ForeignKey.builder(Dialect.GOOGLE_STANDARD_SQL)
+                  .name("fk_" + tableName + "_" + parentTable)
+                  .table(tableName)
+                  .referencedTable(parentTable);
+          fkBuilder.columnsBuilder().add("id");
+          fkBuilder.referencedColumnsBuilder().add("id");
+          fks.add(fkBuilder.build());
+        }
+      }
+      tableBuilder.foreignKeys(ImmutableList.copyOf(fks)).endTable();
+    }
+
+    return builder.build();
+  }
+
+  @Test
+  public void testGetTablesOrderedByReference() {
+    // Test 1: Linear dag
+    List<List<String>> dependencies =
+        Arrays.asList(
+            Arrays.asList("t3", "t1"), Arrays.asList("t1", "t4"), Arrays.asList("t4", "t2"));
+    Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
+    List<String> actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("#1: basic dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t1", "t4", "t2")));
+    assertFalse(ddl.getAllReferencedTables("t3").contains("t3"));
+
+    final Ddl ddl2 = ddl;
+    assertThrows(IllegalStateException.class, () -> ddl2.getAllReferencedTables("t5"));
+
+    // Test 2: Diamond shaped
+    dependencies =
+        Arrays.asList(
+            Arrays.asList("t1", "t3"),
+            Arrays.asList("t1", "t2"),
+            Arrays.asList("t2", "t4"),
+            Arrays.asList("t3", "t4"));
+    ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3", "t4"), dependencies);
+    actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("#2: diamond dag", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t1").containsAll(Arrays.asList("t2", "t3", "t4")));
+    assertFalse(ddl.getAllReferencedTables("t1").contains("t1"));
+    assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t4")));
+    assertFalse(ddl.getAllReferencedTables("t3").contains("t3"));
+
+    // Test 3: Empty Dependency List
+    ddl = generateDdlFromDAG(Arrays.asList("t1", "t2"), List.of());
+    actualOrder = ddl.getTablesOrderedByReference();
+    assertEquals("#3: Empty dependencies", 2, actualOrder.size());
+
+    // Test 4: Single Node (No Dependencies)
+    ddl = generateDdlFromDAG(Arrays.asList("t1"), List.of());
+    actualOrder = ddl.getTablesOrderedByReference();
+    assertEquals("#4: Single Node", List.of("t1"), actualOrder);
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
+
+    // Test 5: Disconnected Components
+    dependencies = Arrays.asList(Arrays.asList("t2", "t1"));
+    ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3"), dependencies);
+    actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("#5: Disconnected components", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("t2").containsAll(Arrays.asList("t1")));
+    assertFalse(ddl.getAllReferencedTables("t2").contains("t2"));
+    assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
+    assertTrue(ddl.getAllReferencedTables("t3").isEmpty());
+
+    // Test 6: Complex Graph
+    dependencies =
+        Arrays.asList(
+            Arrays.asList("t14", "t15"),
+            Arrays.asList("t14", "t8"),
+            Arrays.asList("t14", "t13"),
+            Arrays.asList("t13", "t8"),
+            Arrays.asList("t15", "t13"),
+            Arrays.asList("t8", "t4"),
+            Arrays.asList("t8", "t7"),
+            Arrays.asList("t8", "t12"),
+            Arrays.asList("t4", "t3"),
+            Arrays.asList("t7", "t6"),
+            Arrays.asList("t7", "t10"),
+            Arrays.asList("t12", "t11"),
+            Arrays.asList("t6", "t5"),
+            Arrays.asList("t10", "t6"),
+            Arrays.asList("t10", "t9"),
+            Arrays.asList("t9", "t5"),
+            Arrays.asList("t5", "t3"),
+            Arrays.asList("t11", "t3"),
+            Arrays.asList("t3", "t2"),
+            Arrays.asList("t3", "t1"),
+            Arrays.asList("t2", "t1"));
+    ddl =
+        generateDdlFromDAG(
+            Arrays.asList(
+                "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "t13",
+                "t14", "t15"),
+            dependencies);
+    actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("#6: Complex Graph", actualOrder, dependencies);
+
+    // Test 7: Cyclic Dependency
+    dependencies =
+        Arrays.asList(
+            Arrays.asList("t1", "t2"), Arrays.asList("t2", "t3"), Arrays.asList("t3", "t1"));
+    ddl = generateDdlFromDAG(Arrays.asList("t1", "t2", "t3"), dependencies);
+    Ddl finalDdl = ddl;
+    assertThrows(IllegalStateException.class, () -> finalDdl.getTablesOrderedByReference());
+  }
+
+  @Test
+  public void testGetTablesOrderedByReferenceSpecialChar() {
+    // Test 1: Linear dag
+    List<List<String>> dependencies =
+        Arrays.asList(
+            Arrays.asList("T3", "t1"), Arrays.asList("t1", "T4"), Arrays.asList("T4", "T2"));
+    Ddl ddl = generateDdlFromDAG(Arrays.asList("t1", "T2", "T3", "T4"), dependencies);
+    List<String> actualOrder = ddl.getTablesOrderedByReference();
+    verifyOrderingFromDependencies("basic dag with capitals", actualOrder, dependencies);
+    assertTrue(ddl.getAllReferencedTables("T3").containsAll(Arrays.asList("t1", "T4", "T2")));
+    assertFalse(ddl.getAllReferencedTables("T3").contains("T3"));
+  }
+
+  private void verifyOrderingFromDependencies(
+      String msg, List<String> actualOrder, List<List<String>> dependencies) {
+    for (List<String> dependency : dependencies) {
+      String child = dependency.get(0);
+      String parent = dependency.get(1);
+      assertTrue(
+          String.format("Case %s, %s -> %s, %s", msg, parent, child, actualOrder),
+          actualOrder.indexOf(parent) < actualOrder.indexOf(child));
+    }
+  }
+
+  @Test
+  public void testReferencedTables() {
+    ForeignKey.Builder accountsForeignKeyBuilder =
+        ForeignKey.builder(Dialect.POSTGRESQL)
+            .name("fk")
+            .table("Account")
+            .referencedTable("BalanceNames");
+    accountsForeignKeyBuilder.columnsBuilder().add("name");
+    accountsForeignKeyBuilder.referencedColumnsBuilder().add("first_name");
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .float64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .foreignKeys(ImmutableList.of(accountsForeignKeyBuilder.build()))
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
+            .onDeleteCascade()
+            .endTable()
+            .createTable("BalanceNames")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .endTable()
+            .build();
+
+    List<String> accountTablesReferenced = ddl.tablesReferenced("Account");
+    assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
+    assertEquals(2, accountTablesReferenced.size());
+
+    assertThrows(IllegalStateException.class, () -> ddl.tablesReferenced("unknown_table"));
   }
 
   @Test
@@ -476,11 +927,72 @@ public class DdlTest {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
     assertFalse(ddl1.equals(ddl2));
+
     Ddl.Builder ddl1Builder =
         Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable();
-    ddl1Builder.createTable("Users");
-    ddl1 = ddl1Builder.build();
-    assertFalse(ddl1.equals(ddl2));
+    Ddl ddl3 = ddl1Builder.build();
+
+    // Test same object
+    assertTrue(ddl3.equals(ddl3));
+
+    // Test null
+    assertFalse(ddl3.equals(null));
+
+    // Test different class
+    assertFalse(ddl3.equals("string"));
+
+    // Test equal objects
+    Ddl ddl4 =
+        Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable().build();
+    assertTrue(ddl3.equals(ddl4));
+
+    // Test different tables
+    Ddl ddl5 =
+        Ddl.builder()
+            .createTable("DifferentTable")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    assertFalse(ddl3.equals(ddl5));
+
+    // Test different parents (interleaving)
+    Ddl ddl6 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
+            .endTable()
+            .build();
+    Ddl ddl7 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable() // No interleave!
+            .build();
+    assertFalse(ddl6.equals(ddl7));
   }
 
   @Rule public ExpectedException thrown = ExpectedException.none();

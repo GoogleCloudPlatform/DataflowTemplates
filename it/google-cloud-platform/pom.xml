@@ -25,9 +25,6 @@
 
     <artifactId>it-google-cloud-platform</artifactId>
 
-    <properties>
-        <parquet-avro.version>1.13.1</parquet-avro.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -64,6 +61,29 @@
             <artifactId>google-api-services-dataflow</artifactId>
             <version>${dataflow-api.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-sqladmin</artifactId>
+            <version>${sqladmin-api.version}</version>
+        </dependency>
+
+        <!-- JDBC dependencies for CloudSQL -->
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql-connector-java.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc8.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Google Cloud -->
         <dependency>
@@ -89,6 +109,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner</artifactId>
+            <version>6.113.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
@@ -96,11 +117,15 @@
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-pubsublite</artifactId>
+            <artifactId>google-cloud-datastore</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-datastore</artifactId>
+            <artifactId>google-cloud-firestore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore-admin</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
@@ -117,6 +142,10 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-secretmanager</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-logging</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
@@ -159,6 +188,17 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
             <version>3.1.12</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-nio</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

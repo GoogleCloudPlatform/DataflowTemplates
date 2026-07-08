@@ -20,19 +20,20 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -104,8 +105,8 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
             testName);
     spannerClient.executeDdlStatement(createTableStatement);
 
-    List<Mutation> expectedData = generateTableRows(testName);
-    spannerClient.write(expectedData);
+    List<Mutation> sourceMutations = generateDefaultMutations(testName);
+    spannerClient.write(sourceMutations);
 
     String dataset = bigQueryClient.createDataset(REGION);
     String table = String.format("%s:%s.test-table", PROJECT, dataset);
@@ -133,21 +134,7 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     TableResult records = bigQueryClient.readTable("test-table");
 
     List<Map<String, Object>> expectedRecords = new ArrayList<>();
-    expectedData.forEach(
-        mutation -> {
-          Map<String, Object> expectedRecord =
-              mutation.asMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          e -> e.getKey(),
-                          // Only checking for int64 and string here. If adding another type, this
-                          // will need to be fixed.
-                          e ->
-                              e.getValue().getType() == Type.int64()
-                                  ? e.getValue().getInt64()
-                                  : e.getValue().getString()));
-          expectedRecords.add(expectedRecord);
-        });
+    sourceMutations.forEach(m -> expectedRecords.add(mutationToMap(m)));
 
     assertThatBigQueryRecords(records).hasRecordsUnordered(expectedRecords);
   }
@@ -165,14 +152,18 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
             testName);
     spannerClient.executeDdlStatement(createTableStatement);
 
-    List<Mutation> expectedData = generateTableRows(testName);
-    spannerClient.write(expectedData);
+    List<Mutation> sourceMutations = new ArrayList<>();
+    sourceMutations.add(generateMutationWithNulls(testName));
+    sourceMutations.addAll(generateDefaultMutations(testName));
+    spannerClient.write(sourceMutations);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
             Field.of("Id", StandardSQLTypeName.INT64),
             Field.of("FirstName", StandardSQLTypeName.STRING),
-            Field.of("LastName", StandardSQLTypeName.STRING));
+            Field.of("LastName", StandardSQLTypeName.STRING).toBuilder()
+                .setMode(Mode.NULLABLE)
+                .build());
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     TableId table = bigQueryClient.createTable("test-table", bqSchema);
@@ -199,29 +190,15 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
 
     TableResult records = bigQueryClient.readTable(table);
 
-    List<Map<String, Object>> expectedRecords = new ArrayList<>();
-    expectedData.forEach(
-        mutation -> {
-          Map<String, Object> expectedRecord =
-              mutation.asMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          e -> e.getKey(),
-                          // Only checking for int64 and string here. If adding another type, this
-                          // will need to be fixed.
-                          e ->
-                              e.getValue().getType() == Type.int64()
-                                  ? e.getValue().getInt64()
-                                  : e.getValue().getString()));
-          expectedRecords.add(expectedRecord);
-        });
+    List<Map<String, Object>> expectedRecords = new ArrayList<>(sourceMutations.size());
+    sourceMutations.forEach(m -> expectedRecords.add(mutationToMap(m)));
 
     assertThatBigQueryRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
-  private static List<Mutation> generateTableRows(String tableId) {
+  private static List<Mutation> generateDefaultMutations(String tableId) {
     List<Mutation> mutations = new ArrayList<>();
-    for (int i = 0; i < MESSAGES_COUNT; i++) {
+    for (int i = 1; i <= MESSAGES_COUNT; i++) {
       Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
@@ -230,5 +207,24 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     }
 
     return mutations;
+  }
+
+  private static Mutation generateMutationWithNulls(String tableId) {
+    Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+    mutation.set("Id").to(0);
+    mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+    mutation.set("LastName").to((String) null);
+    return mutation.build();
+  }
+
+  private static Map<String, Object> mutationToMap(Mutation mutation) {
+    Map<String, Value> values = mutation.asMap();
+    Map<String, Object> map = new HashMap<>();
+    map.put("Id", values.get("Id").isNull() ? null : values.get("Id").getInt64());
+    map.put(
+        "FirstName", values.get("FirstName").isNull() ? null : values.get("FirstName").getString());
+    map.put(
+        "LastName", values.get("LastName").isNull() ? null : values.get("LastName").getString());
+    return map;
   }
 }

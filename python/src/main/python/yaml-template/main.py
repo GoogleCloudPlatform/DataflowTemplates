@@ -12,39 +12,47 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
-#
+
 
 import argparse
-import logging
+import tempfile
 
-from apache_beam.yaml import cache_provider_artifacts
 from apache_beam.yaml import main
 
-
-# TODO(https://github.com/apache/beam/issues/29916): Remove once alias args
-#  are added to main.py
-def _get_alias_args(argv):
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--yaml_pipeline', help='A yaml description of the pipeline to run.')
-  parser.add_argument(
-      '--yaml_pipeline_file',
-      help='A file containing a yaml description of the pipeline to run.')
-  known_args, pipeline_args = parser.parse_known_args(argv)
-
-  if known_args.yaml_pipeline:
-    pipeline_args += [f'--pipeline_spec={known_args.yaml_pipeline}']
-  if known_args.yaml_pipeline_file:
-    pipeline_args += [f'--pipeline_spec_file={known_args.yaml_pipeline_file}']
-  return pipeline_args
+# A list of default runtime dependencies that will be installed when running jobs using the
+# YAML template. These will only be installed if the caller do not provide a
+# `requirements_file` option.
+DEFAULT_DEPENDENCIES = [
+    'boto3',
+    'botocore',
+    # When updating this, also update the container dependency in `python/default_base_yaml_requirements.txt`
+    'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-05-02/job_builder_util_transforms-0.1.1.tar.gz',
+]
 
 
 def run(argv=None):
-  args = _get_alias_args(argv)
-  cache_provider_artifacts.cache_provider_artifacts()
-  main.run(argv=args)
+  parser = argparse.ArgumentParser()
+  _, args = parser.parse_known_args(argv)
+
+  has_req_file = False
+  for arg in args:
+    if arg == '--requirements_file' or arg.startswith('--requirements_file='):
+      has_req_file = True
+      break
+
+  if not has_req_file:
+    # Create a temporary requirements.txt file with default dependencies.
+    # We use delete=False because the file needs to exist during pipeline execution.
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', prefix='requirements_', delete=False) as f:
+      for dep in DEFAULT_DEPENDENCIES:
+        f.write(f'{dep}\n')
+      temp_requirements_path = f.name
+    args.append(f'--requirements_file={temp_requirements_path}')
+
+  main.run(args)
 
 
 if __name__ == '__main__':
+  import logging
   logging.getLogger().setLevel(logging.INFO)
   run()

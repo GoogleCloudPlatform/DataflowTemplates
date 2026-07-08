@@ -23,6 +23,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.spanner.spannerio.MutationGroup;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,8 +38,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 
 /**
  * Given a {@link Ddl} Generates a stream of random Cloud Spanner mutations for the specified table.
@@ -148,19 +150,106 @@ public class RandomInsertMutationGenerator {
       this.table = checkNotNull(table);
       RandomValueGenerator randomValueGenerator = RandomValueGenerator.defaultInstance();
       Dialect dialect = table.dialect();
-      Set<String> primaryKeyNameSet = new HashSet<>();
-      if (dialect == Dialect.POSTGRESQL) {
-        for (IndexColumn primaryKey : table.primaryKeys()) {
-          primaryKeyNameSet.add(primaryKey.name());
+      Set<String> pkNameSet = new HashSet<>();
+      Set<String> notNullNameSet = new HashSet<>();
+      for (IndexColumn primaryKey : table.primaryKeys()) {
+        pkNameSet.add(primaryKey.name().toLowerCase());
+        notNullNameSet.add(primaryKey.name().toLowerCase());
+      }
+
+      // Infer unique indexes to avoid null duplicates
+      for (String indexStr : table.indexes()) {
+        if (indexStr.toLowerCase().contains("unique ")) {
+          for (Column column : table.columns()) {
+            if (indexStr.toLowerCase().contains(column.name().toLowerCase())) {
+              notNullNameSet.add(column.name().toLowerCase());
+            }
+          }
         }
       }
+
+      // Infer check constraints to pick from allowed IN clause values
+      Map<String, List<String>> checkConstraintValues = new HashMap<>();
+      for (String checkStr : table.checkConstraints()) {
+        for (Column column : table.columns()) {
+          if (checkStr.toLowerCase().contains(column.name().toLowerCase())) {
+            Matcher matcher = Pattern.compile("'([^']*)'").matcher(checkStr);
+            List<String> values = new ArrayList<>();
+            while (matcher.find()) {
+              values.add(matcher.group(1));
+            }
+            if (!values.isEmpty()) {
+              checkConstraintValues.put(column.name().toLowerCase(), values);
+            }
+          }
+        }
+      }
+
+      Random rand = new Random();
       for (Column column : table.columns()) {
-        if (!column.isGenerated()) {
-          valueGenerators.put(
-              column.name(),
-              randomValueGenerator
-                  .valueStream(column, primaryKeyNameSet.contains(column.name()))
-                  .iterator());
+        if (!column.isGenerated() && !column.isIdentityColumn()) {
+          Iterator<Value> iterator;
+          String colNameLower = column.name().toLowerCase();
+
+          if (checkConstraintValues.containsKey(colNameLower)) {
+            List<String> allowed = checkConstraintValues.get(colNameLower);
+            if (pkNameSet.contains(colNameLower)) {
+              iterator =
+                  Stream.generate(() -> Value.string(allowed.get(rand.nextInt(allowed.size()))))
+                      .iterator();
+            } else if (notNullNameSet.contains(colNameLower)) {
+              iterator =
+                  new Iterator<Value>() {
+                    int index = 0;
+
+                    @Override
+                    public boolean hasNext() {
+                      return true;
+                    }
+
+                    @Override
+                    public Value next() {
+                      if (index < allowed.size()) {
+                        return Value.string(allowed.get(index++));
+                      }
+                      // Return null when exhausted to avoid unique index collision
+                      return Value.string(null);
+                    }
+                  };
+            } else {
+              iterator =
+                  Stream.generate(() -> Value.string(allowed.get(rand.nextInt(allowed.size()))))
+                      .iterator();
+            }
+          } else if (notNullNameSet.contains(colNameLower)
+              && (column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.STRING
+                  || column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.PG_VARCHAR
+                  || column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.PG_TEXT)) {
+            // Ensure unique strings for unique indexes to avoid collision
+            iterator =
+                Stream.generate(
+                        () -> {
+                          String base =
+                              column.name() + "_" + rand.nextInt(100000) + rand.nextInt(100000);
+                          if (column.size() != null
+                              && column.size() > 0
+                              && base.length() > column.size()) {
+                            base = base.substring(0, column.size());
+                          }
+                          return Value.string(base);
+                        })
+                    .iterator();
+          } else {
+            iterator =
+                randomValueGenerator
+                    .valueStream(column, notNullNameSet.contains(colNameLower))
+                    .iterator();
+          }
+
+          valueGenerators.put(column.name(), iterator);
         }
       }
     }
@@ -203,6 +292,18 @@ public class RandomInsertMutationGenerator {
           case STRING:
             String string = value.isNull() ? null : value.getString();
             builder.set(columnName).to(string);
+            break;
+          case JSON:
+          case PG_JSONB:
+            String json = value.isNull() ? null : value.getString();
+            if (value.getType().getCode() == com.google.cloud.spanner.Type.Code.JSON) {
+              builder.set(columnName).to(com.google.cloud.spanner.Value.json(json));
+            } else {
+              builder.set(columnName).to(com.google.cloud.spanner.Value.pgJsonb(json));
+            }
+            break;
+          case UUID:
+            builder.set(columnName).to(value);
             break;
           case TIMESTAMP:
             Timestamp timestamp = value.isNull() ? null : value.getTimestamp();
@@ -257,6 +358,17 @@ public class RandomInsertMutationGenerator {
               case PG_NUMERIC:
                 List<String> pgNumerics = value.isNull() ? null : value.getStringArray();
                 builder.set(columnName).toPgNumericArray(pgNumerics);
+                break;
+              case JSON:
+                List<String> jsons = value.isNull() ? null : value.getStringArray();
+                builder.set(columnName).toJsonArray(jsons);
+                break;
+              case PG_JSONB:
+                List<String> pgJsonbs = value.isNull() ? null : value.getStringArray();
+                builder.set(columnName).toPgJsonbArray(pgJsonbs);
+                break;
+              case UUID:
+                builder.set(columnName).to(value);
                 break;
             }
             break;

@@ -53,6 +53,8 @@ public class SchemaUtilsTest {
       "com.google.cloud.teleport.v2.proto.testing.MyMessage";
   private static final String PROTO_MESSAGE_INVALID_FOR_BQ =
       "com.google.cloud.teleport.v2.proto.testing.CircularlyReferencedMessage";
+  private static final String PROTO_MESSAGE_WITH_TIMESTAMP =
+      "com.google.cloud.teleport.v2.proto.testing.TimestampMessage";
 
   /**
    * Test whether {@link SchemaUtils#getAvroSchema(String)} reads an Avro schema correctly and
@@ -111,6 +113,23 @@ public class SchemaUtilsTest {
     TableSchema actual =
         SchemaUtils.createBigQuerySchema(descriptor, /* preserveProtoFieldNames= */ true);
     assertEquals(getProtoTableSchema(/* preserveProtoNames= */ true), actual);
+  }
+
+  @Test
+  public void testFromProtoDescriptorHandlesTimestamp() {
+    String expected =
+        "{\"fields\": ["
+            + "{\"mode\":\"NULLABLE\", \"name\":\"timestamp\", \"type\":\"TIMESTAMP\"},"
+            + "{\"fields\":[{\"mode\":\"NULLABLE\", \"name\":\"field1\", \"type\":\"STRING\"},"
+            + "{\"mode\":\"NULLABLE\", \"name\":\"field2\", \"type\":\"TIMESTAMP\"}],"
+            + "\"mode\":\"NULLABLE\", \"name\":\"nested\", \"type\":\"RECORD\""
+            + "}]}";
+    Descriptor descriptor =
+        SchemaUtils.getProtoDomain(PROTO_SCHEMA_FILE_PATH)
+            .getDescriptor(PROTO_MESSAGE_WITH_TIMESTAMP);
+    TableSchema actual =
+        SchemaUtils.createBigQuerySchema(descriptor, /* preserveProtoFieldNames= */ false);
+    assertEquals(new Gson().fromJson(expected, TableSchema.class), actual);
   }
 
   @Test(expected = IllegalArgumentException.class)

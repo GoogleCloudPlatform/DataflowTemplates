@@ -36,6 +36,7 @@ public class DatastoreToBigQuery {
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
@@ -46,6 +47,7 @@ public class DatastoreToBigQuery {
 
     @TemplateParameter.GcsWriteFolder(
         order = 2,
+        groupName = "Target",
         description = "Temporary directory for BigQuery loading process",
         helpText = "Temporary directory for BigQuery loading process",
         example = "gs://your-bucket/your-files/temp_dir")

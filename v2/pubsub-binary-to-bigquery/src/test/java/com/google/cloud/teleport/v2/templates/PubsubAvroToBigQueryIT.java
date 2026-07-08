@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
@@ -36,6 +37,7 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
@@ -52,6 +54,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,6 +74,9 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
+
+  private static final int GOOD_MESSAGES_COUNT = 10;
+  private static final int BAD_PUB_SUB_MESSAGES_COUNT = 3;
 
   @Before
   public void setup() throws IOException {
@@ -95,24 +101,28 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubAvroToBigQuerySimple() throws IOException {
+  public void testPubsubAvroToBigQueryUdf() throws IOException {
     // Arrange
     TopicName topic = pubsubResourceManager.createTopic("input");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
-    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-1");
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "sub-1");
+    SubscriptionName dlqSubscription = pubsubResourceManager.createSubscription(dlqTopic, "sub-2");
 
-    List<Map<String, Object>> recordMaps =
-        List.of(
-            Map.of("name", "John", "age", 5, "decimal", 3.3),
-            Map.of("name", "Jane", "age", 4, "decimal", 4.4),
-            Map.of("name", "Jim", "age", 3, "decimal", 5.5));
-    for (Map<String, Object> record : recordMaps) {
+    // Generate good avro messages
+    List<Map<String, Object>> expectedMessages = generateRecordData();
+    for (Map<String, Object> record : expectedMessages) {
       ByteString sendRecord =
           createRecord(
-              (String) record.get("name"),
+              record.get("name").toString(),
               (Integer) record.get("age"),
               (Double) record.get("decimal"));
       pubsubResourceManager.publish(topic, ImmutableMap.of(), sendRecord);
+    }
+
+    // Generate proto messages that cannot be parsed
+    for (int i = 0; i < BAD_PUB_SUB_MESSAGES_COUNT; i++) {
+      pubsubResourceManager.publish(
+          topic, ImmutableMap.of(), ByteString.copyFromUtf8("bad id " + i));
     }
 
     TableId people = bigQueryResourceManager.createTable("people", bigQuerySchema);
@@ -129,13 +139,19 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionsAndFinish(
                 createConfig(info),
-                BigQueryRowsCheck.builder(bigQueryResourceManager, people).setMinRows(1).build());
+                BigQueryRowsCheck.builder(bigQueryResourceManager, people)
+                    .setMinRows(GOOD_MESSAGES_COUNT)
+                    .build(),
+                PubsubMessagesCheck.builder(pubsubResourceManager, dlqSubscription)
+                    .setMinMessages(BAD_PUB_SUB_MESSAGES_COUNT)
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatBigQueryRecords(bigQueryResourceManager.readTable(people)).hasRecords(recordMaps);
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(people))
+        .hasRecords(expectedMessages);
   }
 
   private ByteString createRecord(String name, int age, double decimal) throws IOException {
@@ -159,5 +175,13 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
     encoder.flush();
 
     return ByteString.copyFrom(output.toByteArray());
+  }
+
+  private List<Map<String, Object>> generateRecordData() {
+    List<Map<String, Object>> recordMaps = new ArrayList<>();
+    for (int i = 1; i <= PubsubAvroToBigQueryIT.GOOD_MESSAGES_COUNT; i++) {
+      recordMaps.add(Map.of("name", randomAlphabetic(8, 20), "age", i, "decimal", i + 0.1));
+    }
+    return recordMaps;
   }
 }

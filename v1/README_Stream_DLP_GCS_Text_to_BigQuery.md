@@ -27,22 +27,22 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Stream_DLP_GCS_Text_to_BigQuery).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv).
-* **deidentifyTemplateName** : Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
-* **datasetName** : BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
-* **dlpProjectId** : Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
+* **inputFilePattern**: The CSV files to read input data records from. Wildcards are also accepted. For example, `gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv`.
+* **deidentifyTemplateName**: The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id`.
+* **datasetName**: The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.
+* **dlpProjectId**: The ID for the Google Cloud project that owns the DLP API resource. This project can be the same project that owns the Sensitive Data Protection templates, or it can be a separate project.
 
 ### Optional parameters
 
-* **inspectTemplateName** : Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
-* **batchSize** : Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
+* **inspectTemplateName**: The Sensitive Data Protection inspection template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/inspectTemplates/generated_template_id`.
+* **batchSize**: The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch. Determine the batch size based on the size of the records and the sizing of the file. The DLP API has a payload size limit of 524 KB per API call.
 
 
 
@@ -50,7 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -64,7 +64,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -90,7 +100,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Stream_DLP_GCS_Text_to_BigQuery" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -222,11 +232,11 @@ resource "google_dataflow_job" "stream_dlp_gcs_text_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-files/*.csv"
-    deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
+    inputFilePattern = "<inputFilePattern>"
+    deidentifyTemplateName = "<deidentifyTemplateName>"
     datasetName = "<datasetName>"
     dlpProjectId = "<dlpProjectId>"
-    # inspectTemplateName = "projects/your-project-id/locations/global/inspectTemplates/generated_template_id"
+    # inspectTemplateName = "<inspectTemplateName>"
     # batchSize = "<batchSize>"
   }
 }

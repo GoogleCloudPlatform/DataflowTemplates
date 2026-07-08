@@ -7,25 +7,25 @@ using a JavaScript user-defined function (UDF), and writes them to kafka topic.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputTopic** : The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **outputTopic** : Kafka topic to write the input from pubsub. (Example: topic).
-* **outputDeadLetterTopic** : The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
+* **inputTopic**: The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' For example, `projects/your-project-id/topics/your-topic-name`.
+* **outputTopic**: Kafka topic to write the input from pubsub. For example, `topic`.
+* **outputDeadLetterTopic**: The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
 
 ### Optional parameters
 
-* **bootstrapServer** : Kafka Bootstrap Server  (Example: localhost:9092).
-* **secretStoreUrl** : URL to credentials in Vault.
-* **vaultToken** : Token to use for Vault.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **bootstrapServer**: Kafka Bootstrap Server  For example, `localhost:9092`.
+* **secretStoreUrl**: URL to credentials in Vault.
+* **vaultToken**: Token to use for Vault.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
 
 ## User-Defined functions (UDFs)
@@ -43,7 +43,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -57,7 +57,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/pubsub-to-kafka
+```
 
 ### Building Template
 
@@ -76,16 +86,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_Kafka" \
--f v2/pubsub-to-kafka
+-pl v2/pubsub-to-kafka -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -221,14 +235,14 @@ resource "google_dataflow_flex_template_job" "pubsub_to_kafka" {
   name              = "pubsub-to-kafka"
   region            = var.region
   parameters        = {
-    inputTopic = "projects/your-project-id/topics/your-topic-name"
-    outputTopic = "topic"
+    inputTopic = "<inputTopic>"
+    outputTopic = "<outputTopic>"
     outputDeadLetterTopic = "<outputDeadLetterTopic>"
-    # bootstrapServer = "localhost:9092"
+    # bootstrapServer = "<bootstrapServer>"
     # secretStoreUrl = "<secretStoreUrl>"
     # vaultToken = "<vaultToken>"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }

@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -26,6 +27,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -43,7 +45,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToPubsub} (Cloud_PubSub_to_Cloud_PubSub). */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
@@ -63,6 +65,16 @@ public class PubSubToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testSubscriptionToTopic() throws IOException {
+    testSubscriptionToTopicBase(Function.identity());
+  }
+
+  @Test
+  public void testSubscriptionToTopicStreamingEngine() throws IOException {
+    testSubscriptionToTopicBase(this::enableStreamingEngine);
+  }
+
+  private void testSubscriptionToTopicBase(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     TopicName inputTopic = pubsubResourceManager.createTopic("input-topic");
     TopicName outputTopic = pubsubResourceManager.createTopic("output-topic");
@@ -79,9 +91,10 @@ public class PubSubToPubSubIT extends TemplateTestBase {
             "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(1000, 2000));
     publishMessages(inputTopic, expectedMessages);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("inputSubscription", inputSubscription.toString())
-            .addParameter("outputTopic", outputTopic.toString());
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputSubscription", inputSubscription.toString())
+                .addParameter("outputTopic", outputTopic.toString()));
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -92,7 +105,7 @@ public class PubSubToPubSubIT extends TemplateTestBase {
             .setMinMessages(expectedMessages.size())
             .build();
 
-    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
 
     // Assert
     List<String> actualMessages =

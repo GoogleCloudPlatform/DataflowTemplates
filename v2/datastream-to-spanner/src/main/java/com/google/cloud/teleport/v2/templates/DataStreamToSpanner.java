@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -29,27 +30,46 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
+import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -60,13 +80,16 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.joda.time.Duration;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 /**
  * This pipeline ingests DataStream data from GCS as events. The events are written to Cloud
@@ -104,9 +127,13 @@ import org.slf4j.LoggerFactory;
           + " encountered errors along with the error reason in text format. The errors can be"
           + " transient or permanent and are stored in appropriate Cloud Storage folders in the"
           + " error queue. The transient errors are retried automatically while the permanent"
-          + " errors are not. In case of permanent errors, you have the option of making"
-          + " corrections to the change events and moving them to the retriable bucket while the"
-          + " template is running."
+          + " errors are not. In case of permanent errors, you can run the pipeline in one of"
+          + " two retry modes depending on your pipeline state. Use `retryDLQ` mode when the"
+          + " regular pipeline is concurrently running and pointing to the same DLQ directory."
+          + " This mode consumes only severe errors while the regular mode will consume the retriable errors."
+          + " Use `retryAllDLQ` mode when the regular pipeline is not running or is stopped."
+          + " The `retryAllDLQ` mode consumes errors from both the retry and severe buckets. Do NOT run `retryAllDLQ` concurrently"
+          + " with the regular pipeline as they will conflict."
     },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
@@ -130,13 +157,18 @@ public class DataStreamToSpanner {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
-    @TemplateParameter.Text(
+  public interface Options
+      extends PipelineOptions, StreamingOptions, DataflowPipelineWorkerPoolOptions {
+    @TemplateParameter.GcsReadFile(
         order = 1,
-        description = "File location for Datastream file output in Cloud Storage.",
+        groupName = "Source",
+        optional = true,
+        description =
+            "File location for Datastream file output in Cloud Storage. Support for this feature has been disabled.",
         helpText =
-            "This is the file location for Datastream file output in Cloud Storage. Normally, this"
-                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
+            "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
+                + "this is the root path for a stream. Support for this feature has been disabled."
+                + " Please use this feature only for retrying entries that land in severe DLQ.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -147,8 +179,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "This is the format of the output file produced by Datastream. By default this will be"
-                + " avro.")
+            "The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -167,33 +198,35 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         description = "Cloud Spanner Instance Id.",
-        helpText =
-            "This is the name of the Cloud Spanner instance where the changes are replicated.")
+        helpText = "The Spanner instance where the changes are replicated.")
     String getInstanceId();
 
     void setInstanceId(String value);
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Cloud Spanner Database Id.",
-        helpText =
-            "This is the name of the Cloud Spanner database where the changes are replicated.")
+        helpText = "The Spanner database where the changes are replicated.")
     String getDatabaseId();
 
     void setDatabaseId(String value);
 
     @TemplateParameter.ProjectId(
         order = 6,
+        groupName = "Target",
         optional = true,
         description = "Cloud Spanner Project Id.",
-        helpText = "This is the name of the Cloud Spanner project.")
+        helpText = "The Spanner project ID.")
     String getProjectId();
 
     void setProjectId(String projectId);
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
         description = "The Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -208,17 +241,19 @@ public class DataStreamToSpanner {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
-                + " should be in the format of"
-                + " projects/<project-id>/subscriptions/<subscription-name>.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
+                + " use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
 
     @TemplateParameter.Text(
         order = 9,
+        groupName = "Source",
+        optional = true,
         description = "Datastream stream name.",
-        helpText = "This is the Datastream stream name used to get information.")
+        helpText =
+            "The name or template for the stream to poll for schema information and source type.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -227,7 +262,7 @@ public class DataStreamToSpanner {
         order = 10,
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
-        helpText = "The prefix used for the shadow table.")
+        helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
     @Default.String("shadow_")
     String getShadowTablePrefix();
 
@@ -273,9 +308,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
-            "This is the file path to store the deadletter queue output. Default is a directory"
-                + " under the Dataflow job's temp location. The default value is enough under most"
-                + " conditions.")
+            "The file path used when storing the error queue output. "
+                + "The default file path is a directory under the Dataflow job's temp location.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
@@ -285,7 +319,7 @@ public class DataStreamToSpanner {
         order = 15,
         optional = true,
         description = "Dead letter queue retry minutes",
-        helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
+        helpText = "The number of minutes between dead letter queue retries. Defaults to `10`.")
     @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
@@ -296,7 +330,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to 500.")
+            "The max number of times temporary errors can be retried through DLQ. Defaults to `500`.")
     @Default.Integer(500)
     Integer getDlqMaxRetryCount();
 
@@ -342,10 +376,15 @@ public class DataStreamToSpanner {
     @TemplateParameter.Enum(
         order = 20,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
-        helpText = "This is the run mode type, whether regular or with retryDLQ.")
-    @Default.String("regular")
+        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
+        enumOptions = {
+          @TemplateEnumOption(Constants.RUN_MODE_REGULAR),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_ALL_DLQ)
+        },
+        helpText =
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your live migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
+    @Default.String(Constants.RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -388,7 +427,7 @@ public class DataStreamToSpanner {
         description = "Priority for Spanner RPC invocations",
         helpText =
             "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [HIGH,MEDIUM,LOW]. Defaults to HIGH")
+                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
     @Default.Enum("HIGH")
     RpcPriority getSpannerPriority();
 
@@ -402,37 +441,176 @@ public class DataStreamToSpanner {
                 + " retry directory when running in regular mode.",
         helpText =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
-                + " retry directory when running in regular mode. The name should be in the format"
-                + " of projects/<project-id>/subscriptions/<subscription-name>. When set, the"
+                + " retry directory when running in regular mode. For the name, use the format"
+                + " `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the"
                 + " deadLetterQueueDirectory and dlqRetryMinutes are ignored.")
     String getDlqGcsPubSubSubscription();
 
     void setDlqGcsPubSubSubscription(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 25,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records"
+                + " in forward migration.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 28,
+        optional = true,
+        description = "Filtered events directory",
+        helpText =
+            "This is the file path to store the events filtered via custom transformation. Default is a directory"
+                + " under the Dataflow job's temp location. The default value is enough under most"
+                + " conditions.")
+    @Default.String("")
+    String getFilteredEventsDirectory();
+
+    void setFilteredEventsDirectory(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 29,
+        optional = true,
+        description = "Source Config URL",
+        helpText =
+            "Cloud Storage path to a shard config file for sharded migrations. It expects a HOCON or JSON file. For a sample file, please refer to v2/datastream-to-spanner/src/test/resources/DatastreamToSpannerSingleDFShardedMigrationIT/sharding-config.conf in the repository. For example, `gs://my-bucket/my-shard-config.conf`.",
+        example = "gs://my-bucket/my-shard-config.conf")
+    String getSourceConfigURL();
+
+    void setSourceConfigURL(String value);
+
+    @TemplateParameter.Text(
+        order = 30,
+        optional = true,
+        description = "Table name overrides from source to spanner",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 31,
+        optional = true,
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        description = "Column name overrides from source to spanner",
+        example =
+            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+                + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 32,
+        optional = true,
+        description = "File based overrides from source to spanner",
+        helpText =
+            "A file which specifies the table and the column name overrides from source to spanner.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        groupName = "Target",
+        description = "Cloud Spanner Shadow Table Instance Id.",
+        helpText =
+            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well.")
+    @Default.String("")
+    String getShadowTableSpannerInstanceId();
+
+    void setShadowTableSpannerInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        groupName = "Target",
+        description = "Cloud Spanner Shadow Table Database Id.",
+        helpText =
+            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well.")
+    @Default.String("")
+    String getShadowTableSpannerDatabaseId();
+
+    void setShadowTableSpannerDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
-  private static void validateSourceType(Options options) {
-    boolean isRetryMode = "retryDLQ".equals(options.getRunMode());
+  static void validateSourceType(Options options) {
+    boolean isRetryMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     if (isRetryMode) {
       // retry mode does not read from Datastream
       return;
     }
     String sourceType = getSourceType(options);
-    if (!DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES.contains(sourceType)) {
+    if (!DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes()
+        .contains(sourceType)) {
       throw new IllegalArgumentException(
           "Unsupported source type found: "
               + sourceType
               + ". Specify one of the following source types: "
-              + DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES);
+              + DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes());
     }
     options.setDatastreamSourceType(sourceType);
   }
 
-  private static String getSourceType(Options options) {
+  static String getSourceType(Options options) {
     if (options.getDatastreamSourceType() != null) {
       return options.getDatastreamSourceType();
     }
     if (options.getStreamName() == null) {
-      throw new IllegalArgumentException("Stream name cannot be empty. ");
+      throw new IllegalArgumentException("Stream name cannot be empty.");
     }
     GcpOptions gcpOptions = options.as(GcpOptions.class);
     DataStreamClient datastreamClient;
@@ -444,17 +622,16 @@ public class DataStreamToSpanner {
       LOG.error("IOException Occurred: DataStreamClient failed initialization.");
       throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
-    // TODO: use getPostgresSourceConfig() instead of an else once SourceConfig.java is updated.
-    if (sourceConfig.getMysqlSourceConfig() != null) {
-      return DatastreamConstants.MYSQL_SOURCE_TYPE;
-    } else if (sourceConfig.getOracleSourceConfig() != null) {
-      return DatastreamConstants.ORACLE_SOURCE_TYPE;
-    } else {
-      return DatastreamConstants.POSTGRES_SOURCE_TYPE;
+    return getSourceTypeFromConfig(sourceConfig);
+  }
+
+  static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
+    try {
+      return DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(sourceConfig);
+    } catch (IllegalArgumentException e) {
+      LOG.error("Source Connection Profile Type Not Supported", e);
+      throw e;
     }
-    // LOG.error("Source Connection Profile Type Not Supported");
-    // throw new IllegalArgumentException("Unsupported source connection profile type in
-    // Datastream");
   }
 
   /**
@@ -466,7 +643,8 @@ public class DataStreamToSpanner {
     UncaughtExceptionLogger.register();
     LOG.info("Starting DataStream to Cloud Spanner");
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    options.setStreaming(true);
+    boolean isRetryDLQMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
+    options.setStreaming(!isRetryDLQMode);
     validateSourceType(options);
     run(options);
   }
@@ -478,6 +656,11 @@ public class DataStreamToSpanner {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
+    return buildPipeline(options).run();
+  }
+
+  static Pipeline buildPipeline(Options options) {
+    long startTime = System.currentTimeMillis();
     /*
      * Stages:
      *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -485,6 +668,9 @@ public class DataStreamToSpanner {
      *   3) Write Failures to GCS Dead Letter Queue
      */
     Pipeline pipeline = Pipeline.create(options);
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     // Ingest session file into schema object.
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
@@ -504,27 +690,49 @@ public class DataStreamToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withCommitRetrySettings(
+                RetrySettings.newBuilder()
+                    .setTotalTimeout(Duration.ofMinutes(4))
+                    .setInitialRetryDelay(Duration.ofMinutes(0))
+                    .setRetryDelayMultiplier(1)
+                    .setMaxRetryDelay(Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(Duration.ofMinutes(4))
+                    .setRpcTimeoutMultiplier(1)
+                    .setMaxRpcTimeout(Duration.ofMinutes(4))
+                    .setMaxAttempts(1)
+                    .build());
+    SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
      * 3) Return new information schema
      */
-    PCollection<Ddl> ddl =
+    PCollectionTuple ddlTuple =
         pipeline.apply(
             "Process Information Schema",
             new ProcessInformationSchema(
                 spannerConfig,
+                shadowTableSpannerConfig,
                 options.getShouldCreateShadowTables(),
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType()));
-    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(ProcessInformationSchema.MAIN_DDL_TAG)
+            .apply("Cloud Spanner Main DDL as view", View.asSingleton());
+
+    PCollectionView<Ddl> shadowTableDdlView =
+        ddlTuple
+            .get(ProcessInformationSchema.SHADOW_TABLE_DDL_TAG)
+            .apply("Cloud Spanner shadow tables DDL as view", View.asSingleton());
+
     PCollection<FailsafeElement<String, String>> jsonRecords = null;
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = Constants.RUN_MODE_REGULAR.equals(options.getRunMode());
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
@@ -536,9 +744,31 @@ public class DataStreamToSpanner {
                       new ArrayList<String>(
                           Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
     } else {
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      if (isRegularMode) {
+        reconsumedElements =
+            dlqManager.getReconsumerDataTransform(
+                pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      } else { // retryDLQ or retryAllDLQ mode
+        PCollection<String> oneShotRecords =
+            pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
+
+        if (Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
+          reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
+        } else {
+          // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
+          PCollection<String> continuousRecords =
+              pipeline.apply(
+                  "Read retry from Continuous",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+
+          PCollection<String> allRecords =
+              PCollectionList.of(continuousRecords)
+                  .and(oneShotRecords)
+                  .apply("Flatten DLQ Records", Flatten.pCollections());
+
+          reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+        }
+      }
     }
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         reconsumedElements
@@ -555,13 +785,21 @@ public class DataStreamToSpanner {
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
                   .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+                      org.joda.time.Duration.standardMinutes(
+                          options.getDirectoryWatchDurationInMinutes()))
+                  .withDatastreamSourceType(options.getDatastreamSourceType()));
+      int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
               .apply(Flatten.pCollections())
-              .apply("Reshuffle", Reshuffle.viaRandomKey());
+              .apply(
+                  "Reshuffle",
+                  Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                      .withNumBuckets(
+                          maxNumWorkers * DatastreamToSpannerConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow");
       jsonRecords =
@@ -570,29 +808,113 @@ public class DataStreamToSpanner {
               .apply("Reshuffle", Reshuffle.viaRandomKey());
     }
     /*
-     * Stage 2: Write records to Cloud Spanner
+     * Stage 2: Transform records
      */
+
     // Ingest transformation context file into memory.
     TransformationContext transformationContext =
         TransformationContextReader.getTransformationContext(
             options.getTransformationContextFilePath());
-    SpannerTransactionWriter.Result spannerWriteResults =
+
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext = getShardingContext(options);
+
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
+    // Create the overrides mapping.
+    ISchemaOverridesParser schemaOverridesParser = configureSchemaOverrides(options);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema,
+            schemaOverridesParser,
+            transformationContext,
+            shardingContext,
+            options.getDatastreamSourceType(),
+            customTransformation,
+            options.getRoundJsonDecimals(),
+            ddlView,
+            spannerConfig);
+
+    PCollectionTuple transformedRecords =
         jsonRecords.apply(
-            "Write events to Cloud Spanner",
-            new SpannerTransactionWriter(
-                spannerConfig,
-                ddlView,
-                schema,
-                transformationContext,
-                options.getShadowTablePrefix(),
-                options.getDatastreamSourceType(),
-                options.getRoundJsonDecimals(),
-                isRegularMode));
+            "Apply Transformation to events",
+            ParDo.of(changeEventTransformerDoFn)
+                .withSideInputs(ddlView)
+                .withOutputTags(
+                    DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
+                    TupleTagList.of(
+                        Arrays.asList(
+                            DatastreamToSpannerConstants.FILTERED_EVENT_TAG,
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+
     /*
-     * Stage 3: Write failures to GCS Dead Letter Queue
+     * Stage 3: Write filtered records to GCS
+     */
+    String tempLocation =
+        options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
+            ? options.as(DataflowPipelineOptions.class).getTempLocation()
+            : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
+    String filterEventsDirectory =
+        options.getFilteredEventsDirectory().isEmpty()
+            ? tempLocation + "filteredEvents/"
+            : options.getFilteredEventsDirectory();
+    LOG.info("Filtered events directory: {}", filterEventsDirectory);
+    TextIO.Write filterEventsWrite;
+    if (options.getRunner() != null && options.getRunner().getSimpleName().equals("DirectRunner")) {
+      // DirectRunner does not support dynamic sharding for unbounded PCollections
+      filterEventsWrite =
+          TextIO.write()
+              .to(filterEventsDirectory)
+              .withSuffix(".json")
+              .withWindowedWrites()
+              .withNumShards(20);
+    } else {
+      // Cloud Dataflow natively supports dynamic sharding
+      filterEventsWrite =
+          TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites();
+    }
+
+    transformedRecords
+        .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
+        .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
+        .apply("Write Filtered Events To GCS", filterEventsWrite);
+
+    spannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            spannerConfig, options.getFailureInjectionParameter());
+    shadowTableSpannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            shadowTableSpannerConfig, options.getFailureInjectionParameter());
+
+    /*
+     * Stage 4: Write transformed records to Cloud Spanner
+     */
+    SpannerTransactionWriter.Result spannerWriteResults =
+        transformedRecords
+            .get(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG)
+            .apply(
+                "Write events to Cloud Spanner",
+                new SpannerTransactionWriter(
+                    spannerConfig,
+                    shadowTableSpannerConfig,
+                    ddlView,
+                    shadowTableDdlView,
+                    options.getShadowTablePrefix(),
+                    options.getDatastreamSourceType(),
+                    isRegularMode));
+    /*
+     * Stage 5: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
+    // We will write only the original payload from the failsafe event to the DLQ.  We are doing
+    // that in
+    // StringDeadLetterQueueSanitizer.
     spannerWriteResults
         .retryableErrors()
         .apply(
@@ -610,11 +932,12 @@ public class DataStreamToSpanner {
         reconsumedElements
             .get(DeadLetterQueueManager.PERMANENT_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    // TODO: Write errors from transformer and spanner writer into separate folders
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
             .and(spannerWriteResults.permanentErrors())
-            .apply(Flatten.pCollections())
-            .apply("Reshuffle", Reshuffle.viaRandomKey());
+            .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
+            .apply(Flatten.pCollections());
     // increment the metrics
     permanentErrors
         .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))
@@ -629,11 +952,85 @@ public class DataStreamToSpanner {
                 .withTmpDirectory((options).getDeadLetterQueueDirectory() + "/tmp_severe/")
                 .setIncludePaneInfo(true)
                 .build());
-    // Execute the pipeline and return the result.
-    return pipeline.run();
+    return pipeline;
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  static ShardingContext getShardingContext(Options options) {
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext = new ShardingContext();
+    if (options.getSourceConfigURL() != null && !options.getSourceConfigURL().isEmpty()) {
+      try {
+        SourceConfigParser parser = new SourceConfigParser(new SecretManagerAccessorImpl());
+        SourceConnectionConfig sourceConfig =
+            parser.parseConfiguration(
+                getSourceType(options), options.getSourceConfigURL(), /* resolveSecrets= */ false);
+
+        if (sourceConfig instanceof JdbcShardConfig jdbcShardConfig) {
+          List<Shard> shards = jdbcShardConfig.getShardConfigs();
+          Map<String, Map<String, String>> streamToDbAndShardMap = new HashMap<>();
+          for (Shard shard : shards) {
+            // TO-DO: add checks in SourceConfigParser to ensure not null fields.
+            streamToDbAndShardMap
+                .computeIfAbsent(shard.getStreamId(), k -> new HashMap<>())
+                .put(shard.getDbName(), shard.getLogicalShardId());
+          }
+          shardingContext = new ShardingContext(streamToDbAndShardMap);
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to parse source config URL", e);
+      }
+    }
+    return shardingContext;
+  }
+
+  static SpannerConfig getShadowTableSpannerConfig(Options options) {
+    // Validate shadow table Spanner config - both instance and database must be specified together
+    String shadowTableSpannerInstanceId = options.getShadowTableSpannerInstanceId();
+    String shadowTableSpannerDatabaseId = options.getShadowTableSpannerDatabaseId();
+    LOG.info(
+        "Input Shadow table db -  instance {} and database {}",
+        shadowTableSpannerInstanceId,
+        shadowTableSpannerDatabaseId);
+
+    if ((Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && !Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))
+        || (!Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))) {
+      throw new IllegalArgumentException(
+          "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
+    }
+    // If not specified, use main instance and main database values. The shadow table database
+    // stores the shadow tables and by default, is the same as the main database for backward
+    // compatibility.
+    if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+        && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
+      shadowTableSpannerInstanceId = options.getInstanceId();
+      shadowTableSpannerDatabaseId = options.getDatabaseId();
+      LOG.info(
+          "Overwrote shadow table instance - {} and db- {}",
+          shadowTableSpannerInstanceId,
+          shadowTableSpannerDatabaseId);
+    }
+    return SpannerConfig.create()
+        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withInstanceId(ValueProvider.StaticValueProvider.of(shadowTableSpannerInstanceId))
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(shadowTableSpannerDatabaseId))
+        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+        .withCommitRetrySettings(
+            RetrySettings.newBuilder()
+                .setTotalTimeout(Duration.ofMinutes(4))
+                .setInitialRetryDelay(Duration.ofMinutes(0))
+                .setRetryDelayMultiplier(1)
+                .setMaxRetryDelay(Duration.ofMinutes(0))
+                .setInitialRpcTimeout(Duration.ofMinutes(4))
+                .setRpcTimeoutMultiplier(1)
+                .setMaxRpcTimeout(Duration.ofMinutes(4))
+                .setMaxAttempts(1)
+                .build());
+  }
+
+  static DeadLetterQueueManager buildDlqManager(Options options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
@@ -644,15 +1041,32 @@ public class DataStreamToSpanner {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
-    } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
-      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
+  }
+
+  static ISchemaOverridesParser configureSchemaOverrides(Options options) {
+    // incorrect configuration
+    if (!options.getSchemaOverridesFilePath().isEmpty()
+        && (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty())) {
+      throw new IllegalArgumentException(
+          "Only one of file based or string based overrides must be configured! Please correct the configuration and re-run the job");
     }
+    // string based overrides
+    if (!options.getTableOverrides().isEmpty() || !options.getColumnOverrides().isEmpty()) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      return new SchemaStringOverridesParser(userOptionsOverrides);
+    }
+    // file based overrides
+    if (!options.getSchemaOverridesFilePath().isEmpty()) {
+      return new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
+    }
+    // no overrides
+    return new NoopSchemaOverridesParser();
   }
 }

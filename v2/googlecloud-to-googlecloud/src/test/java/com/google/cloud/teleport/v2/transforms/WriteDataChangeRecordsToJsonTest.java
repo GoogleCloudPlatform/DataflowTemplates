@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 import com.google.cloud.Timestamp;
 import com.google.gson.Gson;
@@ -64,16 +66,62 @@ public class WriteDataChangeRecordsToJsonTest {
   /** Test the basic WriteDataChangeRecordsToPubSubJsonTest transform. */
   @Test
   public void testBasicWrite() {
+    DataChangeRecordToJsonTextFn converter = new DataChangeRecordToJsonTextFn();
     // First run the transform in a separate pipeline.
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
     Pipeline p = Pipeline.create(options);
     PCollection<String> dataChangeRecords =
         p.apply("CreateInput", Create.of(dataChangeRecord))
-            .apply("WriteToPubSubInJson", MapElements.via(new DataChangeRecordToJsonTextFn()));
+            .apply("WriteToPubSubInJson", MapElements.via(converter));
     p.run();
 
-    PAssert.that(dataChangeRecords)
-        .containsInAnyOrder(gson.toJson(dataChangeRecord, DataChangeRecord.class));
+    PAssert.that(dataChangeRecords).containsInAnyOrder(converter.apply(dataChangeRecord));
+    testPipeline.run();
+  }
+
+  @Test
+  public void testSpannerSourceFieldsArePopulated() {
+    DataChangeRecordToJsonTextFn converter =
+        new DataChangeRecordToJsonTextFn.Builder()
+            .setSpannerDatabaseId("test-db")
+            .setSpannerInstanceId("test-instance")
+            .build();
+    // First run the transform in a separate pipeline.
+    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+    Pipeline p = Pipeline.create(options);
+    PCollection<String> dataChangeRecords =
+        p.apply("CreateInput", Create.of(dataChangeRecord))
+            .apply("WriteToPubSubInJson", MapElements.via(converter));
+    p.run();
+
+    String dataChangeRecordJsonStr = converter.apply(dataChangeRecord);
+    assertThat(
+        dataChangeRecordJsonStr,
+        containsString(
+            "\"spannerDatabaseId\":\"test-db\",\"spannerInstanceId\":\"test-instance\""));
+
+    PAssert.that(dataChangeRecords).containsInAnyOrder(dataChangeRecordJsonStr);
+
+    testPipeline.run();
+  }
+
+  @Test
+  public void testOutputMessageMetadataIsPopulated() {
+    DataChangeRecordToJsonTextFn converter =
+        new DataChangeRecordToJsonTextFn.Builder().setOutputMessageMetadata("test-db").build();
+    // First run the transform in a separate pipeline.
+    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+    Pipeline p = Pipeline.create(options);
+    PCollection<String> dataChangeRecords =
+        p.apply("CreateInput", Create.of(dataChangeRecord))
+            .apply("WriteToPubSubInJson", MapElements.via(converter));
+    p.run();
+
+    String dataChangeRecordJsonStr = converter.apply(dataChangeRecord);
+    assertThat(dataChangeRecordJsonStr, containsString("\"outputMessageMetadata\":\"test-db\""));
+
+    PAssert.that(dataChangeRecords).containsInAnyOrder(dataChangeRecordJsonStr);
+
     testPipeline.run();
   }
 

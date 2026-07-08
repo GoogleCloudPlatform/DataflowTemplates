@@ -27,6 +27,9 @@
   </parent>
 
   <artifactId>jdbc-common</artifactId>
+  <properties>
+    <skipShade>true</skipShade>
+  </properties>
 
   <dependencies>
     <dependency>

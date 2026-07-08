@@ -18,44 +18,38 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
-import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ChangeEventUtils;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /** Helper class with static methods that convert Change Events to Cloud Spanner mutations. */
 public class ChangeEventConvertor {
 
   private ChangeEventConvertor() {}
 
-  static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+  public static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
-      throw new ChangeEventConvertorException(
+      throw new DroppedTableException(
           "Table from change event does not exist in Spanner. table=" + tableName);
     }
-    List<String> changeEventColumns = getEventColumnKeys(changeEvent);
+    List<String> changeEventColumns = ChangeEventUtils.getEventColumnKeys(changeEvent);
     for (String changeEventColumn : changeEventColumns) {
       if (ddl.table(tableName).column(changeEventColumn) == null) {
-        throw new ChangeEventConvertorException(
-            "Column from change event doesn't exist in Spanner. column="
-                + changeEventColumn
-                + ", table="
-                + tableName);
+        // Ignore and remove the column from the change event. This allows the pipeline to proceed
+        // even if there are extra columns in the source.
+        ((ObjectNode) changeEvent).remove(changeEventColumn);
       }
     }
     Set<String> keyColumns =
@@ -66,13 +60,13 @@ public class ChangeEventConvertor {
     Set<String> changeEventColumnsAsSet = new HashSet<>(changeEventColumns);
     if (!changeEventColumnsAsSet.containsAll(keyColumns)) {
       throw new ChangeEventConvertorException(
-          "Key columns from change event do not exist in Spanner. keyColumns=" + keyColumns);
+          "Change event is missing required Spanner Primary Key columns: " + keyColumns);
     }
   }
 
-  static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
+  public static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    List<String> changeEventKeys = getEventColumnKeys(changeEvent);
+    List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     ObjectNode jsonNode = (ObjectNode) changeEvent;
     for (String key : changeEventKeys) {
       // Skip keys that are in lower case.
@@ -116,7 +110,7 @@ public class ChangeEventConvertor {
     return ChangeEventConvertor.changeEventToInsertOrUpdateMutation(ddl, changeEvent);
   }
 
-  static Mutation.WriteBuilder changeEventToShadowTableMutationBuilder(
+  public static Mutation.WriteBuilder changeEventToShadowTableMutationBuilder(
       Ddl ddl, JsonNode changeEvent, String shadowTablePrefix)
       throws ChangeEventConvertorException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
@@ -132,88 +126,12 @@ public class ChangeEventConvertor {
       Set<String> requiredKeyColumnNames = new HashSet<>(keyColumnNames);
 
       return ChangeEventSpannerConvertor.mutationBuilderFromEvent(
-          table, changeEvent, keyColumnNames, requiredKeyColumnNames);
-    } catch (Exception e) {
-      throw new ChangeEventConvertorException(e);
-    }
-  }
-
-  static com.google.cloud.spanner.Key changeEventToPrimaryKey(Ddl ddl, JsonNode changeEvent)
-      throws ChangeEventConvertorException {
-    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
-    try {
-      Table table = ddl.table(tableName);
-      ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
-      com.google.cloud.spanner.Key.Builder pk = com.google.cloud.spanner.Key.newBuilder();
-
-      for (IndexColumn keyColumn : keyColumns) {
-        Column key = table.column(keyColumn.name());
-        Type keyColType = key.type();
-        String keyColName = key.name().toLowerCase();
-        switch (keyColType.getCode()) {
-          case BOOL:
-          case PG_BOOL:
-            pk.append(
-                ChangeEventTypeConvertor.toBoolean(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case INT64:
-          case PG_INT8:
-            pk.append(
-                ChangeEventTypeConvertor.toLong(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case FLOAT64:
-          case PG_FLOAT8:
-            pk.append(
-                ChangeEventTypeConvertor.toDouble(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case STRING:
-          case PG_VARCHAR:
-          case PG_TEXT:
-            pk.append(
-                ChangeEventTypeConvertor.toString(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case NUMERIC:
-          case PG_NUMERIC:
-            pk.append(
-                ChangeEventTypeConvertor.toNumericBigDecimal(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case JSON:
-          case PG_JSONB:
-            pk.append(
-                ChangeEventTypeConvertor.toString(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case BYTES:
-          case PG_BYTEA:
-            pk.append(
-                ChangeEventTypeConvertor.toByteArray(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case TIMESTAMP:
-          case PG_COMMIT_TIMESTAMP:
-          case PG_TIMESTAMPTZ:
-            pk.append(
-                ChangeEventTypeConvertor.toTimestamp(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-          case DATE:
-          case PG_DATE:
-            pk.append(
-                ChangeEventTypeConvertor.toDate(
-                    changeEvent, keyColName, /* requiredField= */ true));
-            break;
-            // TODO(b/179070999) -  Add support for other data types.
-          default:
-            throw new IllegalArgumentException(
-                "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
-        }
-      }
-      return pk.build();
+          table.name(),
+          table,
+          changeEvent,
+          keyColumnNames,
+          requiredKeyColumnNames,
+          /* convertNameToLowerCase= */ true);
     } catch (Exception e) {
       throw new ChangeEventConvertorException(e);
     }
@@ -222,7 +140,7 @@ public class ChangeEventConvertor {
   private static Mutation changeEventToInsertOrUpdateMutation(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
-    List<String> changeEventKeys = getEventColumnKeys(changeEvent);
+    List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     try {
       Table table = ddl.table(tableName);
 
@@ -242,26 +160,12 @@ public class ChangeEventConvertor {
       throws ChangeEventConvertorException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     com.google.cloud.spanner.Key primaryKey =
-        ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            tableName, ddl, changeEvent, /* convertNameToLowerCase= */ true);
     try {
       return Mutation.delete(tableName, primaryKey);
     } catch (Exception e) {
       throw new ChangeEventConvertorException(e);
     }
-  }
-
-  private static List<String> getEventColumnKeys(JsonNode changeEvent)
-      throws InvalidChangeEventException {
-    // Filter all keys which have the metadata prefix
-    Iterator<String> fieldNames = changeEvent.fieldNames();
-    List<String> eventColumnKeys =
-        StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(fieldNames, Spliterator.ORDERED), false)
-            .filter(f -> !f.startsWith(DatastreamConstants.EVENT_METADATA_KEY_PREFIX))
-            .collect(Collectors.toList());
-    if (eventColumnKeys.size() == 0) {
-      throw new InvalidChangeEventException("No data found in Datastream event. ");
-    }
-    return eventColumnKeys;
   }
 }

@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -43,6 +44,7 @@ import org.apache.avro.data.TimeConversions.DateConversion;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +59,10 @@ public class FormatDatastreamRecordToJson
   public static class CustomAvroTypes {
     public static final String VARCHAR = "varchar";
     public static final String NUMBER = "number";
+    public static final String TIME_INTERVAL_MICROS = "time-interval-micros";
   }
+
+  static final String LOGICAL_TYPE = "logicalType";
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamRecordToJson.class);
   static final DateTimeFormatter DEFAULT_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -70,6 +75,10 @@ public class FormatDatastreamRecordToJson
   private String rowIdColumnName;
   private Map<String, String> renameColumns = new HashMap<String, String>();
   private boolean hashRowId = false;
+  private String datastreamSourceType;
+
+  private static final Long DATETIME_POSITIVE_INFINITY = 9223372036825200000L;
+  private static final Long DATETIME_NEGATIVE_INFINITY = -9223372036832400000L;
 
   private FormatDatastreamRecordToJson() {}
 
@@ -103,6 +112,12 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
+  /** Set the Datastream source type override. */
+  public FormatDatastreamRecordToJson withDatastreamSourceType(String datastreamSourceType) {
+    this.datastreamSourceType = datastreamSourceType;
+    return this;
+  }
+
   @Override
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
@@ -118,6 +133,7 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_dataflow_timestamp", getCurrentTimestamp());
     outputObject.put("_metadata_read_method", record.get("read_method").toString());
     outputObject.put("_metadata_source_type", sourceType);
 
@@ -134,10 +150,21 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
     } else if (sourceType.equals("postgresql")) {
-      // Postgres Specific Metadata
+      // PostgreSQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
-      outputObject.put("_metadata_lsn", getPostgresLsn(record));
-      outputObject.put("_metadata_tx_id", getPostgresTxId(record));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+    } else if (sourceType.equals("sqlserver")) {
+      // SQL Server Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+    } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      outputObject.put("_metadata_database", getSourceMetadata(record, "database"));
+      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -154,7 +181,6 @@ public class FormatDatastreamRecordToJson
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadataJson(record));
-
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
 
@@ -194,6 +220,11 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getSourceType(GenericRecord record) {
+    // If datastreamSourceType is provided, use it as override
+    if (this.datastreamSourceType != null && !this.datastreamSourceType.isEmpty()) {
+      return this.datastreamSourceType;
+    }
+
     String sourceType = record.get("read_method").toString().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     return sourceType;
@@ -202,6 +233,10 @@ public class FormatDatastreamRecordToJson
   private long getMetadataTimestamp(GenericRecord record) {
     long unixTimestampMilli = (long) record.get("read_timestamp");
     return unixTimestampMilli / 1000;
+  }
+
+  private long getCurrentTimestamp() {
+    return System.currentTimeMillis() / 1000L;
   }
 
   private long getSourceTimestamp(GenericRecord record) {
@@ -229,7 +264,13 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getMetadataTable(GenericRecord record) {
-    return ((GenericRecord) record.get("source_metadata")).get("table").toString();
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.getSchema().getField("table") != null
+        && sourceMetadata.get("table") != null) {
+      return sourceMetadata.get("table").toString();
+    }
+
+    return null;
   }
 
   private String getMetadataChangeType(GenericRecord record) {
@@ -244,13 +285,23 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.getSchema().getField("primary_keys") == null
-        || sourceMetadata.get("primary_keys") == null) {
+    if (sourceMetadata == null) {
       return null;
     }
 
-    JsonNode dataInput = getSourceMetadataJson(record);
-    return dataInput.get("primary_keys");
+    // Try primary_keys first (MySQL, Oracle, PostgreSQL)
+    if (sourceMetadata.getSchema().getField("primary_keys") != null
+        && sourceMetadata.get("primary_keys") != null) {
+      return getSourceMetadataJson(record).get("primary_keys");
+    }
+
+    // Fallback to replication_index for SQL Server
+    if (sourceMetadata.getSchema().getField("replication_index") != null
+        && sourceMetadata.get("replication_index") != null) {
+      return getSourceMetadataJson(record).get("replication_index");
+    }
+
+    return null;
   }
 
   private String getUUID() {
@@ -328,6 +379,22 @@ public class FormatDatastreamRecordToJson
     return null;
   }
 
+  private String getSecondsFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(0).toString();
+    }
+
+    return null;
+  }
+
+  private String getNanosFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(1).toString();
+    }
+
+    return null;
+  }
+
   private String getPostgresLsn(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
     if (sourceMetadata.getSchema().getField("lsn") != null && sourceMetadata.get("lsn") != null) {
@@ -356,10 +423,19 @@ public class FormatDatastreamRecordToJson
 
     static void putField(
         String fieldName, Schema fieldSchema, GenericRecord record, ObjectNode jsonObject) {
+      // fieldSchema.getLogicalType() returns object of type org.apache.avro.LogicalType,
+      // therefore, is null for custom logical types
       if (fieldSchema.getLogicalType() != null) {
         // Logical types should be handled separately.
         handleLogicalFieldType(fieldName, fieldSchema, record, jsonObject);
         return;
+      } else if (fieldSchema.getProp(LOGICAL_TYPE) != null) {
+        // Handling for custom logical types.
+        boolean isSupportedCustomType =
+            handleCustomLogicalType(fieldName, fieldSchema, record, jsonObject);
+        if (isSupportedCustomType) {
+          return;
+        }
       }
 
       switch (fieldSchema.getType()) {
@@ -367,7 +443,22 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, (Boolean) record.get(fieldName));
           break;
         case BYTES:
-          jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          if (record.get(fieldName) instanceof ByteBuffer) {
+            ByteBuffer byteBuffer = (ByteBuffer) record.get(fieldName);
+            byte[] byteArray = new byte[byteBuffer.remaining()];
+            byteBuffer.get(byteArray);
+            jsonObject.put(fieldName, byteArray);
+          } else if (record.get(fieldName) instanceof byte[]) {
+            jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          } else {
+            // Handle other types appropriately, possibly throwing an exception
+            // if the type is unexpected. Or log it.
+            throw new IllegalArgumentException(
+                "Unexpected type for field "
+                    + fieldName
+                    + ": "
+                    + record.get(fieldName).getClass().getName());
+          }
           break;
         case FLOAT:
           String value = record.get(fieldName).toString();
@@ -419,6 +510,45 @@ public class FormatDatastreamRecordToJson
       }
     }
 
+    static boolean handleCustomLogicalType(
+        String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
+      if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.TIME_INTERVAL_MICROS)) {
+        Long timeMicrosTotal = (Long) element.get(fieldName);
+        boolean isNegative = false;
+        if (timeMicrosTotal < 0) {
+          timeMicrosTotal *= -1;
+          isNegative = true;
+        }
+        Long nanoseconds = timeMicrosTotal * TimeUnit.MICROSECONDS.toNanos(1);
+        Long hours = TimeUnit.NANOSECONDS.toHours(nanoseconds);
+        nanoseconds -= TimeUnit.HOURS.toNanos(hours);
+        Long minutes = TimeUnit.NANOSECONDS.toMinutes(nanoseconds);
+        nanoseconds -= TimeUnit.MINUTES.toNanos(minutes);
+        Long seconds = TimeUnit.NANOSECONDS.toSeconds(nanoseconds);
+        nanoseconds -= TimeUnit.SECONDS.toNanos(seconds);
+        Long micros = TimeUnit.NANOSECONDS.toMicros(nanoseconds);
+        // Pad 0 if single digit hour.
+        String timeString =
+            (hours < 10) ? String.format("%02d", hours) : String.format("%d", hours);
+        timeString += String.format(":%02d:%02d", minutes, seconds);
+        if (micros > 0) {
+          timeString += String.format(".%d", micros);
+        }
+        String resultString = isNegative ? "-" + timeString : timeString;
+        jsonObject.put(fieldName, resultString);
+        return true;
+      } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
+        String number = element.get(fieldName).toString();
+        jsonObject.put(fieldName, number);
+        return true;
+      } else if (fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.VARCHAR)) {
+        String varcharValue = element.get(fieldName).toString();
+        jsonObject.put(fieldName, varcharValue);
+        return true;
+      }
+      return false;
+    }
+
     static void handleLogicalFieldType(
         String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
       // TODO(pabloem) Actually test this.
@@ -433,35 +563,42 @@ public class FormatDatastreamRecordToJson
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Duration duration =
-            Duration.ofSeconds(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(fieldName, duration.toString());
+        Long microseconds = (Long) element.get(fieldName);
+        if (microseconds.equals(DATETIME_POSITIVE_INFINITY)) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds.equals(DATETIME_NEGATIVE_INFINITY)) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
+          Duration duration =
+              Duration.ofSeconds(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
+          jsonObject.put(fieldName, duration.toString());
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Instant timestamp =
-            Instant.ofEpochSecond(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(
-            fieldName,
-            timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+        Long microseconds = (Long) element.get(fieldName);
+        Long millis = TimeUnit.MICROSECONDS.toMillis(microseconds);
+        Instant instant = Instant.ofEpochMilli(millis);
+        if (microseconds.equals(DATETIME_POSITIVE_INFINITY)) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds.equals(DATETIME_NEGATIVE_INFINITY)) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          // adding the microsecond after it was removed in the millisecond conversion
+          instant = instant.plusNanos(microseconds % 1000 * 1000L);
+          jsonObject.put(
+              fieldName,
+              instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
         Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
         jsonObject.put(
             fieldName,
             timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
-      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
-        String number = (String) element.get(fieldName);
-        jsonObject.put(fieldName, number);
-      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
-        String varcharValue = (String) element.get(fieldName);
-        jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error(
             "Unknown field type {} for field {} in {}. Ignoring it.",
@@ -513,9 +650,49 @@ public class FormatDatastreamRecordToJson
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
+          /*
+           * The `intervalNano` maps to nano second precision interval type used by Cassandra Interval.
+           * On spanner this will map to `string` or `Interval` type.
+           * This is added here for DQL retrials for sourcedb-to-spanner.
+           *
+           * TODO(b/383689307):
+           * There's a lot of commonality in handling avro types between {@link FormatDatastreamRecordToJson} and {@link com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor}.
+           * Adding inter-package dependency might not be the best route, and we might eventually want to build a common package for handling common logic between the two.
+           */
+        case "intervalNano":
+          Period period =
+              Period.ZERO
+                  .plusYears(getOrDefault(element, "years", 0L))
+                  .plusMonths(getOrDefault(element, "months", 0L))
+                  .plusDays(getOrDefault(element, "days", 0L));
+          /*
+           * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
+           * A zero period will be represented as zero days, 'P0D'.
+           * Refer to javadoc for Period#toString.
+           */
+          String periodIso8061 = period.toString();
+          java.time.Duration duration =
+              java.time.Duration.ZERO
+                  .plusHours(getOrDefault(element, "hours", 0L))
+                  .plusMinutes(getOrDefault(element, "minutes", 0L))
+                  .plusSeconds(getOrDefault(element, "seconds", 0L))
+                  .plusNanos(getOrDefault(element, "nanos", 0L));
+          /*
+           * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
+           * refer to javadoc for Duration#toString.
+           */
+          String durationIso8610 = duration.toString();
+          // Convert to ISO-8601 period format.
+          String convertedIntervalNano;
+          if (duration.isZero()) {
+            convertedIntervalNano = periodIso8061;
+          } else {
+            convertedIntervalNano =
+                periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
+          }
+          jsonObject.put(fieldName, convertedIntervalNano);
+          break;
         default:
-          LOG.warn(
-              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, element);
           ObjectMapper mapper = new ObjectMapper();
           JsonNode dataInput;
           try {
@@ -527,6 +704,13 @@ public class FormatDatastreamRecordToJson
           }
           break;
       }
+    }
+
+    private static <T> T getOrDefault(GenericRecord element, String name, T def) {
+      if (element.get(name) == null) {
+        return def;
+      }
+      return (T) element.get(name);
     }
   }
 }

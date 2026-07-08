@@ -86,7 +86,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Datadog",
     description = {
-      "The Pub/Sub to Datadog template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes the message payload to Datadog by using a Datadog endpoint. The most common use case for this template is to export log files to Datadog.\n",
+      "The Pub/Sub to Datadog template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes the message payload to Datadog by using a Datadog endpoint. The most common use case for this template is to export log files to Datadog. "
+          + "For more information check out <a href=\"https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection\">Datadog's log collection process</a>.\n",
       "Before writing to Datadog, you can apply a JavaScript user-defined function to the message payload. "
           + "Any messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.\n",
       "As an extra layer of protection for your API keys and secrets, you can also pass in a Cloud KMS key along with the base64-encoded API key parameter encrypted with the Cloud KMS key. For additional details about encrypting your API key parameter, see the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a>."
@@ -141,7 +142,7 @@ public class PubSubToDatadog {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToDatadog.class);
 
-  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
+  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = true;
 
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";

@@ -120,6 +120,7 @@ public class AzureEventhubToPubsub {
         order = 1,
         optional = false,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
+        groupName = "Source",
         description = "Azure Event Hub endpoint",
         helpText = "Server IP or DNS for Azure Eventhub Endpoint",
         example = "mynamespace.servicebus.windows.net:9093")
@@ -132,6 +133,7 @@ public class AzureEventhubToPubsub {
         order = 2,
         optional = false,
         regexes = {"[a-zA-Z0-9._-]+"},
+        groupName = "Source",
         description = "Azure Eventhub topic(s) to read the input from",
         helpText = "Azure Eventhub topic(s) to read the input from",
         example = "topic")
@@ -143,6 +145,7 @@ public class AzureEventhubToPubsub {
     @TemplateParameter.PubsubTopic(
         order = 3,
         description = "Output Pub/Sub topic",
+        groupName = "Target",
         helpText =
             "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
         example = "projects/your-project-id/topics/your-topic-name")

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -68,5 +69,20 @@ public class AvroUtilTest {
         AvroUtil.unpackNullable(schema.getField("colName3").schema()));
     assertNull(AvroUtil.unpackNullable(schema.getField("colName4").schema()));
     assertNull(AvroUtil.unpackNullable(schema.getField("colName5").schema()));
+  }
+
+  @Test
+  public void testGetSpannerObjectName() {
+    Schema schemaNew =
+        SchemaBuilder.record("avro_name").prop(SPANNER_NAME, "spanner.name").fields().endRecord();
+    assertEquals(AvroUtil.getSpannerObjectName(schemaNew), "spanner.name");
+
+    Schema schemaOld = SchemaBuilder.record("table_name").fields().endRecord();
+    assertEquals(AvroUtil.getSpannerObjectName(schemaOld), "table_name");
+  }
+
+  @Test
+  public void testGenerateAvorName() {
+    assertEquals(AvroUtil.generateAvroSchemaName("schema.table"), "schema_table");
   }
 }

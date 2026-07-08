@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -28,6 +29,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dataflow template which reads data from Mqtt Topic and writes it to Cloud PubSub.
@@ -58,6 +61,10 @@ import org.apache.beam.sdk.transforms.ParDo;
     supportsAtLeastOnce = true)
 public class MqttToPubsub {
 
+  private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsub.class);
+  private static final Pattern PUBSUB_TOPIC_PATTERN =
+      Pattern.compile("^projects/[\\w:-]+/topics/[\\w:-]+$");
+
   /**
    * Runs a pipeline which reads data from Mqtt topic and writes it to Cloud PubSub.
    *
@@ -76,13 +83,20 @@ public class MqttToPubsub {
         throw new IllegalArgumentException(
             "While username is provided, password is required for authentication");
       }
+      if (options.getInputTopic() != null
+          && PUBSUB_TOPIC_PATTERN.matcher(options.getInputTopic()).matches()) {
+        LOG.warn(
+            "The input topic '{}' matches the format of a Google Cloud Pub/Sub topic. "
+                + "Please verify that this is a valid MQTT topic and not a misconfigured Pub/Sub topic.",
+            options.getInputTopic());
+      }
     }
   }
 
   public static PipelineResult run(MqttToPubsubOptions options) {
     validate(options);
     Pipeline pipeline = Pipeline.create(options);
-    MqttIO.Read mqttIo;
+    MqttIO.Read<byte[]> mqttIo;
     if (!options.getUsername().isEmpty() || !options.getPassword().isBlank()) {
       mqttIo =
           MqttIO.read()
@@ -121,10 +135,11 @@ public class MqttToPubsub {
   public interface MqttToPubsubOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = true,
         regexes = {"[,\\/:a-zA-Z0-9._-]+"},
         description = "MQTT Broker IP",
-        helpText = "Server IP for MQTT broker",
+        helpText = "The MQTT broker server IP or host.",
         example = "tcp://host:1883")
     @Validation.Required
     String getBrokerServer();
@@ -133,10 +148,11 @@ public class MqttToPubsub {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         regexes = {"[\\/a-zA-Z0-9._-]+"},
         description = "MQTT topic(s) to read the input from",
-        helpText = "MQTT topic(s) to read the input from.",
+        helpText = "The name of the MQTT topic that data is read from.",
         example = "topic")
     @Validation.Required
     String getInputTopic();
@@ -145,9 +161,9 @@ public class MqttToPubsub {
 
     @TemplateParameter.PubsubTopic(
         order = 3,
+        groupName = "Target",
         description = "Output Pub/Sub topic",
-        helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        helpText = "The name of the output Pub/Sub topic that data is written to.",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();
@@ -157,7 +173,7 @@ public class MqttToPubsub {
     @TemplateParameter.Text(
         order = 4,
         description = "MQTT Username",
-        helpText = "MQTT username for authentication with MQTT server",
+        helpText = "The username to use for authentication on the MQTT server.",
         example = "sampleusername")
     String getUsername();
 
@@ -166,7 +182,7 @@ public class MqttToPubsub {
     @TemplateParameter.Password(
         order = 5,
         description = "MQTT Password",
-        helpText = "Password for username provided for authentication with MQTT server",
+        helpText = "The password associated with the provided username.",
         example = "samplepassword")
     String getPassword();
 

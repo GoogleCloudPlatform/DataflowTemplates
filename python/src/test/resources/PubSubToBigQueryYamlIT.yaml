@@ -1,0 +1,21 @@
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPubSub
+      config:
+        subscription: {{ SUBSCRIPTION }}
+        format: json
+        schema:
+          type: object
+          properties:
+            id: {type: integer}
+            job: {type: string}
+            name: {type: string}
+    - type: WriteToBigQuery
+      config:
+        table: {{ BQ_TABLE }}
+  windowing:
+    type: fixed
+    size: 5s
+options:
+  streaming: true

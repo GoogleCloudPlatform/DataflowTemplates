@@ -27,11 +27,11 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import com.google.cloud.teleport.spanner.spannerio.MutationGroup;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import java.util.Arrays;
 import java.util.Iterator;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.rules.ExternalResource;
 

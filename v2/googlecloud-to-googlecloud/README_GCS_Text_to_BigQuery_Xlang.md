@@ -12,24 +12,24 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_BigQuery_Xlang).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern** : The path to the Cloud Storage text to read. (Example: gs://your-bucket/your-file.txt).
-* **JSONPath** : The Cloud Storage path to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
-* **outputTable** : The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. (Example: your-project:your-dataset.your-table).
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
+* **inputFilePattern**: The gs:// path to the text in Cloud Storage you'd like to process. For example, `gs://your-bucket/your-file.txt`.
+* **JSONPath**: The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage. For example, `gs://your-bucket/your-schema.json`.
+* **outputTable**: The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process. For example, `gs://your-bucket/your-files/temp-dir`.
 
 ### Optional parameters
 
-* **useStorageWriteApi** : If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
-* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **pythonExternalTextTransformGcsPath**: The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-function.py`.
+* **pythonExternalTextTransformFunctionName**: The name of the function to call from your Python file. Use only letters, digits, and underscores. For example, `'transform' or 'transform_udf1'`.
 
 
 
@@ -37,7 +37,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -51,7 +51,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/googlecloud-to-googlecloud
+```
 
 ### Building Template
 
@@ -70,16 +80,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_Text_to_BigQuery_Xlang" \
--f v2/googlecloud-to-googlecloud
+-pl v2/googlecloud-to-googlecloud -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -212,14 +226,14 @@ resource "google_dataflow_flex_template_job" "gcs_text_to_bigquery_xlang" {
   name              = "gcs-text-to-bigquery-xlang"
   region            = var.region
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-file.txt"
-    JSONPath = "gs://your-bucket/your-schema.json"
-    outputTable = "your-project:your-dataset.your-table"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp-dir"
+    inputFilePattern = "<inputFilePattern>"
+    JSONPath = "<JSONPath>"
+    outputTable = "<outputTable>"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
-    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
-    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # pythonExternalTextTransformGcsPath = "<pythonExternalTextTransformGcsPath>"
+    # pythonExternalTextTransformFunctionName = "<pythonExternalTextTransformFunctionName>"
   }
 }
 ```

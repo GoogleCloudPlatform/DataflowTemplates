@@ -1,0 +1,805 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.writer;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import com.google.cloud.ByteArray;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SchemaTestUtils;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.cloud.teleport.v2.templates.RowContext;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform.WriteDLQ;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+
+public class DeadLetterQueueTest {
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  private Ddl spannerDdl;
+
+  @Before
+  public void setup() {
+    spannerDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_quantity")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("synth_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("synth_id")
+            .end()
+            .endTable()
+            .build();
+  }
+
+  @Test
+  public void testCreateGCSDLQ() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    assertEquals("testDir", dlq.getDlqDirectory());
+
+    assertTrue(dlq.createDLQTransform("testDir") instanceof WriteDLQ);
+
+    assertTrue(((WriteDLQ) dlq.createDLQTransform("testDir")).dlqDirectory().endsWith("testDir/"));
+
+    assertNotNull(((WriteDLQ) dlq.createDLQTransform("testDir")).fileNamePrefix());
+  }
+
+  @Test
+  public void testCreateLogDlq() {
+
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("", "mydb");
+    SourceTableSchema schema =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "new_quantity", new SourceColumnType("Bigint", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "timestamp_col", new SourceColumnType("timestamp", new Long[] {}, null))
+            .build();
+
+    Ddl spannerDdlWithLogicalTypes =
+        Ddl.builder()
+            .createTable(testTable)
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("timestamp_col")
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "LOG",
+            spannerDdlWithLogicalTypes,
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdlWithLogicalTypes));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("new_quantity", 42L)
+                    .setField("timestamp_col", "1749630376")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    String expectedDataWithSuccessfulConversion =
+        "\"timestamp_col\":\"1970-01-01T00:29:09.630376Z\",\"new_quantity\":42";
+    String expectedDataForConversionException =
+        "\"timestamp_col\":\"1749630376\",\"new_quantity\":42";
+    assertThat(dlq.rowContextToDlqElement(r1).getPayload())
+        .contains(expectedDataWithSuccessfulConversion);
+    try (MockedStatic<GenericRecordTypeConvertor> genericRecordTypeConvertorMockedStatic =
+        Mockito.mockStatic(GenericRecordTypeConvertor.class)) {
+      genericRecordTypeConvertorMockedStatic
+          .when(
+              () ->
+                  GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                      Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+          .thenThrow(new RuntimeException("testException"));
+
+      assertThat(dlq.rowContextToDlqElement(r1).getPayload())
+          .contains(expectedDataForConversionException);
+    }
+  }
+
+  @Test
+  public void testCreateIgnoreDlq() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "IGNORE", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    assertEquals("IGNORE", dlq.getDlqDirectory());
+    assertNull(dlq.createDLQTransform("IGNORE"));
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testNoDlqDirectory() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(null, spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    dlq.createDLQTransform(null);
+  }
+
+  @Test
+  public void testFilteredRowsToLog() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setMutation(
+                Mutation.newInsertOrUpdateBuilder(testTable)
+                    .set("firstName")
+                    .to("abc")
+                    .set("lastName")
+                    .to("def")
+                    .build())
+            .build();
+
+    PCollection<RowContext> filteredRows = pipeline.apply(Create.of(r1));
+    dlq.filteredEventsToDLQ(filteredRows);
+    pipeline.run();
+  }
+
+  @Test
+  public void testFailedMutationsToDLQ_exercisesDoFn() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    Mutation m1 = Mutation.newInsertBuilder("testTable").set("id").to(1).build();
+    MutationGroup mg = MutationGroup.create(m1);
+
+    PCollection<MutationGroup> failedMutations =
+        pipeline.apply(Create.of(java.util.Collections.singletonList(mg)));
+    dlq.failedMutationsToDLQ(failedMutations);
+    pipeline.run();
+  }
+
+  @Test
+  public void testLogicalTypes() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+  }
+
+  @Test
+  public void testFailedRowsToLog() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "LOG", spannerDdl, SQLDialect.POSTGRESQL, getIdentityMapper(spannerDdl));
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setMutation(
+                Mutation.newInsertOrUpdateBuilder(testTable)
+                    .set("firstName")
+                    .to("abc")
+                    .set("lastName")
+                    .to("def")
+                    .build())
+            .build();
+
+    PCollection<RowContext> failedRows = pipeline.apply(Create.of(r1));
+    dlq.failedTransformsToDLQ(failedRows);
+    pipeline.run();
+  }
+
+  @Test
+  public void testRowContextToDlqElementMysql() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("srcTable")
+            .column("firstName")
+            .string()
+            .max()
+            .endColumn()
+            .column("lastName")
+            .string()
+            .max()
+            .endColumn()
+            .column("migration_id")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("migration_id")
+            .end()
+            .endTable()
+            .build();
+
+    Map<String, String> srcTableToShardId = Map.of(testTable, "migration_id");
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("migration_id");
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", ddl, SQLDialect.MYSQL, mockSchemaMapper);
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .setShardId("shard-1")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getErrorMessage().contains("test exception"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"migration_id\":\"shard-1\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_source_type\":\"mysql\""));
+    assertTrue(
+        dlqElement.getOriginalPayload().contains("\"_metadata_change_type\":\"UPDATE-INSERT\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementMissingShardIdColumn() {
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("nonExistentTable");
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .setShardId("shard-1")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    // Verify that we DO NOT add the shard ID column if it's missing from DDL
+    assertFalse(dlqElement.getOriginalPayload().contains("\"migration_shard_id\":\"shard-1\""));
+    // But we SHOULD still have the metadata
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_shard_id\":\"shard-1\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementPG() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.POSTGRESQL, getIdentityMapper(spannerDdl));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getErrorMessage().contains("test exception"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+    assertTrue(
+        dlqElement.getOriginalPayload().contains("\"_metadata_source_type\":\"postgresql\""));
+  }
+
+  @Test
+  public void testMutationToDlqElement() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    Mutation m =
+        Mutation.newInsertOrUpdateBuilder("srcTable")
+            .set("firstName")
+            .to("abc")
+            .set("lastName")
+            .to("def")
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementWithIntegralTypes() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "id", new SourceColumnType("Bigint", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "bit_col", new SourceColumnType("Bit", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "int_col", new SourceColumnType("Integer", new Long[] {}, null))
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("id", 123L)
+                    .setField("bit_col", 1L)
+                    .setField("int_col", 456)
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    assertNotNull(dlqElement);
+    // Verify integral types are not quoted
+    assertTrue(dlqElement.getOriginalPayload().contains("\"id\":123"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"bit_col\":1"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"int_col\":456"));
+
+    RowContext r2 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("id", 123L)
+                    .setField("bit_col", null)
+                    .setField("int_col", null)
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement2 = dlq.rowContextToDlqElement(r2);
+    assertNotNull(dlqElement2);
+    // Verify null integral types are handled correctly
+    assertTrue(dlqElement2.getOriginalPayload().contains("\"id\":123"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"bit_col\":"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"int_col\":"));
+  }
+
+  @Test
+  public void testRowContextToDlqElementWithSpannerShardIdColumn() {
+    // Setup DDL with shard ID column
+    Ddl ddlWithShardId =
+        Ddl.builder()
+            .createTable("srcTable")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("shard_id")
+            .string()
+            .max()
+            .endColumn() // Shard ID column
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    // Mock SchemaMapper to return "shard_id" as the column name
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("shard_id");
+    Mockito.when(mockSchemaMapper.getSourceTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+
+    Map<String, String> srcTableToShardIdColumnMap = new HashMap<>();
+    srcTableToShardIdColumnMap.put("srcTable", "shard_id");
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", ddlWithShardId, SQLDialect.MYSQL, mockSchemaMapper);
+
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
+    RowContext r =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .setShardId("shard-1")
+                    .build())
+            .setErr(new Exception("test"))
+            .build();
+
+    FailsafeElement<String, String> result = dlq.rowContextToDlqElement(r);
+
+    String payload = result.getOriginalPayload();
+    assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-1\""));
+    assertTrue(payload.contains("\"shard_id\":\"shard-1\""));
+    assertTrue(payload.contains("\"_metadata_shard_id_column_name\":\"shard_id\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementWithoutSpannerShardIdColumn() {
+    // Setup DDL WITHOUT shard ID column
+    Ddl ddlNoShardId =
+        Ddl.builder()
+            .createTable("srcTable")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("shard_id"); // Even if mapper knows the name, DDL doesn't have it
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", ddlNoShardId, SQLDialect.MYSQL, mockSchemaMapper);
+
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
+    RowContext r =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12345L)
+                    .setField("firstName", "abc")
+                    .setField("lastName", "def")
+                    .setShardId("shard-1")
+                    .build())
+            .setErr(new Exception("test"))
+            .build();
+
+    FailsafeElement<String, String> result = dlq.rowContextToDlqElement(r);
+
+    String payload = result.getOriginalPayload();
+    assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-1\""));
+    assertFalse(payload.contains("\"shard_id\":\"shard-1\"")); // Should NOT be present as column
+    assertFalse(payload.contains("\"_metadata_shard_id_column_name\":\"shard_id\""));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithBinaryAndNumericTypes() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("binary_col")
+            .to(Value.bytes(com.google.cloud.ByteArray.copyFrom("test".getBytes())))
+            .set("int_col")
+            .to(123)
+            .set("float_col")
+            .to(1.23)
+            .set("numeric_col")
+            .to(Value.numeric(new java.math.BigDecimal("123.456")))
+            .set("null_col")
+            .to(Value.string(null))
+            .set("bit_col")
+            .to(
+                Value.bytes(
+                    ByteArray.copyFrom(
+                        new java.math.BigInteger("9223372036854775807").toByteArray())))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"id\":1"));
+    // "test" in hex is 74657374
+    assertTrue(payload.contains("\"binary_col\":\"74657374\""));
+    assertTrue(payload.contains("\"int_col\":123"));
+    assertTrue(payload.contains("\"float_col\":1.23"));
+    assertTrue(payload.contains("\"numeric_col\":123.456"));
+    assertTrue(payload.contains("\"bit_col\":\"7fffffffffffffff\""));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithBytesArray() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("bytes_array_col")
+            .toBytesArray(
+                java.util.List.of(
+                    com.google.cloud.ByteArray.copyFrom("test1".getBytes()),
+                    com.google.cloud.ByteArray.copyFrom("test2".getBytes())))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"id\":1"));
+    // "test1" in hex is 7465737431
+    // "test2" in hex is 7465737432
+    assertTrue(payload.contains("\"bytes_array_col\":[\"7465737431\",\"7465737432\"]"));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithShardId() {
+    Ddl ddlWithShardId =
+        Ddl.builder()
+            .createTable("srcTable")
+            .column("firstName")
+            .string()
+            .max()
+            .endColumn()
+            .column("shard_id") // Required for validation
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("shard_id")
+            .end()
+            .endTable()
+            .build();
+
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("shard_id");
+    Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+    Mockito.when(mockSchemaMapper.getSourceTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", ddlWithShardId, SQLDialect.MYSQL, mockSchemaMapper);
+
+    Mutation m =
+        Mutation.newInsertOrUpdateBuilder("srcTable")
+            .set("firstName")
+            .to("abc")
+            .set("shard_id")
+            .to("shard-123")
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(payload.contains("\"firstName\":\"abc\""));
+    assertTrue(payload.contains("\"shard_id\":\"shard-123\""));
+    assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-123\""));
+    assertTrue(payload.contains("\"_metadata_shard_id_column_name\":\"shard_id\""));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithImplicitShardId() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+
+    Mutation m =
+        Mutation.newInsertOrUpdateBuilder("srcTable")
+            .set("firstName")
+            .to("abc")
+            .set("migration_shard_id")
+            .to("shard-456")
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"_metadata_table\":\"srcTable\""));
+    assertTrue(payload.contains("\"firstName\":\"abc\""));
+    assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-456\""));
+  }
+
+  /**
+   * Tests that {@link DeadLetterQueue#mutationToDlqElement} correctly handles a null shard ID in
+   * the mutation metadata.
+   */
+  @Test
+  public void testMutationToDlqElementWithNullShardId() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+
+    Mutation m =
+        Mutation.newInsertOrUpdateBuilder("srcTable")
+            .set("firstName")
+            .to("abc")
+            .set("migration_shard_id")
+            .to((String) null)
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"_metadata_table\":\"srcTable\""));
+    assertFalse(payload.contains("\"_metadata_shard_id\""));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithNaNAndInfinity() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("nan_double")
+            .to(Double.NaN)
+            .set("inf_double")
+            .to(Double.POSITIVE_INFINITY)
+            .set("nan_float")
+            .to(Float.NaN)
+            .set("inf_float")
+            .to(Float.POSITIVE_INFINITY)
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"id\":1"));
+    assertTrue(payload.contains("\"nan_double\":\"NaN\""));
+    assertTrue(payload.contains("\"inf_double\":\"Infinity\""));
+    assertTrue(payload.contains("\"nan_float\":\"NaN\""));
+    assertTrue(payload.contains("\"inf_float\":\"Infinity\""));
+  }
+
+  @Test
+  public void testMutationToDlqElement_MoreTypes() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("bool_col")
+            .to(true)
+            .set("date_col")
+            .to(com.google.cloud.Date.fromYearMonthDay(2024, 1, 1))
+            .set("timestamp_col")
+            .to(com.google.cloud.Timestamp.ofTimeMicroseconds(123456789))
+            .set("null_val_col")
+            .to(Value.string(null))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+    String payload = dlqElement.getOriginalPayload();
+
+    assertTrue(
+        "Payload does not contain bool_col:true. Payload: " + payload,
+        payload.contains("\"bool_col\":\"true\""));
+    assertTrue(
+        "Payload does not contain date_col:2024-01-01. Payload: " + payload,
+        payload.contains("\"date_col\":\"2024-01-01\""));
+    assertTrue(
+        "Payload does not contain expected timestamp. Payload: " + payload,
+        payload.contains("\"timestamp_col\":\"1970-01-01T00:02:03.456789000Z\"")
+            || payload.contains("\"timestamp_col\":\"1970-01-01T00:02:03.456789Z\""));
+    assertFalse(payload.contains("\"null_val_col\""));
+  }
+
+  @Test
+  public void testMutationToDlqElement_ExplicitNullValue() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    // Add a field that is explicitly set to null Value
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("null_col")
+            .to((String) null)
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+    // JSONObject.put(key, null) removes the key
+    assertFalse(dlqElement.getOriginalPayload().contains("\"null_col\""));
+  }
+
+  @Test
+  public void testMutationToDlqElement_WithExplicitShardIdInMutationMap() {
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("migration_shard_id");
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create("testDir", spannerDdl, SQLDialect.MYSQL, mockSchemaMapper);
+
+    Mutation m =
+        Mutation.newInsertBuilder("srcTable")
+            .set("id")
+            .to(1)
+            .set("migration_shard_id")
+            .to("shard1")
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    assertThat(dlqElement.getOriginalPayload()).contains("\"_metadata_shard_id\":\"shard1\"");
+    assertThat(dlqElement.getOriginalPayload())
+        .contains("\"_metadata_shard_id_column_name\":\"migration_shard_id\"");
+  }
+
+  private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
+    return new IdentityMapper(spannerDdl);
+  }
+}

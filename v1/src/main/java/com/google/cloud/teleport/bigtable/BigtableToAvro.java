@@ -76,10 +76,10 @@ public class BigtableToAvro {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
-                + " read data from")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -87,9 +87,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -97,9 +98,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read")
+        helpText = "The ID of the Bigtable table to export.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -107,11 +109,10 @@ public class BigtableToAvro {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
+        groupName = "Target",
         description = "Output file directory in Cloud Storage",
-        helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
-                + " formatting is used to parse directory path for date & time formatters.",
-        example = "gs://your-bucket/your-path")
+        helpText = "The Cloud Storage path where data is written.",
+        example = "gs://mybucket/somefolder")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -119,13 +120,28 @@ public class BigtableToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
         description = "Avro file prefix",
-        helpText = "The prefix of the Avro file name. For example, \"table1-\"")
+        helpText = "The prefix of the Avro filename. For example, `output-`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
     void setFilenamePrefix(ValueProvider<String> filenamePrefix);
+
+    @TemplateParameter.Text(
+        order = 6,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Application profile ID",
+        helpText =
+            "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> appProfileId);
   }
 
   /**
@@ -151,6 +167,7 @@ public class BigtableToAvro {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.

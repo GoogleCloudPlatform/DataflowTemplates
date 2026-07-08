@@ -1,0 +1,204 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "event",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t804": {
+      "Name": "my_table",
+      "ColIds": [
+        "c805",
+        "c807",
+        "c808"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c805": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c805",
+          "AutoGen": {
+            "Name": "Sequence806",
+            "GenerationType": "Sequence"
+          }
+        },
+        "c807": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: name varchar(255)",
+          "Id": "c807",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c808": {
+          "Name": "extra_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c808",
+          "AutoGen": {
+            "Name": "Sequence806",
+            "GenerationType": "Sequence"
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c805",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "Comment": "Spanner schema for source table my_table",
+      "Id": "t804"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t804": {
+      "Name": "my_table",
+      "Schema": "event",
+      "ColIds": [
+        "c805",
+        "c807"
+      ],
+      "ColDefs": {
+        "c805": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c805",
+          "AutoGen": {
+            "Name": "Sequence806",
+            "GenerationType": "Auto Increment"
+          }
+        },
+        "c807": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c807",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c805",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t804"
+    }
+  },
+  "SchemaIssues": {
+    "t804": {
+      "ColumnLevelIssues": {
+        "c805": [
+          14,
+          34
+        ],
+        "c807": []
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {
+    "s806": {
+      "Id": "s806",
+      "Name": "Sequence806",
+      "SequenceKind": "BIT REVERSED POSITIVE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t804": [
+          "c805"
+        ]
+      }
+    }
+  },
+  "SrcSequences": {
+    "s806": {
+      "Id": "s806",
+      "Name": "Sequence806",
+      "SequenceKind": "BIT REVERSED SEQUENCE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t804": [
+          "c805"
+        ]
+      }
+    }
+  }
+}

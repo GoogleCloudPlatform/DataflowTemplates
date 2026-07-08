@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.options.SpannerToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
@@ -42,7 +43,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
     description =
         "The Spanner to BigQuery template is a batch pipeline that reads data from a Spanner table, and writes them to a BigQuery table.",
     optionsClass = SpannerToBigQueryOptions.class,
-    flexContainerName = "spanner-to-bigquery",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
@@ -69,12 +70,22 @@ public final class SpannerToBigQuery {
             .withInstanceId(options.getSpannerInstanceId())
             .withRpcPriority(options.getSpannerRpcPriority());
 
+    SpannerIO.Read read = SpannerIO.read().withSpannerConfig(spannerConfig);
+
+    if (!Strings.isNullOrEmpty(options.getSqlQuery())) {
+      read = read.withQuery(options.getSqlQuery());
+    } else if (!Strings.isNullOrEmpty(options.getSpannerTableId())) {
+      read = read.withTable(options.getSpannerTableId());
+    } else {
+      throw new IllegalArgumentException("either sqlQuery or spannerTableId required");
+    }
+    if (Strings.isNullOrEmpty(options.getBigQuerySchemaPath())
+        && CreateDisposition.valueOf(options.getCreateDisposition()) != CREATE_NEVER) {
+      throw new IllegalArgumentException(
+          "bigQuerySchemaPath is required if CreateDisposition is not CREATE_NEVER");
+    }
     pipeline
-        .apply(
-            SpannerIO.read()
-                .withTable(options.getSpannerTableId())
-                .withSpannerConfig(spannerConfig)
-                .withQuery(options.getSqlQuery()))
+        .apply(read)
         .apply(new StructToJson())
         .apply("Write To BigQuery", writeToBigQuery(options));
 

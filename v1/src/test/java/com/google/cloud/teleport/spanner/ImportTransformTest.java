@@ -108,6 +108,61 @@ public class ImportTransformTest {
     pipeline.run();
   }
 
+  @Test
+  public void validateInputFilesWithCrc32c() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+    Path f2 = Files.createTempFile("table1-file", "2");
+    Path f3 = Files.createTempFile("table2-file", "1");
+
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString()).setCrc32C("AAAAAA==");
+    builder.addFilesBuilder().setName(f2.getFileName().toString()).setCrc32C("AAAAAA==");
+    TableManifest manifest1 = builder.build();
+
+    builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f3.getFileName().toString()).setCrc32C("AAAAAA==");
+    TableManifest manifest2 = builder.build();
+
+    final Map<String, TableManifest> tablesAndManifests =
+        ImmutableMap.of(
+            "table1", manifest1,
+            "table2", manifest2);
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
+
+    // Execute the transform.
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Create", Create.of(tablesAndManifests))
+            .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
+
+    PAssert.that(tableAndFiles)
+        .containsInAnyOrder(
+            KV.of("table1", f1.toString()),
+            KV.of("table1", f2.toString()),
+            KV.of("table2", f3.toString()));
+
+    pipeline.run();
+  }
+
+  @Test(expected = PipelineExecutionException.class)
+  public void validateInputFilesNoChecksum() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString());
+    TableManifest manifest1 = builder.build();
+
+    final Map<String, TableManifest> tablesAndManifests = ImmutableMap.of("table1", manifest1);
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
+
+    pipeline
+        .apply("Create", Create.of(tablesAndManifests))
+        .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
+
+    pipeline.run();
+  }
+
   @Test(expected = PipelineExecutionException.class)
   public void validateInvalidInputFiles() throws Exception {
     Path f1 = Files.createTempFile("table1-file", "1");
@@ -266,6 +321,66 @@ public class ImportTransformTest {
               for (KV<String, String> file : manifests) {
                 assertEquals("Person", file.getKey());
                 assertTrue(file.getValue().contains("person.avro-00000-of-00005"));
+              }
+              return null;
+            });
+    pipeline.run();
+  }
+
+  @Test
+  public void testReadUdfManifestFiles() throws Exception {
+    String testManifest =
+        "{\n"
+            + "  \"udfs\":[\n"
+            + "    {\n"
+            + "       \"name\": \"func1\",\n"
+            + "       \"manifestFile\": \"Func1-manifest.json\""
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    Path path = tmpFolder.newFile("spanner-export.json").toPath();
+    Files.write(path, testManifest.getBytes());
+
+    path = tmpFolder.newFile("func1.avro-00000-of-00005").toPath();
+    Files.write(path, new byte[20]);
+
+    String testFuncManifest =
+        "{\n"
+            + "  \"files\": [{\n"
+            + "    \"name\": \"func1.avro-00000-of-00005\",\n"
+            + "    \"md5\": \""
+            + FileChecksum.getLocalFileChecksum(path)
+            + "\"\n"
+            + "  }]"
+            + "}";
+    path = tmpFolder.newFile("Func1-manifest.json").toPath();
+    Files.write(path, testFuncManifest.getBytes());
+
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+    PCollection<Export> manifest =
+        pipeline.apply(
+            "Read manifest",
+            new ReadExportManifestFile(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath()),
+                dialectView));
+
+    PCollection<KV<String, String>> allFiles =
+        manifest.apply(
+            "Read all manifest files",
+            new ReadManifestFiles(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath())));
+
+    PAssert.that(allFiles)
+        .satisfies(
+            input -> {
+              LinkedList<KV<String, String>> manifests = Lists.newLinkedList(input);
+              assertEquals(1, manifests.size());
+              for (KV<String, String> file : manifests) {
+                assertEquals("func1", file.getKey());
+                assertTrue(file.getValue().contains("func1.avro-00000-of-00005"));
               }
               return null;
             });

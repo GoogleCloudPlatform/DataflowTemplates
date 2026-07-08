@@ -36,12 +36,10 @@
   </prerequisites>
 
   <properties>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <maven.version>3.3.9</maven.version>
-    <dataflow.api.version>0.7.6</dataflow.api.version>
-    <mojo.executor.version>2.4.0</mojo.executor.version>
-    <maven-plugin.version>3.6.0</maven-plugin.version>
+    <maven.version>3.9.9</maven.version>
+    <dataflow.api.version>0.96.0</dataflow.api.version>
+    <mojo.executor.version>2.4.1</mojo.executor.version>
+    <maven-plugin.version>3.15.1</maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -51,14 +49,33 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud.teleport.metadata</groupId>
+      <artifactId>metadata</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-dataflow</artifactId>
       <version>${dataflow.api.version}</version>
     </dependency>
     <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-storage</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.twdata.maven</groupId>
       <artifactId>mojo-executor</artifactId>
       <version>${mojo.executor.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>dev.failsafe</groupId>
+      <artifactId>failsafe</artifactId>
+      <version>${failsafe.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
@@ -97,9 +114,33 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.maven.plugin-testing</groupId>
       <artifactId>maven-plugin-testing-harness</artifactId>
-      <version>3.3.0</version>
+      <version>3.5.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <version>${hamcrest.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -116,7 +157,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
-          <version>3.0.2</version>
+          <version>3.5.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -126,7 +167,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.1</version>
+          <version>${surefire.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -141,12 +182,12 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-deploy-plugin</artifactId>
-          <version>2.8.2</version>
+          <version>3.1.4</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-invoker-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.9.1</version>
         </plugin>
       </plugins>
     </pluginManagement>

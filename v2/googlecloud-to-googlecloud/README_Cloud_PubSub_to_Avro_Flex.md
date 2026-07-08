@@ -11,30 +11,30 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Avro_Flex).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.
-* **avroTempDirectory** : Directory for temporary Avro files.
+* **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.
+* **avroTempDirectory**: Directory for temporary Avro files.
 
 ### Optional parameters
 
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **inputTopic** : Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name'.
-* **outputFilenamePrefix** : The prefix to place on each windowed file. Defaults to: output.
-* **outputFilenameSuffix** : The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. Defaults to empty.
-* **outputShardTemplate** : Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default.
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
-* **yearPattern** : Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'.
-* **monthPattern** : Pattern for formatting the month. Must be one or more of the 'M' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'MM'.
-* **dayPattern** : Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for day of year. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'dd'.
-* **hourPattern** : Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'HH'.
-* **minutePattern** : Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'mm'.
+* **inputSubscription**: Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **inputTopic**: Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name'.
+* **outputFilenamePrefix**: The prefix to place on each windowed file. Defaults to: output.
+* **outputFilenameSuffix**: The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. Defaults to empty.
+* **outputShardTemplate**: The shard template defines the dynamic portion of each windowed file. By default, the pipeline uses a single shard for output to the file system within each window. This means that all data outputs into a single file per window. The `outputShardTemplate` defaults to `W-P-SS-of-NN` where `W` is the window date range, `P` is the pane info, `S` is the shard number, and `N` is the number of shards. In case of a single file, the `SS-of-NN` portion of the `outputShardTemplate` is `00-of-01`.
+* **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
+* **windowDuration**: The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to `5m` (5 minutes), with a minimum of `1s` (1 second). Allowed formats are: `[int]s` (for seconds, example: `5s`), `[int]m` (for minutes, example: `12m`), `[int]h` (for hours, example: `2h`). For example, `5m`.
+* **yearPattern**: Pattern for formatting the year. Must be one or more of `y` or `Y`. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory (`/`) character. Defaults to `YYYY`.
+* **monthPattern**: Pattern for formatting the month. Must be one or more of the `M` character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory (`/`) character. Defaults to `MM`.
+* **dayPattern**: Pattern for formatting the day. Must be one or more of `d` for day of month or `D` for day of year. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory (`/`) character. Defaults to `dd`.
+* **hourPattern**: Pattern for formatting the hour. Must be one or more of the `H` character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory (`/`) character. Defaults to `HH`.
+* **minutePattern**: Pattern for formatting the minute. Must be one or more of the `m` character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory (`/`) character. Defaults to `mm`.
 
 
 
@@ -42,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -56,7 +56,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/googlecloud-to-googlecloud
+```
 
 ### Building Template
 
@@ -75,16 +85,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_PubSub_to_Avro_Flex" \
--f v2/googlecloud-to-googlecloud
+-pl v2/googlecloud-to-googlecloud -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -237,7 +251,7 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_avro_flex" {
   parameters        = {
     outputDirectory = "<outputDirectory>"
     avroTempDirectory = "<avroTempDirectory>"
-    # inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    # inputSubscription = "<inputSubscription>"
     # inputTopic = "<inputTopic>"
     # outputFilenamePrefix = "output"
     # outputFilenameSuffix = ""

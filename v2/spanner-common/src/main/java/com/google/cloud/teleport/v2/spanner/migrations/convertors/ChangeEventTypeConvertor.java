@@ -19,8 +19,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,6 +51,55 @@ public class ChangeEventTypeConvertor {
       DateTimeFormatter.ISO_LOCAL_DATE;
   private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
+  public static Value toValue(
+      JsonNode changeEvent, Type columnType, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    switch (columnType.getCode()) {
+      case BOOL:
+      case PG_BOOL:
+        return Value.bool(toBoolean(changeEvent, key, requiredField));
+      case INT64:
+      case PG_INT8:
+        return Value.int64(toLong(changeEvent, key, requiredField));
+      case FLOAT64:
+      case PG_FLOAT8:
+        return Value.float64(toDouble(changeEvent, key, requiredField));
+      case FLOAT32:
+      case PG_FLOAT4:
+        return Value.float32(toFloat(changeEvent, key, requiredField));
+      case STRING:
+      case PG_VARCHAR:
+      case PG_TEXT:
+      case UUID:
+      case PG_UUID:
+        return Value.string(toString(changeEvent, key, requiredField));
+      case NUMERIC:
+      case PG_NUMERIC:
+        return Value.numeric(toNumericBigDecimal(changeEvent, key, requiredField));
+      case JSON:
+      case PG_JSONB:
+        return Value.string(toString(changeEvent, key, requiredField));
+      case BYTES:
+      case PG_BYTEA:
+        return Value.bytes(toByteArray(changeEvent, key, requiredField));
+      case TIMESTAMP:
+      case PG_COMMIT_TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+        return Value.timestamp(toTimestamp(changeEvent, key, requiredField));
+      case DATE:
+      case PG_DATE:
+        return Value.date(toDate(changeEvent, key, requiredField));
+      case ARRAY:
+        // TODO(b/422928714): Add support for Array types.
+        return null;
+        // TODO(b/179070999) - Add support for other data types.
+      default:
+        throw new IllegalArgumentException(
+            "Column name(" + key + ") has unsupported column type(" + columnType.getCode() + ")");
+    }
+  }
+
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
@@ -61,6 +113,9 @@ public class ChangeEventTypeConvertor {
        */
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return BooleanUtils.toBoolean(node.asText());
       }
       return Boolean.valueOf(node.asBoolean());
@@ -79,6 +134,9 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return Long.valueOf(node.asText());
       }
       return node.asLong();
@@ -97,11 +155,34 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return Double.valueOf(node.asText());
       }
       return Double.valueOf(node.asDouble());
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to double ", e);
+    }
+  }
+
+  public static Float toFloat(JsonNode changeEvent, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    if (!containsValue(changeEvent, key, requiredField)) {
+      return null;
+    }
+    try {
+      JsonNode node = changeEvent.get(key);
+      if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
+        return Float.valueOf(node.asText());
+      }
+      return new Float(node.asDouble());
+    } catch (Exception e) {
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to float ", e);
     }
   }
 
@@ -126,9 +207,20 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
+      JsonNode node = changeEvent.get(key);
+      if (node.isIntegralNumber()) {
+        // Datastream returns integral types (e.g. Long) for BIT and similar datatypes.
+        // These should be interpreted as-is and directly converted to a byte array.
+        BigInteger bigIntValue = new BigInteger(node.asText());
+        return ByteArray.copyFrom(bigIntValue.toByteArray());
+      }
+
       // For data with Spanner type as BYTES, Datastream returns a hex encoded string. We need to
       // decode it before returning to ensure data correctness.
-      String s = changeEvent.get(key).asText();
+      String s = node.asText();
+      if (s.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       // Make an odd length hex string even by appending a 0 in the beginning.
       if (s.length() % 2 == 1) {
         s = "0" + s;
@@ -153,6 +245,9 @@ public class ChangeEventTypeConvertor {
     }
     try {
       String timeString = changeEvent.get(key).asText();
+      if (timeString.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       Instant instant = parseTimestamp(timeString);
       return Timestamp.ofTimeSecondsAndNanos(instant.getEpochSecond(), instant.getNano());
     } catch (Exception e) {
@@ -169,6 +264,9 @@ public class ChangeEventTypeConvertor {
     }
     try {
       String dateString = changeEvent.get(key).asText();
+      if (dateString.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
@@ -201,6 +299,9 @@ public class ChangeEventTypeConvertor {
     if (value == null) {
       return null;
     }
+    if (value.equalsIgnoreCase("NULL")) {
+      return null;
+    }
     if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
       return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
     }
@@ -219,11 +320,11 @@ public class ChangeEventTypeConvertor {
    */
   private static boolean containsValue(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
-    boolean containsValue = changeEvent.hasNonNull(key);
-    if (requiredField && !containsValue) {
+
+    if (requiredField && !changeEvent.has(key)) {
       throw new ChangeEventConvertorException("Required key " + key + " not found in change event");
     }
-    return containsValue;
+    return changeEvent.hasNonNull(key);
   }
 
   private static java.util.Date parseDate(String date) {

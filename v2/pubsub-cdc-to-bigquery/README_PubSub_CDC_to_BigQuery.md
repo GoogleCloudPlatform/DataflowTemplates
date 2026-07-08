@@ -8,37 +8,37 @@ to a pre-existing BigQuery table as BigQuery elements.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputDatasetTemplate** : The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}.
-* **outputTableNameTemplate** : The location of the BigQuery table to write the output to. If a table does not already exist one will be created automatically. Defaults to: _metadata_table.
+* **inputSubscription**: Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **outputTableNameTemplate**: The location of the BigQuery table to write the output to. If a table does not already exist one will be created automatically. Defaults to: _metadata_table.
 
 ### Optional parameters
 
-* **autoMapTables** : Determines if new columns and tables should be automatically created in BigQuery. Defaults to: true.
-* **schemaFilePath** : This is the file location that contains the table definition to be used when creating the table in BigQuery. If left blank the table will get created with generic string typing.
-* **outputTableSpec** : BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **deadLetterQueueDirectory** : The name of the directory on Cloud Storage you want to write dead letters messages to. Defaults to empty.
-* **windowDuration** : The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5s.
-* **threadCount** : The number of parallel threads you want to split your data into. Defaults to: 100.
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
-* **pythonTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.py).
-* **pythonRuntimeVersion** : The runtime version to use for this Python UDF.
-* **pythonTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **runtimeRetries** : The number of times a runtime will be retried before failing. Defaults to: 5.
-* **useStorageWriteApi** : If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **numStorageWriteApiStreams** : Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
+* **autoMapTables**: Determines if new columns and tables should be automatically created in BigQuery. Defaults to: true.
+* **schemaFilePath**: This is the file location that contains the table definition to be used when creating the table in BigQuery. If left blank the table will get created with generic string typing.
+* **outputDatasetTemplate**: The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}.
+* **outputTableSpec**: BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
+* **deadLetterQueueDirectory**: The name of the directory on Cloud Storage you want to write dead letters messages to.
+* **windowDuration**: The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `5m`. Defaults to: 5s.
+* **threadCount**: The number of parallel threads you want to split your data into. Defaults to: 100.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
+* **pythonTextTransformGcsPath**: The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-transforms/*.py`.
+* **pythonRuntimeVersion**: The runtime version to use for this Python UDF.
+* **pythonTextTransformFunctionName**: The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. For example, `transform_udf1`.
+* **runtimeRetries**: The number of times a runtime will be retried before failing. Defaults to: 5.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**:  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
 
 ## User-Defined functions (UDFs)
@@ -56,7 +56,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -70,7 +70,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/pubsub-cdc-to-bigquery
+```
 
 ### Building Template
 
@@ -89,16 +99,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_CDC_to_BigQuery" \
--f v2/pubsub-cdc-to-bigquery
+-pl v2/pubsub-cdc-to-bigquery -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -128,15 +142,15 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_CDC_to_Big
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_NAME_TEMPLATE=_metadata_table
 
 ### Optional
 export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DEAD_LETTER_QUEUE_DIRECTORY=<deadLetterQueueDirectory>
 export WINDOW_DURATION=5s
 export THREAD_COUNT=100
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
@@ -195,15 +209,15 @@ export REGION=us-central1
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_NAME_TEMPLATE=_metadata_table
 
 ### Optional
 export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DEAD_LETTER_QUEUE_DIRECTORY=<deadLetterQueueDirectory>
 export WINDOW_DURATION=5s
 export THREAD_COUNT=100
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
@@ -270,22 +284,22 @@ resource "google_dataflow_flex_template_job" "pubsub_cdc_to_bigquery" {
   name              = "pubsub-cdc-to-bigquery"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    outputDatasetTemplate = "{_metadata_dataset}"
+    inputSubscription = "<inputSubscription>"
     outputTableNameTemplate = "_metadata_table"
     # autoMapTables = "true"
     # schemaFilePath = "<schemaFilePath>"
+    # outputDatasetTemplate = "{_metadata_dataset}"
     # outputTableSpec = "<outputTableSpec>"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
-    # deadLetterQueueDirectory = ""
-    # windowDuration = "5m"
+    # outputDeadletterTable = "<outputDeadletterTable>"
+    # deadLetterQueueDirectory = "<deadLetterQueueDirectory>"
+    # windowDuration = "5s"
     # threadCount = "100"
-    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
-    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
-    # pythonTextTransformGcsPath = "gs://your-bucket/your-transforms/*.py"
+    # pythonTextTransformGcsPath = "<pythonTextTransformGcsPath>"
     # pythonRuntimeVersion = "<pythonRuntimeVersion>"
-    # pythonTextTransformFunctionName = "transform_udf1"
+    # pythonTextTransformFunctionName = "<pythonTextTransformFunctionName>"
     # runtimeRetries = "5"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"

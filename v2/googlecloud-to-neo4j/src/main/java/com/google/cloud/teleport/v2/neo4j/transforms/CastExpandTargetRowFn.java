@@ -15,12 +15,13 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
+import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.targets.Target;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,10 +30,15 @@ public class CastExpandTargetRowFn extends DoFn<Row, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CastExpandTargetRowFn.class);
   private final Target target;
+  private final NodeTarget startNodeTarget;
+  private final NodeTarget endNodeTarget;
   private final Schema targetSchema;
 
-  public CastExpandTargetRowFn(Target target, Schema targetSchema) {
+  public CastExpandTargetRowFn(
+      Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget, Schema targetSchema) {
     this.target = target;
+    this.startNodeTarget = startNodeTarget;
+    this.endNodeTarget = endNodeTarget;
     this.targetSchema = targetSchema;
   }
 
@@ -40,15 +46,17 @@ public class CastExpandTargetRowFn extends DoFn<Row, Row> {
   public void processElement(ProcessContext processContext) {
     Row inputRow = processContext.element();
 
-    List<Object> castVals = DataCastingUtils.sourceTextToTargetObjects(inputRow, target);
+    List<Object> castVals =
+        DataCastingUtils.sourceTextToTargetObjects(
+            inputRow, target, startNodeTarget, endNodeTarget);
     if (targetSchema.getFieldCount() != castVals.size()) {
       LOG.error(
           "Unable to parse line.  Expecting {} fields, found {}",
           targetSchema.getFieldCount(),
           castVals.size());
-    } else {
-      Row targetRow = Row.withSchema(targetSchema).attachValues(castVals);
-      processContext.output(targetRow);
+      return;
     }
+    Row targetRow = Row.withSchema(targetSchema).attachValues(castVals);
+    processContext.output(targetRow);
   }
 }

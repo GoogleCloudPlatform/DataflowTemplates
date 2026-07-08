@@ -1,0 +1,384 @@
+
+Spanner Change Streams to Source Database template
+---
+Streaming pipeline. Reads data from Spanner Change Streams and writes them to a
+source.
+
+
+
+:bulb: This is a generated documentation based
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
+. Do not change this file directly.
+
+## Parameters
+
+### Required parameters
+
+* **changeStreamName**: This is the name of the Spanner change stream that the pipeline will read from.
+* **instanceId**: This is the name of the Cloud Spanner instance where the changestream is present.
+* **databaseId**: This is the name of the Cloud Spanner database that the changestream is monitoring.
+* **spannerProjectId**: This is the name of the Cloud Spanner project.
+* **metadataInstance**: This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
+* **metadataDatabase**: This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
+* **sourceShardsFilePath**: Path to GCS file containing connection profile info for source shards.
+
+### Optional parameters
+
+* **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline to ensure that the metadata table from the original job is carried over.
+* **startTimestamp**: Read changes from the given timestamp. Defaults to empty.
+* **endTimestamp**: Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
+* **shadowTablePrefix**: The prefix used to name shadow tables. Default: `shadow_`.
+* **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **filtrationMode**: Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
+* **shardingCustomJarPath**: Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.
+* **shardingCustomClassName**: Fully qualified class name having the custom shard id implementation.  It is a mandatory field in case shardingCustomJarPath is specified. Defaults to empty.
+* **shardingCustomParameters**: String containing any custom parameters to be passed to the custom sharding class. Defaults to empty.
+* **sourceDbTimezoneOffset**: This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
+* **dlqGcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **skipDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
+* **maxShardConnections**: This will come from shard file eventually. Defaults to: 10000.
+* **deadLetterQueueDirectory**: The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
+* **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to 500.
+* **runMode**: This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.
+* **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to 10.
+* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql.
+* **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
+* **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **tableOverrides**: These are the table name overrides from spanner to source. They are written in thefollowing format: [{SpannerTableName1, SourceTableName1}, {SpannerTableName2, SourceTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from spanner to source. They are written in thefollowing format: [{SpannerTableName1.SpannerColumnName1, SpannerTableName1.SourceColumnName1}, {SpannerTableName2.SpannerColumnName1, SpannerTableName2.SourceColumnName1}]Note that the SpannerTableName should remain the same in both the spanner and source pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from spanner to source. Defaults to empty.
+* **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
+* **isShardedMigration**: Sets the template to a sharded migration. If source shard template contains more than one shard, the value will be set to true. This value defaults to false.
+* **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
+* **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
+* **changeStreamMetadataDatabase**: This is the database to store the metadata used by the change stream connector. If not provided, it defaults to the metadata database.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
+
+
+
+## Getting Started
+
+### Requirements
+
+* Java 17
+* Maven
+* [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
+
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/SpannerToSourceDb.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/spanner-to-sourcedb
+```
+
+### Building Template
+
+This template is a Flex Template, meaning that the pipeline code will be
+containerized and the container will be executed on Dataflow. Please
+check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
+for more information.
+
+#### Staging the Template
+
+If the plan is to just stage the template (i.e., make it available to use) by
+the `gcloud` command or Dataflow "Create job from template" UI,
+the `-PtemplatesStage` profile should be used:
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
+
+mvn clean package -PtemplatesStage  \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
+-DstagePrefix="templates" \
+-DtemplateName="Spanner_to_SourceDb" \
+-pl v2/spanner-to-sourcedb -am
+```
+
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
+
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
+
+```
+Flex Template was staged! gs://<bucket-name>/templates/flex/Spanner_to_SourceDb
+```
+
+The specific path should be copied as it will be used in the following steps.
+
+#### Running the Template
+
+**Using the staged template**:
+
+You can use the path above run the template (or share with others for execution).
+
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Spanner_to_SourceDb"
+
+### Required
+export CHANGE_STREAM_NAME=<changeStreamName>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export SPANNER_PROJECT_ID=<spannerProjectId>
+export METADATA_INSTANCE=<metadataInstance>
+export METADATA_DATABASE=<metadataDatabase>
+export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+
+### Optional
+export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
+export START_TIMESTAMP=""
+export END_TIMESTAMP=""
+export SHADOW_TABLE_PREFIX=rev_shadow_
+export SESSION_FILE_PATH=<sessionFilePath>
+export FILTRATION_MODE=forward_migration
+export SHARDING_CUSTOM_JAR_PATH=""
+export SHARDING_CUSTOM_CLASS_NAME=""
+export SHARDING_CUSTOM_PARAMETERS=""
+export SOURCE_DB_TIMEZONE_OFFSET=+00:00
+export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export SKIP_DIRECTORY_NAME=skip
+export MAX_SHARD_CONNECTIONS=10000
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_MAX_RETRY_COUNT=500
+export RUN_MODE=regular
+export DLQ_RETRY_MINUTES=10
+export SOURCE_TYPE=mysql
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
+export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
+export IS_SHARDED_MIGRATION=false
+export FAILURE_INJECTION_PARAMETER=""
+export SPANNER_PRIORITY=HIGH
+export CHANGE_STREAM_METADATA_DATABASE=<changeStreamMetadataDatabase>
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+
+gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "changeStreamName=$CHANGE_STREAM_NAME" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "databaseId=$DATABASE_ID" \
+  --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
+  --parameters "metadataInstance=$METADATA_INSTANCE" \
+  --parameters "metadataDatabase=$METADATA_DATABASE" \
+  --parameters "spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME" \
+  --parameters "startTimestamp=$START_TIMESTAMP" \
+  --parameters "endTimestamp=$END_TIMESTAMP" \
+  --parameters "shadowTablePrefix=$SHADOW_TABLE_PREFIX" \
+  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "filtrationMode=$FILTRATION_MODE" \
+  --parameters "shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH" \
+  --parameters "shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME" \
+  --parameters "shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS" \
+  --parameters "sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET" \
+  --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+  --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME" \
+  --parameters "maxShardConnections=$MAX_SHARD_CONNECTIONS" \
+  --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
+  --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
+  --parameters "runMode=$RUN_MODE" \
+  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+  --parameters "sourceType=$SOURCE_TYPE" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "tableOverrides=$TABLE_OVERRIDES" \
+  --parameters "columnOverrides=$COLUMN_OVERRIDES" \
+  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
+  --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
+  --parameters "isShardedMigration=$IS_SHARDED_MIGRATION" \
+  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
+  --parameters "spannerPriority=$SPANNER_PRIORITY" \
+  --parameters "changeStreamMetadataDatabase=$CHANGE_STREAM_METADATA_DATABASE" \
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
+```
+
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
+
+**Using the plugin**:
+
+Instead of just generating the template in the folder, it is possible to stage
+and run the template in a single command. This may be useful for testing when
+changing the templates.
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+
+### Required
+export CHANGE_STREAM_NAME=<changeStreamName>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export SPANNER_PROJECT_ID=<spannerProjectId>
+export METADATA_INSTANCE=<metadataInstance>
+export METADATA_DATABASE=<metadataDatabase>
+export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+
+### Optional
+export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
+export START_TIMESTAMP=""
+export END_TIMESTAMP=""
+export SHADOW_TABLE_PREFIX=rev_shadow_
+export SESSION_FILE_PATH=<sessionFilePath>
+export FILTRATION_MODE=forward_migration
+export SHARDING_CUSTOM_JAR_PATH=""
+export SHARDING_CUSTOM_CLASS_NAME=""
+export SHARDING_CUSTOM_PARAMETERS=""
+export SOURCE_DB_TIMEZONE_OFFSET=+00:00
+export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export SKIP_DIRECTORY_NAME=skip
+export MAX_SHARD_CONNECTIONS=10000
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_MAX_RETRY_COUNT=500
+export RUN_MODE=regular
+export DLQ_RETRY_MINUTES=10
+export SOURCE_TYPE=mysql
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
+export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
+export IS_SHARDED_MIGRATION=false
+export FAILURE_INJECTION_PARAMETER=""
+export SPANNER_PRIORITY=HIGH
+export CHANGE_STREAM_METADATA_DATABASE=<changeStreamMetadataDatabase>
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+
+mvn clean package -PtemplatesRun \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-Dregion="$REGION" \
+-DjobName="spanner-to-sourcedb-job" \
+-DtemplateName="Spanner_to_SourceDb" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,spannerPriority=$SPANNER_PRIORITY,changeStreamMetadataDatabase=$CHANGE_STREAM_METADATA_DATABASE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-f v2/spanner-to-sourcedb
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
+
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/spanner-to-sourcedb/terraform/Spanner_to_SourceDb
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Spanner_to_SourceDb"
+  name              = "spanner-to-sourcedb"
+  region            = var.region
+  parameters        = {
+    changeStreamName = "<changeStreamName>"
+    instanceId = "<instanceId>"
+    databaseId = "<databaseId>"
+    spannerProjectId = "<spannerProjectId>"
+    metadataInstance = "<metadataInstance>"
+    metadataDatabase = "<metadataDatabase>"
+    sourceShardsFilePath = "<sourceShardsFilePath>"
+    # spannerMetadataTableName = "<spannerMetadataTableName>"
+    # startTimestamp = ""
+    # endTimestamp = ""
+    # shadowTablePrefix = "rev_shadow_"
+    # sessionFilePath = "<sessionFilePath>"
+    # filtrationMode = "forward_migration"
+    # shardingCustomJarPath = ""
+    # shardingCustomClassName = ""
+    # shardingCustomParameters = ""
+    # sourceDbTimezoneOffset = "+00:00"
+    # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
+    # skipDirectoryName = "skip"
+    # maxShardConnections = "10000"
+    # deadLetterQueueDirectory = ""
+    # dlqMaxRetryCount = "500"
+    # runMode = "regular"
+    # dlqRetryMinutes = "10"
+    # sourceType = "mysql"
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
+    # tableOverrides = ""
+    # columnOverrides = ""
+    # schemaOverridesFilePath = ""
+    # filterEventsDirectoryName = "filteredEvents"
+    # isShardedMigration = "false"
+    # failureInjectionParameter = ""
+    # spannerPriority = "HIGH"
+    # changeStreamMetadataDatabase = "<changeStreamMetadataDatabase>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
+  }
+}
+```

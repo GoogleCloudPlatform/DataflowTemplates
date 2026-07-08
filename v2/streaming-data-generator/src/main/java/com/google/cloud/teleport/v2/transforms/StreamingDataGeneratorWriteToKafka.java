@@ -25,6 +25,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -48,6 +50,9 @@ import org.joda.time.Instant;
 
 /** A {@link PTransform} that converts generatedMessages to write to Spanner table. */
 public final class StreamingDataGeneratorWriteToKafka {
+
+  private static final Pattern ManagedKafkaRegex =
+      Pattern.compile("bootstrap\\..*\\.managedkafka\\..*\\.cloud\\.goog.*");
 
   private StreamingDataGeneratorWriteToKafka() {}
 
@@ -179,13 +184,19 @@ public final class StreamingDataGeneratorWriteToKafka {
                           StreamingDataGenerator.OutputType.AVRO.name())));
       }
 
-      return kafkaMessages.apply(
-          "writeSuccessMessages",
+      KafkaIO.Write<Void, String> writeTransform =
           KafkaIO.<Void, String>write()
               .withBootstrapServers(getPipelineOptions().getBootstrapServer())
               .withTopic(getPipelineOptions().getKafkaTopic())
               .withValueSerializer(StringSerializer.class)
-              .values());
+              .withProducerConfigUpdates(
+                  Map.of(
+                      "linger.ms", 100,
+                      "batch.size", 64000));
+      if (ManagedKafkaRegex.matcher(getPipelineOptions().getBootstrapServer()).matches()) {
+        writeTransform = writeTransform.withGCPApplicationDefaultCredentials();
+      }
+      return kafkaMessages.apply("writeSuccessMessages", writeTransform.values());
     }
   }
 }

@@ -42,9 +42,9 @@ import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.tensorflow.example.Example;
-import org.tensorflow.example.Feature;
-import org.tensorflow.example.Features;
+import org.tensorflow.proto.Example;
+import org.tensorflow.proto.Feature;
+import org.tensorflow.proto.Features;
 
 /**
  * Dataflow template which reads BigQuery data and writes it to GCS as a set of TFRecords. The
@@ -330,52 +330,56 @@ public class BigQueryToTFRecord {
 
     @TemplateParameter.GcsWriteFolder(
         order = 1,
+        groupName = "Target",
         description = "Output Cloud Storage directory.",
-        helpText = "Cloud Storage directory to store output TFRecord files.",
-        example = "gs://your-bucket/your-path")
+        helpText =
+            "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`.",
+        example = "gs://mybucket/output")
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> outputDirectory);
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         optional = true,
         regexes = {"^[A-Za-z_0-9.]*"},
         description = "The output suffix for TFRecord files",
-        helpText = "File suffix to append to TFRecord files. Defaults to .tfrecord")
+        helpText =
+            "The file suffix for the training, testing, and validation TFRecord files that are written. The default value is `.tfrecord`.")
     @Default.String(".tfrecord")
     ValueProvider<String> getOutputSuffix();
 
     void setOutputSuffix(ValueProvider<String> outputSuffix);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 3,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the training set ",
-        helpText = "Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive")
+        helpText =
+            "The percentage of query data allocated to training TFRecord files. The default value is `1`, or `100%`.")
     @Default.Float(1)
     ValueProvider<Float> getTrainingPercentage();
 
     void setTrainingPercentage(ValueProvider<Float> trainingPercentage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 4,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the testing set ",
-        helpText = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive")
+        helpText =
+            "The percentage of query data allocated to testing TFRecord files. The default value is `0`, or `0%`.")
     @Default.Float(0)
     ValueProvider<Float> getTestingPercentage();
 
     void setTestingPercentage(ValueProvider<Float> testingPercentage);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Float(
         order = 5,
         optional = true,
-        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
         description = "Percentage of data to be in the validation set ",
-        helpText = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive")
+        helpText =
+            "The percentage of query data allocated to validation TFRecord files. The default value is `0`, or `0%`.")
     @Default.Float(0)
     ValueProvider<Float> getValidationPercentage();
 

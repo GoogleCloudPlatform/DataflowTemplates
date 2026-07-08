@@ -12,21 +12,21 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Mqtt_to_PubSub).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputTopic** : MQTT topic(s) to read the input from. (Example: topic).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **username** : MQTT username for authentication with MQTT server (Example: sampleusername).
-* **password** : Password for username provided for authentication with MQTT server (Example: samplepassword).
+* **inputTopic**: The name of the MQTT topic that data is read from. For example, `topic`.
+* **outputTopic**: The name of the output Pub/Sub topic that data is written to. For example, `projects/your-project-id/topics/your-topic-name`.
+* **username**: The username to use for authentication on the MQTT server. For example, `sampleusername`.
+* **password**: The password associated with the provided username. For example, `samplepassword`.
 
 ### Optional parameters
 
-* **brokerServer** : Server IP for MQTT broker (Example: tcp://host:1883).
+* **brokerServer**: The MQTT broker server IP or host. For example, `tcp://host:1883`.
 
 
 
@@ -34,7 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -48,7 +48,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/mqtt-to-pubsub
+```
 
 ### Building Template
 
@@ -67,16 +77,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Mqtt_to_PubSub" \
--f v2/mqtt-to-pubsub
+-pl v2/mqtt-to-pubsub -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -200,11 +214,11 @@ resource "google_dataflow_flex_template_job" "mqtt_to_pubsub" {
   name              = "mqtt-to-pubsub"
   region            = var.region
   parameters        = {
-    inputTopic = "topic"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
-    username = "sampleusername"
-    password = "samplepassword"
-    # brokerServer = "tcp://host:1883"
+    inputTopic = "<inputTopic>"
+    outputTopic = "<outputTopic>"
+    username = "<username>"
+    password = "<password>"
+    # brokerServer = "<brokerServer>"
   }
 }
 ```

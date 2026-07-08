@@ -26,6 +26,7 @@
                   "NUMERIC", "JSON"]
               }
             },
+            { "name" : "arrayElementType", "type" : ["null", "com.google.cloud.teleport.v2.TypeCode"], "default" : null },
             { "name" : "isPrimaryKey", "type" : "boolean"},
             { "name" : "ordinalPosition", "type" : "long"}
           ]
@@ -83,6 +84,9 @@
           { "name" : "totalStreamTimeMillis", "type":"long"},
           { "name" : "numberOfRecordsRead","type":"long"}
         ]
-        }],"default":null}
+        }],"default":null},
+        {"name": "spannerDatabaseId", "type": ["null", "string"], "default": null },
+        {"name": "spannerInstanceId", "type": ["null", "string"], "default": null },
+        {"name": "outputMessageMetadata", "type": ["null", "string"], "default": null }
     ]
     }

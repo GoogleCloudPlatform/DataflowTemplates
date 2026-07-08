@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.auto.value.extension.memoized.Memoized;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -34,6 +36,11 @@ public abstract class Column implements Serializable {
   public abstract Type type();
 
   public abstract ImmutableList<String> columnOptions();
+
+  @Memoized
+  public CassandraAnnotations cassandraAnnotation() {
+    return CassandraAnnotations.fromColumnOptions(columnOptions(), name());
+  }
 
   @Nullable
   public abstract Integer size();
@@ -126,6 +133,10 @@ public abstract class Column implements Serializable {
         return Type.Code.FLOAT64.getName();
       case PG_FLOAT8:
         return Type.Code.PG_FLOAT8.getName();
+      case FLOAT32:
+        return Type.Code.FLOAT32.getName();
+      case PG_FLOAT4:
+        return Type.Code.PG_FLOAT4.getName();
       case STRING:
         return Type.Code.STRING + "(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
       case PG_VARCHAR:
@@ -153,6 +164,12 @@ public abstract class Column implements Serializable {
         return Type.Code.JSON.getName();
       case PG_JSONB:
         return Type.Code.PG_JSONB.getName();
+      case UUID:
+        return Type.Code.UUID.getName();
+      case PG_UUID:
+        return Type.Code.PG_UUID.getName();
+      case TOKENLIST:
+        return Type.Code.TOKENLIST.getName();
       case ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -218,8 +235,11 @@ public abstract class Column implements Serializable {
     }
 
     public Builder float64() {
-
       return type(Type.float64());
+    }
+
+    public Builder float32() {
+      return type(Type.float32());
     }
 
     public Builder bool() {
@@ -232,6 +252,10 @@ public abstract class Column implements Serializable {
 
     public Builder bytes() {
       return type(Type.bytes());
+    }
+
+    public Builder uuid() {
+      return type(Type.uuid());
     }
 
     public Builder timestamp() {
@@ -290,6 +314,10 @@ public abstract class Column implements Serializable {
       return type(Type.pgJsonb());
     }
 
+    public Builder pgUuid() {
+      return type(Type.pgUuid());
+    }
+
     public Builder max() {
       return size(-1);
     }
@@ -305,6 +333,10 @@ public abstract class Column implements Serializable {
     }
 
     public abstract Builder columnOptions(ImmutableList<String> options);
+
+    public Builder array(Type t) {
+      return type(Type.array(t));
+    }
   }
 
   private static class SizedType {
@@ -335,6 +367,9 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.FLOAT64.getName())) {
             return t(Type.float64(), null);
           }
+          if (spannerType.equals(Type.Code.FLOAT32.getName())) {
+            return t(Type.float32(), null);
+          }
           if (spannerType.startsWith(Type.Code.STRING.getName())) {
             String sizeStr = spannerType.substring(7, spannerType.length() - 1);
             int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
@@ -354,8 +389,14 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.NUMERIC.getName())) {
             return t(Type.numeric(), null);
           }
+          if (spannerType.equals(Type.Code.UUID.getName())) {
+            return t(Type.uuid(), null);
+          }
           if (spannerType.equals(Type.Code.JSON.getName())) {
             return t(Type.json(), null);
+          }
+          if (spannerType.equals(Type.Code.TOKENLIST.getName())) {
+            return t(Type.tokenlist(), null);
           }
           if (spannerType.startsWith(Type.Code.ARRAY.getName())) {
             // Substring "ARRAY<"xxx">"
@@ -383,6 +424,9 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.PG_FLOAT8.getName())) {
             return t(Type.pgFloat8(), null);
           }
+          if (spannerType.equals(Type.Code.PG_FLOAT4.getName())) {
+            return t(Type.pgFloat4(), null);
+          }
           if (spannerType.equals(Type.Code.PG_TEXT.getName())) {
             return t(Type.pgText(), -1);
           }
@@ -402,6 +446,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.PG_NUMERIC.getName())) {
             return t(Type.pgNumeric(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_UUID.getName())) {
+            return t(Type.pgUuid(), null);
           }
           if (spannerType.equals(Type.Code.PG_JSONB.getName())) {
             return t(Type.pgJsonb(), null);

@@ -1,0 +1,86 @@
+options:
+  - name: "iceberg_common_options"
+    parameters:
+      - order: 1
+        name: "table"
+        description: "A fully-qualified table identifier."
+        help: "A fully-qualified table identifier, e.g., my_dataset.my_table."
+        example: "my_dataset.my_table"
+        required: true
+        type: text
+      - order: 2
+        name: "catalogName"
+        description: "Name of the catalog containing the table."
+        help: "The name of the Iceberg catalog that contains the table."
+        example: "my_hadoop_catalog"
+        required: true
+        type: text
+      - order: 3
+        name: "catalogProperties"
+        description: "Properties used to set up the Iceberg catalog."
+        help: "A map of properties for setting up the Iceberg catalog."
+        example: '{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}'
+        required: true
+        type: text
+      - order: 4
+        name: "configProperties"
+        description: "Properties passed to the Hadoop Configuration."
+        help: "A map of properties to pass to the Hadoop Configuration."
+        example: '{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}'
+        required: false
+        type: map
+      - order: 5
+        name: "drop"
+        description: "A list of field names to drop from the input record before writing."
+        help: "A list of field names to drop. Mutually exclusive with 'keep' and 'only'."
+        example: '["field_to_drop_1", "field_to_drop_2"]'
+        required: false
+        type: text
+      - order: 6
+        name: "filter"
+        description: "An optional filter expression to apply to the input records."
+        help: "A filter expression to apply to records from the Iceberg table."
+        example: "age > 18"
+        required: false
+        type: text
+      - order: 7
+        name: "keep"
+        description: "A list of field names to keep in the input record."
+        help: "A list of field names to keep. Mutually exclusive with 'drop' and 'only'."
+        example: '["field_to_keep_1", "field_to_keep_2"]'
+        required: false
+        type: text
+
+  - name: "iceberg_write_options"
+    parameters:
+      - order: 1
+        name: "only"
+        description: "The name of a single record field that should be written."
+        help: "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'."
+        example: "my_record_field"
+        required: false
+        type: text
+      - order: 2
+        name: "partitionFields"
+        description: "Fields used to create a partition spec for new tables."
+        help: "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']."
+        example: '["day(ts)", "bucket(id, 4)"]'
+        required: false
+        type: text
+      - order: 3
+        name: "tableProperties"
+        description: "Iceberg table properties to be set on table creation."
+        help: "A map of Iceberg table properties to set when the table is created."
+        example: '{"commit.retry.num-retries": "2"}'
+        required: false
+        type: text
+
+  - name: "iceberg_streaming_write_options"
+    parameters:
+      - order: 1
+        name: "triggeringFrequencySeconds"
+        description: "For a streaming pipeline, the frequency at which snapshots are produced."
+        help: "The frequency in seconds for producing snapshots in a streaming pipeline."
+        example: 60
+        required: true
+        type: integer

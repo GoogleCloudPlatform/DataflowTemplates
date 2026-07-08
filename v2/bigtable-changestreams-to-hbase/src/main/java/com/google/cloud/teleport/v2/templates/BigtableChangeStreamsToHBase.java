@@ -75,6 +75,7 @@ public class BigtableChangeStreamsToHBase {
     /** Hbase specific configs. Mirrors configurations on hbase-site.xml. */
     @TemplateParameter.Text(
         description = "Zookeeper quorum host",
+        groupName = "Target",
         helpText = "Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host")
     String getHbaseZookeeperQuorumHost();
 
@@ -83,6 +84,7 @@ public class BigtableChangeStreamsToHBase {
     @TemplateParameter.Text(
         optional = true,
         description = "Zookeeper quorum port",
+        groupName = "Target",
         helpText = "Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port")
     @Default.String("2181")
     String getHbaseZookeeperQuorumPort();
@@ -91,6 +93,7 @@ public class BigtableChangeStreamsToHBase {
 
     @TemplateParameter.Text(
         description = "Hbase root directory",
+        groupName = "Target",
         helpText = "Hbase root directory, corresponds to hbase.rootdir")
     String getHbaseRootDir();
 
@@ -102,9 +105,9 @@ public class BigtableChangeStreamsToHBase {
         helpText =
             "Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations")
     @Default.Boolean(false)
-    boolean getBidirectionalReplicationEnabled();
+    Boolean getBidirectionalReplicationEnabled();
 
-    void setBidirectionalReplicationEnabled(boolean bidirectionalReplicationEnabled);
+    void setBidirectionalReplicationEnabled(Boolean bidirectionalReplicationEnabled);
 
     @TemplateParameter.Text(
         optional = true,
@@ -129,18 +132,18 @@ public class BigtableChangeStreamsToHBase {
         description = "Dry run",
         helpText = "When dry run is enabled, pipeline will not write to Hbase")
     @Default.Boolean(false)
-    boolean getDryRunEnabled();
+    Boolean getDryRunEnabled();
 
-    void setDryRunEnabled(boolean dryRunEnabled);
+    void setDryRunEnabled(Boolean dryRunEnabled);
 
     @TemplateParameter.Boolean(
         optional = true,
         description = "Filter GC mutations",
         helpText = "Filters out garbage collection Delete mutations from CBT")
     @Default.Boolean(false)
-    boolean getFilterGCMutations();
+    Boolean getFilterGCMutations();
 
-    void setFilterGCMutations(boolean filterGCMutations);
+    void setFilterGCMutations(Boolean filterGCMutations);
   }
 
   /**

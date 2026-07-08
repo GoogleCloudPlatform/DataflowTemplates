@@ -18,29 +18,29 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_BigQuery).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **driverJars** : Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **driverClassName** : JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
-* **connectionURL** : Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **query** : Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. (Example: select * from sampledb.sample_table).
-* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **driverJars**: Comma separate Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **driverClassName**: JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`.
+* **connectionURL**: Url connection string to connect to the JDBC source. For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **query**: Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. For example, `select * from sampledb.sample_table`.
+* **outputTable**: BigQuery table location to write the output to. The table's schema must match the input objects.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`.
 
 ### Optional parameters
 
-* **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **username** : User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **password** : Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **KMSEncryptionKey** : If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **useColumnAlias** : If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
-* **disabledAlgorithms** : Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker. (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
+* **connectionProperties**: Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`.
+* **username**: User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **password**: Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **KMSEncryptionKey**: If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **useColumnAlias**: If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
+* **disabledAlgorithms**: Comma-separated list of algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma-separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -48,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -62,7 +62,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -88,7 +98,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Jdbc_to_BigQuery" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -241,19 +251,19 @@ resource "google_dataflow_job" "jdbc_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
-    query = "select * from sampledb.sample_table"
+    driverJars = "<driverJars>"
+    driverClassName = "<driverClassName>"
+    connectionURL = "<connectionURL>"
+    query = "<query>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
+    # connectionProperties = "<connectionProperties>"
     # username = "<username>"
     # password = "<password>"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
     # useColumnAlias = "false"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```

@@ -25,6 +25,10 @@ import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.util.JsonFormat;
@@ -53,10 +57,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Create;
@@ -92,20 +92,23 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private final ValueProvider<String> importManifest;
   private final ValueProvider<String> invalidOutputPath;
+  private final ValueProvider<Integer> maxNumRows;
 
   public TextImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importManifest,
-      ValueProvider<String> invalidOutputPath) {
+      ValueProvider<String> invalidOutputPath,
+      ValueProvider<Integer> maxNumRows) {
     this.spannerConfig = spannerConfig;
     this.importManifest = importManifest;
     this.invalidOutputPath = invalidOutputPath;
+    this.maxNumRows = maxNumRows;
   }
 
   @Override
   public PDone expand(PBegin begin) {
     PCollectionView<Transaction> tx =
-        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollectionView<Dialect> dialectView =
         begin
@@ -196,21 +199,48 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Reshuffle text files " + depth, Reshuffle.viaRandomKey())
               .apply(
                   "Text files as mutations. Depth: " + depth,
-                  new TextTableFilesAsMutations(ddlView, tableColumnsView));
-
+                  new TextTableFilesAsMutations(ddlView, tableColumnsView, depth));
       SpannerWriteResult result =
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth,
-                  LocalSpannerIO.write()
+                  SpannerIO.write()
                       .withSpannerConfig(spannerConfig)
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
                       .withMaxNumMutations(10000)
                       .withGroupingFactor(100)
-                      .withDialectView(dialectView));
+                      .withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES)
+                      .withDialectView(dialectView)
+                      .withMaxNumRows(maxNumRows));
       previousComputation = result.getOutput();
+
+      result
+          .getFailedMutations()
+          .apply(
+              "Failed mutations as String " + depth,
+              ParDo.of(
+                  new DoFn<com.google.cloud.teleport.spanner.spannerio.MutationGroup, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      for (com.google.cloud.spanner.Mutation m : c.element()) {
+                        c.output(m.toString());
+                      }
+                    }
+                  }))
+          .apply(
+              "Write failed Spanner records " + depth,
+              TextIO.<String>writeCustomType()
+                  .to(invalidOutputPath)
+                  .withSuffix(
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
+                  .skipIfEmpty()
+                  .withFormatFunction(SerializableFunctions.identity()));
     }
 
     return PDone.in(begin.getPipeline());
@@ -222,12 +252,15 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     private final PCollectionView<Ddl> ddlView;
     private final PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView;
+    private final int depth;
 
     public TextTableFilesAsMutations(
         PCollectionView<Ddl> ddlView,
-        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView) {
+        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
+        int depth) {
       this.ddlView = ddlView;
       this.tableColumnsView = tableColumnsView;
+      this.depth = depth;
     }
 
     @Override
@@ -293,9 +326,14 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           .apply(
               TextIO.<String>writeCustomType()
                   .to(options.getInvalidOutputPath())
+                  .withSuffix(
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
                   .skipIfEmpty()
-                  .withFormatFunction(SerializableFunctions.identity())
-                  .withNumShards(1));
+                  .withFormatFunction(SerializableFunctions.identity()));
 
       return outputCollections.get(mutationTag);
     }
@@ -477,6 +515,12 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.NUMERIC;
       } else if (columnType.equalsIgnoreCase("JSON") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.JSON;
+      } else if (columnType.startsWith("PROTO") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.PROTO;
+      } else if (columnType.startsWith("ENUM") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.ENUM;
+      } else if (columnType.equalsIgnoreCase("UUID") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.UUID;
       } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_INT8;
       } else if (columnType.equalsIgnoreCase("real") && dialect == Dialect.POSTGRESQL) {
@@ -504,6 +548,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
       } else if (columnType.equalsIgnoreCase("spanner.commit_timestamp")
           && dialect == Dialect.POSTGRESQL) {
         return Code.PG_SPANNER_COMMIT_TIMESTAMP;
+      } else if (columnType.equalsIgnoreCase("uuid") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_UUID;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

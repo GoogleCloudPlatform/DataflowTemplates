@@ -21,24 +21,24 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=AstraDB_To_BigQuery).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **astraToken** : Token value or secret resource ID (Example: AstraCS:abcdefghij).
-* **astraDatabaseId** : Database unique identifier (uuid) (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
-* **astraKeyspace** : Name of the Cassandra keyspace inside Astra database.
-* **astraTable** : Name of the table inside the Cassandra database (Example: my_table).
+* **astraToken**: The token value or secret resource ID. For example, `AstraCS:abcdefghij`.
+* **astraDatabaseId**: The database unique identifier (UUID). For example, `cf7af129-d33a-498f-ad06-d97a6ee6eb7`.
+* **astraKeyspace**: The name of the Cassandra keyspace inside of the Astra database.
+* **astraTable**: The name of the table inside of the Cassandra database. For example, `my_table`.
 
 ### Optional parameters
 
-* **astraQuery** : Query to filter rows instead of reading the whole table.
-* **astraDatabaseRegion** : If not provided, a default is chosen, which is useful with multi-region databases.
-* **minTokenRangesCount** : The minimal number of splits to distribute the query.
-* **outputTableSpec** : The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.
+* **astraQuery**: The query to use to filter rows instead of reading the whole table.
+* **astraDatabaseRegion**: If not provided, a default is chosen, which is useful with multi-region databases.
+* **minTokenRangesCount**: The minimal number of splits to use to distribute the query.
+* **outputTableSpec**: The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects.
 
 
 
@@ -46,7 +46,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -60,7 +60,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/astradb-to-bigquery
+```
 
 ### Building Template
 
@@ -79,16 +89,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="AstraDB_To_BigQuery" \
--f v2/astradb-to-bigquery
+-pl v2/astradb-to-bigquery -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -221,10 +235,10 @@ resource "google_dataflow_flex_template_job" "astradb_to_bigquery" {
   name              = "astradb-to-bigquery"
   region            = var.region
   parameters        = {
-    astraToken = "AstraCS:abcdefghij"
-    astraDatabaseId = "cf7af129-d33a-498f-ad06-d97a6ee6eb7"
+    astraToken = "<astraToken>"
+    astraDatabaseId = "<astraDatabaseId>"
     astraKeyspace = "<astraKeyspace>"
-    astraTable = "my_table"
+    astraTable = "<astraTable>"
     # astraQuery = "<astraQuery>"
     # astraDatabaseRegion = "<astraDatabaseRegion>"
     # minTokenRangesCount = "<minTokenRangesCount>"

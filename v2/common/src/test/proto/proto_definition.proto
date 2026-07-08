@@ -18,6 +18,7 @@ syntax = "proto3";
 
 package com.google.cloud.teleport.v2.proto.testing;
 
+import "google/protobuf/timestamp.proto";
 import "import_proto_definition.proto";
 
 option java_package = "com.google.cloud.teleport.v2.proto.testing";
@@ -54,4 +55,13 @@ message MyMessage {
 message CircularlyReferencedMessage {
   string non_circular = 1;
   CircularlyReferencedMessage circular = 2;
+}
+
+message TimestampMessage {
+  message NestedTimestamp {
+    string field1 = 1;
+    .google.protobuf.Timestamp field2 = 2;
+  }
+  .google.protobuf.Timestamp timestamp = 1;
+  NestedTimestamp nested = 2;
 }

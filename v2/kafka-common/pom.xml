@@ -22,11 +22,10 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>kafka-common</artifactId>
-  <modelVersion>4.0.0</modelVersion>
-
   <properties>
-    <kafka-clients.version>2.6.3</kafka-clients.version>
+    <skipShade>true</skipShade>
   </properties>
+  <modelVersion>4.0.0</modelVersion>
 
   <dependencies>
     <dependency>
@@ -48,6 +47,12 @@
           <artifactId>snappy-java</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.google.cloud.hosted.kafka/managed-kafka-auth-login-handler -->
+    <dependency>
+        <groupId>com.google.cloud.hosted.kafka</groupId>
+        <artifactId>managed-kafka-auth-login-handler</artifactId>
+        <version>1.0.6</version>
     </dependency>
   </dependencies>
 

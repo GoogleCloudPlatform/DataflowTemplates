@@ -27,8 +27,7 @@
   <artifactId>structured-logging</artifactId>
 
   <properties>
-    <gson.version>2.9.1</gson.version>
-    <logback.version>1.2.13</logback.version>
+    <logback.version>1.5.33</logback.version>
   </properties>
 
   <dependencies>
@@ -45,6 +44,11 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <version>${logback.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
       <version>${logback.version}</version>
     </dependency>
     <!-- Testing -->
@@ -74,6 +78,18 @@
           <target>${java.version}</target>
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>

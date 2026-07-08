@@ -21,6 +21,7 @@ import com.google.auto.value.AutoValue;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -84,6 +85,12 @@ public abstract class PubsubMessagesCheck extends ConditionCheck {
     return new CheckResult(
         true,
         String.format("Expected at least %d messages and found %d", minMessages(), totalRows));
+  }
+
+  public static Builder builder(
+      PubsubResourceManager resourceManager, TopicName topic, String subscription) {
+    SubscriptionName subscriptionName = resourceManager.createSubscription(topic, subscription);
+    return builder(resourceManager, subscriptionName);
   }
 
   public static Builder builder(

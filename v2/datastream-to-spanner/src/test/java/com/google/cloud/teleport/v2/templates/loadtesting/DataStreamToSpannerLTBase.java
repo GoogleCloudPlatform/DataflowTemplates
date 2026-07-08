@@ -1,0 +1,456 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.loadtesting;
+
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SUCCESSFUL_EVENTS_COUNTER_NAME;
+import static java.util.Arrays.stream;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+
+import com.google.cloud.datastream.v1.DestinationConfig;
+import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.Stream;
+import com.google.common.base.MoreObjects;
+import com.google.common.io.Resources;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.junit.After;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Base class for DataStreamToSpanner Load tests. It provides helper functions related to
+ * environment setup and assertConditions.
+ */
+public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
+  protected static final String SPEC_PATH =
+      MoreObjects.firstNonNull(
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner");
+  protected String testRootDir;
+  protected final int maxWorkers = 100;
+  protected final int numWorkers = 50;
+  public PubsubResourceManager pubsubResourceManager;
+  public SpannerResourceManager spannerResourceManager;
+  protected SpannerResourceManager shadowTableSpannerResourceManager = null;
+  protected GcsResourceManager gcsResourceManager;
+  public DatastreamResourceManager datastreamResourceManager;
+  protected SecretManagerResourceManager secretClient;
+  private final ExecutorService rowCountExecutor = Executors.newFixedThreadPool(20);
+
+  public static class RowRange {
+    public final int min;
+    public final int max;
+
+    public RowRange(int min, int max) {
+      this.min = min;
+      this.max = max;
+    }
+  }
+
+  public void setUpResourceManagers(String spannerDdlResource) throws IOException {
+    setUpResourceManagers(spannerDdlResource, false);
+  }
+
+  protected boolean shouldUsePrivateConnectivity() {
+    return false;
+  }
+
+  /**
+   * Setup resource managers.
+   *
+   * @throws IOException
+   */
+  public void setUpResourceManagers(String spannerDdlResource, boolean separateShadowTableDb)
+      throws IOException {
+    testRootDir = getClass().getSimpleName();
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, project, region)
+            .maybeUseStaticInstance()
+            .setNodeCount(10)
+            .setMonitoringClient(monitoringClient)
+            .setSuppressVerboseLogs(true)
+            .build();
+    pubsubResourceManager =
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+            .setMonitoringClient(monitoringClient)
+            .build();
+
+    gcsResourceManager = createSpannerLTGcsResourceManager();
+    DatastreamResourceManager.Builder datastreamBuilder =
+        DatastreamResourceManager.builder(testName, project, region)
+            .setCredentialsProvider(CREDENTIALS_PROVIDER);
+    if (System.getProperty("privateConnectivity") != null && shouldUsePrivateConnectivity()) {
+      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
+    }
+
+    datastreamResourceManager = datastreamBuilder.build();
+    secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
+
+    // Initialize shadowTableSpannerResourceManager only if separateShadowTableDb is true
+    if (separateShadowTableDb) {
+      shadowTableSpannerResourceManager =
+          SpannerResourceManager.builder("shadow_" + testName, project, region)
+              .maybeUseStaticInstance()
+              .setNodeCount(10)
+              .setMonitoringClient(monitoringClient)
+              .setSuppressVerboseLogs(true)
+              .build();
+      shadowTableSpannerResourceManager.ensureUsableAndCreateResources();
+    }
+
+    createSpannerDDL(spannerResourceManager, spannerDdlResource);
+  }
+
+  public void runLoadTest(HashMap<String, Integer> tables, JDBCSource mySQLSource)
+      throws IOException, ParseException, InterruptedException {
+    runLoadTest(tables, mySQLSource, new HashMap<>(), new HashMap<>());
+  }
+
+  public void runLoadTest(
+      HashMap<String, Integer> tables,
+      JDBCSource mySQLSource,
+      HashMap<String, String> templateParameters,
+      HashMap<String, Object> environmentOptions)
+      throws IOException, ParseException, InterruptedException {
+    runLoadTest(tables, mySQLSource, templateParameters, environmentOptions, null);
+  }
+
+  public void runLoadTest(
+      HashMap<String, Integer> tables,
+      JDBCSource mySQLSource,
+      HashMap<String, String> templateParameters,
+      HashMap<String, Object> environmentOptions,
+      Runnable afterLaunchCallback)
+      throws IOException, ParseException, InterruptedException {
+    // TestClassName/runId/TestMethodName/cdc
+    String gcsPrefix =
+        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
+    SubscriptionName subscription =
+        createPubsubResources(
+            testRootDir + testName, pubsubResourceManager, gcsPrefix, gcsResourceManager);
+
+    String dlqGcsPrefix =
+        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "dlq"});
+    SubscriptionName dlqSubscription =
+        createPubsubResources(
+            testRootDir + testName + "dlq",
+            pubsubResourceManager,
+            dlqGcsPrefix,
+            gcsResourceManager);
+
+    Stream stream =
+        createDatastreamResources(
+            gcsResourceManager.getBucket(), gcsPrefix, mySQLSource, datastreamResourceManager);
+
+    // Setup Parameters
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put("inputFilePattern", getGcsPath(gcsResourceManager.getBucket(), gcsPrefix));
+            put("streamName", stream.getName());
+            put("instanceId", spannerResourceManager.getInstanceId());
+            put("databaseId", spannerResourceManager.getDatabaseId());
+            put("projectId", project);
+            put(
+                "deadLetterQueueDirectory",
+                getGcsPath(gcsResourceManager.getBucket(), dlqGcsPrefix));
+            put("gcsPubSubSubscription", subscription.toString());
+            put("dlqGcsPubSubSubscription", dlqSubscription.toString());
+            put("datastreamSourceType", "mysql");
+            put("inputFileFormat", "avro");
+            put("workerMachineType", "n2-standard-4");
+          }
+        };
+
+    // Add shadow table parameters if shadowTableSpannerResourceManager is not null
+    if (shadowTableSpannerResourceManager != null) {
+      params.putAll(
+          new HashMap<>() {
+            {
+              put(
+                  "shadowTableSpannerInstanceId",
+                  shadowTableSpannerResourceManager.getInstanceId());
+              put(
+                  "shadowTableSpannerDatabaseId",
+                  shadowTableSpannerResourceManager.getDatabaseId());
+            }
+          });
+    }
+    // Add all parameters for the template
+    params.putAll(templateParameters);
+
+    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
+
+    options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+
+    // Set all environment options
+    environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
+    options.setParameters(params);
+
+    // Act
+    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    assertThatPipeline(jobInfo).isRunning();
+
+    if (afterLaunchCallback != null) {
+      afterLaunchCallback.run();
+    }
+
+    HashMap<String, RowRange> tableRanges = new HashMap<>();
+    for (Map.Entry<String, Integer> entry : tables.entrySet()) {
+      tableRanges.put(entry.getKey(), new RowRange(entry.getValue(), entry.getValue()));
+    }
+    Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tableRanges);
+    PipelineOperator.Result result =
+        pipelineOperator.waitForCondition(
+            createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), condition);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    result = pipelineOperator.cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(20)));
+    assertThatResult(result).isLaunchFinished();
+
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    getCustomCounters(jobInfo, metrics);
+    getResourceManagerMetrics(metrics);
+
+    // export results
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  private boolean checkAllTablesRowCounts(HashMap<String, RowRange> tables) {
+    List<Callable<Boolean>> tasks = new ArrayList<>();
+    for (Map.Entry<String, RowRange> entry : tables.entrySet()) {
+      tasks.add(
+          () -> {
+            try {
+              long rowCount = spannerResourceManager.getRowCount(entry.getKey());
+              RowRange range = entry.getValue();
+              return rowCount >= range.min && rowCount <= range.max;
+            } catch (Exception e) {
+              LOG.warn("Error checking row count for table {}: {}", entry.getKey(), e.getMessage());
+              return false;
+            }
+          });
+    }
+    try {
+      List<Future<Boolean>> futures = rowCountExecutor.invokeAll(tasks);
+      for (Future<Boolean> future : futures) {
+        if (!future.get()) {
+          return false;
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      LOG.warn("Error checking row count in Spanner", e);
+      return false;
+    }
+  }
+
+  public void getResourceManagerMetrics(Map<String, Double> metrics) {
+    pubsubResourceManager.collectMetrics(metrics);
+    spannerResourceManager.collectMetrics(metrics);
+  }
+
+  /**
+   * Cleanup resource managers.
+   *
+   * @throws IOException
+   */
+  @After
+  public void cleanUp() throws IOException {
+    ResourceManagerUtils.cleanResources(
+        secretClient,
+        spannerResourceManager,
+        shadowTableSpannerResourceManager,
+        pubsubResourceManager,
+        gcsResourceManager,
+        datastreamResourceManager);
+    rowCountExecutor.shutdown();
+  }
+
+  public MySQLSource getMySQLSource(String hostIp, String username, String password) {
+    MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
+    return mySQLSource;
+  }
+
+  /**
+   * Helper function for creating all datastream resources required by DataStreamToSpanner template.
+   * Source connection profile, Destination connection profile, Stream. And then Starts the stream.
+   *
+   * @param bucketName
+   * @param gcsPrefix
+   * @param jdbcSource
+   * @param datastreamResourceManager
+   * @return created stream
+   */
+  public Stream createDatastreamResources(
+      String bucketName,
+      String gcsPrefix,
+      JDBCSource jdbcSource,
+      DatastreamResourceManager datastreamResourceManager) {
+    // To-do, for future postgres load testing, add a parameter to accept other sources
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
+
+    // Create Datastream GCS Destination Connection profile and config
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs",
+            bucketName,
+            gcsPrefix,
+            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
+
+    // Create and start Datastream stream
+    Stream stream =
+        datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+    return stream;
+  }
+
+  /**
+   * Helper function for creating Spanner DDL. Reads the sql file from resources directory and
+   * applies the DDL to Spanner instance.
+   *
+   * @param spannerResourceManager Initialized SpannerResourceManager instance
+   * @param resourceName SQL file name with path relative to resources directory
+   */
+  public void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
+      throws IOException {
+    if (resourceName == null) {
+      return;
+    }
+    String ddl =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        spannerResourceManager.executeDdlStatement(d);
+      }
+    }
+  }
+
+  /**
+   * Helper function for creating all pubsub resources required by DataStreamToSpanner template.
+   * PubSub topic, Subscription and notification setup on a GCS bucket with gcsPrefix filter.
+   *
+   * @param pubsubResourceManager Initialized PubSubResourceManager instance
+   * @param gcsPrefix Prefix of Avro file names in GCS relative to bucket name
+   * @return SubscriptionName object of the created PubSub subscription.
+   */
+  public SubscriptionName createPubsubResources(
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
+    String topicNameSuffix = "it" + identifierSuffix;
+    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    gcsResourceManager.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
+  /**
+   * Returns the full GCS path given a list of path parts.
+   *
+   * <p>"path parts" refers to the bucket, directories, and file. Only the bucket is mandatory and
+   * must be the first value provided.
+   *
+   * @param pathParts everything that makes up the path, minus the separators. There must be at
+   *     least one value, and none of them can be empty
+   * @return the full path, such as 'gs://bucket/dir1/dir2/file'
+   */
+  public String getGcsPath(String... pathParts) {
+    checkArgument(pathParts.length != 0, "Must provide at least one path part");
+    checkArgument(
+        stream(pathParts).noneMatch(Strings::isNullOrEmpty), "No path part can be null or empty");
+
+    return String.format("gs://%s", String.join("/", pathParts));
+  }
+
+  public Map<String, Double> getCustomCounters(LaunchInfo launchInfo, Map<String, Double> metrics)
+      throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SUCCESSFUL_EVENTS_COUNTER_NAME);
+    metrics.put(
+        "Custom_Counter_SuccessfulEvents", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), RETRYABLE_ERRORS_COUNTER_NAME);
+    metrics.put("Custom_Counter_RetryableErrors", retryableErrors != null ? retryableErrors : 0.0);
+
+    Double permanentErrors = 0.0;
+    Double skippedEvents =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), SKIPPED_EVENTS_COUNTER_NAME);
+    permanentErrors += skippedEvents != null ? skippedEvents : 0.0;
+    Double otherPermanentErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), OTHER_PERMANENT_ERRORS_COUNTER_NAME);
+    permanentErrors += otherPermanentErrors != null ? otherPermanentErrors : 0.0;
+    Double conversionErrors =
+        pipelineLauncher.getMetric(
+            project, region, launchInfo.jobId(), CONVERSION_ERRORS_COUNTER_NAME);
+    permanentErrors += conversionErrors != null ? conversionErrors : 0.0;
+
+    metrics.put("Custom_Counter_PermanentErrors", permanentErrors);
+    return metrics;
+  }
+}

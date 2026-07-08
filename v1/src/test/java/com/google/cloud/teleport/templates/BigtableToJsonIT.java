@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
+import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateAppProfileId;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -68,6 +69,10 @@ public class BigtableToJsonIT extends TemplateTestBase {
     String tableId = generateTableId(testName);
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
 
+    String appProfileId = generateAppProfileId();
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
+
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(
         ImmutableList.of(
@@ -81,7 +86,7 @@ public class BigtableToJsonIT extends TemplateTestBase {
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
-            .addParameter("filenamePrefix", "bigtable-to-json-output-");
+            .addParameter("bigtableAppProfileId", appProfileId);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -106,6 +111,10 @@ public class BigtableToJsonIT extends TemplateTestBase {
     String tableId = generateTableId(testName);
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
 
+    String appProfileId = generateAppProfileId();
+    bigtableResourceManager.createAppProfile(
+        appProfileId, false, bigtableResourceManager.getClusterNames());
+
     long timestamp = System.currentTimeMillis() * 1000;
     bigtableResourceManager.write(
         ImmutableList.of(
@@ -120,7 +129,8 @@ public class BigtableToJsonIT extends TemplateTestBase {
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
             .addParameter("filenamePrefix", "bigtable-to-json-output-")
-            .addParameter("userOption", "FLATTEN");
+            .addParameter("userOption", "FLATTEN")
+            .addParameter("bigtableAppProfileId", appProfileId);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

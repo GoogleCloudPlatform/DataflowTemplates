@@ -1,0 +1,15 @@
+{
+  "renamedTables":{
+    "Hello":"World",
+    "Singers":"Vocalists",
+    "Albums":"Records"
+  },
+  "renamedColumns":{
+    "Singers":{
+      "SingerName":"TalentName"
+    },
+    "Albums":{
+      "AlbumName":"RecordName"
+    }
+  }
+}

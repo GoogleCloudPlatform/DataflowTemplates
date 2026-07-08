@@ -19,8 +19,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class Resources {
+
+  private static final Logger LOG = LoggerFactory.getLogger(Resources.class);
 
   public static String contentOf(String resourcePath) throws IOException {
     try (BufferedReader bufferedReader =

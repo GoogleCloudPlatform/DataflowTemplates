@@ -27,6 +27,8 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,89 +48,148 @@ public class WriteDataChangeRecordsToAvro {
    */
   public static class DataChangeRecordToAvroFn
       extends SimpleFunction<DataChangeRecord, com.google.cloud.teleport.v2.DataChangeRecord> {
+
+    private String spannerDatabaseId;
+
+    private String spannerInstanceId;
+
+    private String outputMessageMetadata;
+
+    public String spannerDatabaseId() {
+      return spannerDatabaseId;
+    }
+
+    public String spannerInstanceId() {
+      return spannerInstanceId;
+    }
+
+    public String outputMessageMetadata() {
+      return outputMessageMetadata;
+    }
+
     @Override
     public com.google.cloud.teleport.v2.DataChangeRecord apply(DataChangeRecord record) {
       return dataChangeRecordToAvro(record);
+    }
+
+    public DataChangeRecordToAvroFn() {}
+
+    private DataChangeRecordToAvroFn(Builder builder) {
+      this.spannerDatabaseId = builder.spannerDatabaseId;
+      this.spannerInstanceId = builder.spannerInstanceId;
+      this.outputMessageMetadata = builder.outputMessageMetadata;
+    }
+
+    public com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordToAvro(
+        DataChangeRecord record) {
+      String partitionToken = record.getPartitionToken();
+      long commitTimestampMicros = timestampToMicros(record.getCommitTimestamp());
+      String serverTransactionId = record.getServerTransactionId();
+      boolean isLastRecordInTransaction = record.isLastRecordInTransactionInPartition();
+      String recordSequence = record.getRecordSequence();
+      String tableName = record.getTableName();
+      List<com.google.cloud.teleport.v2.ColumnType> columnTypes =
+          record.getRowType().stream()
+              .map(
+                  columnType ->
+                      new com.google.cloud.teleport.v2.ColumnType(
+                          columnType.getName(),
+                          mapTypeCodeToAvro(columnType.getType()),
+                          extractArrayElementType(columnType.getType()),
+                          columnType.isPrimaryKey(),
+                          columnType.getOrdinalPosition()))
+              .collect(Collectors.toList());
+
+      List<com.google.cloud.teleport.v2.Mod> mods =
+          record.getMods().stream()
+              .map(
+                  mod ->
+                      new com.google.cloud.teleport.v2.Mod(
+                          mod.getKeysJson(),
+                          mod.getOldValuesJson() != null ? mod.getOldValuesJson() : "",
+                          mod.getNewValuesJson() != null ? mod.getNewValuesJson() : ""))
+              .collect(Collectors.toList());
+
+      com.google.cloud.teleport.v2.ModType modType = mapModTypeToModTypeAvro(record.getModType());
+      com.google.cloud.teleport.v2.ValueCaptureType captureType =
+          mapValueCaptureTypeToAvro(record.getValueCaptureType());
+      long numberOfRecordsInTransaction = record.getNumberOfRecordsInTransaction();
+      long numberOfPartitionsInTransaction = record.getNumberOfPartitionsInTransaction();
+
+      com.google.cloud.teleport.v2.ChangeStreamRecordMetadata metadata =
+          record.getMetadata() == null
+              ? null
+              : new com.google.cloud.teleport.v2.ChangeStreamRecordMetadata(
+                  record.getMetadata().getPartitionToken(),
+                  timestampToMicros(record.getMetadata().getRecordTimestamp()),
+                  timestampToMicros(record.getMetadata().getPartitionStartTimestamp()),
+                  timestampToMicros(record.getMetadata().getPartitionEndTimestamp()),
+                  timestampToMicros(record.getMetadata().getPartitionCreatedAt()),
+                  record.getMetadata().getPartitionScheduledAt() == null
+                      ? 0
+                      : timestampToMicros(record.getMetadata().getPartitionScheduledAt()),
+                  record.getMetadata().getPartitionRunningAt() == null
+                      ? 0
+                      : timestampToMicros(record.getMetadata().getPartitionRunningAt()),
+                  timestampToMicros(record.getMetadata().getQueryStartedAt()),
+                  timestampToMicros(record.getMetadata().getRecordStreamStartedAt()),
+                  timestampToMicros(record.getMetadata().getRecordStreamEndedAt()),
+                  timestampToMicros(record.getMetadata().getRecordReadAt()),
+                  record.getMetadata().getTotalStreamTimeMillis(),
+                  record.getMetadata().getNumberOfRecordsRead());
+
+      // Add ChangeStreamMetadata and spanner source info
+      return new com.google.cloud.teleport.v2.DataChangeRecord(
+          partitionToken,
+          commitTimestampMicros,
+          serverTransactionId,
+          isLastRecordInTransaction,
+          recordSequence,
+          tableName,
+          columnTypes,
+          mods,
+          modType,
+          captureType,
+          numberOfRecordsInTransaction,
+          numberOfPartitionsInTransaction,
+          metadata,
+          // If includeSpannerSource is false, spannerDatabaseId() and spannerInstanceId() are null.
+          spannerDatabaseId(),
+          spannerInstanceId(),
+          outputMessageMetadata());
+    }
+
+    static class Builder {
+      private String spannerDatabaseId;
+
+      private String spannerInstanceId;
+
+      private String outputMessageMetadata;
+
+      public Builder setSpannerDatabaseId(String value) {
+        this.spannerDatabaseId = value;
+        return this;
+      }
+
+      public Builder setSpannerInstanceId(String value) {
+        this.spannerInstanceId = value;
+        return this;
+      }
+
+      public Builder setOutputMessageMetadata(String value) {
+        this.outputMessageMetadata = value;
+        return this;
+      }
+
+      public DataChangeRecordToAvroFn build() {
+        return new DataChangeRecordToAvroFn(this);
+      }
     }
   }
 
   private static long timestampToMicros(Timestamp ts) {
     return TimeUnit.SECONDS.toMicros(ts.getSeconds())
         + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
-  }
-
-  public static com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordToAvro(
-      DataChangeRecord record) {
-    String partitionToken = record.getPartitionToken();
-    long commitTimestampMicros = timestampToMicros(record.getCommitTimestamp());
-    String serverTransactionId = record.getServerTransactionId();
-    boolean isLastRecordInTransaction = record.isLastRecordInTransactionInPartition();
-    String recordSequence = record.getRecordSequence();
-    String tableName = record.getTableName();
-    List<com.google.cloud.teleport.v2.ColumnType> columnTypes =
-        record.getRowType().stream()
-            .map(
-                columnType ->
-                    new com.google.cloud.teleport.v2.ColumnType(
-                        columnType.getName(),
-                        mapTypeCodeToAvro(columnType.getType()),
-                        columnType.isPrimaryKey(),
-                        columnType.getOrdinalPosition()))
-            .collect(Collectors.toList());
-
-    List<com.google.cloud.teleport.v2.Mod> mods =
-        record.getMods().stream()
-            .map(
-                mod ->
-                    new com.google.cloud.teleport.v2.Mod(
-                        mod.getKeysJson(),
-                        mod.getOldValuesJson() != null ? mod.getOldValuesJson() : "",
-                        mod.getNewValuesJson() != null ? mod.getNewValuesJson() : ""))
-            .collect(Collectors.toList());
-
-    com.google.cloud.teleport.v2.ModType modType = mapModTypeToModTypeAvro(record.getModType());
-    com.google.cloud.teleport.v2.ValueCaptureType captureType =
-        mapValueCaptureTypeToAvro(record.getValueCaptureType());
-    long numberOfRecordsInTransaction = record.getNumberOfRecordsInTransaction();
-    long numberOfPartitionsInTransaction = record.getNumberOfPartitionsInTransaction();
-
-    com.google.cloud.teleport.v2.ChangeStreamRecordMetadata metadata =
-        record.getMetadata() == null
-            ? null
-            : new com.google.cloud.teleport.v2.ChangeStreamRecordMetadata(
-                record.getMetadata().getPartitionToken(),
-                timestampToMicros(record.getMetadata().getRecordTimestamp()),
-                timestampToMicros(record.getMetadata().getPartitionStartTimestamp()),
-                timestampToMicros(record.getMetadata().getPartitionEndTimestamp()),
-                timestampToMicros(record.getMetadata().getPartitionCreatedAt()),
-                record.getMetadata().getPartitionScheduledAt() == null
-                    ? 0
-                    : timestampToMicros(record.getMetadata().getPartitionScheduledAt()),
-                record.getMetadata().getPartitionRunningAt() == null
-                    ? 0
-                    : timestampToMicros(record.getMetadata().getPartitionRunningAt()),
-                timestampToMicros(record.getMetadata().getQueryStartedAt()),
-                timestampToMicros(record.getMetadata().getRecordStreamStartedAt()),
-                timestampToMicros(record.getMetadata().getRecordStreamEndedAt()),
-                timestampToMicros(record.getMetadata().getRecordReadAt()),
-                record.getMetadata().getTotalStreamTimeMillis(),
-                record.getMetadata().getNumberOfRecordsRead());
-
-    // Add ChangeStreamMetadata
-    return new com.google.cloud.teleport.v2.DataChangeRecord(
-        partitionToken,
-        commitTimestampMicros,
-        serverTransactionId,
-        isLastRecordInTransaction,
-        recordSequence,
-        tableName,
-        columnTypes,
-        mods,
-        modType,
-        captureType,
-        numberOfRecordsInTransaction,
-        numberOfPartitionsInTransaction,
-        metadata);
   }
 
   private static com.google.cloud.teleport.v2.ModType mapModTypeToModTypeAvro(ModType modType) {
@@ -155,31 +216,67 @@ public class WriteDataChangeRecordsToAvro {
   }
 
   private static com.google.cloud.teleport.v2.TypeCode mapTypeCodeToAvro(TypeCode typeCode) {
-    switch (typeCode.getCode()) {
-      case "{\"code\":\"BOOL\"}":
-        return com.google.cloud.teleport.v2.TypeCode.BOOL;
-      case "{\"code\":\"INT64\"}":
-        return com.google.cloud.teleport.v2.TypeCode.INT64;
-      case "{\"code\":\"FLOAT64\"}":
-        return com.google.cloud.teleport.v2.TypeCode.FLOAT64;
-      case "{\"code\":\"TIMESTAMP\"}":
-        return com.google.cloud.teleport.v2.TypeCode.TIMESTAMP;
-      case "{\"code\":\"DATE\"}":
-        return com.google.cloud.teleport.v2.TypeCode.DATE;
-      case "{\"code\":\"STRING\"}":
-        return com.google.cloud.teleport.v2.TypeCode.STRING;
-      case "{\"code\":\"BYTES\"}":
-        return com.google.cloud.teleport.v2.TypeCode.BYTES;
-      case "{\"code\":\"ARRAY\"}":
-        return com.google.cloud.teleport.v2.TypeCode.ARRAY;
-      case "{\"code\":\"STRUCT\"}":
-        return com.google.cloud.teleport.v2.TypeCode.STRUCT;
-      case "{\"code\":\"NUMERIC\"}":
-        return com.google.cloud.teleport.v2.TypeCode.NUMERIC;
-      case "{\"code\":\"JSON\"}":
-        return com.google.cloud.teleport.v2.TypeCode.JSON;
-      default:
-        return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    if (typeCode == null || typeCode.getCode() == null) {
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
     }
+    return mapTypeCodeToAvro(typeCode.getCode());
+  }
+
+  private static com.google.cloud.teleport.v2.TypeCode mapTypeCodeToAvro(String typeCodeJson) {
+    if (typeCodeJson == null || typeCodeJson.isEmpty()) {
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    }
+    try {
+      JSONObject json = new JSONObject(typeCodeJson);
+      String code = json.optString("code");
+      if (code == null || code.isEmpty()) {
+        return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+      }
+      switch (code) {
+        case "BOOL":
+          return com.google.cloud.teleport.v2.TypeCode.BOOL;
+        case "INT64":
+          return com.google.cloud.teleport.v2.TypeCode.INT64;
+        case "FLOAT64":
+          return com.google.cloud.teleport.v2.TypeCode.FLOAT64;
+        case "TIMESTAMP":
+          return com.google.cloud.teleport.v2.TypeCode.TIMESTAMP;
+        case "DATE":
+          return com.google.cloud.teleport.v2.TypeCode.DATE;
+        case "STRING":
+          return com.google.cloud.teleport.v2.TypeCode.STRING;
+        case "BYTES":
+          return com.google.cloud.teleport.v2.TypeCode.BYTES;
+        case "ARRAY":
+          return com.google.cloud.teleport.v2.TypeCode.ARRAY;
+        case "STRUCT":
+          return com.google.cloud.teleport.v2.TypeCode.STRUCT;
+        case "NUMERIC":
+          return com.google.cloud.teleport.v2.TypeCode.NUMERIC;
+        case "JSON":
+          return com.google.cloud.teleport.v2.TypeCode.JSON;
+        default:
+          return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+      }
+    } catch (JSONException e) {
+      LOG.warn("Failed to parse type code JSON: " + typeCodeJson, e);
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    }
+  }
+
+  private static com.google.cloud.teleport.v2.TypeCode extractArrayElementType(TypeCode typeCode) {
+    if (typeCode == null || typeCode.getCode() == null) {
+      return null;
+    }
+    try {
+      JSONObject json = new JSONObject(typeCode.getCode());
+      if (json.has("array_element_type")) {
+        JSONObject elementJson = json.getJSONObject("array_element_type");
+        return mapTypeCodeToAvro(elementJson.toString()); // Recursively map
+      }
+    } catch (JSONException e) {
+      LOG.warn("Failed to parse type code JSON for array element type: " + typeCode.getCode(), e);
+    }
+    return null;
   }
 }

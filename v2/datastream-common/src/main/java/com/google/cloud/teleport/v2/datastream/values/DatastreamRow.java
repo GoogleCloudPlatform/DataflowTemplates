@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringSubstitutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,7 +113,27 @@ public class DatastreamRow {
       }
     } else {
       if (tableRow.get("_metadata_primary_keys") != null) {
-        primaryKeys = (List<String>) tableRow.get("_metadata_primary_keys");
+        Object primaryKeysObj = tableRow.get("_metadata_primary_keys");
+        if (primaryKeysObj instanceof List) {
+          primaryKeys = (List<String>) primaryKeysObj;
+        } else if (primaryKeysObj instanceof String) {
+          // Fixed since we have seen this once.
+          // the reason isn't clear as DS template always set a List on this field.
+          // we saw this happens  on "UDF to TableRow/Oracle Cleaner" or "BigQuery Merge/Build"
+          // steps.
+          LOG.info("primaryKeysObj is String type {}", primaryKeysObj);
+          String primaryKeysStr = (String) primaryKeysObj;
+          String[] elements = primaryKeysStr.substring(1, primaryKeysStr.length() - 1).split(",");
+          primaryKeys =
+              new ArrayList<>(
+                  Arrays.asList(elements).stream()
+                      .map(s -> StringUtils.unwrap(s.trim(), "\""))
+                      .collect(Collectors.toList()));
+
+        } else {
+          throw new RuntimeException(
+              "_metadata_primary_keys has unsupported type: " + primaryKeysObj.getClass());
+        }
       }
     }
 
@@ -162,11 +184,21 @@ public class DatastreamRow {
     }
   }
 
+  public List<String> getSortFields(Boolean addIsDeleted) {
+    List<String> sortFields = getSortFields();
+    if (addIsDeleted) {
+      sortFields.add("_metadata_deleted");
+    }
+    return sortFields;
+  }
+
   public List<String> getSortFields() {
     if (this.getSourceType().equals("mysql")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
     } else if (this.getSourceType().equals("postgresql")) {
-      return Arrays.asList("_metadata_timestamp", "_metadata_lsn", "_metadata_uuid");
+      return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
+    } else if (this.getSourceType().equals("sqlserver")) {
+      return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
     } else {
       // Current default is oracle.
       return Arrays.asList(

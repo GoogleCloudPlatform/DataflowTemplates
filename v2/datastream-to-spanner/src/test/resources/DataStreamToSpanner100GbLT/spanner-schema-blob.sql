@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS person (
+     first_name BYTES(MAX),
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID);

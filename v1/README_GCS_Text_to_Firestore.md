@@ -13,22 +13,22 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Firestore).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **textReadPattern** : The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json.
-* **firestoreWriteProjectId** : The Google Cloud project ID of where to write Firestore entities.
-* **errorWritePath** : The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **textReadPattern**: A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`.
+* **firestoreWriteProjectId**: The ID of the Google Cloud project to write the Firestore entities to.
+* **errorWritePath**: The error log output file to use for write failures that occur during processing. For example, `gs://your-bucket/errors/`.
 
 ### Optional parameters
 
-* **javascriptTextTransformGcsPath** : The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
-* **javascriptTextTransformFunctionName** : The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **firestoreHintNumWorkers** : Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **firestoreHintNumWorkers**: Hint for the expected number of workers in the Firestore ramp-up throttling step. The default value is `500`.
 
 
 ## User-Defined functions (UDFs)
@@ -46,7 +46,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -60,7 +60,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -86,7 +96,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_Text_to_Firestore" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -220,9 +230,9 @@ resource "google_dataflow_job" "gcs_text_to_firestore" {
   parameters        = {
     textReadPattern = "<textReadPattern>"
     firestoreWriteProjectId = "<firestoreWriteProjectId>"
-    errorWritePath = "gs://your-bucket/errors/"
+    errorWritePath = "<errorWritePath>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # firestoreHintNumWorkers = "<firestoreHintNumWorkers>"
   }
 }

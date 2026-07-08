@@ -18,12 +18,9 @@ package com.google.cloud.teleport.v2.spanner.type;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
@@ -38,15 +35,19 @@ import javax.annotation.concurrent.Immutable;
 public final class Type implements Serializable {
   private static final Type TYPE_BOOL = new Type(Type.Code.BOOL, null, null);
   private static final Type TYPE_INT64 = new Type(Type.Code.INT64, null, null);
+  private static final Type TYPE_FLOAT32 = new Type(Type.Code.FLOAT32, null, null);
   private static final Type TYPE_FLOAT64 = new Type(Type.Code.FLOAT64, null, null);
   private static final Type TYPE_NUMERIC = new Type(Type.Code.NUMERIC, null, null);
   private static final Type TYPE_STRING = new Type(Type.Code.STRING, null, null);
   private static final Type TYPE_JSON = new Type(Type.Code.JSON, null, null);
+  private static final Type TYPE_TOKENLIST = new Type(Code.TOKENLIST, null, null);
   private static final Type TYPE_BYTES = new Type(Type.Code.BYTES, null, null);
   private static final Type TYPE_TIMESTAMP = new Type(Type.Code.TIMESTAMP, null, null);
   private static final Type TYPE_DATE = new Type(Type.Code.DATE, null, null);
+  private static final Type TYPE_UUID = new Type(Type.Code.UUID, null, null);
   private static final Type TYPE_ARRAY_BOOL = new Type(Type.Code.ARRAY, TYPE_BOOL, null);
   private static final Type TYPE_ARRAY_INT64 = new Type(Type.Code.ARRAY, TYPE_INT64, null);
+  private static final Type TYPE_ARRAY_FLOAT32 = new Type(Type.Code.ARRAY, TYPE_FLOAT32, null);
   private static final Type TYPE_ARRAY_FLOAT64 = new Type(Type.Code.ARRAY, TYPE_FLOAT64, null);
   private static final Type TYPE_ARRAY_NUMERIC = new Type(Type.Code.ARRAY, TYPE_NUMERIC, null);
   private static final Type TYPE_ARRAY_STRING = new Type(Type.Code.ARRAY, TYPE_STRING, null);
@@ -57,6 +58,7 @@ public final class Type implements Serializable {
 
   private static final Type TYPE_PG_BOOL = new Type(Type.Code.PG_BOOL, null, null);
   private static final Type TYPE_PG_INT8 = new Type(Type.Code.PG_INT8, null, null);
+  private static final Type TYPE_PG_FLOAT4 = new Type(Type.Code.PG_FLOAT4, null, null);
   private static final Type TYPE_PG_FLOAT8 = new Type(Type.Code.PG_FLOAT8, null, null);
   private static final Type TYPE_PG_VARCHAR = new Type(Type.Code.PG_VARCHAR, null, null);
   private static final Type TYPE_PG_TEXT = new Type(Type.Code.PG_TEXT, null, null);
@@ -65,8 +67,11 @@ public final class Type implements Serializable {
   private static final Type TYPE_PG_BYTEA = new Type(Type.Code.PG_BYTEA, null, null);
   private static final Type TYPE_PG_TIMESTAMPTZ = new Type(Type.Code.PG_TIMESTAMPTZ, null, null);
   private static final Type TYPE_PG_DATE = new Type(Type.Code.PG_DATE, null, null);
+  private static final Type TYPE_PG_UUID = new Type(Type.Code.PG_UUID, null, null);
   private static final Type TYPE_PG_ARRAY_BOOL = new Type(Type.Code.PG_ARRAY, TYPE_PG_BOOL, null);
   private static final Type TYPE_PG_ARRAY_INT8 = new Type(Type.Code.PG_ARRAY, TYPE_PG_INT8, null);
+  private static final Type TYPE_PG_ARRAY_FLOAT4 =
+      new Type(Type.Code.PG_ARRAY, TYPE_PG_FLOAT4, null);
   private static final Type TYPE_PG_ARRAY_FLOAT8 =
       new Type(Type.Code.PG_ARRAY, TYPE_PG_FLOAT8, null);
   private static final Type TYPE_PG_ARRAY_VARCHAR =
@@ -99,6 +104,14 @@ public final class Type implements Serializable {
   }
 
   /**
+   * Returns the descriptor for the {@code FLOAT32} type: a floating point type with the same value
+   * domain as a Java {code float}.
+   */
+  public static Type float32() {
+    return TYPE_FLOAT32;
+  }
+
+  /**
    * Returns the descriptor for the {@code FLOAT64} type: a floating point type with the same value
    * domain as a Java {code double}.
    */
@@ -123,6 +136,11 @@ public final class Type implements Serializable {
     return TYPE_JSON;
   }
 
+  /** Returns the descriptor for the {@code TOKENLIST} type. */
+  public static Type tokenlist() {
+    return TYPE_TOKENLIST;
+  }
+
   /** Returns the descriptor for the {@code BYTES} type: a variable-length byte string. */
   public static Type bytes() {
     return TYPE_BYTES;
@@ -144,12 +162,21 @@ public final class Type implements Serializable {
     return TYPE_DATE;
   }
 
+  /** Returns the descriptor for the {@code UUID} type. */
+  public static Type uuid() {
+    return TYPE_UUID;
+  }
+
   public static Type pgBool() {
     return TYPE_PG_BOOL;
   }
 
   public static Type pgInt8() {
     return TYPE_PG_INT8;
+  }
+
+  public static Type pgFloat4() {
+    return TYPE_PG_FLOAT4;
   }
 
   public static Type pgFloat8() {
@@ -184,6 +211,10 @@ public final class Type implements Serializable {
     return TYPE_PG_DATE;
   }
 
+  public static Type pgUuid() {
+    return TYPE_PG_UUID;
+  }
+
   public static Type pgCommitTimestamp() {
     return TYPE_PG_COMMIT_TIMESTAMP;
   }
@@ -196,6 +227,8 @@ public final class Type implements Serializable {
         return TYPE_ARRAY_BOOL;
       case INT64:
         return TYPE_ARRAY_INT64;
+      case FLOAT32:
+        return TYPE_ARRAY_FLOAT32;
       case FLOAT64:
         return TYPE_ARRAY_FLOAT64;
       case NUMERIC:
@@ -223,6 +256,8 @@ public final class Type implements Serializable {
         return TYPE_PG_ARRAY_BOOL;
       case PG_INT8:
         return TYPE_PG_ARRAY_INT8;
+      case PG_FLOAT4:
+        return TYPE_PG_ARRAY_FLOAT4;
       case PG_FLOAT8:
         return TYPE_PG_ARRAY_FLOAT8;
       case PG_NUMERIC:
@@ -284,16 +319,21 @@ public final class Type implements Serializable {
     BOOL("BOOL", Dialect.GOOGLE_STANDARD_SQL),
     INT64("INT64", Dialect.GOOGLE_STANDARD_SQL),
     NUMERIC("NUMERIC", Dialect.GOOGLE_STANDARD_SQL),
+    FLOAT32("FLOAT32", Dialect.GOOGLE_STANDARD_SQL),
     FLOAT64("FLOAT64", Dialect.GOOGLE_STANDARD_SQL),
     STRING("STRING", Dialect.GOOGLE_STANDARD_SQL),
     JSON("JSON", Dialect.GOOGLE_STANDARD_SQL),
+    // This type is not supported on PG Spanner.
+    TOKENLIST("TOKENLIST", Dialect.GOOGLE_STANDARD_SQL),
     BYTES("BYTES", Dialect.GOOGLE_STANDARD_SQL),
     TIMESTAMP("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL),
     DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
+    UUID("UUID", Dialect.GOOGLE_STANDARD_SQL),
     ARRAY("ARRAY", Dialect.GOOGLE_STANDARD_SQL),
     STRUCT("STRUCT", Dialect.GOOGLE_STANDARD_SQL),
     PG_BOOL("boolean", Dialect.POSTGRESQL),
     PG_INT8("bigint", Dialect.POSTGRESQL),
+    PG_FLOAT4("real", Dialect.POSTGRESQL),
     PG_FLOAT8("double precision", Dialect.POSTGRESQL),
     PG_TEXT("text", Dialect.POSTGRESQL),
     PG_VARCHAR("character varying", Dialect.POSTGRESQL),
@@ -302,6 +342,7 @@ public final class Type implements Serializable {
     PG_BYTEA("bytea", Dialect.POSTGRESQL),
     PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
     PG_DATE("date", Dialect.POSTGRESQL),
+    PG_UUID("uuid", Dialect.POSTGRESQL),
     PG_ARRAY("array", Dialect.POSTGRESQL),
     PG_COMMIT_TIMESTAMP("spanner.commit_timestamp", Dialect.POSTGRESQL);
 
@@ -378,54 +419,6 @@ public final class Type implements Serializable {
     Preconditions.checkState(
         code == Type.Code.ARRAY || code == Type.Code.PG_ARRAY, "Illegal call for non-ARRAY type");
     return arrayElementType;
-  }
-
-  /**
-   * Returns the fields of this {@code STRUCT} type.
-   *
-   * @return an immutable list of the fields
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public List<Type.StructField> getStructFields() {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-    return structFields;
-  }
-
-  /**
-   * Returns the index of the field named {@code fieldName} in this {@code STRUCT} type.
-   *
-   * @throws IllegalArgumentException if there is not exactly one element of {@link
-   *     #getStructFields()} with {@link Type.StructField#getName()} equal to {@code fieldName}
-   * @throws IllegalStateException if {@code code() != Code.STRUCT}
-   */
-  public int getFieldIndex(String fieldName) {
-    Preconditions.checkState(code == Type.Code.STRUCT, "Illegal call for non-STRUCT type");
-
-    if (fieldsByName == null) {
-      Map<String, Integer> tmp = new TreeMap<>();
-      for (int i = 0; i < getStructFields().size(); ++i) {
-        Type.StructField field = getStructFields().get(i);
-        if (tmp.put(field.getName(), i) != null) {
-          // Column name appears more than once: mark as ambiguous.
-          tmp.put(field.getName(), AMBIGUOUS_FIELD);
-        }
-      }
-      // Benign race: Java's final field semantics mean that if we see a non-null "fieldsByName",
-      // we are guaranteed to see it in a fully initialized state.  It is thus important that we
-      // use an ImmutableMap here, which necessarily uses final fields or equivalent reasoning.
-      // Since all computations of "fieldsByName" produce the same value, there is no risk of
-      // inconsistency.
-      fieldsByName = ImmutableMap.copyOf(tmp);
-    }
-
-    Integer index = fieldsByName.get(fieldName);
-    if (index == null) {
-      throw new IllegalArgumentException("Field not found: " + fieldName);
-    }
-    if (index == AMBIGUOUS_FIELD) {
-      throw new IllegalArgumentException("Ambiguous field name: " + fieldName);
-    }
-    return index;
   }
 
   void toString(StringBuilder b) {

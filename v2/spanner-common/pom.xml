@@ -26,7 +26,9 @@
     </parent>
 
     <artifactId>spanner-common</artifactId>
-
+    <properties>
+        <skipShade>true</skipShade>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
@@ -37,6 +39,52 @@
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-it-truthmatchers</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-migrations-sdk</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cassandra</groupId>
+            <artifactId>java-driver-core</artifactId>
+            <version>${cassandra-java-driver-core.version}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.0.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>3.12.4</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <scope>compile</scope>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-compute</artifactId>
         </dependency>
     </dependencies>
 
@@ -50,6 +98,36 @@
                     <execution>
                         <id>jib</id>
                         <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- Excluding exception classes -->
+                        <exclude>**/*Exception.*</exclude>
+                        <!-- Excluding auto-generated classes. -->
+                        <exclude>**/*AutoValue_*</exclude>
+                        <exclude>**/CustomTransformationImplFetcher.*</exclude>
+                        <exclude>**/JarFileReader.*</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>default-report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

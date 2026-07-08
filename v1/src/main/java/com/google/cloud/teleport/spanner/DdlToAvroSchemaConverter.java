@@ -19,41 +19,72 @@ import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_FORMAT_VERSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GOOGLE_STORAGE;
+import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
+import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
+import static com.google.cloud.teleport.spanner.AvroUtil.ON_UPDATE_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PROPERTY_DECLARATION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.STORED;
+import static com.google.cloud.teleport.spanner.AvroUtil.generateAvroSchemaName;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.GraphElementTable;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
+import com.google.cloud.teleport.spanner.ddl.Placement;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -82,13 +113,62 @@ public class DdlToAvroSchemaConverter {
   public Collection<Schema> convert(Ddl ddl) {
     Collection<Schema> schemas = new ArrayList<>();
 
-    for (Table table : ddl.allTables()) {
+    for (NamedSchema schema : ddl.schemas()) {
+      LOG.info("DdlToAvo Schema {}", schema.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(table.name()).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(schema.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, schema.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      // Indicate that this is a "CREATE SCHEMA", not a table or a view.
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_NAMED_SCHEMA);
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+    for (Udf udf : ddl.udfs()) {
+      LOG.info("DdlToAvo Udf {}", udf.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(udf.specificName()))
+              .namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, udf.specificName());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      // Indicate that this is a "CREATE FUNCTION", not a table or a view.
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_UDF);
+      recordBuilder.prop(SPANNER_UDF_NAME, udf.name());
+      if (udf.definition() != null) {
+        recordBuilder.prop(SPANNER_UDF_DEFINITION, udf.definition());
+      }
+      if (udf.type() != null) {
+        recordBuilder.prop(SPANNER_UDF_TYPE, udf.type());
+      }
+      if (udf.language() != null) {
+        recordBuilder.prop(SPANNER_UDF_LANGUAGE, udf.language());
+      }
+      if (udf.security() != null) {
+        recordBuilder.prop(SPANNER_UDF_SECURITY, udf.security().toString());
+      }
+      int i = 0;
+      for (UdfParameter udfParameter : udf.parameters()) {
+        recordBuilder.prop(SPANNER_UDF_PARAMETER + i++, udfParameter.prettyPrint());
+      }
+      for (int j = 0; j < udf.options().size(); j++) {
+        recordBuilder.prop(SPANNER_OPTION + j, udf.options().get(j));
+      }
+
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+    for (Table table : ddl.allTables()) {
+      LOG.info("DdlToAvo Table {}", table.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(table.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, table.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       if (table.interleaveInParent() != null) {
         recordBuilder.prop(SPANNER_PARENT, table.interleaveInParent());
+        recordBuilder.prop(
+            SPANNER_INTERLEAVE_TYPE,
+            table.interleaveType() == InterleaveType.IN ? "IN" : "IN PARENT");
         recordBuilder.prop(
             SPANNER_ON_DELETE_ACTION, table.onDeleteCascade() ? "cascade" : "no action");
       }
@@ -131,8 +211,12 @@ public class DdlToAvroSchemaConverter {
       for (Column cm : table.columns()) {
         SchemaBuilder.FieldBuilder<Schema> fieldBuilder = fieldsAssembler.name(cm.name());
         fieldBuilder.prop(SQL_TYPE, cm.typeString());
+        fieldBuilder.prop(HIDDEN, Boolean.toString(cm.isHidden()));
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, cm.columnOptions().get(i));
+        }
+        if (cm.isPlacementKey()) {
+          fieldBuilder.prop(SPANNER_PLACEMENT_KEY, Boolean.toString(cm.isPlacementKey()));
         }
         if (cm.isGenerated()) {
           fieldBuilder.prop(NOT_NULL, Boolean.toString(cm.notNull()));
@@ -142,8 +226,26 @@ public class DdlToAvroSchemaConverter {
           // which are semantically logical entities.
           fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
         } else {
-          if (cm.defaultExpression() != null) {
+          if (cm.isIdentityColumn()) {
+            fieldBuilder.prop(IDENTITY_COLUMN, Boolean.toString(cm.isIdentityColumn()));
+            if (cm.sequenceKind() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
+            }
+            if (cm.counterStartValue() != null) {
+              fieldBuilder.prop(
+                  SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
+            }
+            if (cm.skipRangeMin() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
+            }
+            if (cm.skipRangeMax() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+            }
+          } else if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
+            if (cm.onUpdateExpression() != null) {
+              fieldBuilder.prop(ON_UPDATE_EXPRESSION, cm.onUpdateExpression());
+            }
           }
           Schema avroType = avroType(cm.type(), table.name() + "_" + columnOrdinal++);
           if (!cm.notNull()) {
@@ -157,8 +259,10 @@ public class DdlToAvroSchemaConverter {
     }
 
     for (Model model : ddl.models()) {
+      LOG.info("DdlToAvo model {}", model.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(model.name()).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(model.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, model.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       recordBuilder.prop(SPANNER_ENTITY, SPANNER_ENTITY_MODEL);
@@ -214,8 +318,10 @@ public class DdlToAvroSchemaConverter {
     }
 
     for (View view : ddl.views()) {
+      LOG.info("DdlToAvo view {}", view.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(view.name()).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(view.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, view.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       recordBuilder.prop(SPANNER_VIEW_QUERY, view.query());
@@ -225,9 +331,43 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
 
-    for (ChangeStream changeStream : ddl.changeStreams()) {
+    for (PropertyGraph propertyGraph : ddl.propertyGraphs()) {
+      LOG.info("DdlToAvro PropertyGraph {}", propertyGraph.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(changeStream.name()).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(propertyGraph.name()))
+              .namespace(this.namespace);
+
+      recordBuilder.prop(SPANNER_NAME, propertyGraph.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_ENTITY_PROPERTY_GRAPH);
+
+      // Encode nodeTables
+      for (int i = 0; i < propertyGraph.nodeTables().size(); i++) {
+        encodeNodeTable(recordBuilder, propertyGraph.nodeTables().get(i), i);
+      }
+
+      // Encode edgeTables
+      for (int i = 0; i < propertyGraph.edgeTables().size(); i++) {
+        encodeEdgeTable(recordBuilder, propertyGraph.edgeTables().get(i), i);
+      }
+
+      // Encode propertyDeclarations
+      encodePropertyDeclarations(recordBuilder, propertyGraph.propertyDeclarations());
+
+      // Encode labels
+      encodeLabels(recordBuilder, propertyGraph.labels());
+
+      Schema schema = recordBuilder.fields().endRecord();
+      schemas.add(schema);
+    }
+
+    for (ChangeStream changeStream : ddl.changeStreams()) {
+      LOG.info("DdlToAvo changestream {}", changeStream.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(changeStream.name()))
+              .namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, changeStream.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       recordBuilder.prop(
@@ -242,8 +382,10 @@ public class DdlToAvroSchemaConverter {
     }
 
     for (Sequence sequence : ddl.sequences()) {
+      LOG.info("DdlToAvo sequence {}", sequence.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(sequence.name()).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(sequence.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, sequence.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       if (sequence.options() != null) {
@@ -269,7 +411,115 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
 
+    for (Placement placement : ddl.placements()) {
+      LOG.info("DdlToAvro placement {}", placement.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(placement.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, placement.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_ENTITY_PLACEMENT);
+      if (placement.options() != null) {
+        for (int i = 0; i < placement.options().size(); i++) {
+          recordBuilder.prop(SPANNER_OPTION + i, placement.options().get(i));
+        }
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
     return schemas;
+  }
+
+  private void encodeNodeTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder, GraphElementTable nodeTable, int i) {
+    encodeElementTable(recordBuilder, nodeTable, i, SPANNER_NODE_TABLE);
+  }
+
+  private void encodeEdgeTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder, GraphElementTable edgeTable, int i) {
+    encodeElementTable(recordBuilder, edgeTable, i, SPANNER_EDGE_TABLE);
+
+    // Encode sourceNodeTable and targetNodeTable (always present for edges)
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_TABLE_NAME",
+        edgeTable.sourceNodeTable().nodeTableName);
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_KEY_COLUMNS",
+        String.join(", ", edgeTable.sourceNodeTable().nodeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_EDGE_KEY_COLUMNS",
+        String.join(", ", edgeTable.sourceNodeTable().edgeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_TABLE_NAME",
+        edgeTable.targetNodeTable().nodeTableName);
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_KEY_COLUMNS",
+        String.join(", ", edgeTable.targetNodeTable().nodeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_EDGE_KEY_COLUMNS",
+        String.join(", ", edgeTable.targetNodeTable().edgeKeyColumns));
+  }
+
+  private void encodeElementTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      GraphElementTable elementTable,
+      int i,
+      String prefix) {
+    recordBuilder.prop(prefix + "_" + i + "_NAME", elementTable.name());
+    recordBuilder.prop(prefix + "_" + i + "_BASE_TABLE_NAME", elementTable.baseTableName());
+    recordBuilder.prop(prefix + "_" + i + "_KIND", elementTable.kind().toString());
+    // Encode keyColumns
+    recordBuilder.prop(
+        prefix + "_" + i + "_KEY_COLUMNS", String.join(", ", elementTable.keyColumns()));
+
+    // Encode labelToPropertyDefinitions
+    for (int j = 0; j < elementTable.labelToPropertyDefinitions().size(); j++) {
+      GraphElementTable.LabelToPropertyDefinitions labelToPropertyDef =
+          elementTable.labelToPropertyDefinitions().get(j);
+      recordBuilder.prop(prefix + "_" + i + "_LABEL_" + j + "_NAME", labelToPropertyDef.labelName);
+      // Encode propertyDefinitions
+      for (int k = 0; k < labelToPropertyDef.propertyDefinitions.size(); k++) {
+        GraphElementTable.PropertyDefinition propertyDef =
+            labelToPropertyDef.propertyDefinitions.get(k);
+        recordBuilder.prop(
+            prefix + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_NAME", propertyDef.name);
+        recordBuilder.prop(
+            prefix + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_VALUE",
+            propertyDef.valueExpressionString);
+      }
+    }
+    if (elementTable.dynamicLabelExpression() != null) {
+      recordBuilder.prop(
+          prefix + "_" + i + "_" + SPANNER_DYNAMIC_LABEL,
+          elementTable.dynamicLabelExpression().dynamicLabelExpression);
+    }
+    if (elementTable.dynamicPropertiesExpression() != null) {
+      recordBuilder.prop(
+          prefix + "_" + i + "_" + SPANNER_DYNAMIC_PROPERTIES,
+          elementTable.dynamicPropertiesExpression().dynamicPropertiesExpression);
+    }
+  }
+
+  private void encodePropertyDeclarations(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      ImmutableList<PropertyGraph.PropertyDeclaration> declarations) {
+    for (int i = 0; i < declarations.size(); i++) {
+      PropertyGraph.PropertyDeclaration declaration = declarations.get(i);
+      recordBuilder.prop(SPANNER_PROPERTY_DECLARATION + "_" + i + "_NAME", declaration.name);
+      recordBuilder.prop(SPANNER_PROPERTY_DECLARATION + "_" + i + "_TYPE", declaration.type);
+    }
+  }
+
+  private void encodeLabels(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      ImmutableList<PropertyGraph.GraphElementLabel> labels) {
+    for (int i = 0; i < labels.size(); i++) {
+      PropertyGraph.GraphElementLabel label = labels.get(i);
+      recordBuilder.prop(SPANNER_LABEL + "_" + i + "_NAME", label.name);
+      // Encode properties
+      for (int j = 0; j < label.properties.size(); j++) {
+        recordBuilder.prop(SPANNER_LABEL + "_" + i + "_PROPERTY_" + j, label.properties.get(j));
+      }
+    }
   }
 
   /**
@@ -289,6 +539,7 @@ public class DdlToAvroSchemaConverter {
         return SchemaBuilder.builder().booleanType();
       case INT64:
       case PG_INT8:
+      case ENUM:
         return SchemaBuilder.builder().longType();
       case FLOAT32:
       case PG_FLOAT4:
@@ -304,8 +555,14 @@ public class DdlToAvroSchemaConverter {
       case JSON:
       case PG_JSONB:
         return SchemaBuilder.builder().stringType();
+      case UUID:
+      case PG_UUID:
+        return LogicalTypes.uuid().addToSchema(SchemaBuilder.builder().stringType());
       case BYTES:
       case PG_BYTEA:
+      case PROTO:
+      case TOKENLIST:
+      case PG_SPANNER_TOKENLIST:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

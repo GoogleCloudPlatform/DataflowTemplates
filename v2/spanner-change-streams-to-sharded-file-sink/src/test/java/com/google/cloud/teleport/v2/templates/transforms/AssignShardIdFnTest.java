@@ -224,7 +224,7 @@ public class AssignShardIdFnTest {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
-    String shardingCustomClassName = "com.custom.CustomShardIdFetcher";
+    String shardingCustomClassName = "com.test.CustomShardIdFetcher";
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),

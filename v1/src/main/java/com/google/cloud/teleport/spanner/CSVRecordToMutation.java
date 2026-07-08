@@ -96,7 +96,7 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
     writeBuilder = Mutation.newInsertOrUpdateBuilder(table.name());
     try {
       c.output(parseRow(writeBuilder, row, table, tableColumnsMap.get(tableName)));
-    } catch (IllegalArgumentException e) {
+    } catch (Exception e) {
 
       // Send to error tag only if output path is given, otherwise, throw exception.
       if (invalidOutputPath != null && StringUtils.isNotEmpty(invalidOutputPath.get())) {
@@ -168,10 +168,15 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
             } else if (cellValue.trim().equalsIgnoreCase("false")) {
               bCellValue = Boolean.FALSE;
             } else {
-              throw new IllegalArgumentException(
-                  cellValue.trim() + " is not recognizable value " + "for BOOL type");
+              try {
+                int num = Integer.parseInt(cellValue.trim());
+                bCellValue = (num == 0) ? Boolean.FALSE : Boolean.TRUE;
+              } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    cellValue.trim() + " is not recognizable value " + "for BOOL type");
+              }
             }
-            columnValue = Value.bool(Boolean.valueOf(cellValue));
+            columnValue = Value.bool(bCellValue);
           }
           break;
         case INT64:
@@ -193,6 +198,10 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
         case PG_VARCHAR:
         case PG_TEXT:
           columnValue = Value.string(cellValue);
+          break;
+        case UUID:
+        case PG_UUID:
+          columnValue = Value.string(isNullValue ? null : cellValue);
           break;
         case DATE:
         case PG_DATE:
@@ -260,6 +269,19 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
         case PG_BYTEA:
           columnValue =
               isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
+          break;
+        case PROTO:
+          columnValue =
+              isNullValue
+                  ? Value.protoMessage(null, columnType.getProtoTypeFqn())
+                  : Value.protoMessage(
+                      ByteArray.fromBase64(cellValue.trim()), columnType.getProtoTypeFqn());
+          break;
+        case ENUM:
+          columnValue =
+              isNullValue
+                  ? Value.protoEnum(null, columnType.getProtoTypeFqn())
+                  : Value.protoEnum(Long.valueOf(cellValue.trim()), columnType.getProtoTypeFqn());
           break;
         default:
           throw new IllegalArgumentException(

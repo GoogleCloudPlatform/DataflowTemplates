@@ -29,7 +29,6 @@
     <artifactId>google-ads-to-googlecloud</artifactId>
 
     <properties>
-        <google-ads.version>26.0.0</google-ads.version>
     </properties>
 
     <dependencies>
@@ -41,11 +40,6 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.api-ads</groupId>
-            <artifactId>google-ads</artifactId>
-            <version>${google-ads.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

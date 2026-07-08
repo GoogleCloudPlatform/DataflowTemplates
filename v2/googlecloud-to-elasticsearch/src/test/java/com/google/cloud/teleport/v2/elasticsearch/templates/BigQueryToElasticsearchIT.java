@@ -29,6 +29,7 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -42,6 +43,7 @@ import org.apache.beam.it.elasticsearch.ElasticsearchResourceManager;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.utils.BigQueryTestUtil;
+import org.apache.beam.it.gcp.kms.KMSResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,6 +59,14 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
   private BigQueryResourceManager bigQueryClient;
   private ElasticsearchResourceManager elasticsearchResourceManager;
+  private KMSResourceManager kmsResourceManager;
+
+  // Used by BigQueryIO to encrypt data in temporary tables
+  CryptoKey cryptoKey;
+
+  private static final String KMS_REGION = "global";
+  private static final String KEYRING_ID = "BigQueryToElasticsearch";
+  private static final String CRYPTO_KEY_NAME = "key1";
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
@@ -72,14 +82,22 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   public void setup() {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
+    kmsResourceManager =
+        KMSResourceManager.builder(PROJECT, credentialsProvider).setRegion(KMS_REGION).build();
+
+    cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(bigQueryClient, elasticsearchResourceManager);
+    ResourceManagerUtils.cleanResources(
+        bigQueryClient, elasticsearchResourceManager, kmsResourceManager);
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearch() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
@@ -108,12 +126,15 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(BIGQUERY_NUM_ROWS);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearchQuery() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
@@ -137,7 +158,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
                 .addParameter("disableCertificateValidation", "true")
                 .addParameter("index", indexName)
-                .addParameter("apiKey", "elastic"));
+                .addParameter("apiKey", "elastic")
+                .addParameter("KMSEncryptionKey", cryptoKey.getName()));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
@@ -145,12 +167,15 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(BIGQUERY_NUM_ROWS);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch")
   public void testBigQueryToElasticsearchUdf() throws IOException {
     // Arrange
     gcsClient.createArtifact(
@@ -184,6 +209,56 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
                 .addParameter("apiKey", "elastic")
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(2);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(
+            List.of(Map.of("id", 1, "name", "DATAFLOW"), Map.of("id", 2, "name", "PUB/SUB")));
+  }
+
+  @Test
+  @TemplateIntegrationTest(
+      value = BigQueryToElasticsearch.class,
+      template = "BigQuery_to_Elasticsearch_Xlang")
+  public void testBigQueryToElasticsearchWithPythonUdf() throws IOException {
+    // Arrange
+    gcsClient.createArtifact(
+        "pyudf.py",
+        "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  data['name'] = data['name'].upper()\n"
+            + "  return json.dumps(data)");
+    Schema bigQuerySchema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("name", StandardSQLTypeName.STRING));
+    List<RowToInsert> bigQueryRows =
+        List.of(
+            RowToInsert.of(Map.of("id", 1, "name", "Dataflow")),
+            RowToInsert.of(Map.of("id", 2, "name", "Pub/Sub")));
+    TableId table = bigQueryClient.createTable(testName, bigQuerySchema);
+    bigQueryClient.write(testName, bigQueryRows);
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+
+    // Act
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTableSpec", toTableSpecLegacy(table))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
+                .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("index", indexName)
+                .addParameter("apiKey", "elastic")
+                .addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "uppercaseName"));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));

@@ -20,7 +20,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.source.IDsToSpSourceConnector;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** Helper class to create shadow tables for different source types. */
-class ShadowTableCreator {
+public class ShadowTableCreator {
 
   private final String sourceType;
   private final String shadowTablePrefix;
@@ -37,16 +38,9 @@ class ShadowTableCreator {
   ShadowTableCreator(String sourceType, String shadowTablePrefix, Dialect dialect) {
     this.sourceType = sourceType;
     this.shadowTablePrefix = shadowTablePrefix;
-    Map<String, Map<String, Pair<String, String>>> dialectToSortOrder;
-    dialectToSortOrder = DatastreamConstants.DIALECT_TO_SORT_ORDER.get(dialect);
-    if (dialectToSortOrder == null) {
-      throw new IllegalArgumentException("Unsupported dialect specified: " + dialect);
-    }
-    sortOrderMap = dialectToSortOrder.get(sourceType);
-    if (sortOrderMap == null) {
-      throw new IllegalArgumentException(
-          "Unsupported datastream source type specified: " + sourceType);
-    }
+    IDsToSpSourceConnector connector =
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
+    this.sortOrderMap = connector.getSortOrder(dialect);
   }
 
   /*
@@ -70,6 +64,10 @@ class ShadowTableCreator {
             .filter(col -> primaryKeyColNames.contains(col.name()))
             .collect(Collectors.toList());
     for (Column col : primaryKeyCols) {
+      // In Shadow table we only have primary keys. If primary key is dependent on
+      // non-primary key column, then shadow table creation will fail.
+      // Hence, generated expression should be removed from the shadow table columns.
+      col = col.toBuilder().isGenerated(false).generationExpression("").autoBuild();
       shadowTableBuilder.addColumn(col);
     }
 
@@ -83,16 +81,40 @@ class ShadowTableCreator {
     }
 
     // Add extra column to track ChangeEventSequence information
-    addChangeEventSequenceColumns(shadowTableBuilder);
+    addChangeEventSequenceColumns(shadowTableBuilder, primaryKeyColNames);
 
     return shadowTableBuilder.build();
   }
 
-  private void addChangeEventSequenceColumns(Table.Builder shadowTableBuilder) {
+  private void addChangeEventSequenceColumns(
+      Table.Builder shadowTableBuilder, Set<String> primaryKeyColNames) {
     for (Pair<String, String> shadowInfo : sortOrderMap.values()) {
-      Column.Builder versionColumnBuilder = shadowTableBuilder.column(shadowInfo.getLeft());
+      String baseShadowColumnName = shadowInfo.getLeft();
+      String finalShadowColumnName =
+          getSafeShadowColumnName(baseShadowColumnName, primaryKeyColNames);
+      Column.Builder versionColumnBuilder = shadowTableBuilder.column(finalShadowColumnName);
       versionColumnBuilder.parseType(shadowInfo.getRight());
       versionColumnBuilder.endColumn();
     }
+  }
+
+  /**
+   * Generates a safe column name for a shadow table by checking for collisions with existing column
+   * names and iteratively prepending a prefix until a unique name is found.
+   *
+   * @param baseShadowColumnName the initial desired name for the shadow column
+   * @param existingPrimaryKeyColumnNames a set of existing column names in the data table (should
+   *     be lowercase)
+   * @return a unique and safe column name
+   */
+  public static String getSafeShadowColumnName(
+      String baseShadowColumnName, Set<String> existingPrimaryKeyColumnNames) {
+    Set<String> normalizedKeys =
+        existingPrimaryKeyColumnNames.stream().map(String::toLowerCase).collect(Collectors.toSet());
+    String safeName = baseShadowColumnName;
+    while (normalizedKeys.contains(safeName.toLowerCase())) {
+      safeName = "shadow_" + safeName;
+    }
+    return safeName;
   }
 }

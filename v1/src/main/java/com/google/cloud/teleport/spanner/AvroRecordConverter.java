@@ -82,6 +82,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           break;
         case INT64:
         case PG_INT8:
+        case ENUM:
           builder.set(column.name()).to(readInt64(record, avroType, fieldName).orElse(null));
           break;
         case FLOAT32:
@@ -97,10 +98,13 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         case PG_TEXT:
         case JSON:
         case PG_JSONB:
+        case UUID:
+        case PG_UUID:
           builder.set(column.name()).to(readString(record, avroType, fieldName).orElse(null));
           break;
         case BYTES:
         case PG_BYTEA:
+        case PROTO:
           builder.set(column.name()).to(readBytes(record, avroType, fieldName).orElse(null));
           break;
         case TIMESTAMP:
@@ -145,6 +149,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 break;
               case INT64:
               case PG_INT8:
+              case ENUM:
                 builder
                     .set(column.name())
                     .toInt64Array(readInt64Array(record, arrayType, fieldName).orElse(null));
@@ -165,6 +170,8 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
               case PG_VARCHAR:
               case PG_TEXT:
               case JSON:
+              case UUID:
+              case PG_UUID:
                 builder
                     .set(column.name())
                     .toStringArray(readStringArray(record, arrayType, fieldName).orElse(null));
@@ -176,6 +183,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 break;
               case BYTES:
               case PG_BYTEA:
+              case PROTO:
                 builder
                     .set(column.name())
                     .toBytesArray(readBytesArray(record, arrayType, fieldName).orElse(null));

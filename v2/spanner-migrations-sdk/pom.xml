@@ -26,6 +26,9 @@
     </parent>
 
     <artifactId>spanner-migrations-sdk</artifactId>
+    <properties>
+        <skipShade>true</skipShade>
+    </properties>
     <build>
         <plugins>
             <plugin>

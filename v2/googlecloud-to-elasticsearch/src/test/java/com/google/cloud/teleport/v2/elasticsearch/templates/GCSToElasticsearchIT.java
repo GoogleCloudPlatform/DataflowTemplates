@@ -61,6 +61,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = GCSToElasticsearch.class, template = "GCS_to_Elasticsearch")
   public void testElasticsearchCsvWithoutHeadersJS() throws IOException {
     testElasticsearchCsvWithoutHeaders(
         "no_header_10.csv",
@@ -69,6 +70,18 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(
+      value = GCSToElasticsearch.class,
+      template = "GCS_to_Elasticsearch_Xlang")
+  public void testElasticsearchCsvWithoutHeadersPython() throws IOException {
+    testElasticsearchCsvWithoutHeadersAndPythonUdf(
+        "no_header_10.csv",
+        "elasticPyUdf.py",
+        List.of(Map.of("id", "001", "state", "CA", "price", 3.65)));
+  }
+
+  @Test
+  @TemplateIntegrationTest(value = GCSToElasticsearch.class, template = "GCS_to_Elasticsearch")
   public void testElasticsearchCsvWithoutHeadersES6() throws IOException {
     testElasticsearchCsvWithoutHeaders(
         "no_header_10.csv",
@@ -117,7 +130,49 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
         .hasRecordsUnordered(expectedRecords);
   }
 
+  public void testElasticsearchCsvWithoutHeadersAndPythonUdf(
+      String csvFileName, String udfFileName, List<Map<String, Object>> expectedRecords)
+      throws IOException {
+    // Arrange
+    gcsClient.uploadArtifact(
+        "input/" + csvFileName,
+        Resources.getResource("GCSToElasticsearch/" + csvFileName).getPath());
+    gcsClient.uploadArtifact(
+        "input/" + udfFileName,
+        Resources.getResource("GCSToElasticsearch/" + udfFileName).getPath());
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+    bigQueryClient.createDataset(REGION);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
+            .addParameter("inputFormat", "csv")
+            .addParameter("containsHeaders", "false")
+            .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
+            .addParameter("delimiter", ",")
+            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+            .addParameter("index", indexName)
+            .addParameter("pythonExternalTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+            .addParameter("pythonExternalTextTransformFunctionName", "transform")
+            .addParameter("apiKey", "elastic");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(10);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(expectedRecords);
+  }
+
   @Test
+  @TemplateIntegrationTest(value = GCSToElasticsearch.class, template = "GCS_to_Elasticsearch")
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
     gcsClient.uploadArtifact(
@@ -153,6 +208,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = GCSToElasticsearch.class, template = "GCS_to_Elasticsearch")
   public void testElasticsearchCsvWithoutHeadersWithJsonSchema() throws IOException {
     // Arrange
     gcsClient.uploadArtifact(

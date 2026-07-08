@@ -27,7 +27,6 @@ import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.StaticLoggerBinder;
 
 /**
  *
@@ -104,9 +103,6 @@ public class App {
 
     // Printing the information about the bindings for SLF4J:
     Configuration config = getConnectorConfiguration(args);
-    final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
-    System.out.println("Logger Binding: " + binder.getLoggerFactory());
-    System.out.println(binder.getLoggerFactoryClassStr());
 
     String dbPassword = config.getString("databasePassword");
     config.clearProperty("databasePassword");

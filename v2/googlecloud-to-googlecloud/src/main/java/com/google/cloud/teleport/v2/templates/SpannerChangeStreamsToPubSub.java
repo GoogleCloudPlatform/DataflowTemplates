@@ -22,8 +22,11 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -54,7 +57,7 @@ import org.slf4j.LoggerFactory;
       "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = SpannerChangeStreamsToPubSubOptions.class,
-    flexContainerName = "spanner-changestreams-to-pubsub",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
     contactInformation = "https://cloud.google.com/support",
@@ -95,6 +98,14 @@ public class SpannerChangeStreamsToPubSub {
         : options.getPubsubProjectId();
   }
 
+  public static boolean isValidAsciiString(String outputMessageMetadata) {
+    if (outputMessageMetadata != null
+        && !StandardCharsets.US_ASCII.newEncoder().canEncode(outputMessageMetadata)) {
+      return false;
+    }
+    return true;
+  }
+
   public static PipelineResult run(SpannerChangeStreamsToPubSubOptions options) {
     LOG.info("Requested Message Format is " + options.getOutputDataFormat());
     options.setStreaming(true);
@@ -112,6 +123,13 @@ public class SpannerChangeStreamsToPubSub {
     String pubsubProjectId = getPubsubProjectId(options);
     String pubsubTopicName = options.getPubsubTopic();
     String pubsubAPI = options.getPubsubAPI();
+    Boolean includeSpannerSource = options.getIncludeSpannerSource();
+    String outputMessageMetadata = options.getOutputMessageMetadata();
+
+    // Ensure outputMessageMetadata only contains valid ascii characters
+    if (!isValidAsciiString(outputMessageMetadata)) {
+      throw new RuntimeException("outputMessageMetadata contains non ascii characters.");
+    }
 
     // Retrieve and parse the start / end timestamps.
     Timestamp startTimestamp =
@@ -139,13 +157,31 @@ public class SpannerChangeStreamsToPubSub {
             ? null
             : options.getSpannerMetadataTableName();
 
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    List<String> tvfNameList = null;
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      tvfNameList =
+          Arrays.stream(tvfNameListString.split(";"))
+              .filter(name -> !name.trim().isEmpty())
+              .collect(Collectors.toList());
+    }
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
+
+    if (options.getUseSpannerEmulatorHost() != null && options.getUseSpannerEmulatorHost()) {
+      spannerConfig =
+          spannerConfig.withEmulatorHost(
+              ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    } else {
+      spannerConfig =
+          spannerConfig.withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    }
+
     // Propagate database role for fine-grained access control on change stream.
     if (options.getSpannerDatabaseRole() != null) {
       spannerConfig =
@@ -162,7 +198,8 @@ public class SpannerChangeStreamsToPubSub {
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName))
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList))
         .apply(
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()
@@ -170,6 +207,10 @@ public class SpannerChangeStreamsToPubSub {
                 .setProjectId(pubsubProjectId)
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
+                .setIncludeSpannerSource(includeSpannerSource)
+                .setSpannerDatabaseId(databaseId)
+                .setSpannerInstanceId(instanceId)
+                .setOutputMessageMetadata(outputMessageMetadata)
                 .build());
     return pipeline.run();
   }

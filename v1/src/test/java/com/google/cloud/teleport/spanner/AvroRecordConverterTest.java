@@ -25,6 +25,7 @@ import static org.apache.avro.Schema.Type.STRING;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -70,6 +71,7 @@ public class AvroRecordConverterTest {
   private static final String TIMESTAMP_MILLIS_LOGICAL_TYPE = "timestamp-millis";
   private static final String TIMESTAMP_MICROS_LOGICAL_TYPE = "timestamp-micros";
   private static final String DATE_LOGICAL_TYPE = "date";
+  private static final String UUID = "uuid";
 
   @Test
   public void integerArray() {
@@ -584,6 +586,128 @@ public class AvroRecordConverterTest {
     final GenericRecord avroRecord1 =
         new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 1).build();
     assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseUuidArray() {
+    String colName = "UuidArrayCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.uuid()))
+        .endColumn();
+    List<Utf8> uuidArray =
+        Arrays.asList(
+            new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
+            new Utf8("11111111-1111-1111-1111-111111111111"));
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, uuidArray)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertNotNull(mutation);
+    assertEquals(
+        new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
+        uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParsePgUuidArray() {
+    String colName = "UuidArrayCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.pgUuid()))
+        .endColumn();
+    List<Utf8> uuidArray =
+        Arrays.asList(
+            new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
+            new Utf8("11111111-1111-1111-1111-111111111111"));
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, uuidArray)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertNotNull(mutation);
+    assertEquals(
+        new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
+        uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParseUuid() {
+    String colName = "UuidCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.uuid()).endColumn();
+    Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
+
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParsePgUuid() {
+    String colName = "UuidCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.pgUuid()).endColumn();
+    Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
+
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test
@@ -1184,6 +1308,167 @@ public class AvroRecordConverterTest {
     // Other types throw exception.
     final GenericRecord avroRecord1 =
         new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 4).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseProtoArray() {
+    String colName = "arrayofproto";
+    Schema schema = createArrayAvroSchema(colName, BYTES);
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0L).build();
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")))
+        .endColumn();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertTrue(mutation.asMap().get(colName).isNull());
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg2 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("B").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg3 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("C").build();
+
+    String[] readableByteValues = {msg1.toString(), msg2.toString(), msg3.toString(), null};
+    List<ByteArray> expectedByteArrays =
+        Stream.of(readableByteValues)
+            .map(x -> x == null ? null : ByteArray.copyFrom(x))
+            .collect(Collectors.toList());
+    List<ByteBuffer> avroByteValues =
+        Stream.of(readableByteValues)
+            .map(x -> x == null ? null : ByteBuffer.wrap(x.getBytes()))
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 2L).set(colName, avroByteValues).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    List<String> actualValues = new ArrayList<>();
+    for (ByteArray byteArray : mutation.asMap().get(colName).getBytesArray()) {
+      if (byteArray == null) {
+        actualValues.add(null);
+      } else {
+        actualValues.add(new String(byteArray.toByteArray()));
+      }
+    }
+    assertArrayEquals(readableByteValues, actualValues.toArray());
+
+    // Other types throw exception.
+    schema = createArrayAvroSchema(colName, INT);
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(schema).set("id", 9L).set(colName, intArray).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+
+    schema = createArrayAvroSchema(colName, STRING);
+
+    // Null field
+    avroRecord = new GenericRecordBuilder(schema).set("id", 8L).set(colName, null).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertTrue(mutation.asMap().get(colName).isNull());
+
+    // String as bytes
+    avroRecord = new GenericRecordBuilder(schema).set("id", 7L).set(colName, stringArray).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(readableByteValues, actualValues.toArray());
+  }
+
+  @Test
+  public void testParseProto() {
+    String colName = "proto";
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    String expectedProtoValue = msg1.toString();
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column(colName)
+        .type(Type.proto("com.google.cloud.teleport.spanner.TestMessage"))
+        .endColumn();
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, BYTES))
+            .set(colName, ByteBuffer.wrap(expectedProtoValue.getBytes()))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(
+        expectedProtoValue, new String(mutation.asMap().get(colName).getBytes().toByteArray()));
+
+    // Other types throw exception.
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 4).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseEnumArray() {
+    String colName = "arrayofenum";
+    Schema schema = createArrayAvroSchema(colName, LONG);
+
+    // Null field
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, null).build();
+    Optional<List<Long>> result = AvroRecordConverter.readInt64Array(avroRecord, LONG, colName);
+    assertFalse(result.isPresent());
+
+    // Other types throws exception
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, booleanArray).build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AvroRecordConverter.readInt64Array(avroRecord1, BOOLEAN, colName));
+
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")))
+        .endColumn();
+    List<Long> protoEnumArray =
+        Arrays.asList(
+            new Long(com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1.getNumber()),
+            new Long(com.google.cloud.teleport.spanner.tests.TestEnum.VALUE2.getNumber()),
+            null);
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0L).set(colName, protoEnumArray).build();
+    AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(
+        protoEnumArray.toArray(),
+        mutation.asMap().get(colName).getInt64Array().toArray(new Long[0]));
+  }
+
+  @Test
+  public void testParseEnum() {
+    String colName = "enum";
+
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column(colName)
+        .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+        .endColumn();
+    com.google.cloud.teleport.spanner.tests.TestEnum enum1 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1;
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, LONG))
+            .set(colName, new Long(enum1.getNumber()))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(enum1.getNumber(), mutation.asMap().get(colName).getInt64());
+
+    // Other types throws exception
+    final GenericRecord avroRecord1 =
+        new GenericRecordBuilder(createAvroSchema(colName, BOOLEAN)).set(colName, false).build();
     assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
   }
 

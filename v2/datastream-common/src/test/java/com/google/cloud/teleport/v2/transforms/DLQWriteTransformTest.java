@@ -100,6 +100,40 @@ public class DLQWriteTransformTest {
     assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
   }
 
+  @Test
+  public void testFilesAreWrittenWithWindowToken() throws IOException {
+    // Arrange
+    File dlqDir = folder.newFolder(dlqFolderName(name.getMethodName()));
+    p.apply(Create.of(JSON_ROW_CONTENT).withCoder(StringUtf8Coder.of()))
+        .apply(
+            "Write To DLQ/Writer",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqDir.getAbsolutePath())
+                .withTmpDirectory(
+                    folder.newFolder(tmpFolderName(name.getMethodName())).getAbsolutePath())
+                .build());
+
+    // Act
+    p.run().waitUntilFinish();
+
+    // Assert
+    File[] files = dlqDir.listFiles();
+    assertThat(files).isNotEmpty();
+
+    ResourceId resourceId = FileSystems.matchNewResource(files[0].getAbsolutePath(), false);
+    // The W token is replaced by the window start and end times, e.g.,
+    // 2026-03-10T04:52:00.000Z-2026-03-10T04:53:00.000Z
+    // We verify the filename matches the expected pattern including the window token.
+    // Example filename:
+    // `error-2026-03-10T06:47:00.000Z-2026-03-10T06:48:00.000Z-00005-of-00020.json`
+    assertThat(resourceId.getFilename())
+        .matches(
+            "error-\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z-\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z-\\d{5}-of-\\d{5}\\.json");
+
+    BufferedReader reader = FileBasedDeadLetterQueueReconsumer.readFile(resourceId);
+    assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
+  }
+
   private static String dlqFolderName(String testName) {
     return testName + "/";
   }

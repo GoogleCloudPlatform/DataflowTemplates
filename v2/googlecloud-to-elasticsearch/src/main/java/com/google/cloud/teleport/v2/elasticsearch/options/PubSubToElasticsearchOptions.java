@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.elasticsearch.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
@@ -30,14 +31,15 @@ import org.apache.beam.sdk.options.Validation;
  * ElasticsearchWriteOptions}.
  */
 public interface PubSubToElasticsearchOptions
-    extends JavascriptTextTransformer.JavascriptTextTransformerOptions, ElasticsearchWriteOptions {
+    extends PythonExternalTextTransformer.PythonExternalTextTransformerOptions,
+        ElasticsearchWriteOptions {
 
   @TemplateParameter.PubsubSubscription(
       order = 1,
+      groupName = "Source",
       description = "Pub/Sub input subscription",
-      helpText =
-          "Pub/Sub subscription to consume the input from. Name should be in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
-      example = "projects/your-project-id/subscriptions/your-subscription-name")
+      helpText = "Pub/Sub subscription to consume the input from.",
+      example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>")
   @Validation.Required
   String getInputSubscription();
 
@@ -49,7 +51,7 @@ public interface PubSubToElasticsearchOptions
       description = "Dataset, the type of logs that are sent to Pub/Sub",
       helpText =
           "The type of logs sent using Pub/Sub, for which we have an out-of-the-box dashboard. Known "
-              + "log types values are audit, vpcflow and firewall. Default 'pubsub'")
+              + "log types values are `audit`, `vpcflow`, and `firewall`. Defaults to: `pubsub`.")
   @Default.Enum("PUBSUB")
   Dataset getDataset();
 
@@ -60,7 +62,7 @@ public interface PubSubToElasticsearchOptions
       optional = true,
       description = "The namespace for dataset.",
       helpText =
-          "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'")
+          "An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Defaults to: `default`.")
   @Default.String("default")
   String getNamespace();
 
@@ -70,7 +72,7 @@ public interface PubSubToElasticsearchOptions
       order = 4,
       description = "Output deadletter Pub/Sub topic",
       helpText =
-          "Pub/Sub output topic for publishing failed records in the format of 'projects/your-project-id/topics/your-topic-name'.")
+          "The Pub/Sub output topic for publishing failed records, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
   @Validation.Required
   String getErrorOutputTopic();
 

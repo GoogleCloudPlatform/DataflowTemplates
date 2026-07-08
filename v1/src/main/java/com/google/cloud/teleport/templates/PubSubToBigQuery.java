@@ -166,8 +166,7 @@ public class PubSubToBigQuery {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The table’s schema must match the "
-                + "input JSON objects.")
+            "The BigQuery output table location, in the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
@@ -184,8 +183,7 @@ public class PubSubToBigQuery {
         order = 3,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of"
-                + " 'projects/your-project-id/subscriptions/your-subscription-name'")
+            "The Pub/Sub input subscription to read from, in the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION>`.")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> value);
@@ -205,9 +203,7 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.")
+            "The BigQuery table to use for messages that fail to reach the output table, in the format of `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. If the table doesn't exist, it is created during pipeline execution. If not specified, `OUTPUT_TABLE_SPEC_error_records` is used.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

@@ -24,7 +24,9 @@ import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -61,7 +63,7 @@ import org.slf4j.LoggerFactory;
       "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
-    flexContainerName = "spanner-changestreams-to-gcs",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support",
@@ -137,6 +139,15 @@ public class SpannerChangeStreamsToGcs {
             ? null
             : options.getSpannerMetadataTableName();
 
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    List<String> tvfNameList = null;
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      tvfNameList =
+          Arrays.stream(tvfNameListString.split(";"))
+              .filter(name -> !name.trim().isEmpty())
+              .collect(Collectors.toList());
+    }
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
@@ -162,7 +173,8 @@ public class SpannerChangeStreamsToGcs {
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName))
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))

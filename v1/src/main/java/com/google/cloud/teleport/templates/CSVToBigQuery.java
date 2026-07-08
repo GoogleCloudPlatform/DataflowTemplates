@@ -41,7 +41,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -101,8 +100,9 @@ public class CSVToBigQuery {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         description = "Cloud Storage Input File(s)",
-        helpText = "Path of the file pattern glob to read from.",
+        helpText = "The Cloud Storage path to the CSV file that contains the text to process.",
         regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.csv")
     ValueProvider<String> getInputFilePattern();
@@ -111,42 +111,20 @@ public class CSVToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 2,
+        groupName = "Target",
         description = "Cloud Storage location of your BigQuery schema file, described as a JSON",
-        helpText =
-            "JSON file with BigQuery Schema description. JSON Example: {\n"
-                + "\t\"BigQuery Schema\": [\n"
-                + "\t\t{\n"
-                + "\t\t\t\"name\": \"location\",\n"
-                + "\t\t\t\"type\": \"STRING\"\n"
-                + "\t\t},\n"
-                + "\t\t{\n"
-                + "\t\t\t\"name\": \"name\",\n"
-                + "\t\t\t\"type\": \"STRING\"\n"
-                + "\t\t},\n"
-                + "\t\t{\n"
-                + "\t\t\t\"name\": \"age\",\n"
-                + "\t\t\t\"type\": \"STRING\"\n"
-                + "\t\t},\n"
-                + "\t\t{\n"
-                + "\t\t\t\"name\": \"color\",\n"
-                + "\t\t\t\"type\": \"STRING\"\n"
-                + "\t\t},\n"
-                + "\t\t{\n"
-                + "\t\t\t\"name\": \"coffee\",\n"
-                + "\t\t\t\"type\": \"STRING\"\n"
-                + "\t\t}\n"
-                + "\t]\n"
-                + "}")
+        helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.")
     ValueProvider<String> getSchemaJSONPath();
 
     void setSchemaJSONPath(ValueProvider<String> value);
 
     @TemplateParameter.BigQueryTable(
         order = 3,
+        groupName = "Target",
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The table's schema must match the "
-                + "input objects.")
+            "The name of the BigQuery table that stores your processed data. If you reuse an existing "
+                + "BigQuery table, the data is appended to the destination table.")
     ValueProvider<String> getOutputTable();
 
     void setOutputTable(ValueProvider<String> value);
@@ -154,7 +132,7 @@ public class CSVToBigQuery {
     @TemplateParameter.GcsWriteFolder(
         order = 4,
         description = "Temporary directory for BigQuery loading process",
-        helpText = "Temporary directory for BigQuery loading process",
+        helpText = "The temporary directory to use during the BigQuery loading process.",
         example = "gs://your-bucket/your-files/temp_dir")
     @Validation.Required
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
@@ -165,7 +143,10 @@ public class CSVToBigQuery {
         order = 5,
         description = "BigQuery output table for bad records",
         helpText =
-            "BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}")
+            "The name of the BigQuery table to use to store the rejected data when processing the"
+                + " CSV files. If you reuse an existing BigQuery table, the data is appended to the"
+                + " destination table. The schema of this table must match the"
+                + " error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).")
     ValueProvider<String> getBadRecordsOutputTable();
 
     void setBadRecordsOutputTable(ValueProvider<String> value);
@@ -181,10 +162,10 @@ public class CSVToBigQuery {
   private static final String FIELDS_ENTRY = "fields";
 
   /** The tag for the headers of the CSV if required. */
-  private static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
+  private static final TupleTag<Iterable<String>> CSV_HEADERS = new TupleTag<Iterable<String>>() {};
 
   /** The tag for the lines of the CSV. */
-  private static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
+  private static final TupleTag<Iterable<String>> CSV_LINES = new TupleTag<Iterable<String>>() {};
 
   /** The tag for the line of the CSV that matches destination table schema. */
   private static final TupleTag<TableRow> GOOD_RECORDS = new TupleTag<TableRow>() {};
@@ -200,11 +181,11 @@ public class CSVToBigQuery {
                   new TableFieldSchema().setName("RawContent").setType("STRING"),
                   new TableFieldSchema().setName("ErrorMsg").setType("STRING")));
 
-  private static class StringToTableRowFn extends DoFn<String, TableRow> {
+  private static class StringListToTableRowFn extends DoFn<Iterable<String>, TableRow> {
     private final ValueProvider<String> delimiter;
     private final NestedValueProvider<List<String>, String> fields;
 
-    public StringToTableRowFn(
+    public StringListToTableRowFn(
         NestedValueProvider<List<String>, String> schemaFields, ValueProvider<String> delimiter) {
       this.delimiter = delimiter;
       this.fields = schemaFields;
@@ -213,8 +194,7 @@ public class CSVToBigQuery {
     @ProcessElement
     public void processElement(ProcessContext context) throws IllegalArgumentException {
       TableRow outputTableRow = new TableRow();
-      String[] rowValue =
-          Splitter.on(delimiter.get()).splitToList(context.element()).toArray(new String[0]);
+      String[] rowValue = ImmutableList.copyOf(context.element()).toArray(new String[0]);
       if (rowValue.length != fields.get().size()) {
         LOG.error("Number of fields in the schema and number of Csv headers do not match.");
         outputTableRow.set("RawContent", String.join(delimiter.get(), rowValue));
@@ -251,7 +231,7 @@ public class CSVToBigQuery {
             .apply(
                 "ConvertToTableRow",
                 ParDo.of(
-                        new StringToTableRowFn(
+                        new StringListToTableRowFn(
                             NestedValueProvider.of(
                                 options.getSchemaJSONPath(),
                                 jsonPath -> {

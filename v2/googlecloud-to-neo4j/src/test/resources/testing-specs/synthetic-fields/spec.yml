@@ -1,0 +1,45 @@
+version: '1'
+sources:
+  - type: bigquery
+    name: so_users
+    # once value interpolation is supported by import-spec, this public data set query
+    # will be replaced by a query against a generated test bigquery data set
+    query: |-
+      SELECT id, display_name
+      FROM 
+        `bigquery-public-data.stackoverflow.users`
+      ORDER BY id ASC
+      LIMIT 10
+targets:
+  nodes:
+    - name: users
+      source: so_users
+      write_mode: merge
+      labels: [User]
+      source_transformations:
+        aggregations:
+          - expression: max(id)
+            field_name: max_id
+      properties:
+        - source_field: id
+          target_property: id
+        - source_field: display_name
+          target_property: name
+        - source_field: max_id
+          target_property: max_id
+      schema:
+        key_constraints:
+          - name: key_user_id
+            label: User
+            properties: [id]
+  queries:
+    # here we just need a custom query from the same source as another node/rel target that defines transformations
+    - name: user_name_starts_with
+      depends_on:
+        - users
+      source: so_users
+      query: |-
+        UNWIND $rows AS row 
+        MATCH (user:User {id: row.id})
+        MERGE (letter:Letter {char: left(user.name, 1)})
+        CREATE (user)-[:NAME_STARTS_WITH]->(letter)

@@ -8,24 +8,24 @@ Note: Nested and repeated BigQuery columns are currently not supported.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **readQuery** : SQL query in standard SQL to pull data from BigQuery.
-* **datastoreWriteProjectId** : The Google Cloud project ID of where to write Datastore entities.
-* **errorWritePath** : The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **readQuery**: A BigQuery SQL query that extracts data from the source. For example, `select * from dataset1.sample_table`.
+* **datastoreWriteProjectId**: The ID of the Google Cloud project to write the Datastore entities to.
+* **errorWritePath**: The error log output file to use for write failures that occur during processing. For example, `gs://your-bucket/errors/`.
 
 ### Optional parameters
 
-* **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
-* **invalidOutputPath** : Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
-* **datastoreWriteEntityKind** : Datastore kind under which entities will be written in the output Google Cloud project.
-* **datastoreWriteNamespace** : Datastore namespace under which entities will be written in the output Google Cloud project.
-* **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
+* **readIdColumn**: Name of the BigQuery column storing the unique identifier of the row.
+* **invalidOutputPath**: Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. For example, `gs://your-bucket/your-path`.
+* **datastoreWriteEntityKind**: Datastore kind under which entities will be written in the output Google Cloud project.
+* **datastoreWriteNamespace**: Datastore namespace under which entities will be written in the output Google Cloud project.
+* **datastoreHintNumWorkers**: Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to `500`.
 
 
 
@@ -33,7 +33,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -47,7 +47,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -73,7 +83,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_BigQuery_to_Cloud_Datastore" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -213,9 +223,9 @@ resource "google_dataflow_job" "cloud_bigquery_to_cloud_datastore" {
   parameters        = {
     readQuery = "<readQuery>"
     datastoreWriteProjectId = "<datastoreWriteProjectId>"
-    errorWritePath = "gs://your-bucket/errors/"
+    errorWritePath = "<errorWritePath>"
     # readIdColumn = "<readIdColumn>"
-    # invalidOutputPath = "gs://your-bucket/your-path"
+    # invalidOutputPath = "<invalidOutputPath>"
     # datastoreWriteEntityKind = "<datastoreWriteEntityKind>"
     # datastoreWriteNamespace = "<datastoreWriteNamespace>"
     # datastoreHintNumWorkers = "500"

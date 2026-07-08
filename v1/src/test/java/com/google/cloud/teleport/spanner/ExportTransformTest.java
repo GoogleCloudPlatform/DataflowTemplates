@@ -44,15 +44,21 @@ import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Combine;
@@ -106,7 +112,12 @@ public class ExportTransformTest {
     PCollection<KV<String, String>> tableManifests =
         pipeline
             .apply("Create", Create.of(tablesAndFiles))
-            .apply("Build table manifest", ParDo.of(new BuildTableManifests()));
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5))));
 
     PAssert.that(tableManifests)
         .containsInAnyOrder(KV.of("table1", manifest1), KV.of("table2", manifest2));
@@ -122,7 +133,12 @@ public class ExportTransformTest {
     PCollection<KV<String, String>> tableManifests =
         pipeline
             .apply("Create", Create.of(tablesAndFiles))
-            .apply("Build table manifest", ParDo.of(new BuildTableManifests()));
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5))));
     PAssert.that(tableManifests).empty();
     pipeline.run();
   }
@@ -140,8 +156,28 @@ public class ExportTransformTest {
             "changeStream",
             "changeStream manifest",
             "sequence",
-            "sequence manifest");
+            "sequence manifest",
+            "function",
+            "function manifest",
+            "placement",
+            "placement manifest",
+            "propertyGraph1",
+            "propertyGraph1 manifest");
 
+    FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
+    builder
+        .addMessageType(
+            com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().toProto())
+        .addMessageType(com.google.cloud.teleport.spanner.tests.Order.getDescriptor().toProto())
+        .addEnumType(com.google.cloud.teleport.spanner.tests.TestEnum.getDescriptor().toProto());
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(builder);
+    FileDescriptorSet protoDescriptors = fileDescriptorSetBuilder.build();
+    ImmutableSet<String> protoBundle =
+        ImmutableSet.of(
+            "com.google.cloud.teleport.spanner.tests.TestMessage",
+            "com.google.cloud.teleport.spanner.tests.Order",
+            "com.google.cloud.teleport.spanner.tests.TestEnum");
     PCollection<List<Export.Table>> metadataTables =
         pipeline
             .apply("Initialize table manifests", Create.of(tablesAndManifests))
@@ -158,6 +194,15 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder.createUdf("function").endUdf();
+    ddlBuilder.createPropertyGraph("propertyGraph1").endPropertyGraph();
+    ddlBuilder
+        .createPlacement("placement")
+        .options(
+            ImmutableList.of("instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
+        .endPlacement();
+    ddlBuilder.mergeProtoBundle(protoBundle);
+    ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
     PCollectionView<Dialect> dialectView =
@@ -169,6 +214,8 @@ public class ExportTransformTest {
             "Test adding database option to manifest",
             ParDo.of(new CreateDatabaseManifest(ddlView, dialectView))
                 .withSideInputs(ddlView, dialectView));
+
+    final ByteString protoDescriptorsResult = protoDescriptors.toByteString();
 
     // The output JSON may contain the tables in any order, so a string comparison is not
     // sufficient. Have to convert the manifest string to a protobuf. Also for the checker function
@@ -185,10 +232,15 @@ public class ExportTransformTest {
                   }
                   Export manifestProto = builder1.build();
                   assertThat(manifestProto.getDialect(), is(ProtoDialect.GOOGLE_STANDARD_SQL));
+                  assertEquals(protoDescriptorsResult, manifestProto.getProtoDescriptors());
+                  assertEquals(protoBundle, new HashSet<>(manifestProto.getProtoBundleList()));
 
-                  assertThat(manifestProto.getTablesCount(), is(3));
+                  assertThat(manifestProto.getTablesCount(), is(4));
                   for (Table table : manifestProto.getTablesList()) {
-                    assertThat(table.getName(), anyOf(startsWith("table"), startsWith("model")));
+                    assertThat(
+                        table.getName(),
+                        anyOf(
+                            startsWith("table"), startsWith("model"), startsWith("propertyGraph")));
                     assertThat(table.getManifestFile(), is(table.getName() + "-manifest.json"));
                   }
 
@@ -204,11 +256,22 @@ public class ExportTransformTest {
                       manifestProto.getChangeStreams(0).getManifestFile(),
                       is("changeStream-manifest.json"));
 
+                  assertThat(manifestProto.getPlacementsCount(), is(1));
+                  assertThat(manifestProto.getPlacements(0).getName(), is("placement"));
+                  assertThat(
+                      manifestProto.getPlacements(0).getManifestFile(),
+                      is("placement-manifest.json"));
+
                   assertThat(manifestProto.getSequencesCount(), is(1));
                   assertThat(manifestProto.getSequences(0).getName(), is("sequence"));
                   assertThat(
                       manifestProto.getSequences(0).getManifestFile(),
                       is("sequence-manifest.json"));
+
+                  assertThat(manifestProto.getUdfsCount(), is(1));
+                  assertThat(manifestProto.getUdfs(0).getName(), is("function"));
+                  assertThat(
+                      manifestProto.getUdfs(0).getManifestFile(), is("function-manifest.json"));
                   return null;
                 });
 
@@ -298,5 +361,32 @@ public class ExportTransformTest {
           new SchemaBasedDynamicDestinations(null, null, null, null);
       assertEquals(3, schemaBasedDynamicDestinations.getSideInputs().size());
     }
+  }
+
+  @Test
+  public void buildTableManifestsCrc32c() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+
+    // Create the expected manifest string.
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString()).setCrc32C("AAAAAA==");
+    String manifest1 = JsonFormat.printer().print(builder.build());
+
+    final Map<String, Iterable<String>> tablesAndFiles =
+        ImmutableMap.of("table1", ImmutableList.of(f1.toString()));
+
+    // Execute the transform.
+    PCollection<KV<String, String>> tableManifests =
+        pipeline
+            .apply("Create", Create.of(tablesAndFiles))
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.CRC32C))));
+
+    PAssert.that(tableManifests).containsInAnyOrder(KV.of("table1", manifest1));
+    pipeline.run();
   }
 }

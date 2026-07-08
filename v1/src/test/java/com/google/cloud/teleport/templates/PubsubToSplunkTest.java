@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -87,5 +88,75 @@ public class PubsubToSplunkTest {
     for (String key : attributes.keySet()) {
       assertThat(attributesJson.get(key).getAsString()).isEqualTo(attributes.get(key));
     }
+  }
+
+  /** Tests extraction of original payload from HEC-formatted JSON. */
+  @Test
+  public void testExtractOriginalPayloadFromHec_withStringEvent() {
+    String hecPayload = "{\"event\":\"simple text message\",\"time\":1634567890}";
+
+    String extracted = PubSubToSplunk.extractOriginalPayloadFromHec(hecPayload);
+
+    assertEquals("simple text message", extracted);
+  }
+
+  /** Tests extraction when event is a JSON object. */
+  @Test
+  public void testExtractOriginalPayloadFromHec_withJsonEvent() {
+    String hecPayload =
+        "{\"event\":{\"userId\":123,\"action\":\"login\"},\"time\":1634567890,\"host\":\"web-01\"}";
+
+    String extracted = PubSubToSplunk.extractOriginalPayloadFromHec(hecPayload);
+
+    // The extracted event should be the JSON object as a string
+    JsonObject extractedJson = GSON.fromJson(extracted, JsonObject.class);
+    assertThat(extractedJson.get("userId").getAsInt()).isEqualTo(123);
+    assertThat(extractedJson.get("action").getAsString()).isEqualTo("login");
+  }
+
+  /** Tests extraction when payload is already unwrapped (not HEC format). */
+  @Test
+  public void testExtractOriginalPayloadFromHec_alreadyUnwrapped() {
+    String originalPayload = "{\"userId\":123,\"action\":\"login\"}";
+
+    String extracted = PubSubToSplunk.extractOriginalPayloadFromHec(originalPayload);
+
+    // Should return as-is since no "event" field
+    assertEquals(originalPayload, extracted);
+  }
+
+  /** Tests extraction with plain text (not JSON). */
+  @Test
+  public void testExtractOriginalPayloadFromHec_plainText() {
+    String plainText = "This is just plain text, not JSON";
+
+    String extracted = PubSubToSplunk.extractOriginalPayloadFromHec(plainText);
+
+    // Should return as-is when parsing fails
+    assertEquals(plainText, extracted);
+  }
+
+  /** Tests extraction with complex HEC format including all metadata fields. */
+  @Test
+  public void testExtractOriginalPayloadFromHec_fullHecFormat() {
+    String fullHecPayload =
+        "{\"event\":{\"log\":\"Application started\",\"level\":\"INFO\"},"
+            + "\"time\":1634567890,"
+            + "\"host\":\"app-server-01\","
+            + "\"source\":\"application\","
+            + "\"sourcetype\":\"json\","
+            + "\"index\":\"main\","
+            + "\"fields\":{\"environment\":\"production\"}}";
+
+    String extracted = PubSubToSplunk.extractOriginalPayloadFromHec(fullHecPayload);
+
+    // Should extract just the event field
+    JsonObject extractedJson = GSON.fromJson(extracted, JsonObject.class);
+    assertThat(extractedJson.get("log").getAsString()).isEqualTo("Application started");
+    assertThat(extractedJson.get("level").getAsString()).isEqualTo("INFO");
+
+    // Verify other HEC fields are NOT in the extracted payload
+    assertThat(extractedJson.has("time")).isFalse();
+    assertThat(extractedJson.has("host")).isFalse();
   }
 }

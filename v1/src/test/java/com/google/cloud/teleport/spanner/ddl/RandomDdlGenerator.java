@@ -19,6 +19,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -100,6 +102,8 @@ public abstract class RandomDdlGenerator {
               Type.Code.PG_NUMERIC,
               Type.Code.PG_DATE));
 
+  private static final String[] UDF_LANGUAGES = new String[] {"SQL", "REMOTE"};
+
   private static final int MAX_PKS = 16;
 
   public abstract Dialect getDialect();
@@ -107,6 +111,8 @@ public abstract class RandomDdlGenerator {
   public abstract Random getRandom();
 
   public abstract int getArrayChance();
+
+  public abstract int getRemoteUdfChance();
 
   public abstract int[] getMaxBranchPerLevel();
 
@@ -126,6 +132,10 @@ public abstract class RandomDdlGenerator {
 
   public abstract boolean getEnableCheckConstraints();
 
+  public abstract int getMaxUdfs();
+
+  public abstract int getMaxUdfParameters();
+
   public abstract int getMaxViews();
 
   public abstract int getMaxChangeStreams();
@@ -140,12 +150,15 @@ public abstract class RandomDdlGenerator {
         .setDialect(dialect)
         .setRandom(new Random())
         .setArrayChance(20)
+        .setRemoteUdfChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
+        .setMaxUdfs(0)
+        .setMaxUdfParameters(2)
         .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
-        .setEnableCheckConstraints(true)
+        .setEnableCheckConstraints(false)
         .setMaxColumns(8)
         .setMaxIdLength(11)
         .setEnableGeneratedColumns(true)
@@ -163,6 +176,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setRandom(Random rnd);
 
     public abstract Builder setArrayChance(int chance);
+
+    public abstract Builder setRemoteUdfChance(int chance);
 
     public abstract Builder setMaxBranchPerLevel(int[] arr);
 
@@ -184,6 +199,10 @@ public abstract class RandomDdlGenerator {
 
     public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
 
+    public abstract Builder setMaxUdfs(int maxUdfs);
+
+    public abstract Builder setMaxUdfParameters(int maxUdfParameters);
+
     public abstract Builder setMaxViews(int maxViews);
 
     public abstract Builder setMaxChangeStreams(int maxChangeStreams);
@@ -199,6 +218,10 @@ public abstract class RandomDdlGenerator {
     for (int i = 0; i < numParentTables; i++) {
       generateTable(builder, null, 0);
     }
+    int numUdfs = getRandom().nextInt(getMaxUdfs() + 1);
+    for (int i = 0; i < numUdfs; i++) {
+      generateUdf(builder);
+    }
     int numViews = getRandom().nextInt(getMaxViews() + 1);
     for (int i = 0; i < numViews; i++) {
       generateView(builder);
@@ -209,6 +232,54 @@ public abstract class RandomDdlGenerator {
     }
 
     return builder.build();
+  }
+
+  private void generateUdf(Ddl.Builder builder) {
+    String name = generateIdentifier(getMaxIdLength());
+    Udf.Builder udfBuilder =
+        builder
+            .createUdf(name)
+            .definition("select 1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name(name);
+    if (getRandom().nextBoolean()) {
+      Type type =
+          generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
+      udfBuilder.type(type.getCode().getName());
+    }
+
+    if (getRandom().nextInt(100) <= getRemoteUdfChance()) {
+      udfBuilder.language("REMOTE");
+    }
+
+    if (!"REMOTE".equals(udfBuilder.language())) {
+      if (getRandom().nextBoolean()) {
+        udfBuilder.security(SqlSecurity.INVOKER);
+      }
+    } else {
+      if (getDialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        udfBuilder.options(
+            ImmutableList.of(
+                "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+      } else {
+        udfBuilder.definition(
+            "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"}");
+      }
+    }
+
+    int numUdfParameters = getRandom().nextInt(getMaxUdfParameters() + 1);
+    for (int i = 0; i < numUdfParameters; i++) {
+      String paramName = generateIdentifier(getMaxIdLength());
+      Type type =
+          generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
+      UdfParameter.Builder udfParameterBuilder =
+          udfBuilder.parameter(paramName).type(type.getCode().getName());
+      if (getRandom().nextBoolean()) {
+        udfParameterBuilder.defaultExpression(addDefaultValueToColumn(type));
+      }
+      udfParameterBuilder.endUdfParameter();
+    }
+    udfBuilder.endUdf();
   }
 
   private void generateView(Ddl.Builder builder) {
@@ -319,9 +390,14 @@ public abstract class RandomDdlGenerator {
     String name = generateIdentifier(getMaxIdLength());
     Table.Builder tableBuilder = builder.createTable(name);
 
+    Random rnd = getRandom();
     int pkSize = 0;
     if (parent != null) {
       tableBuilder.interleaveInParent(parent.name());
+      tableBuilder.interleaveType(
+          getDialect() == Dialect.GOOGLE_STANDARD_SQL && rnd.nextBoolean()
+              ? InterleaveType.IN
+              : InterleaveType.IN_PARENT);
       for (IndexColumn pk : parent.primaryKeys()) {
         Column pkColumn = parent.column(pk.name());
         tableBuilder.addColumn(pkColumn);
@@ -330,7 +406,6 @@ public abstract class RandomDdlGenerator {
       }
     }
 
-    Random rnd = getRandom();
     int numPks = Math.min(1 + rnd.nextInt(getMaxPkComponents()), MAX_PKS - pkSize);
     for (int i = 0; i < numPks; i++) {
       Column pkColumn =
@@ -397,7 +472,8 @@ public abstract class RandomDdlGenerator {
         if (interleaved) {
           columns.set(pk);
           if (rnd.nextBoolean()) {
-            filters.add("\"" + pk.name() + "\" IS NOT NULL");
+            String q = getDialect() == Dialect.POSTGRESQL ? "\"" : "`";
+            filters.add(q + pk.name() + q + " IS NOT NULL");
           }
         }
         pks.add(pk.name());
@@ -459,7 +535,8 @@ public abstract class RandomDdlGenerator {
           }
           columns.endIndexColumn();
           if (rnd.nextBoolean()) {
-            filters.add("\"" + columnName + "\" IS NOT NULL");
+            String q = (getDialect() == Dialect.POSTGRESQL) ? "\"" : "`";
+            filters.add(q + columnName + q + " IS NOT NULL");
           }
         }
       }
@@ -487,8 +564,17 @@ public abstract class RandomDdlGenerator {
           foreignKeyBuilder.columnsBuilder().add(pk.name());
           foreignKeyBuilder.referencedColumnsBuilder().add(pk.name());
         }
+        boolean isEnforced = true;
         if (rnd.nextBoolean()) {
-          foreignKeyBuilder.referentialAction(Optional.of(generateRandomReferentialAction(rnd)));
+          isEnforced = rnd.nextBoolean();
+          foreignKeyBuilder.isEnforced(isEnforced);
+        }
+        if (rnd.nextBoolean()) {
+          ReferentialAction action = generateRandomReferentialAction(rnd);
+          if (!isEnforced && action == ReferentialAction.ON_DELETE_CASCADE) {
+            action = ReferentialAction.ON_DELETE_NO_ACTION;
+          }
+          foreignKeyBuilder.referentialAction(Optional.of(action));
         }
         ForeignKey foreignKey = foreignKeyBuilder.build();
         if (foreignKey.columns().size() > 0) {

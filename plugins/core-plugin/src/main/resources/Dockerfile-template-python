@@ -1,0 +1,26 @@
+FROM ${basePythonContainerImage}
+
+ARG WORKDIR=${workingDirectory}
+RUN mkdir -p $WORKDIR
+${filesToCopy}
+${directoriesToCopy}
+WORKDIR $WORKDIR
+
+ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
+${setupFileEnv}
+${workerRequirementsEnv}
+
+RUN if ! [ -f ${requirementsFile} ] ; then >&2 echo "error: no ${requirementsFile} file found" && exit 1 ; fi
+
+# Set up custom PyPi repository, if applicable
+${airlockConfig}
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install -U --require-hashes -r ${requirementsFile}
+${setupInstall}
+${workerRequirementsCache}
+
+ENTRYPOINT ${entryPoint}

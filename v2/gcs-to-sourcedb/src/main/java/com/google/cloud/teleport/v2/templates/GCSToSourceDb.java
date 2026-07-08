@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -54,10 +55,10 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "GCS_to_Sourcedb",
     category = TemplateCategory.STREAMING,
-    displayName = "GCS to Source DB",
+    displayName = "GCS to Source DB [Deprecated]",
     description =
         "Streaming pipeline. Reads Spanner change stream messages from GCS, orders them,"
-            + " transforms them, and writes them to a Source Database like MySQL.",
+            + " transforms them, and writes them to a Source Database like MySQL. [Deprecated: Please use Spanner Change Streams to Source Database template instead]",
     optionsClass = Options.class,
     flexContainerName = "gcs-to-sourcedb",
     documentation =
@@ -124,7 +125,7 @@ public class GCSToSourceDb {
         order = 5,
         optional = true,
         description =
-            "Duration in mili seconds between calls to stateful timer processing.Defaults to 1"
+            "Duration in mili seconds between calls to stateful timer processing.Defaults to `1`."
                 + " millisecond. ",
         helpText =
             "Controls the time between successive polls to buffer and processing of the resultant"
@@ -165,8 +166,9 @@ public class GCSToSourceDb {
 
     void setWindowDuration(String windowDuration);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFolder(
         order = 8,
+        groupName = "Source",
         optional = false,
         description = "GCS input directory path",
         helpText = "Path from where to read the change stream files.")
@@ -213,7 +215,7 @@ public class GCSToSourceDb {
         },
         description =
             "This type of run mode. Supported values are"
-                + " regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to regular. All"
+                + " regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to `regular`. All"
                 + " run modes should have the same run identifier.",
         helpText =
             "Regular writes to source db, reprocess does processing the specific shards marked as"
@@ -247,6 +249,52 @@ public class GCSToSourceDb {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 15,
+        optional = true,
+        description = "Custom transformation jar location in Cloud Storage",
+        helpText =
+            "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Custom class name for transformation",
+        helpText =
+            "Fully qualified class name for the class that contains the custom transformation logic.  When"
+                + " `transformationJarPath` is specified, this field is required.")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "The string that contains any custom parameters to pass to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Boolean(
+        order = 18,
+        optional = true,
+        description = "Write filtered events to GCS",
+        helpText =
+            "When set to `true`, writes filtered events from custom transformation to Cloud Storage.")
+    @Default.Boolean(false)
+    Boolean getWriteFilteredEventsToGcs();
+
+    void setWriteFilteredEventsToGcs(Boolean value);
   }
 
   /**
@@ -301,6 +349,12 @@ public class GCSToSourceDb {
                 .getDialect();
 
     Map<String, ProcessingContext> processingContextMap = null;
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
             options.getSourceShardsFilePath(),
@@ -334,7 +388,10 @@ public class GCSToSourceDb {
                     options.getTimerIntervalInMilliSec(),
                     spannerMetadataConfig,
                     tableSuffix,
-                    isMetadataDbPostgres)));
+                    isMetadataDbPostgres,
+                    customTransformation,
+                    options.getWriteFilteredEventsToGcs(),
+                    options.getSpannerProjectId())));
 
     return pipeline.run();
   }

@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -54,7 +56,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToAvro} PubSub to Avro. */
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(value = PubsubToAvro.class, template = "Cloud_PubSub_to_Avro")
 @RunWith(JUnit4.class)
 public class PubSubToAvroIT extends TemplateTestBase {
@@ -73,6 +75,16 @@ public class PubSubToAvroIT extends TemplateTestBase {
 
   @Test
   public void testTopicToAvro() throws IOException {
+    testTopicToAvroBase(Function.identity());
+  }
+
+  @Test
+  public void testTopicToAvroStreamingEngine() throws IOException {
+    testTopicToAvroBase(this::enableStreamingEngine);
+  }
+
+  private void testTopicToAvroBase(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
     // Arrange
     String name = testName;
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
@@ -81,11 +93,12 @@ public class PubSubToAvroIT extends TemplateTestBase {
     // Act
     LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTopic", topic.toString())
-                .addParameter("outputDirectory", getGcsPath(testName))
-                .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
-                .addParameter("outputFilenamePrefix", "topic-output-"));
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("inputTopic", topic.toString())
+                    .addParameter("outputDirectory", getGcsPath(testName))
+                    .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
+                    .addParameter("outputFilenamePrefix", "topic-output-")));
     assertThatPipeline(info).isRunning();
 
     ImmutableSet<String> messages =
@@ -94,7 +107,7 @@ public class PubSubToAvroIT extends TemplateTestBase {
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 () -> {
 

@@ -5,7 +5,9 @@
   "user":"test",
   "password":"test",
   "port":"3306",
-  "dbName":"test"
+  "dbName":"test",
+  "namespace": "namespaceA",
+  "connectionProperties": "jdbcCompliantTruncation=true"
   },
  {
   "logicalShardId":"shardB",
@@ -13,6 +15,7 @@
   "user":"test",
   "password":"test",
   "port":"3306",
-  "dbName":"test"
+  "dbName":"test",
+  "connectionProperties": "jdbcCompliantTruncation=true"
    }
 ]

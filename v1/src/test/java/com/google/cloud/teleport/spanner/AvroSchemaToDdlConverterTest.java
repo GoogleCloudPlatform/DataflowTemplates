@@ -83,6 +83,38 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"generationExpression\" : \"CONCAT(first_name, ' ', last_name)\","
             + "    \"stored\" : \"true\""
             + "  }, {"
+            + "    \"name\" : \"identity_column\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"INT64\","
+            + "    \"identityColumn\" : \"true\","
+            + "    \"sequenceKind\" : \"bit_reversed_positive\","
+            + "    \"skipRangeMin\" : \"2000\","
+            + "    \"skipRangeMax\" : \"3000\","
+            + "    \"counterStartValue\" : \"1000\""
+            + "  }, {"
+            + "    \"name\" : \"identity_column_no_kind\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"INT64\","
+            + "    \"identityColumn\" : \"true\","
+            + "    \"skipRangeMin\" : \"2000\","
+            + "    \"skipRangeMax\" : \"3000\","
+            + "    \"counterStartValue\" : \"1000\""
+            + "  }, {"
+            + "    \"name\" : \"default_commit_ts\","
+            + "    \"type\" : \"null\","
+            + "    \"sqlType\" : \"TIMESTAMP\","
+            + "    \"notNull\" : \"false\","
+            + "    \"defaultExpression\" : \"PENDING_COMMIT_TIMESTAMP()\","
+            + "    \"spannerOption_0\" : \"allow_commit_timestamp=true\""
+            + "  }, {"
+            + "    \"name\" : \"on_update_ts\","
+            + "    \"type\" : \"null\","
+            + "    \"sqlType\" : \"TIMESTAMP\","
+            + "    \"notNull\" : \"false\","
+            + "    \"defaultExpression\" : \"PENDING_COMMIT_TIMESTAMP()\","
+            + "    \"onUpdateExpression\" : \"PENDING_COMMIT_TIMESTAMP()\","
+            + "    \"spannerOption_0\" : \"allow_commit_timestamp=true\""
+            + "  }, {"
             + "    \"name\" : \"numeric\","
             + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\"}],"
             + "    \"sqlType\" : \"NUMERIC\""
@@ -123,6 +155,39 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
             + "  }, {"
             // Omitting sqlType
+            + "    \"name\" : \"proto\","
+            + "    \"type\" : [ \"null\", \"bytes\" ],"
+            + "    \"sqlType\" : "
+            + "\"PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>\""
+            + "  }, {"
+            + "    \"name\" : \"notProto\","
+            + "    \"type\" : [ \"null\", \"bytes\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"protoArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"bytes\"]}],"
+            + "    \"sqlType\":"
+            + "\"ARRAY<PROTO<com.google.cloud.teleport.spanner.tests.TestMessage>>\""
+            + "  }, {"
+            + "    \"name\":\"notProtoArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"bytes\"]}]"
+            + "  }, {"
+            // Omitting sqlType
+            + "    \"name\" : \"enum\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>\""
+            + "  }, {"
+            + "    \"name\" : \"notEnum\","
+            + "    \"type\" : [ \"null\", \"long\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"enumArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"long\"]}],"
+            + "    \"sqlType\":"
+            + "\"ARRAY<ENUM<com.google.cloud.teleport.spanner.tests.TestEnum>>\""
+            + "  }, {"
+            + "    \"name\":\"notEnumArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"long\"]}]"
+            + "  }, {"
+            // Omitting sqlType
             + "    \"name\" : \"boolean\","
             + "    \"type\" : [ \"null\", \"boolean\" ]"
             + "  }, {"
@@ -137,6 +202,34 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\" : \"timestamp\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
+            + "  }, {"
+            + "    \"name\" : \"HiddenColumn\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\":\"INT64\","
+            + "    \"hidden\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"MyTokens\","
+            + "    \"type\" : \"null\","
+            + "    \"default\" : null,"
+            + "    \"sqlType\" : \"TOKENLIST\","
+            + "    \"hidden\" : \"true\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"(TOKENIZE_FULLTEXT(MyData))\","
+            + "    \"stored\" : \"false\""
+            + "  }, {"
+            + "    \"name\" : \"Embeddings\","
+            + "    \"type\" : [ \"null\", {"
+            + "    \"type\" : \"array\", \"items\" : [ \"null\", \"float\"]}],"
+            + "    \"sqlType\" : \"ARRAY<FLOAT32>(vector_length=>128)\""
+            + "  }, {"
+            + "    \"name\" : \"UuidColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"} ],"
+            + "    \"sqlType\":\"UUID\""
+            + "  }, {"
+            + "    \"name\" : \"UuidArrayColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"array\","
+            + "    \"items\":[\"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"}]}],"
+            + "    \"sqlType\":\"ARRAY<UUID>\""
             + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
@@ -146,18 +239,25 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerPrimaryKey_2\" : \"`last_name` DESC\","
             + "  \"spannerIndex_0\" : "
             + "  \"CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)\","
+            + "  \"spannerIndex_1\" : "
+            + "  \"CREATE VECTOR INDEX `VI` ON `Users` (`Embeddings`) WHERE Embeddings IS NOT NULL OPTIONS (distance_type=\'COSINE\')\","
             + "  \"spannerForeignKey_0\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) "
             + "  REFERENCES `AllowedNames` (`first_name`)\","
             + "  \"spannerForeignKey_1\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE\","
+            + "  \"spannerForeignKey_2\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED\","
+            + "  \"spannerForeignKey_3\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ENFORCED\","
             + "  \"spannerCheckConstraint_0\" : "
             + "  \"CONSTRAINT `ck` CHECK(`first_name` != 'last_name')\""
             + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
-
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(Collections.singleton(schema));
     assertThat(ddl.allTables(), hasSize(1));
@@ -171,6 +271,15 @@ public class AvroSchemaToDdlConverterTest {
                 + " `first_name`      STRING(10) DEFAULT ('John'),"
                 + " `last_name`       STRING(MAX),"
                 + " `full_name`       STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `identity_column` INT64 GENERATED BY DEFAULT AS IDENTITY ("
+                + "BIT_REVERSED_POSITIVE SKIP RANGE 2000, 3000 START COUNTER WITH 1000),"
+                + " `identity_column_no_kind` INT64 GENERATED BY DEFAULT AS IDENTITY ("
+                + "SKIP RANGE 2000, 3000 START COUNTER WITH 1000),"
+                + " `default_commit_ts` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP())"
+                + " OPTIONS (allow_commit_timestamp=true),"
+                + " `on_update_ts` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP())"
+                + " ON UPDATE (PENDING_COMMIT_TIMESTAMP())"
+                + " OPTIONS (allow_commit_timestamp=true),"
                 + " `numeric`         NUMERIC,"
                 + " `numeric2`        NUMERIC,"
                 + " `notNumeric`      BYTES(MAX),"
@@ -181,19 +290,40 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJson`         STRING(MAX),"
                 + " `jsonArr`         ARRAY<JSON>,"
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
+                + " `proto`           `com.google.cloud.teleport.spanner.tests.TestMessage`,"
+                + " `notProto`        BYTES(MAX),"
+                + " `protoArr`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestMessage`>,"
+                + " `notProtoArr`     ARRAY<BYTES(MAX)>,"
+                + " `enum`            `com.google.cloud.teleport.spanner.tests.TestEnum`,"
+                + " `notEnum`         INT64,"
+                + " `enumArr`         ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
+                + " `notEnumArr`      ARRAY<INT64>,"
                 + " `boolean`         BOOL,"
                 + " `integer`         INT64,"
                 + " `float32`         FLOAT32,"
                 + " `float64`         FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
+                + " `HiddenColumn`    INT64 HIDDEN,"
+                + " `MyTokens`                              TOKENLIST AS ((TOKENIZE_FULLTEXT(MyData))) HIDDEN,"
+                + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
+                + " `UuidColumn`      UUID,"
+                + " `UuidArrayColumn` ARRAY<UUID>,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " CREATE VECTOR INDEX `VI` ON `Users` (`Embeddings`) WHERE Embeddings IS NOT NULL"
+                + " OPTIONS (distance_type=\'COSINE\')"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
                 + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
-                + "`AllowedNames` (`last_name`) ON DELETE CASCADE"));
+                + "`AllowedNames` (`last_name`) ON DELETE CASCADE"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ENFORCED"));
   }
 
   @Test
@@ -230,6 +360,36 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"notNull\" : \"false\","
             + "    \"generationExpression\" : \"CONCAT(first_name, ' ', last_name)\","
             + "    \"stored\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"identity_column\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"bigint\","
+            + "    \"identityColumn\" : \"true\","
+            + "    \"sequenceKind\" : \"bit_reversed_positive\","
+            + "    \"skipRangeMin\" : \"2000\","
+            + "    \"skipRangeMax\" : \"3000\","
+            + "    \"counterStartValue\" : \"1000\""
+            + "  }, {"
+            + "    \"name\" : \"identity_column_no_kind\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\" : \"bigint\","
+            + "    \"identityColumn\" : \"true\","
+            + "    \"skipRangeMin\" : \"2000\","
+            + "    \"skipRangeMax\" : \"3000\","
+            + "    \"counterStartValue\" : \"1000\""
+            + "  }, {"
+            + "    \"name\" : \"default_commit_ts\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"spanner.commit_timestamp\","
+            + "    \"notNull\" : \"false\","
+            + "    \"defaultExpression\" : \"SPANNER.PENDING_COMMIT_TIMESTAMP()\""
+            + "  }, {"
+            + "    \"name\" : \"on_update_ts\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"spanner.commit_timestamp\","
+            + "    \"notNull\" : \"false\","
+            + "    \"defaultExpression\" : \"SPANNER.PENDING_COMMIT_TIMESTAMP()\","
+            + "    \"onUpdateExpression\" : \"SPANNER.PENDING_COMMIT_TIMESTAMP()\""
             + "  }, {"
             + "    \"name\" : \"numeric\","
             + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\"}],"
@@ -284,6 +444,14 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"spanner.commit_timestamp\""
             + "  }, {"
+            + "    \"name\" : \"tokens\", "
+            + "    \"type\" : [\"null\"], "
+            + "    \"sqlType\" : \"spanner.tokenlist\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"spanner.tokenize_fulltext(first_name)\","
+            + "    \"stored\": \"true\","
+            + "    \"hidden\": \"true\""
+            + "  }, {"
             + "    \"name\" : \"date\","
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"date\""
@@ -310,6 +478,19 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"float641\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
+            + "    \"name\" : \"Embeddings\","
+            + "    \"type\" : [ \"null\", {"
+            + "    \"type\" : \"array\", \"items\" : [ \"null\", \"float\"]}],"
+            + "    \"sqlType\" : \"real[] vector length 128\""
+            + "  }, {"
+            + "    \"name\" : \"uuidColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"} ],"
+            + "    \"sqlType\":\"uuid\""
+            + "  }, {"
+            + "    \"name\" : \"uuidArrayColumn\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\", "
+            + "    {\"type\":\"string\",\"logicalType\":\"uuid\"}]}], \"sqlType\":\"uuid[]\""
+            + "  }, {"
             + "    \"name\" : \"timestamp1\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  } ],  \"googleStorage\" : \"CloudSpanner\",  \"spannerParent\" : \"\", "
@@ -317,6 +498,9 @@ public class AvroSchemaToDdlConverterTest {
             + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"gen_id\\\" ASC\",  \"spannerPrimaryKey_2\""
             + " : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
             + "   \"CREATE INDEX \\\"UsersByFirstName\\\" ON \\\"Users\\\" (\\\"first_name\\\")\", "
+            + "  \"spannerIndex_1\" : "
+            + " \"CREATE INDEX \\\"VI\\\" ON \\\"Users\\\" USING ScaNN (\\\"Embeddings\\\") "
+            + "WHERE \\\"Embeddings\\\" IS NOT NULL OPTIONS (distance_type=\'COSINE\')\","
             + " \"spannerForeignKey_0\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT \\\"fk\\\""
             + " FOREIGN KEY (\\\"first_name\\\")   REFERENCES \\\"AllowedNames\\\""
             + " (\\\"first_name\\\")\", "
@@ -343,6 +527,15 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"last_name\"       character varying,"
                 + " \"full_name\"       character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"identity_column\" bigint GENERATED BY DEFAULT AS IDENTITY ("
+                + "BIT_REVERSED_POSITIVE SKIP RANGE 2000 3000 START COUNTER WITH 1000),"
+                + " \"identity_column_no_kind\" bigint GENERATED BY DEFAULT AS IDENTITY ("
+                + "SKIP RANGE 2000 3000 START COUNTER WITH 1000),"
+                + " \"default_commit_ts\" spanner.commit_timestamp "
+                + " DEFAULT SPANNER.PENDING_COMMIT_TIMESTAMP(),"
+                + " \"on_update_ts\" spanner.commit_timestamp "
+                + " DEFAULT SPANNER.PENDING_COMMIT_TIMESTAMP()"
+                + " ON UPDATE SPANNER.PENDING_COMMIT_TIMESTAMP(),"
                 + " \"numeric\"         numeric,"
                 + " \"numeric2\"        numeric,"
                 + " \"notNumeric\"      bytea,"
@@ -356,6 +549,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"text\" text,"
                 + " \"timestamptz\" timestamp with time zone,"
                 + " \"commit_time\"     spanner.commit_timestamp,"
+                + " \"tokens\" spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(first_name)) STORED HIDDEN,"
                 + " \"date\" date,"
                 + " \"varcharArr1\"     character varying[],"
                 + " \"varcharArr2\"     character varying[],"
@@ -363,15 +557,155 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"integer1\"        bigint,"
                 + " \"float321\"        real,"
                 + " \"float641\"        double precision,"
+                + " \"Embeddings\"      real[] vector length 128,"
+                + " \"uuidColumn\"      uuid,"
+                + " \"uuidArrayColumn\" uuid[],"
                 + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
                 + " )"
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " CREATE INDEX \"VI\" ON \"Users\" USING ScaNN (\"Embeddings\") WHERE \"Embeddings\" IS NOT NULL OPTIONS (distance_type=\'COSINE\')"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
                 + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
+  }
+
+  @Test
+  public void propertyGraphs() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"testGraph\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"nodeAlias\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerName\": \"testGraph\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"spannerGraphLabel_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"edgePrimaryKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"otherNodeKey\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"nodeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_KIND\": \"NODE\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"edgeAlias\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"edgeBaseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_KIND\": \"EDGE\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_1\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"primaryKey\",\n"
+            + "  \"spannerGraphLabel_2_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_0\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"sourceEdgeKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"destEdgeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"CONCAT(CAST(test_col AS STRING), \\\":\\\", \\\"dummyColumn\\\")\",\n"
+            + "  \"spannerGraphLabel_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_TYPE\": \"dummyPropType\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_TYPE\": \"dummyPropType\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "NODE TABLES(\n"
+            + "baseTable AS nodeAlias\n"
+            + " KEY (primaryKey)\n"
+            + "LABEL dummyLabelName1 PROPERTIES(dummyPropName, CONCAT(CAST(test_col AS STRING), \":\", \"dummyColumn\") AS aliasedPropName)\n"
+            + "LABEL dummyLabelName2 NO PROPERTIES)\n"
+            + "EDGE TABLES(\n"
+            + "edgeBaseTable AS edgeAlias\n"
+            + " KEY (edgePrimaryKey)\n"
+            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable(nodeKey) DESTINATION KEY(destEdgeKey) REFERENCES baseTable(otherNodeKey)\n"
+            + "LABEL dummyLabelName3 NO PROPERTIES)";
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  @Test
+  public void propertyGraphDynamic() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"testGraph\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"nodeAlias\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerName\": \"testGraph\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"spannerGraphLabel_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"edgePrimaryKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"otherNodeKey\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"nodeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_KIND\": \"NODE\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"edgeAlias\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"edgeBaseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_KIND\": \"EDGE\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_1\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"primaryKey\",\n"
+            + "  \"spannerGraphLabel_2_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_0\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"sourceEdgeKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"destEdgeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"CONCAT(CAST(test_col AS STRING), \\\":\\\", \\\"dummyColumn\\\")\",\n"
+            + "  \"spannerGraphLabel_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_TYPE\": \"dummyPropType\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_TYPE\": \"dummyPropType\",\n"
+            + "  \"spannerGraphNodeTable_0_spannerGraphDynamicLabel\": \"dynamicLabelColumn\",\n"
+            + "  \"spannerGraphEdgeTable_0_spannerGraphDynamicProperties\": \"dynamicPropertiesColumn\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "NODE TABLES(\n"
+            + "baseTable AS nodeAlias\n"
+            + " KEY (primaryKey)\n"
+            + "LABEL dummyLabelName1 PROPERTIES(dummyPropName, CONCAT(CAST(test_col AS STRING), \":\", \"dummyColumn\") AS aliasedPropName)\n"
+            + "LABEL dummyLabelName2 NO PROPERTIES\n"
+            + "DYNAMIC LABEL(dynamicLabelColumn))\n"
+            + "EDGE TABLES(\n"
+            + "edgeBaseTable AS edgeAlias\n"
+            + " KEY (edgePrimaryKey)\n"
+            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable(nodeKey) DESTINATION KEY(destEdgeKey) REFERENCES baseTable(otherNodeKey)\n"
+            + "LABEL dummyLabelName3 NO PROPERTIES\n"
+            + "DYNAMIC PROPERTIES(dynamicPropertiesColumn))";
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
   }
 
   @Test
@@ -496,6 +830,159 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE MODEL `ModelStruct`"
                 + " INPUT ( `i1` STRUCT<a BOOL>, )"
                 + " OUTPUT ( `o1` STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>, )"));
+  }
+
+  @Test
+  public void udfSimple() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace("CREATE FUNCTION `Foo`() AS (SELECT 1)"));
+  }
+
+  @Test
+  public void udfSqlAllOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfSecurity\" : \"INVOKER\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
+                + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 1)"));
+  }
+
+  @Test
+  public void pgUdfSqlAllOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfType\" : \"TEXT\","
+            + "  \"spannerUdfSecurity\" : \"INVOKER\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 TEXT\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 TEXT DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT \"bar\")"
+                + " RETURNS TEXT SQL SECURITY INVOKER RETURN SELECT 1"));
+  }
+
+  @Test
+  public void udfRemote() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UdfSchema_Foo\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"spannerName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfLanguage\" : \"REMOTE\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerOption_0\" : \"endpoint=\\\"https://us-central1-myproject.cloudfunctions.net/myfunc\\\"\","
+            + "  \"spannerOption_1\" : \"max_batching_rows=50\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `UdfSchema`.`Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
+                + " RETURNS STRING NOT DETERMINISTIC LANGUAGE REMOTE"
+                + " OPTIONS (endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\", max_batching_rows=50)"));
+  }
+
+  @Test
+  public void pgUdfRemote() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UdfSchema.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfLanguage\" : \"REMOTE\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"{\\\"endpoint\\\": \\\"https://us-central1-myproject.cloudfunctions.net/myfunc\\\", \\\"max_batching_rows\\\": 50}\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"UdfSchema\".\"Foo\"(\"arg0\" STRING, \"arg1\" STRING DEFAULT \"bar\")"
+                + " RETURNS STRING VOLATILE LANGUAGE REMOTE"
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'"));
   }
 
   @Test
@@ -793,15 +1280,26 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"googleFormatVersion\" : \"booleans\","
             + "  \"sequenceOption_0\" : \"sequence_kind=\\\"bit_reversed_positive\\\"\""
             + "}";
+    String avroString4 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence4\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"default\\\"\""
+            + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(avroString1));
     schemas.add(parser.parse(avroString2));
     schemas.add(parser.parse(avroString3));
+    schemas.add(parser.parse(avroString4));
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(schemas);
-    assertThat(ddl.sequences(), hasSize(3));
+    assertThat(ddl.sequences(), hasSize(4));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
@@ -812,7 +1310,8 @@ public class AvroSchemaToDdlConverterTest {
                 + "OPTIONS (sequence_kind=\"bit_reversed_positive\", "
                 + "start_with_counter=9999)\n"
                 + "CREATE SEQUENCE `Sequence3`\n\t"
-                + "OPTIONS (sequence_kind=\"bit_reversed_positive\")"));
+                + "OPTIONS (sequence_kind=\"bit_reversed_positive\")\n"
+                + "CREATE SEQUENCE `Sequence4`"));
   }
 
   @Test
@@ -851,16 +1350,27 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"googleFormatVersion\" : \"booleans\","
             + "  \"sequenceKind\" : \"bit_reversed_positive\""
             + "}";
+    String avroString4 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence4\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"default\""
+            + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(avroString1));
     schemas.add(parser.parse(avroString2));
     schemas.add(parser.parse(avroString3));
+    schemas.add(parser.parse(avroString4));
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
     Ddl ddl = converter.toDdl(schemas);
     assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
-    assertThat(ddl.sequences(), hasSize(3));
+    assertThat(ddl.sequences(), hasSize(4));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
@@ -868,7 +1378,8 @@ public class AvroSchemaToDdlConverterTest {
                 + "SKIP RANGE 1 1000 START COUNTER WITH 50"
                 + "\nCREATE SEQUENCE \"Sequence2\" BIT_REVERSED_POSITIVE "
                 + "START COUNTER WITH 9999"
-                + "\nCREATE SEQUENCE \"Sequence3\" BIT_REVERSED_POSITIVE"));
+                + "\nCREATE SEQUENCE \"Sequence3\" BIT_REVERSED_POSITIVE"
+                + "\nCREATE SEQUENCE \"Sequence4\""));
   }
 
   @Test
@@ -928,5 +1439,613 @@ public class AvroSchemaToDdlConverterTest {
     timestampSchema = Schema.create(Schema.Type.LONG);
     timestampSchema.addProp("logicalType", "timestamp-micros");
     assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+  }
+
+  @Test
+  public void placements() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Placement1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"Placement\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"instance_partition='mr-partition'\","
+            + "  \"spannerOption_1\" : \"default_leader='us-east1'\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.placements(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE PLACEMENT `Placement1`\n\t"
+                + " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
+  }
+
+  @Test
+  public void placementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`location` ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                + "`val`                                   STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`location` ASC)\n\n\n"
+                + "CREATE TABLE `UsersWithPlacement` (\n\t"
+                + "`id`                                    INT64 NOT NULL,\n\t"
+                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                + ") PRIMARY KEY (`id` ASC)\n\n"));
+  }
+
+  @Test
+  public void pgPlacementTable() {
+    String placementKeyAsPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"PlacementKeyAsPrimaryKey\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"val\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"location ASC\""
+            + "}";
+
+    String placementKeyAsNonPrimaryKeyAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UsersWithPlacement\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"location\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\","
+            + "    \"spannerPlacementKey\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"id ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(placementKeyAsPrimaryKeyAvroString));
+    schemas.add(parser.parse(placementKeyAsNonPrimaryKeyAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"PlacementKeyAsPrimaryKey\" (\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "\"val\"                                   character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"location\")\n)\n\n\n"
+                + "CREATE TABLE \"UsersWithPlacement\" (\n\t"
+                + "\"id\"                                    bigint NOT NULL,\n\t"
+                + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
+                + "PRIMARY KEY (\"id\")\n)\n\n"));
+  }
+
+  @Test
+  public void interleaveTable() {
+    String parentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    // Confirming backwards compatibility, so that an avro schema with no interleave type is treated
+    // as IN PARENT by default.
+    String interleaveInParentTableNoInterleaveType =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTableNoInterleaveType\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    String interleaveInParentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN PARENT\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    String interleaveInTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(parentTable));
+    schemas.add(parser.parse(interleaveInParentTableNoInterleaveType));
+    schemas.add(parser.parse(interleaveInParentTable));
+    schemas.add(parser.parse(interleaveInTable));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(4));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `ParentTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC)\n\n\n"
+                + "CREATE TABLE `interleaveInParentTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN PARENT `ParentTable`\n\n"
+                + "CREATE TABLE `interleaveInParentTableNoInterleaveType` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN PARENT `ParentTable`\n\n"
+                + "CREATE TABLE `interleaveInTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN  `ParentTable`\n\n"));
+  }
+
+  @Test
+  public void pgInterleaveTable() {
+    String parentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    // Confirming backwards compatibility, so that an avro schema with no interleave type is treated
+    // as IN PARENT by default.
+    String interleaveInParentTableNoInterleaveType =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTableNoInterleaveType\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    String interleaveInParentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN PARENT\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    String interleaveInTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(parentTable));
+    schemas.add(parser.parse(interleaveInParentTableNoInterleaveType));
+    schemas.add(parser.parse(interleaveInParentTable));
+    schemas.add(parser.parse(interleaveInTable));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(4));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"ParentTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ")\n\n\n"
+                + "CREATE TABLE \"interleaveInParentTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN PARENT \"ParentTable\"\n\n"
+                + "CREATE TABLE \"interleaveInParentTableNoInterleaveType\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN PARENT \"ParentTable\"\n\n"
+                + "CREATE TABLE \"interleaveInTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN  \"ParentTable\"\n\n"));
+  }
+
+  @Test
+  public void propertyGraphOnView() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"aml_view_complex\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"aml_view_complex\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"V_GroupByPerson\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"V_GroupByPerson\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"V_GroupByPerson\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_NAME\": \"cnt\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_VALUE\": \"cnt\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_NAME\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_2_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphNodeTable_2_BASE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphNodeTable_2_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_NAME\": \"aid\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_VALUE\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"Owns\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"loc_id,owner_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_NAME\": \"Owns\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_1_NAME\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_2_NAME\": \"owner_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_2_VALUE\": \"owner_id\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "V_GroupByPerson AS V_GroupByPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_GroupByPerson PROPERTIES(loc_id, pid, cnt), "
+            + "V_FilteredPerson AS V_FilteredPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_FilteredPerson PROPERTIES(loc_id, pid), "
+            + "GraphTableAccount AS GraphTableAccount\n"
+            + " KEY (loc_id, aid)\n"
+            + "LABEL GraphTableAccount PROPERTIES(loc_id, aid))\n"
+            + "EDGE TABLES(\n"
+            + "GraphTableAccount AS Owns\n"
+            + " KEY (loc_id, aid)\n"
+            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
+            + " KEY(loc_id, aid) REFERENCES GraphTableAccount(loc_id,aid)\n"
+            + "LABEL Owns PROPERTIES(loc_id, aid, owner_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  @Test
+  public void propertyGraphOnViewSupplyChain() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"SupplyChainGraph\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"SupplyChainGraph\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"PartSuppliersView\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"PartSuppliersView\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"part_id,supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"supplier_id\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "\nCREATE PROPERTY GRAPH SupplyChainGraph\n"
+            + "NODE TABLES(\n"
+            + "PartView AS PartView\n"
+            + " KEY (part_id)\n"
+            + ", SupplierView AS SupplierView\n"
+            + " KEY (supplier_id)\n"
+            + ")\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView AS PartSuppliersView\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView(part_id) DESTINATION"
+            + " KEY(supplier_id) REFERENCES SupplierView(supplier_id)\n"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"aml\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"aml\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_VALUE\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_2_BASE_TABLE_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_VALUE\": \"Money\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), "
+            + "Sch1.V1 AS Sch1.V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch1.V1 PROPERTIES(AccountID, Money), "
+            + "Sch2.V2 AS Sch2.V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
   }
 }

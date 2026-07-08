@@ -34,10 +34,12 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MetadataCoder;
+import org.apache.beam.sdk.io.fs.MetadataCoderV2;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -223,5 +225,25 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       throws IOException, FileNotFoundException {
     InputStream jsonStream = Channels.newInputStream(FileSystems.open(resourceId));
     return new BufferedReader(new InputStreamReader(jsonStream, StandardCharsets.UTF_8));
+  }
+
+  /**
+   * A "One-Shot" PTransform that scans a DLQ directory exactly once, filtering for files older than
+   * the specified startTime.
+   */
+  static PTransform<PBegin, PCollection<String>> consumeSingleTimeRange(
+      String dlqDirectory, long startTimeMillis) {
+    return new PTransform<PBegin, PCollection<String>>("ConsumeSingleTimeRange") {
+      @Override
+      public PCollection<String> expand(PBegin in) {
+        return in.getPipeline()
+            .apply("MatchFiles", FileIO.match().filepattern(dlqDirectory + "**"))
+            .setCoder(MetadataCoderV2.of())
+            .apply(
+                "FilterHistoricalFiles", Filter.by(m -> m.lastModifiedMillis() < startTimeMillis))
+            .apply("ReshuffleBeforeConsume", Reshuffle.viaRandomKey())
+            .apply("ConsumeMatches", moveAndConsumeMatches());
+      }
+    };
   }
 }

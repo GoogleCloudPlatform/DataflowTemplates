@@ -1,0 +1,6 @@
+{
+  "SchemaToShardId": {
+    "shard1": "${prefix}-shard1",
+    "shard2": "${prefix}-shard2"
+  }
+}

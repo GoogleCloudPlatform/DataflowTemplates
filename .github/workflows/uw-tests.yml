@@ -1,0 +1,82 @@
+name: UW Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      unifiedWorkerHarnessContainerImage:
+        description: 'Unified worker harness container image'
+        type: string
+        required: true
+      candidateName:
+        description: 'Name of the candidate'
+        type: string
+        required: false
+      branchCommit:
+        description: 'Commit to check out. If it is the most recent commit then leave blank.'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+jobs:
+  run_uw_tests:
+    name: Runner V2 Tests
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
+      # Defines releaseTag as latest successful release to avoid running tests failing at HEAD
+      - name: Declare runner image and release tag
+        id: variables
+        run: |
+          echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
+          echo "testBranchName=uw_release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCloudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+          HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.variables.outputs.releaseTag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+      - name: Create test branch
+        run: git checkout -b $TEST_BRANCH_NAME $BRANCH_COMMIT
+        env:
+          TEST_BRANCH_NAME: ${{ steps.variables.outputs.testBranchName }}
+          BRANCH_COMMIT: ${{ inputs.branchCommit }}
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: ./cicd/run-build
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-connect-2" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-unified-worker-harness-container-image=$HARNESS_IMAGE \
+          --it-retry-failures=2
+        env:
+          HARNESS_IMAGE: ${{ steps.variables.outputs.unifiedWorkerHarnessContainerImage }}
+      - name: Upload Site Report
+        uses: ./.github/actions/publish-site-report
+        with:
+          output-zip-file: test-report
+        if: always()

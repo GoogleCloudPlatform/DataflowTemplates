@@ -26,6 +26,7 @@ import com.google.cloud.teleport.it.datadog.DatadogResourceManager;
 import com.google.cloud.teleport.it.datadog.conditions.DatadogLogEntriesCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -53,7 +54,7 @@ import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link PubSubToDatadog} classic template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(PubSubToDatadog.class)
 @RunWith(JUnit4.class)
 public class PubSubToDatadogIT extends TemplateTestBase {

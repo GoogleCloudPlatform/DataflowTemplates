@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.cloud.teleport.plugin.sample.AtoBNestedFlex;
 import com.google.cloud.teleport.plugin.sample.AtoBOk;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
@@ -31,6 +32,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Lists;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -40,6 +42,8 @@ import org.junit.runners.JUnit4;
 public class TemplateSpecsGeneratorTest {
 
   private static final Gson GSON = new GsonBuilder().create();
+  private static final String SOURCE_GROUP_NAME = "Source";
+  private static final String PARENT_TRIGGER_VALUE = "true";
 
   private final TemplateDefinitions definitions =
       new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
@@ -58,6 +62,19 @@ public class TemplateSpecsGeneratorTest {
       ImageSpec read = GSON.fromJson(json, ImageSpec.class);
       assertEquals(imageSpec.getMetadata().getName(), read.getMetadata().getName());
       assertEquals(imageSpec.getMetadata().getParameter("hiddenParam").get().hiddenUi(), true);
+      assertEquals(
+          imageSpec.getMetadata().getParameter("paramWithGroupName").get().getGroupName(),
+          SOURCE_GROUP_NAME);
+      assertEquals(
+          imageSpec.getMetadata().getParameter("paramWithParentName").get().getParentName(),
+          "paramWithGroupName");
+      assertEquals(
+          imageSpec
+              .getMetadata()
+              .getParameter("paramWithParentName")
+              .get()
+              .getParentTriggerValues(),
+          Lists.newArrayList(PARENT_TRIGGER_VALUE));
     }
   }
 
@@ -74,6 +91,22 @@ public class TemplateSpecsGeneratorTest {
               new String(fis.readAllBytes(), StandardCharsets.UTF_8), ImageSpecMetadata.class);
       assertEquals(metadata.getName(), read.getName());
     }
+  }
+
+  @Test
+  public void saveMetadataNestedFlex() {
+    TemplateDefinitions nestedFlexDefinition =
+        new TemplateDefinitions(
+            AtoBNestedFlex.class, AtoBNestedFlex.class.getAnnotation(Template.class));
+    ImageSpec nestedFlexImageSpec = definitions.buildSpecModel(false);
+    ImageSpecMetadata metadata = nestedFlexImageSpec.getMetadata();
+
+    File saveMetadata = generator.saveMetadata(nestedFlexDefinition, metadata, outputFolder);
+    assertNotNull(saveMetadata);
+    assertTrue(saveMetadata.exists());
+    assertEquals(
+        outputFolder.toPath().resolve("atobnestedflex-generated-metadata.json").toString(),
+        saveMetadata.getPath());
   }
 
   @Test

@@ -1,0 +1,533 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.reader.io.exception.SuitableIndexNotFoundException;
+import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
+import com.google.cloud.teleport.v2.source.jdbc.ShardedJdbcDbConfigContainer;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.common.io.Resources;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.quality.Strictness;
+
+@RunWith(MockitoJUnitRunner.class)
+public class PipelineControllerTest {
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  private Ddl spannerDdl;
+  private Ddl shardedDdl;
+  private Path schemaOverridesFile;
+
+  private MockedStatic<JdbcIoWrapper> mockedStaticJdbcIoWrapper;
+  @Mock private JdbcIoWrapper mockJdbcIoWrapper;
+
+  @Before
+  public void setup() throws IOException {
+    mockedStaticJdbcIoWrapper = Mockito.mockStatic(JdbcIoWrapper.class);
+    spannerDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_quantity")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("synth_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("synth_id")
+            .end()
+            .endTable()
+            .build();
+
+    shardedDdl =
+        Ddl.builder()
+            .createTable("new_cart")
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("new_product_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_user_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .asc("new_product_id")
+            .end()
+            .endTable()
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .string()
+            .size(20)
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
+
+    // Create a dummy schema overrides file for tests that need it
+    schemaOverridesFile = temporaryFolder.newFile("schema_overrides.json").toPath();
+    String overridesJsonContent =
+        "{\n"
+            + "  \"renamedTables\": {\n"
+            + "    \"source_table\": \"spanner_table\"\n"
+            + "  }\n"
+            + "}";
+    try (BufferedWriter writer = Files.newBufferedWriter(schemaOverridesFile)) {
+      writer.write(overridesJsonContent);
+      writer.flush();
+    }
+  }
+
+  @Test
+  public void createIdentitySchemaMapper() {
+    SourceDbToSpannerOptions mockOptions = createOptionsHelper(null, null, null, null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof IdentityMapper);
+  }
+
+  @Test
+  public void createSessionSchemaMapper() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(sessionFilePath, null, null, null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SessionBasedMapper);
+  }
+
+  @Test
+  public void createSchemaFileOverridesMapper() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, schemaOverridesFile.toString(), null, null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaFileOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_tableOnly() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, "[{src,dest}]", null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_columnOnly() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, null, "[{src.col,src.spCol}]", null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_both() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, "[{s,d}]", "[{s.c,s.sc}]", null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_sessionAndFile_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(sessionFilePath, schemaOverridesFile.toString(), null, null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_sessionAndString_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(sessionFilePath, null, "[{s,d}]", null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_fileAndString_throwsException() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, schemaOverridesFile.toString(), "[{s,d}]", null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_all_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(
+            sessionFilePath, schemaOverridesFile.toString(), "[{s,d}]", "[{s.c,s.sc}]", null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test(expected = Exception.class)
+  public void createInvalidSchemaMapper_withException() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper("invalid-file", null, null, null, "");
+    PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+  }
+
+  @Test
+  public void tableToShardIdColumnNonSharded() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFilePath, spannerDdl);
+    Map<String, String> mapAllTables =
+        PipelineController.getSrcTableToShardIdColumnMap(
+            schemaMapper, "", List.of("new_cart", "new_people"));
+    assertThat(mapAllTables.isEmpty());
+  }
+
+  @Test
+  public void tableToShardIdColumnSharded() {
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+    Map<String, String> mapAllTables =
+        PipelineController.getSrcTableToShardIdColumnMap(
+            schemaMapper, "", List.of("new_cart", "new_people"));
+    assertEquals(1, mapAllTables.size());
+    assertEquals("migration_shard_id", mapAllTables.get("people"));
+  }
+
+  @Test(expected = NoSuchElementException.class)
+  public void tableToShardIdColumnInvalidTable() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFilePath, spannerDdl);
+    PipelineController.getSrcTableToShardIdColumnMap(
+        schemaMapper, "", List.of("cart")); // Only accepts spanner table names
+  }
+
+  private SourceDbToSpannerOptions createOptionsHelper(
+      String sessionFile,
+      String schemaOverridesFile,
+      String tableOverrides,
+      String columnOverrides,
+      String tables) {
+    SourceDbToSpannerOptions mockOptions =
+        mock(
+            SourceDbToSpannerOptions.class,
+            Mockito.withSettings().serializable().strictness(Strictness.LENIENT));
+    when(mockOptions.getSessionFilePath()).thenReturn(sessionFile == null ? "" : sessionFile);
+    when(mockOptions.getSchemaOverridesFilePath())
+        .thenReturn(schemaOverridesFile == null ? "" : schemaOverridesFile);
+    when(mockOptions.getTableOverrides()).thenReturn(tableOverrides == null ? "" : tableOverrides);
+    when(mockOptions.getColumnOverrides())
+        .thenReturn(columnOverrides == null ? "" : columnOverrides);
+    when(mockOptions.getTables()).thenReturn(tables == null ? "" : tables);
+    return mockOptions;
+  }
+
+  /** A dummy transform that produces an empty {@link SourceRow} collection for testing. */
+  private static class DummyTransform extends PTransform<PBegin, PCollection<SourceRow>> {
+    @Override
+    public PCollection<SourceRow> expand(PBegin input) {
+      return input.apply(
+          Create.empty(org.apache.beam.sdk.values.TypeDescriptor.of(SourceRow.class)));
+    }
+  }
+
+  /**
+   * Tests the {@link PipelineController#executeJdbcShardedMigration} method to ensure it correctly
+   * orchestrates a sharded migration.
+   */
+  @Test
+  public void testExecute_Sharded() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    mockOptions.setTables("new_cart");
+    mockOptions.setOutputDirectory("gs://test/dlq");
+    mockOptions.setSourceConfigURL("gs://test-bucket/shards.json");
+    mockOptions.setJdbcDriverClassName("com.mysql.cj.jdbc.Driver");
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId("test-project")
+            .withInstanceId("test-instance")
+            .withDatabaseId("test-db");
+
+    Shard shard = new Shard("shard1", "localhost", "3306", "user", "pass", "db1", null, null, null);
+    shard.getDbNameToLogicalShardIdMap().put("db1", "shard1");
+
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+    when(mockPipeline.getOptions()).thenReturn(mockOptions);
+
+    try (MockedStatic<SpannerSchema> mockedSpannerSchema =
+        Mockito.mockStatic(SpannerSchema.class)) {
+      mockedSpannerSchema
+          .when(() -> SpannerSchema.getInformationSchemaAsDdl(any()))
+          .thenReturn(spannerDdl);
+
+      mockedStaticJdbcIoWrapper.when(() -> JdbcIoWrapper.of(any())).thenReturn(mockJdbcIoWrapper);
+
+      SourceTableReference tableRef =
+          SourceTableReference.builder()
+              .setSourceTableName("cart")
+              .setSourceTableSchemaUUID("uuid-1")
+              .setSourceSchemaReference(
+                  SourceSchemaReference.ofJdbc(
+                      JdbcSchemaReference.builder().setDbName("db1").build()))
+              .build();
+
+      when(mockJdbcIoWrapper.getTableReaders())
+          .thenReturn(
+              com.google.common.collect.ImmutableMap.of(
+                  com.google.common.collect.ImmutableList.of(tableRef), new DummyTransform()));
+      when(mockJdbcIoWrapper.discoverTableSchema())
+          .thenReturn(com.google.common.collect.ImmutableList.of());
+
+      PipelineController.executeMigrationForDbConfigContainer(
+          mockOptions,
+          mockPipeline,
+          spannerConfig,
+          new ShardedJdbcDbConfigContainer(List.of(shard), SQLDialect.MYSQL, mockOptions));
+    }
+  }
+
+  @Test
+  public void testExecute_Sharded_WithFilteredEvents() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    mockOptions.setTables("new_cart");
+    mockOptions.setOutputDirectory("gs://test/dlq");
+    mockOptions.setSourceConfigURL("gs://test-bucket/shards.json");
+    mockOptions.setJdbcDriverClassName("com.mysql.cj.jdbc.Driver");
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId("test-project")
+            .withInstanceId("test-instance")
+            .withDatabaseId("test-db");
+
+    Shard shard = new Shard("shard1", "localhost", "3306", "user", "pass", "db1", null, null, null);
+    shard.getDbNameToLogicalShardIdMap().put("db1", "shard1");
+
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+    when(mockPipeline.getOptions()).thenReturn(mockOptions);
+
+    try (MockedStatic<SpannerSchema> mockedSpannerSchema =
+        Mockito.mockStatic(SpannerSchema.class)) {
+      mockedSpannerSchema
+          .when(() -> SpannerSchema.getInformationSchemaAsDdl(any()))
+          .thenReturn(spannerDdl);
+
+      mockedStaticJdbcIoWrapper.when(() -> JdbcIoWrapper.of(any())).thenReturn(mockJdbcIoWrapper);
+
+      SourceTableReference tableRef =
+          SourceTableReference.builder()
+              .setSourceTableName("cart")
+              .setSourceTableSchemaUUID("uuid-1")
+              .setSourceSchemaReference(
+                  SourceSchemaReference.ofJdbc(
+                      JdbcSchemaReference.builder().setDbName("db1").build()))
+              .build();
+
+      when(mockJdbcIoWrapper.getTableReaders())
+          .thenReturn(
+              com.google.common.collect.ImmutableMap.of(
+                  com.google.common.collect.ImmutableList.of(tableRef), new DummyTransform()));
+      when(mockJdbcIoWrapper.discoverTableSchema())
+          .thenReturn(com.google.common.collect.ImmutableList.of());
+
+      PipelineController.executeMigrationForDbConfigContainer(
+          mockOptions,
+          mockPipeline,
+          spannerConfig,
+          new ShardedJdbcDbConfigContainer(List.of(shard), SQLDialect.MYSQL, mockOptions));
+    }
+  }
+
+  @Test(expected = SuitableIndexNotFoundException.class)
+  public void testSetupLogicalDbMigration_HandlesSuitableIndexNotFoundException() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    mockOptions.setTables("new_cart");
+
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+    when(mockPipeline.getOptions()).thenReturn(mockOptions);
+
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSpannerTableName(any(), any())).thenReturn("new_cart");
+
+    TableSelector mockTableSelector = mock(TableSelector.class);
+    when(mockTableSelector.getDdl()).thenReturn(spannerDdl);
+    when(mockTableSelector.getSchemaMapper()).thenReturn(mockSchemaMapper);
+
+    DbConfigContainer mockConfigContainer = mock(DbConfigContainer.class);
+    when(mockConfigContainer.getIOWrapper(any(), any())).thenReturn(mockJdbcIoWrapper);
+
+    // Trigger SuitableIndexNotFoundException
+    when(mockJdbcIoWrapper.getTableReaders())
+        .thenThrow(new SuitableIndexNotFoundException(new RuntimeException("No index")));
+
+    Map<Integer, List<String>> levelToSpannerTableList = new HashMap<>();
+    levelToSpannerTableList.put(0, List.of("new_cart"));
+
+    PipelineController.setupLogicalDbMigration(
+        mockOptions,
+        mockPipeline,
+        spannerConfig,
+        mockTableSelector,
+        levelToSpannerTableList,
+        mockConfigContainer);
+
+    // Verify it proceeds (loop continues or finishes gracefully)
+    org.mockito.Mockito.verify(mockJdbcIoWrapper).getTableReaders();
+  }
+
+  @Test
+  public void testSetupLogicalDbMigration_WhenNotLogical() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+    // isLogicalDbMigration returns false if tables is not empty
+    mockOptions.setTables("new_cart");
+
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+    when(mockPipeline.getOptions()).thenReturn(mockOptions);
+
+    TableSelector mockTableSelector = mock(TableSelector.class);
+    DbConfigContainer mockConfigContainer = mock(DbConfigContainer.class);
+
+    PipelineController.setupLogicalDbMigration(
+        mockOptions,
+        mockPipeline,
+        spannerConfig,
+        mockTableSelector,
+        new HashMap<>(), // Empty map
+        mockConfigContainer);
+
+    // Verify it returns early or doesn't call IOWrapper
+    org.mockito.Mockito.verifyNoInteractions(mockConfigContainer);
+  }
+
+  @After
+  public void cleanup() {
+    if (mockedStaticJdbcIoWrapper != null) {
+      mockedStaticJdbcIoWrapper.close();
+      mockedStaticJdbcIoWrapper = null;
+    }
+  }
+}

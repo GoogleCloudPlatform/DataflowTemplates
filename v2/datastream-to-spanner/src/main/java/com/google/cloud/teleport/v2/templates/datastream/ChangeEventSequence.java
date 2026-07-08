@@ -23,13 +23,7 @@ public abstract class ChangeEventSequence implements Comparable<ChangeEventSeque
 
   private final String sourceDatabaseType;
 
-  ChangeEventSequence(String sourceDatabaseType) {
+  protected ChangeEventSequence(String sourceDatabaseType) {
     this.sourceDatabaseType = sourceDatabaseType;
-  }
-}
-
-class ChangeEventSequenceComparisonException extends RuntimeException {
-  ChangeEventSequenceComparisonException(String msg) {
-    super(msg);
   }
 }

@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.utils.TextParserUtils;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
@@ -31,44 +29,36 @@ public class LineToRowFn extends DoFn<String, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(LineToRowFn.class);
 
-  private final Source source;
   private final Schema schema;
   private final CSVFormat csvFormat;
 
-  public LineToRowFn(Source source, Schema sourceSchema, CSVFormat csvFormat) {
-    this.source = source;
+  public LineToRowFn(Schema sourceSchema, CSVFormat csvFormat) {
     this.schema = sourceSchema;
     this.csvFormat = csvFormat;
   }
 
   @ProcessElement
   public void processElement(ProcessContext processContext) {
-
-    if (this.source.getSourceType() == SourceType.text) {
-
-      String line = processContext.element();
-      // Note: parser must return objects
-      List<Object> strCols = TextParserUtils.parseDelimitedLine(csvFormat, line);
-      if (!strCols.isEmpty()) {
-        // If there are more defined fields than fields to map, error (message) out
-        if (this.schema.getFieldCount() > strCols.size()) {
-          LOG.error(
-              "Unable to parse line.  Expecting {} fields, found {}",
-              this.schema.getFieldCount(),
-              strCols.size());
-        } else {
-          // truncate input column names to the number of defined field names
-          // this should in the future be moved into a method that
-          // extracts the matching columns from the given header name
-          strCols = strCols.subList(0, this.schema.getFieldCount());
-          Row row = Row.withSchema(this.schema).attachValues(strCols);
-          processContext.output(row);
-        }
-      } else {
-        LOG.error("Row was empty!");
-      }
-    } else {
-      LOG.error("Unhandled source type: {}", source.getSourceType());
+    String line = processContext.element();
+    // Note: parser must return objects
+    List<Object> strCols = TextParserUtils.parseDelimitedLine(csvFormat, line);
+    if (strCols.isEmpty()) {
+      LOG.error("Row was empty!");
+      return;
     }
+    // If there are more defined fields than fields to map, error (message) out
+    if (this.schema.getFieldCount() > strCols.size()) {
+      LOG.error(
+          "Unable to parse line.  Expecting {} fields, found {}",
+          this.schema.getFieldCount(),
+          strCols.size());
+      return;
+    }
+    // truncate input column names to the number of defined field names
+    // this should in the future be moved into a method that
+    // extracts the matching columns from the given header name
+    strCols = strCols.subList(0, this.schema.getFieldCount());
+    Row row = Row.withSchema(this.schema).attachValues(strCols);
+    processContext.output(row);
   }
 }

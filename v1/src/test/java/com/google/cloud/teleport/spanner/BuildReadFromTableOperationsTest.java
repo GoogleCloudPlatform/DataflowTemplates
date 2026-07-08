@@ -44,7 +44,8 @@ public class BuildReadFromTableOperationsTest {
         "t.`colName`",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
-        "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(t.`colName1`) AS num) AS colName1",
+        "CASE WHEN t.`colName1` IS NULL THEN NULL ELSE IFNULL((SELECT ARRAY_AGG(CASE WHEN num IS NULL THEN NULL ELSE "
+            + "CAST(num AS STRING) END) FROM UNNEST(t.`colName1`) AS num), []) END AS colName1",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName1")));
   }
 
@@ -64,11 +65,11 @@ public class BuildReadFromTableOperationsTest {
             .endTable()
             .build();
     assertEquals(
-        "TO_JSON_STRING(t.`colName`) AS colName",
+        "CASE WHEN t.`colName` IS NULL THEN NULL ELSE TO_JSON_STRING(t.`colName`) END AS colName",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
-        "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST(t.`colName1`) AS element) AS"
-            + " colName1",
+        "CASE WHEN t.`colName1` IS NULL THEN NULL ELSE IFNULL((SELECT ARRAY_AGG(CASE WHEN element IS NULL THEN NULL "
+            + "ELSE TO_JSON_STRING(element) END) FROM UNNEST(t.`colName1`) AS element), []) END AS colName1",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName1")));
   }
 
@@ -120,6 +121,74 @@ public class BuildReadFromTableOperationsTest {
             .build();
     assertEquals(
         "t.\"colName\"",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionUuid() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("table")
+            .column("colName")
+            .uuid()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CAST(t.`colName` AS STRING) AS colName",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionUuidArray() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("table")
+            .column("colName")
+            .array(Type.uuid())
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CASE WHEN t.`colName` IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(colName) AS e) END AS colName",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionPgUuid() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgUuid()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "t.\"colName\"::text AS \"colName\"",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionPgUuidArray() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgArray(Type.pgUuid())
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CASE WHEN t.\"colName\" IS NULL THEN NULL ELSE ARRAY(SELECT e::text FROM UNNEST(t.\"colName\") AS e) END AS \"colName\"",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
   }
 }

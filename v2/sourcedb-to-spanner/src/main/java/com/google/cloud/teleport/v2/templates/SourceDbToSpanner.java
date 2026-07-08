@@ -15,27 +15,21 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -54,12 +48,6 @@ import org.apache.beam.sdk.values.PCollection;
           + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
           + " the relational database. You can use this template to copy data from any relational"
           + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-          + " Base64-encoded username, password, and connection string parameters encrypted with"
-          + " the Cloud KMS key. See the <a"
-          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-          + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
@@ -85,11 +73,19 @@ public class SourceDbToSpanner {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
+    SourceDbToSpannerOptions options = getSourceDbToSpannerOptions(args);
+    run(options);
+  }
+
+  @VisibleForTesting
+  protected static SourceDbToSpannerOptions getSourceDbToSpannerOptions(String[] args) {
     // Parse the user options passed from the command-line
     SourceDbToSpannerOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
-
-    run(options);
+    // Stage SSL certificates to extraFiles if required as per the pipeline options.
+    // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
+    new CommonTemplateJvmInitializer().beforeProcessing(options);
+    return options;
   }
 
   /**
@@ -100,70 +96,31 @@ public class SourceDbToSpanner {
    */
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
+    // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
-    Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
-    Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
-    for (String table : getTablesVsPartitionColumn(options).keySet()) {
-      PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
-      rows.apply("Write_" + table, getSpannerWrite(options));
-    }
-    return pipeline.run();
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
+
+    SpannerConfig spannerConfig = createSpannerConfig(options);
+
+    // Decide type and source of migration
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    return connector.executeMigration(options, pipeline, spannerConfig);
   }
 
-  private static Map<String, String> getTablesVsPartitionColumn(SourceDbToSpannerOptions options) {
-    String[] tables = options.getTables().split(",");
-    String[] partitionColumns = options.getPartitionColumns().split(",");
-    if (tables.length != partitionColumns.length) {
-      throw new RuntimeException(
-          "invalid configuration. Partition column count does not match " + "tables count.");
+  @VisibleForTesting
+  static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    if (options.getMaxCommitDelay() >= 0) {
+      spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
     }
-    Map<String, String> tableVsPartitionColumn = new HashMap();
-    for (int i = 0; i < tables.length; i++) {
-      tableVsPartitionColumn.put(tables[i], partitionColumns[i]);
-    }
-    return tableVsPartitionColumn;
-  }
-
-  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
-    String ignoreStr = options.getIgnoreColumns();
-    if (ignoreStr == null || ignoreStr.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Map<String, Set<String>> ignore = new HashMap<>();
-    for (String tableColumns : ignoreStr.split(",")) {
-      int tableNameIndex = tableColumns.indexOf(':');
-      if (tableNameIndex == -1) {
-        continue;
-      }
-      String table = tableColumns.substring(0, tableNameIndex);
-      String columnStr = tableColumns.substring(tableNameIndex + 1);
-      Set<String> columns = new HashSet<>(Arrays.asList(columnStr.split(";")));
-      ignore.put(table, columns);
-    }
-    return ignore;
-  }
-
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceProviderFn(new DataSourceProvider(options))
-        .withTable(table)
-        .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
-        .withNumPartitions(options.getNumPartitions());
-  }
-
-  private static Write getSpannerWrite(SourceDbToSpannerOptions options) {
-    return SpannerIO.write()
-        .withProjectId(options.getProjectId())
-        .withInstanceId(options.getInstanceId())
-        .withDatabaseId(options.getDatabaseId());
+    return spannerConfig;
   }
 }

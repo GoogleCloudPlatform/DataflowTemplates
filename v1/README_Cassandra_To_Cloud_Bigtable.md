@@ -16,26 +16,28 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cassandra_To_Cloud_Bigtable).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **cassandraHosts** : Comma separated value list of hostnames or ips of the Cassandra nodes.
-* **cassandraKeyspace** : Cassandra Keyspace where the table to be migrated can be located.
-* **cassandraTable** : The name of the Cassandra table to Migrate.
-* **bigtableProjectId** : The Project ID where the target Bigtable Instance is running.
-* **bigtableInstanceId** : The target Bigtable Instance where you want to write the data.
-* **bigtableTableId** : The target Bigtable table where you want to write the data.
+* **cassandraHosts**: The hosts of the Apache Cassandra nodes in a comma-separated list.
+* **cassandraKeyspace**: The Apache Cassandra keyspace where the table is located.
+* **cassandraTable**: The Apache Cassandra table to copy.
+* **bigtableProjectId**: The Google Cloud project ID associated with the Bigtable instance.
+* **bigtableInstanceId**: The ID of the Bigtable instance that the Apache Cassandra table is copied to.
+* **bigtableTableId**: The name of the Bigtable table that the Apache Cassandra table is copied to.
 
 ### Optional parameters
 
-* **cassandraPort** : The port where cassandra can be reached. Defaults to 9042.
-* **defaultColumnFamily** : This specifies the default column family to write data into. If no columnFamilyMapping is specified all Columns will be written into this column family. Default value is "default".
-* **rowKeySeparator** : All primary key fields will be appended to form your Bigtable Row Key. The rowKeySeparator allows you to specify a character separator. Default separator is '#'.
-* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **cassandraPort**: The TCP port to use to reach Apache Cassandra on the nodes. The default value is `9042`.
+* **defaultColumnFamily**: The name of the column family of the Bigtable table. The default value is `default`.
+* **rowKeySeparator**: The separator used to build row-keys. The default value is `#`.
+* **splitLargeRows**: The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **writetimeCassandraColumnSchema**: GCS path to schema to copy Cassandra writetimes to Bigtable. The command to generate this schema is ```cqlsh -e "select json * from system_schema.columns where keyspace_name='$CASSANDRA_KEYSPACE' and table_name='$CASSANDRA_TABLE'`" > column_schema.json```. Set $WRITETIME_CASSANDRA_COLUMN_SCHEMA to a GCS path, e.g. `gs://$BUCKET_NAME/column_schema.json`. Then upload the schema to GCS: `gcloud storage cp column_schema.json $WRITETIME_CASSANDRA_COLUMN_SCHEMA`. Requires Cassandra version 2.2 onwards for JSON support.
+* **setZeroTimestamp**: The flag for setting Bigtable cell timestamp to 0 if Cassandra writetime is not present. The default behavior for when this flag is not set is to set the Bigtable cell timestamp as the template replication time, i.e. now.
 
 
 
@@ -43,7 +45,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -57,7 +59,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -83,7 +95,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cassandra_To_Cloud_Bigtable" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -128,6 +140,8 @@ export CASSANDRA_PORT=9042
 export DEFAULT_COLUMN_FAMILY=default
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>
+export WRITETIME_CASSANDRA_COLUMN_SCHEMA=<writetimeCassandraColumnSchema>
+export SET_ZERO_TIMESTAMP=false
 
 gcloud dataflow jobs run "cassandra-to-cloud-bigtable-job" \
   --project "$PROJECT" \
@@ -142,7 +156,9 @@ gcloud dataflow jobs run "cassandra-to-cloud-bigtable-job" \
   --parameters "bigtableTableId=$BIGTABLE_TABLE_ID" \
   --parameters "defaultColumnFamily=$DEFAULT_COLUMN_FAMILY" \
   --parameters "rowKeySeparator=$ROW_KEY_SEPARATOR" \
-  --parameters "splitLargeRows=$SPLIT_LARGE_ROWS"
+  --parameters "splitLargeRows=$SPLIT_LARGE_ROWS" \
+  --parameters "writetimeCassandraColumnSchema=$WRITETIME_CASSANDRA_COLUMN_SCHEMA" \
+  --parameters "setZeroTimestamp=$SET_ZERO_TIMESTAMP"
 ```
 
 For more information about the command, please check:
@@ -173,6 +189,8 @@ export CASSANDRA_PORT=9042
 export DEFAULT_COLUMN_FAMILY=default
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>
+export WRITETIME_CASSANDRA_COLUMN_SCHEMA=<writetimeCassandraColumnSchema>
+export SET_ZERO_TIMESTAMP=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -181,7 +199,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cassandra-to-cloud-bigtable-job" \
 -DtemplateName="Cassandra_To_Cloud_Bigtable" \
--Dparameters="cassandraHosts=$CASSANDRA_HOSTS,cassandraPort=$CASSANDRA_PORT,cassandraKeyspace=$CASSANDRA_KEYSPACE,cassandraTable=$CASSANDRA_TABLE,bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,defaultColumnFamily=$DEFAULT_COLUMN_FAMILY,rowKeySeparator=$ROW_KEY_SEPARATOR,splitLargeRows=$SPLIT_LARGE_ROWS" \
+-Dparameters="cassandraHosts=$CASSANDRA_HOSTS,cassandraPort=$CASSANDRA_PORT,cassandraKeyspace=$CASSANDRA_KEYSPACE,cassandraTable=$CASSANDRA_TABLE,bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,defaultColumnFamily=$DEFAULT_COLUMN_FAMILY,rowKeySeparator=$ROW_KEY_SEPARATOR,splitLargeRows=$SPLIT_LARGE_ROWS,writetimeCassandraColumnSchema=$WRITETIME_CASSANDRA_COLUMN_SCHEMA,setZeroTimestamp=$SET_ZERO_TIMESTAMP" \
 -f v1
 ```
 
@@ -237,6 +255,8 @@ resource "google_dataflow_job" "cassandra_to_cloud_bigtable" {
     # defaultColumnFamily = "default"
     # rowKeySeparator = ""#""
     # splitLargeRows = "<splitLargeRows>"
+    # writetimeCassandraColumnSchema = "<writetimeCassandraColumnSchema>"
+    # setZeroTimestamp = "false"
   }
 }
 ```

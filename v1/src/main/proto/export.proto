@@ -11,16 +11,18 @@ enum ProtoDialect {
 }
 
 // Protobuf schema for the content of the exported table manifest file.
-message TableManifest {
-  message File {
-    // The avro file name. A relative path to the import directory.
-    string name = 1;
-    // Base64 encoded md5 checksum of the file.
-    string md5 = 2;
+  message TableManifest {
+    message File {
+      // The avro file name. A relative path to the import directory.
+      string name = 1;
+      // Base64 encoded md5 checksum of the file.
+      string md5 = 2;
+      // Base64 encoded crc32c checksum of the file.
+      string crc32c = 3;
+    }
+    // Exported Avro files.
+    repeated File files = 1;
   }
-  // Exported Avro files.
-  repeated File files = 1;
-}
 
 // Protobuf schema for the content of the export summary file representing the
 // whole database.
@@ -30,7 +32,7 @@ message Export {
   // change stream or sequence name. Both `data_files` and `manifest_file` can
   // be used to locate the corresponding data files.
   message Table {
-    // The name of the table, view, change stream or sequence.
+    // The name of the table, view, change stream, sequence, or UDF.
     string name = 1;
     // Set of Avro file globs.
     // Use `data_files` when table manifest files with checksums are not
@@ -57,4 +59,16 @@ message Export {
   repeated Table change_streams = 3;
   // The set of sequences that were exported.
   repeated Table sequences = 5;
+  // The set of placements that were exported.
+  repeated Table placements = 8;
+  // The set of user-defined functions that were exported.
+  repeated Table udfs = 9;
+
+  // Contains a protobuf-serialized google.protobuf.FileDescriptorSet for
+  // proto_descriptors (from spanner_database_admin.proto)
+  bytes proto_descriptors = 6;
+
+  // Contains a list of fully qualified names of protobuf Message and Enum types
+  // used in the database for proto_bundle.
+  repeated string proto_bundle = 7;
 }

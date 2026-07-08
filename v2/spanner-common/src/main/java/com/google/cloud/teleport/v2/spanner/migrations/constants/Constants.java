@@ -21,11 +21,26 @@ public class Constants {
   /* The source type value for MySql databases */
   public static final String MYSQL_SOURCE_TYPE = "mysql";
 
+  /* The source type value for CASSANDRA databases */
+  public static final String CASSANDRA_SOURCE_TYPE = "cassandra";
+
   /* The value for Oracle databases in the source type key */
   public static final String ORACLE_SOURCE_TYPE = "oracle";
 
   /* The value for Postgres databases in the source type key */
   public static final String POSTGRES_SOURCE_TYPE = "postgresql";
+
+  /* The value for Spanner databases in the source type key */
+  public static final String SPANNER_SOURCE_TYPE = "spanner";
+
+  /* The run mode for retryDLQ */
+  public static final String RUN_MODE_RETRY_DLQ = "retryDLQ";
+
+  /* The run mode for retryAllDLQ */
+  public static final String RUN_MODE_RETRY_ALL_DLQ = "retryAllDLQ";
+
+  /* The run mode for regular */
+  public static final String RUN_MODE_REGULAR = "regular";
 
   /* The key for the schema name in the event json */
   public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
@@ -38,4 +53,16 @@ public class Constants {
 
   /* The prefix for all metadata keys in the event json */
   public static final String EVENT_METADATA_KEY_PREFIX = "_metadata";
+
+  /* The key for stream name in the event json */
+  public static final String EVENT_STREAM_NAME = "_metadata_stream";
+
+  /* The key for shard id column name in the event json */
+  public static final String SHARD_ID_COLUMN_NAME = "_metadata_shard_id_column_name";
+
+  /* The key for shard id in the event json */
+  public static final String EVENT_SHARD_ID = "_metadata_shard_id";
+
+  /* The default value we use for shard id column name */
+  public static final String DEFAULT_SHARD_ID_COLUMN = "migration_shard_id";
 }

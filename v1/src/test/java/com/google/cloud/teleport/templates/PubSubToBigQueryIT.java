@@ -26,6 +26,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -38,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -57,7 +59,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubSubToBigQuery} classic template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @RunWith(JUnit4.class)
 public final class PubSubToBigQueryIT extends TemplateTestBase {
 
@@ -93,6 +95,17 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   @Test
   @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
   public void testTopicToBigQueryClassic() throws IOException {
+    testTopicToBigQueryClassicBase(Function.identity());
+  }
+
+  @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
+  public void testTopicToBigQueryClassicStreamingEngine() throws IOException {
+    testTopicToBigQueryClassicBase(this::enableStreamingEngine);
+  }
+
+  private void testTopicToBigQueryClassicBase(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -113,12 +126,13 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     // Act
     LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTopic", topic.toString())
-                .addParameter("outputTableSpec", toTableSpecLegacy(table))
-                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("inputTopic", topic.toString())
+                    .addParameter("outputTableSpec", toTableSpecLegacy(table))
+                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                    .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
+                    .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable))));
     assertThatPipeline(info).isRunning();
 
     List<Map<String, Object>> expectedMessages = new ArrayList<>();
@@ -154,7 +168,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
@@ -229,7 +243,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
                     .setMinRows(MESSAGES_COUNT)
@@ -385,7 +399,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result reloadedResult =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubReloadedMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
@@ -535,7 +549,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result reloadedResult =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubReloadedMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)

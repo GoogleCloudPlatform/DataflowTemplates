@@ -38,6 +38,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -70,6 +71,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -85,6 +87,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -96,9 +99,12 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("inputFileFormat", "json");
+                    put("inputFileFormat", "avro");
                   }
-                });
+                },
+                null,
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -113,7 +119,8 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerEventsIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -129,8 +136,9 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.jsonl"),
+                        "backfill_users.avro",
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -138,8 +146,9 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
-                        "cdc1.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.jsonl"),
+                        "cdc_users.avro",
+                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -149,11 +158,19 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
+    // Sleep for cutover time to wait till all CDCs propagate.
+    // A real world customer also has a small cut over time to reach consistency.
+    try {
+      Thread.sleep(CUTOVER_MILLIS);
+    } catch (InterruptedException e) {
+    }
     // Assert specific rows
     assertUsersTableContents();
   }
@@ -169,8 +186,9 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE2,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.jsonl"),
+                        "backfill_movie.avro",
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -180,7 +198,9 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -197,36 +217,39 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                     uploadDataStreamFile(
                         jobInfo,
                         "Articles",
-                        "mysql-Articles.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-Articles.jsonl"),
+                        "mysql_articles.avro",
+                        "DataStreamToSpannerEventsIT/mysql-Articles.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         "Authors",
-                        "mysql-Authors.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-Authors.jsonl"),
+                        "mysql_authors.avro",
+                        "DataStreamToSpannerEventsIT/mysql-Authors.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         "Books",
-                        "mysql-Books.jsonl",
-                        "DataStreamToSpannerEventsIT/mysql-Books.jsonl"),
+                        "mysql_books.avro",
+                        "DataStreamToSpannerEventsIT/mysql-Books.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, "Articles")
-                        .setMinRows(3)
-                        .setMaxRows(3)
+                        .setMinRows(4)
+                        .setMaxRows(4)
                         .build(),
                     SpannerRowsCheck.builder(spannerResourceManager, "Books")
-                        .setMinRows(3)
-                        .setMaxRows(3)
+                        .setMinRows(4)
+                        .setMaxRows(4)
                         .build(),
                     SpannerRowsCheck.builder(spannerResourceManager, "Authors")
-                        .setMinRows(3)
-                        .setMaxRows(3)
+                        .setMinRows(4)
+                        .setMaxRows(4)
                         .build()))
             .build();
 
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(12)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(18)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -295,8 +318,9 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
 
     ImmutableList<Struct> numericVals =
         spannerResourceManager.runQuery("select actor from Movie order by id");
-    Assert.assertEquals(123.098, numericVals.get(0).getBigDecimal(0).doubleValue(), 0.001);
-    Assert.assertEquals(931.512, numericVals.get(1).getBigDecimal(0).doubleValue(), 0.001);
+    // delta value is required to compare floating point numbers
+    Assert.assertEquals(12345.09876, numericVals.get(0).getBigDecimal(0).doubleValue(), 0.00000001);
+    Assert.assertEquals(931.5123, numericVals.get(1).getBigDecimal(0).doubleValue(), 0.00000001);
   }
 
   private void assertAuthorsTable() {
@@ -308,8 +332,13 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     events.add(row);
 
     row = new HashMap<>();
+    row.put("author_id", 2);
+    row.put("name", "a2");
+    events.add(row);
+
+    row = new HashMap<>();
     row.put("author_id", 3);
-    row.put("name", "a003");
+    row.put("name", "a3");
     events.add(row);
 
     row = new HashMap<>();
@@ -342,6 +371,12 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     row.put("author_id", 4);
     events.add(row);
 
+    row = new HashMap<>();
+    row.put("id", 4);
+    row.put("title", "Book005");
+    row.put("author_id", 2);
+    events.add(row);
+
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("select * from Books@{FORCE_INDEX=author_id_6}"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
@@ -366,9 +401,16 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
 
     row = new HashMap<>();
     row.put("id", 3);
-    row.put("name", "Article003");
+    row.put("name", "Article004");
     row.put("published_date", Date.parseDate("2024-01-01"));
     row.put("author_id", 4);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 4);
+    row.put("name", "Article005");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 3);
     events.add(row);
 
     SpannerAsserts.assertThatStructs(

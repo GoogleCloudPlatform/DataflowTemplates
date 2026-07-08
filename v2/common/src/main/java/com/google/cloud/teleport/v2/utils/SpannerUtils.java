@@ -55,6 +55,10 @@ public class SpannerUtils {
     List<Type.StructField> structFields = struct.getType().getStructFields();
 
     for (Type.StructField field : structFields) {
+      if (struct.isNull(field.getName())) {
+        continue;
+      }
+
       switch (field.getType().getCode()) {
         case BOOL:
           jsonObject.addProperty(field.getName(), struct.getBoolean(field.getName()));

@@ -13,21 +13,21 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=BigQuery_to_Parquet).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **tableRef** : BigQuery table location to export in the format <project>:<dataset>.<table>. (Example: your-project:your-dataset.your-table-name).
-* **bucket** : Path and filename prefix for writing output files. (Example: gs://your-bucket/export/).
+* **tableRef**: The BigQuery input table location. For example, `your-project:your-dataset.your-table-name`.
+* **bucket**: The Cloud Storage folder to write the Parquet files to. For example, `gs://your-bucket/export/`.
 
 ### Optional parameters
 
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
-* **fields** : Comma separated list of fields to select from the table.
-* **rowRestriction** : Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
+* **numShards**: The number of output file shards. The default value is `1`.
+* **fields**: A comma-separated list of fields to select from the input BigQuery table.
+* **rowRestriction**: Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
 
 
 
@@ -35,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -49,7 +49,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/bigquery-to-parquet
+```
 
 ### Building Template
 
@@ -68,16 +78,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="BigQuery_to_Parquet" \
--f v2/bigquery-to-parquet
+-pl v2/bigquery-to-parquet -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -201,8 +215,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_parquet" {
   name              = "bigquery-to-parquet"
   region            = var.region
   parameters        = {
-    tableRef = "your-project:your-dataset.your-table-name"
-    bucket = "gs://your-bucket/export/"
+    tableRef = "<tableRef>"
+    bucket = "<bucket>"
     # numShards = "0"
     # fields = "<fields>"
     # rowRestriction = "<rowRestriction>"

@@ -28,10 +28,6 @@
 
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
-  <properties>
-    <dataplex.api.version>v1-rev20230308-2.0.0</dataplex.api.version>
-    <dlp.version>2.1.0</dlp.version>
-  </properties>
 
   <build>
     <plugins>
@@ -90,6 +86,12 @@
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -103,11 +105,6 @@
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>bigtable-common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.teleport.v2</groupId>
-      <artifactId>jdbc-common</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -131,6 +128,7 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-spanner</artifactId>
+      <version>6.113.0</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
@@ -159,6 +157,10 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
@@ -182,7 +184,20 @@
           <groupId>asm</groupId>
           <artifactId>asm</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
@@ -213,11 +228,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-it-jdbc</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
       <version>${truth.version}</version>
@@ -230,32 +240,18 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derby</artifactId>
-      <version>${derby.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derbyclient</artifactId>
-      <version>${derby.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derbynet</artifactId>
-      <version>${derby.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
-      <version>${mysql-connector-java.version}</version>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-python</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-aiplatform</artifactId>
     </dependency>
   </dependencies>
 </project>

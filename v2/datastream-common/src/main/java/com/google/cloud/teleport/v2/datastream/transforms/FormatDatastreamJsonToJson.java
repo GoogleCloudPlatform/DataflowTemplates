@@ -76,13 +76,18 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_dataflow_timestamp", getCurrentTimestamp());
     outputObject.put("_metadata_read_method", record.get("read_method").textValue());
     outputObject.put("_metadata_source_type", sourceType);
 
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
+    outputObject.put("_metadata_database", getSourceMetadata(record, "database"));
+    outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
     outputObject.put("_metadata_table", getSourceMetadata(record, "table"));
+
     outputObject.put("_metadata_change_type", getSourceMetadata(record, "change_type"));
     outputObject.put("_metadata_primary_keys", getPrimaryKeys(record));
+    outputObject.put("_metadata_uuid", record.get("uuid").textValue());
 
     // Source Specific Metadata
     if (sourceType.equals("mysql")) {
@@ -90,9 +95,20 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_schema", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
+    } else if (sourceType.equals("postgresql")) {
+      // PostgreSQL Specific Metadata
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+    } else if (sourceType.equals("sqlserver")) {
+      // SQL Server Specific Metadata
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+    } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
     } else {
       // Oracle Specific Metadata
-      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
       setOracleRowIdValue(outputObject, getSourceMetadata(record, "row_id"));
       outputObject.put("_metadata_scn", getSourceMetadataAsLong(record, "scn"));
       outputObject.put("_metadata_ssn", getSourceMetadataAsLong(record, "ssn"));
@@ -132,8 +148,16 @@ public final class FormatDatastreamJsonToJson
   }
 
   private String getSourceType(JsonNode record) {
+    // If datastreamSourceType is provided, use it as override
+    if (this.datastreamSourceType != null && !this.datastreamSourceType.isEmpty()) {
+      return this.datastreamSourceType;
+    }
+
     String sourceType = record.get("read_method").textValue().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
+    if (sourceType == "postgres" || sourceType == "postgresql") {
+      return "postgresql";
+    }
     return sourceType;
   }
 
@@ -179,6 +203,22 @@ public final class FormatDatastreamJsonToJson
     return convertTimestampStringToSeconds(timestamp);
   }
 
+  private String getSecondsFromMongoSortKeys(JsonNode record) {
+    if (record.get("sort_keys") != null) {
+      return (record.get("sort_keys")).get(0).toString();
+    }
+
+    return null;
+  }
+
+  private String getNanosFromMongoSortKeys(JsonNode record) {
+    if (record.get("sort_keys") != null) {
+      return (record.get("sort_keys")).get(1).toString();
+    }
+
+    return null;
+  }
+
   private JsonNode getSourceMetadata(JsonNode record) {
     return record.get("source_metadata");
   }
@@ -203,7 +243,19 @@ public final class FormatDatastreamJsonToJson
       return null;
     }
 
-    return md.get("primary_keys");
+    // Try primary_keys first (MySQL, Oracle, PostgreSQL)
+    JsonNode primaryKeys = md.get("primary_keys");
+    if (primaryKeys != null && !primaryKeys.isNull()) {
+      return primaryKeys;
+    }
+
+    // Fallback to replication_index for SQL Server
+    JsonNode replicationIndex = md.get("replication_index");
+    if (replicationIndex != null && !replicationIndex.isNull()) {
+      return replicationIndex;
+    }
+
+    return null;
   }
 
   private Long getSourceMetadataAsLong(JsonNode record, String fieldName) {
@@ -233,5 +285,9 @@ public final class FormatDatastreamJsonToJson
     }
 
     return value.booleanValue();
+  }
+
+  private long getCurrentTimestamp() {
+    return System.currentTimeMillis() / 1000L;
   }
 }

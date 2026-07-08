@@ -7,23 +7,23 @@ Cloud Storage bucket with a variety of file types.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **bootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
-* **inputTopics** : Kafka topic(s) to read the input from. (Example: topic1,topic2).
-* **outputFileFormat** : The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. (Example: gs://your-bucket/your-path).
-* **numShards** : The maximum number of output shards produced when writing. Default number is runner-dependent.
+* **bootstrapServers**: Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`.
+* **inputTopics**: Kafka topic(s) to read the input from. For example, `topic1,topic2`.
+* **outputFileFormat**: The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT.
+* **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. For example, `gs://your-bucket/your-path`.
+* **numShards**: The maximum number of output shards produced when writing. Default number is runner-dependent.
 
 ### Optional parameters
 
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
-* **outputFilenamePrefix** : The prefix to place on each windowed file. (Example: output-). Defaults to: output.
+* **windowDuration**: The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `5m`. Defaults to: 5m.
+* **outputFilenamePrefix**: The prefix to place on each windowed file. For example, `output-`. Defaults to: output.
 
 
 
@@ -31,7 +31,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -45,7 +45,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/kafka-to-gcs
+```
 
 ### Building Template
 
@@ -64,16 +74,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_GCS" \
--f v2/kafka-to-gcs
+-pl v2/kafka-to-gcs -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -203,13 +217,13 @@ resource "google_dataflow_flex_template_job" "kafka_to_gcs" {
   name              = "kafka-to-gcs"
   region            = var.region
   parameters        = {
-    bootstrapServers = "localhost:9092,127.0.0.1:9093"
-    inputTopics = "topic1,topic2"
+    bootstrapServers = "<bootstrapServers>"
+    inputTopics = "<inputTopics>"
     outputFileFormat = "TEXT"
-    outputDirectory = "gs://your-bucket/your-path"
+    outputDirectory = "<outputDirectory>"
     numShards = "0"
     # windowDuration = "5m"
-    # outputFilenamePrefix = "output-"
+    # outputFilenamePrefix = "output"
   }
 }
 ```

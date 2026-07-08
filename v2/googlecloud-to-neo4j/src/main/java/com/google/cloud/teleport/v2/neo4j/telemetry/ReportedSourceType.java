@@ -15,8 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.telemetry;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
+import org.neo4j.importer.v1.sources.Source;
 
 public enum ReportedSourceType {
   BIGQUERY {
@@ -39,19 +40,25 @@ public enum ReportedSourceType {
   };
 
   public static ReportedSourceType reportedSourceTypeOf(Source source) {
-    SourceType sourceType = source.getSourceType();
+    String sourceType = source.getType();
     switch (sourceType) {
-      case bigquery:
-        return BIGQUERY;
-      case text:
-        if (source.getInline() != null) {
+      case "bigquery":
+        return ReportedSourceType.BIGQUERY;
+      case "text":
+        if (source instanceof InlineTextSource) {
           return TEXT_INLINE;
         }
-        return TEXT_GCS;
+        if (source instanceof ExternalTextSource) {
+          return TEXT_GCS;
+        }
+        throw new IllegalArgumentException(
+            String.format("could not determine concrete text source type: %s", sourceType));
+      default:
+        throw new IllegalArgumentException(
+            String.format(
+                "could not determine source type to report from given source type: %s",
+                sourceType));
     }
-    throw new IllegalArgumentException(
-        String.format(
-            "could not determine source type to report from given source type: %s", sourceType));
   }
 
   @Override

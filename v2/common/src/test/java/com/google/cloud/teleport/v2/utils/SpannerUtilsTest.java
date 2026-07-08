@@ -351,4 +351,32 @@ public final class SpannerUtilsTest {
     expected.add("col5", innerObject);
     assertThat(actual).isEqualTo(expected);
   }
+
+  @Test
+  public void testMultipleFieldsStructWithNullsToJson() {
+    // arrange
+    // spotless:off
+    Struct testStruct =
+        Struct.newBuilder()
+            .set("boolField").to(bool(true))
+            .set("stringField").to(string("test-string"))
+            .set("floatField").to(float64(1.0))
+            .set("longField").to(int64(123))
+            .set("nullBoolField").to(bool(null))
+            .set("nullStringField").to(string(null))
+            .set("nullFloatField").to(float64(null))
+            .set("nullLongField").to(int64(null))
+            .build();
+    //spotless:on
+
+    // act
+    String actual = convertStructToJson(testStruct).toString();
+
+    // assert
+    // All fields with null values should be omitted in the JSON
+    // that will be sent to BQ, so we expect only non-null fields here:
+    String expected =
+        "{\"boolField\":true,\"stringField\":\"test-string\",\"floatField\":1.0,\"longField\":123}";
+    assertThat(actual).isEqualTo(expected);
+  }
 }

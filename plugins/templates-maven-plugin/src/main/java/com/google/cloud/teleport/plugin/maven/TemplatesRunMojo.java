@@ -16,6 +16,11 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.BASE_CONTAINER_IMAGE;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.BASE_PYTHON_CONTAINER_IMAGE;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.JAVA_LAUNCHER_ENTRYPOINT;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_LAUNCHER_ENTRYPOINT;
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_VERSION;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
@@ -69,6 +74,9 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
 
+  @Parameter(defaultValue = "${flexContainerName}", readonly = true, required = false)
+  protected String flexContainerName;
+
   @Parameter(defaultValue = "${bucketName}", readonly = true, required = true)
   protected String bucketName;
 
@@ -81,27 +89,76 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  /**
+   * Artifact registry.
+   *
+   * <p>If not set, images will be built to [artifactRegion.]gcr.io/[projectId].
+   *
+   * <p>If set to "xxx.gcr.io", image will be built to xxx.gcr.io/[projectId].
+   *
+   * <p>Otherwise, image will be built to artifactRegion.
+   */
+  @Parameter(defaultValue = "${artifactRegistry}", readonly = true, required = false)
+  protected String artifactRegistry;
+
+  /**
+   * Staging artifact registry.
+   *
+   * <p>If set, images will first build inside stagingArtifactRegistry before promote to final
+   * destination. Only effective when generateSBOM.
+   */
+  @Parameter(defaultValue = "${stagingArtifactRegistry}", readonly = true, required = false)
+  protected String stagingArtifactRegistry;
+
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
   @Parameter(
-      name = "baseContainerImage",
-      defaultValue =
-          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
+      defaultValue = BASE_CONTAINER_IMAGE,
+      property = "baseContainerImage",
+      readonly = true,
       required = false)
   protected String baseContainerImage;
 
   @Parameter(
-      name = "basePythonContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      defaultValue = BASE_PYTHON_CONTAINER_IMAGE,
+      property = "basePythonContainerImage",
+      readonly = true,
       required = false)
   protected String basePythonContainerImage;
+
+  @Parameter(
+      defaultValue = PYTHON_LAUNCHER_ENTRYPOINT,
+      property = "pythonTemplateLauncherEntryPoint",
+      readonly = true,
+      required = false)
+  protected String pythonTemplateLauncherEntryPoint;
+
+  @Parameter(
+      defaultValue = JAVA_LAUNCHER_ENTRYPOINT,
+      property = "javaTemplateLauncherEntryPoint",
+      readonly = true,
+      required = false)
+  protected String javaTemplateLauncherEntryPoint;
+
+  @Parameter(
+      defaultValue = PYTHON_VERSION,
+      property = "pythonVersion",
+      readonly = true,
+      required = false)
+  protected String pythonVersion;
+
+  @Parameter(defaultValue = "${beamVersion}", readonly = true, required = false)
+  protected String beamVersion;
 
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
+
+  @Parameter(defaultValue = "false", property = "generateSBOM", readonly = true, required = false)
+  protected boolean generateSBOM;
 
   public void execute() throws MojoExecutionException {
 
@@ -114,7 +171,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
+          TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
 
       Optional<TemplateDefinitions> definitionsOptional =
           templateDefinitions.stream()
@@ -149,6 +206,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               targetDirectory,
               projectId,
               templateName,
+              flexContainerName,
               bucketName,
               bucketName,
               stagePrefix,
@@ -157,7 +215,14 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               gcpTempLocation,
               baseContainerImage,
               basePythonContainerImage,
-              unifiedWorker);
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
+              unifiedWorker,
+              generateSBOM);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)

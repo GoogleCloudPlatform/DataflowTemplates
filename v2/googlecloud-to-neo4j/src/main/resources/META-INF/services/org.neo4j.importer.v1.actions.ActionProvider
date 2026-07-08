@@ -1,0 +1,2 @@
+com.google.cloud.teleport.v2.neo4j.actions.BigQueryActionProvider
+com.google.cloud.teleport.v2.neo4j.actions.HttpActionProvider

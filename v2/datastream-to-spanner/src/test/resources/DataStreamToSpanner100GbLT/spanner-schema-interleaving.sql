@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS person1 (
+     first_name STRING(500),
+     last_name STRING(500),
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID);
+
+CREATE TABLE IF NOT EXISTS person2 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2),
+  INTERLEAVE IN person1;
+
+CREATE TABLE IF NOT EXISTS person3 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     FK_ID3 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2, FK_ID3),
+  INTERLEAVE IN person2;
+
+CREATE TABLE IF NOT EXISTS person4 (
+     first_name STRING(500),
+     last_name STRING(500),
+     FK_ID2 INT64,
+     FK_ID3 INT64,
+     FK_ID4 INT64,
+     ID INT64 NOT NULL,
+) PRIMARY KEY(ID, FK_ID2, FK_ID3, FK_ID4),
+  INTERLEAVE IN person3;

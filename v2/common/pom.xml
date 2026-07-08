@@ -27,10 +27,9 @@
     <artifactId>common</artifactId>
 
     <properties>
-        <commons.version>1.8</commons.version>
-        <commons-text.version>1.10.0</commons-text.version>
-        <nashorn.version>15.4</nashorn.version>
-        <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
+        <commons.version>1.14.1</commons.version>
+        <truth-proto-extension.version>1.4.5</truth-proto-extension.version>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>
@@ -49,6 +48,10 @@
               <exclusion>
                 <groupId>org.xerial.snappy</groupId>
                 <artifactId>snappy-java</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
               </exclusion>
           </exclusions>
         </dependency>
@@ -104,6 +107,11 @@
             <version>${commons-text.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+            <version>${commons-configuration2.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
         </dependency>
@@ -118,6 +126,10 @@
         <dependency>
           <groupId>com.google.cloud</groupId>
           <artifactId>google-cloud-kms</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>com.google.protobuf</groupId>
+          <artifactId>protobuf-java</artifactId>
         </dependency>
 
         <!-- UDFs -->

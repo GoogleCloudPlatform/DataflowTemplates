@@ -1,0 +1,196 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Spanner Targeted Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      projectId:
+        description: 'Target GCP Project ID'
+        type: string
+        required: true
+        default: 'span-cloud-migrations-staging'
+      bucketName:
+        description: 'Target GCS Bucket Name'
+        type: string
+        required: true
+        default: 'spanner-migrations-staging'
+      stagePrefix:
+        description: 'Prefix for staging the template (e.g., templates-2025-10-31). If blank, defaults to templates-YYYY-MM-DD using current date.'
+        type: string
+        required: false
+        default: ''
+      templateName:
+        description: 'Template Name to build and stage'
+        type: string
+        required: true
+        default: 'Spanner_to_SourceDb'
+      modulePath:
+        description: 'Maven module directory of the template to build'
+        type: string
+        required: true
+        default: 'v2/spanner-to-sourcedb'
+      runIntegrationTests:
+        description: 'Run Spanner integration tests before staging templates'
+        type: boolean
+        required: true
+        default: true
+      specific_test:
+        description: 'Specific Integration Test (passed to -Dtest=)'
+        type: string
+        required: false
+        default: ''
+
+env:
+  MAVEN_OPTS: >-
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+    --add-opens java.base/java.nio=ALL-UNNAMED
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+    --add-opens java.base/java.lang=ALL-UNNAMED
+    --add-opens java.base/java.util=ALL-UNNAMED
+
+permissions:
+  contents: read
+
+jobs:
+  targeted_release:
+    name: Targeted Template Release
+    runs-on: [ self-hosted, spanner-release ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+
+      - name: Resolve Variables
+        id: resolve-vars
+        run: |
+          PROJECT_ID="${GITHUB_EVENT_INPUTS_PROJECTID}"
+          PROJECT_ID="${PROJECT_ID:-span-cloud-migrations-staging}"
+          
+          BUCKET_NAME="${GITHUB_EVENT_INPUTS_BUCKETNAME}"
+          BUCKET_NAME="${BUCKET_NAME:-spanner-migrations-staging}"
+          
+          TEMPLATE_NAME="${GITHUB_EVENT_INPUTS_TEMPLATENAME}"
+          TEMPLATE_NAME="${TEMPLATE_NAME:-Spanner_to_SourceDb}"
+          
+          MODULE_PATH="${GITHUB_EVENT_INPUTS_MODULEPATH}"
+          MODULE_PATH="${MODULE_PATH:-v2/spanner-to-sourcedb}"
+          
+          STAGE_PREFIX="${GITHUB_EVENT_INPUTS_STAGEPREFIX}"
+          if [ -z "$STAGE_PREFIX" ]; then
+            STAGE_PREFIX="templates-$(date +'%Y-%m-%d')"
+          fi
+
+          RUN_INTEGRATION_TESTS="${GITHUB_EVENT_INPUTS_RUNINTEGRATIONTESTS}"
+          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-true}"
+
+          SPECIFIC_TEST="${GITHUB_EVENT_INPUTS_SPECIFIC_TEST}"
+          SPECIFIC_TEST="${SPECIFIC_TEST:-}"
+
+          echo "Resolved Variables:"
+          echo "-------------------"
+          echo "Project ID:    $PROJECT_ID"
+          echo "Bucket Name:   $BUCKET_NAME"
+          echo "Template Name: $TEMPLATE_NAME"
+          echo "Module Path:   $MODULE_PATH"
+          echo "Stage Prefix:  $STAGE_PREFIX"
+          echo "Run IT Tests:  $RUN_INTEGRATION_TESTS"
+          echo "Specific Test: $SPECIFIC_TEST"
+          echo "-------------------"
+          
+          echo "projectId=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "bucketName=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "templateName=$TEMPLATE_NAME" >> $GITHUB_OUTPUT
+          echo "modulePath=$MODULE_PATH" >> $GITHUB_OUTPUT
+          echo "stagePrefix=$STAGE_PREFIX" >> $GITHUB_OUTPUT
+          echo "runIntegrationTests=$RUN_INTEGRATION_TESTS" >> $GITHUB_OUTPUT
+          echo "specificTest=$SPECIFIC_TEST" >> $GITHUB_OUTPUT
+        shell: bash
+        env:
+          GITHUB_EVENT_INPUTS_PROJECTID: ${{ github.event.inputs.projectId }}
+          GITHUB_EVENT_INPUTS_BUCKETNAME: ${{ github.event.inputs.bucketName }}
+          GITHUB_EVENT_INPUTS_TEMPLATENAME: ${{ github.event.inputs.templateName }}
+          GITHUB_EVENT_INPUTS_MODULEPATH: ${{ github.event.inputs.modulePath }}
+          GITHUB_EVENT_INPUTS_STAGEPREFIX: ${{ github.event.inputs.stagePrefix }}
+          GITHUB_EVENT_INPUTS_RUNINTEGRATIONTESTS: ${{ github.event.inputs.runIntegrationTests }}
+          GITHUB_EVENT_INPUTS_SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+
+      - name: Run Integration Tests
+        if: ${{ steps.resolve-vars.outputs.runIntegrationTests == 'true' }}
+        env:
+          SPECIFIC_TEST: ${{ steps.resolve-vars.outputs.specificTest }}
+        run: |
+          echo "Starting Spanner Integration Tests..."
+          ./cicd/run-it-tests \
+            --modules-to-build="SPANNER" \
+            --it-region="us-central1" \
+            --it-project="span-cloud-teleport-testing" \
+            --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
+            --it-private-connectivity="datastream-connect-2" \
+            --it-cloud-proxy-host="10.128.0.16" \
+            --test="$SPECIFIC_TEST"
+
+      - name: Upload Integration Tests Report
+        if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: surefire-integration-test-results
+          path: |
+            **/surefire-reports/TEST-*.xml
+            **/surefire-reports/*.html
+            **/surefire-reports/html/**
+          retention-days: 10
+
+      - name: Integration Test report on GitHub
+        if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
+        with:
+          name: Integration Test report on GitHub
+          path: '**/surefire-reports/TEST-*.xml'
+          reporter: java-junit
+          only-summary: 'true'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: 'false'
+          list-suites: 'failed'
+          list-tests: 'failed'
+
+      - name: Build & Stage Template
+        run: |
+          echo "Starting Spanner Targeted Release staging..."
+          
+          mvn clean package -PtemplatesStage \
+            -DprojectId="${STEPS_RESOLVE_VARS_OUTPUTS_PROJECTID}" \
+            -DbucketName="${STEPS_RESOLVE_VARS_OUTPUTS_BUCKETNAME}" \
+            -DstagePrefix="${STEPS_RESOLVE_VARS_OUTPUTS_STAGEPREFIX}" \
+            -DtemplateName="${STEPS_RESOLVE_VARS_OUTPUTS_TEMPLATENAME}" \
+            -Dmaven.test.skip \
+            -DskipIntegrationTests \
+            -pl ${STEPS_RESOLVE_VARS_OUTPUTS_MODULEPATH} -am
+        shell: bash
+        env:
+          STEPS_RESOLVE_VARS_OUTPUTS_PROJECTID: ${{ steps.resolve-vars.outputs.projectId }}
+          STEPS_RESOLVE_VARS_OUTPUTS_BUCKETNAME: ${{ steps.resolve-vars.outputs.bucketName }}
+          STEPS_RESOLVE_VARS_OUTPUTS_STAGEPREFIX: ${{ steps.resolve-vars.outputs.stagePrefix }}
+          STEPS_RESOLVE_VARS_OUTPUTS_TEMPLATENAME: ${{ steps.resolve-vars.outputs.templateName }}
+          STEPS_RESOLVE_VARS_OUTPUTS_MODULEPATH: ${{ steps.resolve-vars.outputs.modulePath }}
+
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()

@@ -3,7 +3,7 @@ pipeline:
   transforms:
     - type: ReadFromCsv
       config:
-        path: "INPUT_PATH"
+        path: {{ INPUT_PATH_PARAM }}
     - type: MapToFields
       name: MapWithErrorHandling
       input: ReadFromCsv
@@ -46,9 +46,29 @@ pipeline:
       name: WriteGoodFiles
       input: Sum
       config:
-        path: "OUTPUT_PATH/good"
+        path: {{ OUTPUT_PATH_PARAM }}/good
     - type: WriteToJson
       name: WriteBadFiles
       input: TrimErrors
       config:
-        path: "OUTPUT_PATH/bad"
+        path: {{ OUTPUT_PATH_PARAM }}/bad
+{% if USE_STAGED_JARS == "true" %}
+providers:
+  - type: mavenJar
+    config:
+      artifact_id: beam-sdks-java-extensions-sql-expansion-service
+      group_id: org.apache.beam
+      version: {{ BEAM_VERSION }}
+      repository: {{ BEAM_MAVEN_REPO }}
+    transforms:
+      MapToFields-java: "beam:schematransform:org.apache.beam:yaml:map_to_fields-java:v1"
+      Filter-java: "beam:schematransform:org.apache.beam:yaml:filter-java:v1"
+  - type: mavenJar
+    config:
+      artifact_id: beam-sdks-java-extensions-schemaio-expansion-service
+      group_id: org.apache.beam
+      version: {{ BEAM_VERSION }}
+      repository: {{ BEAM_MAVEN_REPO }}
+    transforms:
+      'WriteToJson': 'beam:schematransform:org.apache.beam:json_write:v1'
+{% endif %}

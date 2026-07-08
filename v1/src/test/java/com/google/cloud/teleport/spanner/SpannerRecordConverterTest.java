@@ -77,6 +77,9 @@ public class SpannerRecordConverterTest {
             .column("double")
             .float64()
             .endColumn()
+            .column("uuid")
+            .uuid()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -98,6 +101,8 @@ public class SpannerRecordConverterTest {
             .to(3.2f)
             .set("double")
             .to(30.2)
+            .set("uuid")
+            .to("11111111-1111-1111-1111-111111111111")
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -108,6 +113,7 @@ public class SpannerRecordConverterTest {
     assertEquals(true, avroRecord.get("bool"));
     assertEquals(3.2f, avroRecord.get("float"));
     assertEquals(30.2, avroRecord.get("double"));
+    assertEquals("11111111-1111-1111-1111-111111111111", avroRecord.get("uuid"));
   }
 
   @Test
@@ -145,6 +151,9 @@ public class SpannerRecordConverterTest {
             .column("double")
             .float64()
             .endColumn()
+            .column("uuid")
+            .uuid()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -172,6 +181,8 @@ public class SpannerRecordConverterTest {
             .to((Float) null)
             .set("double")
             .to((Double) null)
+            .set("uuid")
+            .to((String) null)
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -185,6 +196,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("bool"), is((Boolean) null));
     assertThat(avroRecord.get("float"), is((Float) null));
     assertThat(avroRecord.get("double"), is((Double) null));
+    assertThat(avroRecord.get("uuid"), is((String) null));
   }
 
   @Test
@@ -318,6 +330,9 @@ public class SpannerRecordConverterTest {
             .type(Type.array(Type.bytes()))
             .size(35)
             .endColumn()
+            .column("uuid")
+            .type(Type.array(Type.uuid()))
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -346,6 +361,8 @@ public class SpannerRecordConverterTest {
             .set("bytes")
             .toBytesArray(
                 Lists.newArrayList(ByteArray.copyFrom("1234"), ByteArray.copyFrom("5678"), null))
+            .set("uuid")
+            .toStringArray(Lists.newArrayList("11111111-1111-1111-1111" + "-111111111111", null))
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -362,6 +379,10 @@ public class SpannerRecordConverterTest {
     assertEquals(ByteBuffer.wrap("1234".getBytes()), ((List) avroRecord.get("bytes")).get(0));
     assertEquals(ByteBuffer.wrap("5678".getBytes()), ((List) avroRecord.get("bytes")).get(1));
     assertNull(((List) avroRecord.get("bytes")).get(2));
+
+    assertThat(
+        avroRecord.get("uuid"),
+        equalTo(Arrays.asList("11111111-1111-1111-1111-111111111111", null)));
   }
 
   @Test
@@ -476,6 +497,9 @@ public class SpannerRecordConverterTest {
             .pgVarchar()
             .max()
             .endColumn()
+            .column("uuid")
+            .pgUuid()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -491,6 +515,8 @@ public class SpannerRecordConverterTest {
             .to("abc@google.com")
             .set("name")
             .to("John Doe")
+            .set("uuid")
+            .to("11111111-1111-1111-1111-111111111111")
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -498,6 +524,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("id"), equalTo(1L));
     assertThat(avroRecord.get("email"), equalTo("abc@google.com"));
     assertThat(avroRecord.get("name"), equalTo("John Doe"));
+    assertThat(avroRecord.get("uuid"), equalTo("11111111-1111-1111-1111-111111111111"));
   }
 
   @Test
@@ -525,6 +552,9 @@ public class SpannerRecordConverterTest {
             .column("date")
             .pgDate()
             .endColumn()
+            .column("uuid")
+            .pgUuid()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -546,6 +576,8 @@ public class SpannerRecordConverterTest {
             .to((Timestamp) null)
             .set("date")
             .to((Date) null)
+            .set("uuid")
+            .to((String) null)
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -556,6 +588,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("bytes"), is((ByteArray) null));
     assertThat(avroRecord.get("ts"), is((String) null));
     assertThat(avroRecord.get("date"), is((String) null));
+    assertThat(avroRecord.get("uuid"), is((String) null));
   }
 
   @Test
@@ -870,6 +903,9 @@ public class SpannerRecordConverterTest {
             .column("date")
             .type(Type.pgArray(Type.pgDate()))
             .endColumn()
+            .column("uuid")
+            .type(Type.pgArray(Type.pgUuid()))
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -891,6 +927,8 @@ public class SpannerRecordConverterTest {
             .toTimestampArray(Lists.newArrayList(null, null, Timestamp.ofTimeMicroseconds(10L)))
             .set("date")
             .toDateArray(Lists.newArrayList(null, null, Date.fromYearMonthDay(2018, 2, 2)))
+            .set("uuid")
+            .toStringArray(Lists.newArrayList("11111111-1111-1111-1111" + "-111111111111", null))
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -902,6 +940,9 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("date"), equalTo(Arrays.asList(null, null, "2018-02-02")));
     assertThat(
         avroRecord.get("ts"), equalTo(Arrays.asList(null, null, "1970-01-01T00:00:00.000010000Z")));
+    assertThat(
+        avroRecord.get("uuid"),
+        equalTo(Arrays.asList("11111111-1111-1111-1111-111111111111", null)));
   }
 
   @Test
@@ -946,5 +987,74 @@ public class SpannerRecordConverterTest {
     for (Date date : dates) {
       assertEquals(SpannerRecordConverter.dateToString(date), date.toString());
     }
+  }
+
+  @Test
+  public void proto() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("prototable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("proto")
+            .type(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))
+            .endColumn()
+            .column("proto_arr")
+            .type(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestEnum")))
+            .endColumn()
+            .column("enum")
+            .type(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))
+            .endColumn()
+            .column("enum_arr")
+            .type(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema);
+    com.google.cloud.teleport.spanner.tests.TestMessage msg1 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("A").build();
+    com.google.cloud.teleport.spanner.tests.TestMessage msg2 =
+        com.google.cloud.teleport.spanner.tests.TestMessage.newBuilder().setValue("B").build();
+
+    ByteArray[] protoArrValues = {
+      null, ByteArray.copyFrom(msg1.toByteArray()), null, ByteArray.copyFrom(msg2.toByteArray())
+    };
+
+    com.google.cloud.teleport.spanner.tests.TestEnum enum1 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE1;
+    com.google.cloud.teleport.spanner.tests.TestEnum enum2 =
+        com.google.cloud.teleport.spanner.tests.TestEnum.VALUE2;
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("proto")
+            .to((ByteArray) ByteArray.copyFrom(msg1.toByteArray()))
+            .set("proto_arr")
+            .toBytesArray(Lists.newArrayList(protoArrValues))
+            .set("enum")
+            .to(enum1.getNumber())
+            .set("enum_arr")
+            .toInt64Array(
+                Lists.newArrayList(new Long(enum1.getNumber()), null, new Long(enum2.getNumber())))
+            .build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertEquals(avroRecord.get("proto"), ByteBuffer.wrap(msg1.toByteArray()));
+    assertEquals(ByteBuffer.wrap(msg1.toByteArray()), ((List) avroRecord.get("proto_arr")).get(1));
+    assertEquals(ByteBuffer.wrap(msg2.toByteArray()), ((List) avroRecord.get("proto_arr")).get(3));
+    assertThat(((List) avroRecord.get("proto_arr")).get(0), is((ByteArray) null));
+    assertThat(((List) avroRecord.get("proto_arr")).get(2), is((ByteArray) null));
+    assertThat(avroRecord.get("enum"), equalTo(new Long(enum1.getNumber())));
+    assertThat(
+        avroRecord.get("enum_arr"),
+        equalTo(Arrays.asList(new Long(enum1.getNumber()), null, new Long(enum2.getNumber()))));
   }
 }

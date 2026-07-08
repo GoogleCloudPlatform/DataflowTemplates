@@ -200,7 +200,7 @@ public class SchemaUtils {
             ? fieldDescriptor.getName()
             : jsonName);
 
-    LegacySQLTypeName sqlType = convertProtoTypeToSqlType(fieldDescriptor.getJavaType());
+    LegacySQLTypeName sqlType = convertProtoDescriptorToSqlType(fieldDescriptor);
     schema.setType(sqlType.toString());
 
     if (sqlType == LegacySQLTypeName.RECORD) {
@@ -238,8 +238,9 @@ public class SchemaUtils {
     return schema;
   }
 
-  /** Handles mapping a proto type to BigQuery type. */
-  private static LegacySQLTypeName convertProtoTypeToSqlType(JavaType protoType) {
+  /** Handles mapping a proto field descriptor to BigQuery type. */
+  private static LegacySQLTypeName convertProtoDescriptorToSqlType(FieldDescriptor descriptor) {
+    JavaType protoType = descriptor.getJavaType();
     switch (protoType) {
       case INT:
         // fall through
@@ -258,6 +259,11 @@ public class SchemaUtils {
       case BYTE_STRING:
         return LegacySQLTypeName.BYTES;
       case MESSAGE:
+        // detect certain builtin message type
+        String possibleBuiltinType = descriptor.getMessageType().getFullName();
+        if (possibleBuiltinType.equals("google.protobuf.Timestamp")) {
+          return LegacySQLTypeName.TIMESTAMP;
+        }
         return LegacySQLTypeName.RECORD;
     }
     throw new IllegalArgumentException(String.format("Unrecognized type: %s", protoType));

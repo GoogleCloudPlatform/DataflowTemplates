@@ -1,0 +1,33 @@
+{
+    "type": "record",
+    "namespace": "org.example.avro",
+    "name": "AvroProductKafkaRecord",
+    "fields": [
+        {
+            "name": "productId",
+            "type": "int"
+        },
+        {
+            "name": "productName",
+            "type": "string"
+        },
+        {
+            "name": "productSize",
+            "type": "float"
+        },
+        {
+            "name": "productUsage",
+            "type": {
+                "type": "enum",
+                "name": "Usage",
+                "symbols": [
+                    "UNDEFINED",
+                    "LOW",
+                    "MEDIUM",
+                    "HIGH"
+                ]
+            },
+            "default": "UNDEFINED"
+        }
+    ]
+}

@@ -58,37 +58,43 @@ public class ImportJobPlaceholder {
 
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Target",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to. Defaults to --project.")
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.")
     ValueProvider<String> getBigtableProject();
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Target",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Target",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to import")
+        helpText = "The ID of the Bigtable table to import.")
     ValueProvider<String> getBigtableTableId();
 
     @TemplateParameter.Text(
         order = 4,
+        groupName = "Target",
         optional = true,
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Application profile ID",
-        helpText = "The ID of the Cloud Bigtable application profile to be used for the import")
+        helpText =
+            "The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).")
     ValueProvider<String> getBigtableAppProfileId();
 
     @TemplateParameter.GcsReadFile(
         order = 5,
+        groupName = "Source",
         description = "Source path pattern",
-        helpText = "Cloud Storage path pattern where data is located.",
+        helpText = "The Cloud Storage path pattern to the location of the data.",
         example = "gs://your-bucket/your-path/prefix*")
     ValueProvider<String> getSourcePattern();
 

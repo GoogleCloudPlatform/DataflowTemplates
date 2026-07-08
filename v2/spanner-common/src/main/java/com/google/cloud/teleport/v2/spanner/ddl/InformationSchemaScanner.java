@@ -58,6 +58,7 @@ public class InformationSchemaScanner {
   public Ddl scan() {
     Ddl.Builder builder = Ddl.builder(dialect);
     listTables(builder);
+
     listColumns(builder);
     listColumnOptions(builder);
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
@@ -66,12 +67,17 @@ public class InformationSchemaScanner {
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
-      ImmutableList.Builder<String> tableIndexes = ImmutableList.builder();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
+      ImmutableList.Builder<Index> tableIndexObjects = ImmutableList.builder();
       for (Map.Entry<String, Index.Builder> entry : tableEntry.getValue().entrySet()) {
         Index.Builder indexBuilder = entry.getValue();
-        tableIndexes.add(indexBuilder.build().prettyPrint());
+        Index index = indexBuilder.build();
+        tableIndexObjects.add(index);
       }
-      builder.createTable(tableName).indexes(tableIndexes.build()).endTable();
+      builder.createTable(tableName).indexes(tableIndexObjects.build()).endTable();
     }
 
     Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys = Maps.newHashMap();
@@ -80,10 +86,14 @@ public class InformationSchemaScanner {
     for (Map.Entry<String, NavigableMap<String, ForeignKey.Builder>> tableEntry :
         foreignKeys.entrySet()) {
       String tableName = tableEntry.getKey();
-      ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
+      ImmutableList.Builder<ForeignKey> tableForeignKeys = ImmutableList.builder();
       for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
         ForeignKey.Builder foreignKeyBuilder = entry.getValue();
-        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+        tableForeignKeys.add(foreignKeyBuilder.build());
       }
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }
@@ -92,6 +102,10 @@ public class InformationSchemaScanner {
     for (Map.Entry<String, NavigableMap<String, CheckConstraint>> tableEntry :
         checkConstraints.entrySet()) {
       String tableName = tableEntry.getKey();
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
       ImmutableList.Builder<String> constraints = ImmutableList.builder();
       for (Map.Entry<String, CheckConstraint> entry : tableEntry.getValue().entrySet()) {
         constraints.add(entry.getValue().prettyPrint());
@@ -99,7 +113,9 @@ public class InformationSchemaScanner {
       builder.createTable(tableName).checkConstraints(constraints.build()).endTable();
     }
 
-    return builder.build();
+    Ddl ddl = builder.build();
+    LOG.info("spanner ddl: {}", ddl.prettyPrint());
+    return ddl;
   }
 
   private void listTables(Ddl.Builder builder) {
@@ -108,17 +124,19 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         query =
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type"
                     + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                    + " AND t.table_type='BASE TABLE'");
         break;
       case POSTGRESQL:
         query =
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
-                    + "('information_schema', 'spanner_sys', 'pg_catalog')");
+                    + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND t.table_type='BASE TABLE'");
         break;
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -128,9 +146,12 @@ public class InformationSchemaScanner {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
       String onDeleteAction = resultSet.isNull(2) ? null : resultSet.getString(2);
+      String interleaveType = resultSet.isNull(3) ? null : resultSet.getString(3);
 
       // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+      if (interleaveType != null
+          && interleaveType.equalsIgnoreCase("IN PARENT")
+          && Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of parentTableName %s and onDeleteAction %s",
@@ -150,7 +171,8 @@ public class InformationSchemaScanner {
           "Schema Table {} Parent {} OnDelete {} {}", tableName, parentTableName, onDeleteCascade);
       builder
           .createTable(tableName)
-          .interleaveInParent(parentTableName)
+          .interleavingParent(parentTableName)
+          .interleaveType(interleaveType)
           .onDeleteCascade(onDeleteCascade)
           .endTable();
     }
@@ -169,6 +191,9 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
       boolean isStored =
           resultSet.isNull(7) ? false : resultSet.getString(7).equalsIgnoreCase("YES");
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
       builder
           .createTable(tableName)
           .column(columnName)
@@ -220,6 +245,7 @@ public class InformationSchemaScanner {
       if (Strings.isNullOrEmpty(parent)) {
         parent = null;
       }
+
       boolean unique =
           (dialect == Dialect.GOOGLE_STANDARD_SQL)
               ? resultSet.getBoolean(3)
@@ -282,6 +308,10 @@ public class InformationSchemaScanner {
       String ordering = resultSet.isNull(2) ? null : resultSet.getString(2);
       String indexName = resultSet.getString(3);
 
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
+
       if (indexName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
             builder.createTable(tableName).primaryKey();
@@ -343,6 +373,10 @@ public class InformationSchemaScanner {
       String optionName = resultSet.getString(2);
       String optionType = resultSet.getString(3);
       String optionValue = resultSet.getString(4);
+
+      if (builder.getTable(tableName) == null) {
+        continue; // Skipping as table does not exist
+      }
 
       KV<String, String> kv = KV.of(tableName, columnName);
       ImmutableList.Builder<String> options =
@@ -486,7 +520,7 @@ public class InformationSchemaScanner {
                     + " cc.CONSTRAINT_NAME,"
                     + " cc.CHECK_CLAUSE"
                     + " FROM INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE as ctu"
-                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " INNER JOIN @{JOIN_METHOD=HASH_JOIN} INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
                     + " ON ctu.constraint_catalog = cc.constraint_catalog"
                     + " AND ctu.constraint_schema = cc.constraint_schema"
                     + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
@@ -504,7 +538,7 @@ public class InformationSchemaScanner {
                     + " cc.CONSTRAINT_NAME,"
                     + " cc.CHECK_CLAUSE"
                     + " FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS as ctu"
-                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " INNER JOIN /*@ JOIN_METHOD=HASH_JOIN */ INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
                     + " ON ctu.constraint_catalog = cc.constraint_catalog"
                     + " AND ctu.constraint_schema = cc.constraint_schema"
                     + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"

@@ -24,6 +24,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -32,11 +34,14 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -74,10 +79,10 @@ public class BigtableToJson {
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
+        groupName = "Source",
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
-                + " read data from")
+            "The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -85,9 +90,10 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Instance ID",
-        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+        helpText = "The ID of the Bigtable instance that contains the table.")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
@@ -95,9 +101,10 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
         description = "Table ID",
-        helpText = "The ID of the Cloud Bigtable table to read")
+        helpText = "The ID of the Bigtable table to read from.")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
@@ -105,10 +112,11 @@ public class BigtableToJson {
 
     @TemplateParameter.GcsWriteFolder(
         order = 4,
-        optional = true,
+        groupName = "Target",
         description = "Cloud Storage directory for storing JSON files",
-        helpText = "The Cloud Storage path where the output JSON files can be stored.",
+        helpText = "The Cloud Storage path where the output JSON files are stored.",
         example = "gs://your-bucket/your-path/")
+    @Required
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
@@ -116,8 +124,11 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 5,
+        groupName = "Target",
+        optional = true,
         description = "JSON file prefix",
-        helpText = "The prefix of the JSON file name. For example, \"table1-\"")
+        helpText =
+            "The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -126,11 +137,12 @@ public class BigtableToJson {
 
     @TemplateParameter.Enum(
         order = 6,
+        groupName = "Target",
         optional = true,
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string.")
+            "Possible values are `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to `NONE`.")
     @Default.String("NONE")
     String getUserOption();
 
@@ -139,19 +151,35 @@ public class BigtableToJson {
 
     @TemplateParameter.Text(
         order = 7,
+        groupName = "Target",
         optional = true,
+        parentName = "userOption",
+        parentTriggerValues = {"FLATTEN"},
         description = "Columns aliases",
         helpText =
-            "Comma separated list of columns which are required for Vertex AI Vector Search Index."
-                + " The `id` & `embedding` are required columns for Vertex Vector Search."
-                + " You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are"
-                + " `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently,"
-                + " `cf:my_embedding;embedding` and `rowkey;id` should be specified."
-                + " Only used when FLATTEN user option is specified.")
+            "A comma-separated list of columns that are required for the Vertex AI Vector Search index. The"
+                + " columns `id` and `embedding` are required for Vertex AI Vector Search. You can use the notation"
+                + " `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, where"
+                + " `rowkey` has a different name than the embedding column, specify `cf:my_embedding;embedding` and,"
+                + " `rowkey;id`. Only use this option when the value for `userOption` is `FLATTEN`.")
     ValueProvider<String> getColumnsAliases();
 
     @SuppressWarnings("unused")
     void setColumnsAliases(ValueProvider<String> value);
+
+    @TemplateParameter.Text(
+        order = 8,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Application profile ID",
+        helpText =
+            "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
+
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> appProfileId);
   }
 
   /**
@@ -178,6 +206,7 @@ public class BigtableToJson {
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
@@ -185,20 +214,19 @@ public class BigtableToJson {
       read = read.withoutValidation();
     }
 
-    // Concatenating cloud storage folder with file prefix to get complete path
-    ValueProvider<String> outputFilePrefix = options.getFilenamePrefix();
-
-    ValueProvider<String> outputFilePathWithPrefix =
-        ValueProvider.NestedValueProvider.of(
+    ValueProvider<String> filePathPrefix =
+        DualInputNestedValueProvider.of(
             options.getOutputDirectory(),
-            (SerializableFunction<String, String>)
-                folder -> {
-                  if (!folder.endsWith("/")) {
-                    // Appending the slash if not provided by user
-                    folder = folder + "/";
-                  }
-                  return folder + outputFilePrefix.get();
-                });
+            options.getFilenamePrefix(),
+            new SerializableFunction<TranslatorInput<String, String>, String>() {
+              @Override
+              public String apply(TranslatorInput<String, String> input) {
+                return FileSystems.matchNewResource(input.getX(), true)
+                    .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
+                    .toString();
+              }
+            });
+
     String userOption = options.getUserOption();
     pipeline
         .apply("Read from Bigtable", read)
@@ -206,7 +234,7 @@ public class BigtableToJson {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToJsonFn(userOption.equals("FLATTEN"), options.getColumnsAliases())))
-        .apply("Write to storage", TextIO.write().to(outputFilePathWithPrefix).withSuffix(".json"));
+        .apply("Write to storage", TextIO.write().to(filePathPrefix).withSuffix(".json"));
 
     return pipeline.run();
   }

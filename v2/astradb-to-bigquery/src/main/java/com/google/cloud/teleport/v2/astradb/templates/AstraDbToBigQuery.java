@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.astradb.templates;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.BigQuery;
@@ -197,7 +197,7 @@ public class AstraDbToBigQuery {
     /*
      * Accessing the devops Api to retrieve the secure bundle.
      */
-    DatabaseClient astraDbClient = new DatabaseClient(astraToken, options.getAstraDatabaseId());
+    DbOpsClient astraDbClient = new DbOpsClient(astraToken, options.getAstraDatabaseId());
     if (!astraDbClient.exist()) {
       throw new RuntimeException(
           "Astra Database does not exist, please check your Astra Token and Database ID");

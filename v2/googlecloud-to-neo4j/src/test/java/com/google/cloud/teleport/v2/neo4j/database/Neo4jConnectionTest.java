@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,7 +42,7 @@ import org.mockito.junit.MockitoRule;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
-import org.neo4j.driver.Value;
+import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
@@ -59,7 +60,7 @@ public class Neo4jConnectionTest {
   @Before
   public void setUp() {
     when(session.run(anyString(), anyMap(), any())).thenReturn(result);
-    when(driver.session(any())).thenReturn(session);
+    when(driver.session(any(SessionConfig.class))).thenReturn(session);
     neo4jConnection = new Neo4jConnection("a-database", () -> driver);
   }
 
@@ -116,6 +117,7 @@ public class Neo4jConnectionTest {
     inOrder
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("SHOW CONSTRAINTS YIELD name"), eq(Map.of()), any());
     inOrder
         .verify(session)
         .run(
@@ -124,8 +126,6 @@ public class Neo4jConnectionTest {
             any());
     inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
     inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
-
-    verify(session, never()).run(contains("CONSTRAINT"), anyMap(), any());
   }
 
   @Test
@@ -165,7 +165,7 @@ public class Neo4jConnectionTest {
         .thenReturn(
             new InternalRecord(
                 List.of("version", "edition"),
-                new Value[] {Values.value(version), Values.value(edition)}));
+                List.of(Values.value(version), Values.value(edition))));
 
     when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
   }
@@ -178,13 +178,38 @@ public class Neo4jConnectionTest {
   }
 
   private void setIndexes(String... names) {
-    var result = mock(Result.class);
     when(result.list(any())).thenReturn(Arrays.asList(names));
-
     when(session.run(
             eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
             anyMap(),
             any()))
         .thenReturn(result);
+  }
+
+  @Test
+  public void capabilitiesCall() {
+    setCapabilities("5.1.0", "enterprise");
+    assertEquals(
+        "calling connection.capabilities() should query the DB",
+        new Neo4jCapabilities("5.1.0", "enterprise").toString(),
+        neo4jConnection.capabilities().toString());
+  }
+
+  @Test
+  public void capabilitiesCallCached() {
+    setCapabilities("5.1.0", "enterprise");
+    Neo4jCapabilities capa = neo4jConnection.capabilities();
+    setCapabilities("2025.05", "community");
+    assertEquals(
+        "calling connection.capabilities() is cached", capa, neo4jConnection.capabilities());
+  }
+
+  private void setCapabilities(String version, String edition) {
+    when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
+    when(result.single())
+        .thenReturn(
+            new InternalRecord(
+                List.of("versions[0]", "edition"),
+                List.of(Values.value(version), Values.value(edition))));
   }
 }

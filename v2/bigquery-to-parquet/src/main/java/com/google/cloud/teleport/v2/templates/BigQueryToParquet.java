@@ -42,6 +42,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
@@ -108,14 +109,22 @@ public class BigQueryToParquet {
      * Creates ReadSession for schema extraction.
      *
      * @param client BigQueryStorage client used to create ReadSession.
-     * @param tableString String that represents table to export from.
+     * @param options BigQueryToParquetOptions options.
      * @param tableReadOptions TableReadOptions that specify any fields in the table to filter on.
      * @return session ReadSession object that contains the schema for the export.
      */
     static ReadSession create(
-        BigQueryStorageClient client, String tableString, TableReadOptions tableReadOptions) {
+        BigQueryStorageClient client,
+        BigQueryToParquetOptions options,
+        TableReadOptions tableReadOptions) {
+      String tableString = options.getTableRef();
       TableReference tableReference = BigQueryHelpers.parseTableSpec(tableString);
-      String parentProjectId = "projects/" + tableReference.getProjectId();
+      BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
+      String parentProjectId =
+          bigQueryOptions.getBigQueryProject() == null
+              ? bigQueryOptions.getProject()
+              : bigQueryOptions.getBigQueryProject();
+      String parentProjectIdResource = "projects/" + parentProjectId;
 
       TableReferenceProto.TableReference storageTableRef =
           TableReferenceProto.TableReference.newBuilder()
@@ -126,7 +135,7 @@ public class BigQueryToParquet {
 
       CreateReadSessionRequest.Builder builder =
           CreateReadSessionRequest.newBuilder()
-              .setParent(parentProjectId)
+              .setParent(parentProjectIdResource)
               .setReadOptions(tableReadOptions)
               .setTableReference(storageTableRef);
       try {
@@ -146,7 +155,8 @@ public class BigQueryToParquet {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery table to export",
-        helpText = "BigQuery table location to export in the format <project>:<dataset>.<table>.",
+        groupName = "Source",
+        helpText = "The BigQuery input table location.",
         example = "your-project:your-dataset.your-table-name")
     @Required
     String getTableRef();
@@ -156,7 +166,8 @@ public class BigQueryToParquet {
     @TemplateParameter.GcsWriteFile(
         order = 2,
         description = "Output Cloud Storage file(s)",
-        helpText = "Path and filename prefix for writing output files.",
+        groupName = "Target",
+        helpText = "The Cloud Storage folder to write the Parquet files to.",
         example = "gs://your-bucket/export/")
     @Required
     String getBucket();
@@ -167,11 +178,7 @@ public class BigQueryToParquet {
         order = 3,
         optional = true,
         description = "Maximum output shards",
-        helpText =
-            "The maximum number of output shards produced when writing. A higher number of shards"
-                + " means higher throughput for writing to Cloud Storage, but potentially higher"
-                + " data aggregation cost across shards when processing output Cloud Storage"
-                + " files.")
+        helpText = "The number of output file shards. The default value is `1`.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -181,7 +188,7 @@ public class BigQueryToParquet {
         order = 4,
         optional = true,
         description = "List of field names",
-        helpText = "Comma separated list of fields to select from the table.")
+        helpText = "A comma-separated list of fields to select from the input BigQuery table.")
     String getFields();
 
     void setFields(String fields);
@@ -249,10 +256,14 @@ public class BigQueryToParquet {
       builder.addAllSelectedFields(Arrays.asList(options.getFields().split(",\\s*")));
     }
 
+    // Add row restrictions/filter if any.
+    if (!Strings.isNullOrEmpty(options.getRowRestriction())) {
+      builder.setRowRestriction(options.getRowRestriction());
+    }
+
     TableReadOptions tableReadOptions = builder.build();
     BigQueryStorageClient client = BigQueryStorageClientFactory.create();
-    ReadSession session =
-        ReadSessionFactory.create(client, options.getTableRef(), tableReadOptions);
+    ReadSession session = ReadSessionFactory.create(client, options, tableReadOptions);
 
     // Extract schema from ReadSession
     Schema schema = getTableSchema(session);

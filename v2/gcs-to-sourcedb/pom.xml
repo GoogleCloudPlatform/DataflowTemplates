@@ -32,8 +32,6 @@
     </description>
 
  <properties>
-
-    <junit.version>4.13.2</junit.version>
   </properties>
 
     <dependencies>
@@ -66,12 +64,44 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
-            <version>2.11.1</version>
+            <version>2.13.1</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-custom-shard</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-conditions</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--        TODO - Remove when https://github.com/apache/beam/pull/29732 is released. -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-jdbc</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -1,0 +1,377 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates;
+
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.common.base.MoreObjects;
+import com.google.common.io.Resources;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.TestConstants;
+import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Base class for Spanner to sourcedb Load tests. It provides helper functions related to
+ * environment setup and assertConditions.
+ */
+public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLTBase.class);
+  public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
+  public static final String SESSION_FILE_NAME = "input/session.json";
+  public static final String SCHEMA_FILE_NAME = "input/schema.json";
+  private static final String TEMPLATE_SPEC_PATH =
+      MoreObjects.firstNonNull(
+          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
+  public SpannerResourceManager spannerResourceManager;
+  public SpannerResourceManager spannerMetadataResourceManager;
+  public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
+  public GcsResourceManager gcsResourceManager;
+  protected PubsubResourceManager pubsubResourceManager;
+  protected SubscriptionName subscriptionName;
+
+  public void setupResourceManagers(String spannerDdlResource, String sessionFileResource)
+      throws IOException {
+    spannerResourceManager = createSpannerDatabase(spannerDdlResource);
+    spannerMetadataResourceManager = createSpannerMetadataDatabase();
+
+    gcsResourceManager = createSpannerLTGcsResourceManager();
+
+    gcsResourceManager.uploadArtifact(
+        SESSION_FILE_NAME, Resources.getResource(sessionFileResource).getPath());
+
+    pubsubResourceManager = setUpPubSubResourceManager();
+    subscriptionName =
+        createPubsubResources(
+            getClass().getSimpleName(),
+            pubsubResourceManager,
+            getGcsPath("dlq", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket(), ""));
+  }
+
+  public void setupMySQLResourceManager(int numShards) throws IOException {
+    for (int i = 0; i < numShards; ++i) {
+      jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
+    }
+
+    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
+  }
+
+  public void cleanupResourceManagers() {
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
+    if (jdbcResourceManagers != null) {
+      for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
+        ResourceManagerUtils.cleanResources(jdbcResourceManager);
+      }
+    }
+  }
+
+  public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
+    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
+        .setMonitoringClient(monitoringClient)
+        .build();
+  }
+
+  public SubscriptionName createPubsubResources(
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "rr-load" + identifierSuffix;
+    String subscriptionNameSuffix = "rr-load-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    prefix += "/retry/";
+    gcsResourceManager.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
+  public SpannerResourceManager createSpannerDatabase(String spannerDdlResourceFile)
+      throws IOException {
+    SpannerResourceManager spannerResourceManager =
+        SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
+            .maybeUseStaticInstance()
+            .build();
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(spannerDdlResourceFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        spannerResourceManager.executeDdlStatement(d);
+      }
+    }
+    return spannerResourceManager;
+  }
+
+  public SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
+    String metadataInstanceId = System.getProperty("spannerMetadataInstanceId");
+    SpannerResourceManager.Builder builder =
+        SpannerResourceManager.builder("rr-meta-" + testName, project, region);
+
+    if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
+      builder.setInstanceId(metadataInstanceId).useStaticInstance();
+    } else {
+      builder.maybeUseStaticInstance();
+    }
+
+    SpannerResourceManager spannerMetadataResourceManager = builder.build();
+
+    // Collision Detection and Auto-Avoidance
+    if (spannerResourceManager != null
+        && spannerMetadataResourceManager
+            .getInstanceId()
+            .equals(spannerResourceManager.getInstanceId())) {
+
+      String spannerInstanceId =
+          System.getProperty("spannerInstanceId"); // check if it was a user defined instance
+      boolean isTestProject =
+          java.util.Objects.equals(project, "cloud-teleport-testing")
+              || java.util.Objects.equals(project, "span-cloud-teleport-testing");
+      boolean shouldPickRandomInstance =
+          com.google.common.base.Strings.isNullOrEmpty(spannerInstanceId)
+              || java.util.Objects.equals(spannerInstanceId, "teleport");
+
+      if (isTestProject && shouldPickRandomInstance) {
+        List<String> staticInstanceList = new ArrayList<>(TestConstants.SPANNER_TEST_INSTANCES);
+        // Avoid picking the same instance
+        staticInstanceList.remove(spannerResourceManager.getInstanceId());
+        if (!staticInstanceList.isEmpty()) {
+          String newMetadataInstanceId =
+              staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+          LOG.info(
+              "Spanner collision detected. Re-selecting metadata instance to: {}",
+              newMetadataInstanceId);
+          spannerMetadataResourceManager =
+              SpannerResourceManager.builder("rr-meta-" + testName, project, region)
+                  .setInstanceId(newMetadataInstanceId)
+                  .useStaticInstance()
+                  .build();
+        }
+      } else {
+        LOG.warn(
+            "WARNING: Both primary and metadata Spanner resource managers are configured to use the same instance: {}. "
+                + "To isolate resources, consider specifying '-DspannerInstanceId' and '-DspannerMetadataInstanceId' separately.",
+            spannerResourceManager.getInstanceId());
+      }
+    }
+
+    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
+    spannerMetadataResourceManager.executeDdlStatement(dummy);
+    return spannerMetadataResourceManager;
+  }
+
+  public void createAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, List<JDBCResourceManager> jdbcResourceManagers)
+      throws IOException {
+    List<Shard> shards = new ArrayList<>();
+    for (int i = 0; i < 1; ++i) {
+      if (jdbcResourceManagers.get(i) instanceof MySQLResourceManager) {
+        MySQLResourceManager resourceManager = (MySQLResourceManager) jdbcResourceManagers.get(i);
+        Shard shard = new Shard();
+        shard.setLogicalShardId("Shard" + (i + 1));
+        shard.setUser(jdbcResourceManagers.get(i).getUsername());
+        shard.setHost(resourceManager.getHost());
+        shard.setPassword(jdbcResourceManagers.get(i).getPassword());
+        shard.setPort(String.valueOf(resourceManager.getPort()));
+        shard.setDbName(jdbcResourceManagers.get(i).getDatabaseName());
+        shards.add(shard);
+      } else {
+        throw new UnsupportedOperationException(
+            jdbcResourceManagers.get(i).getClass().getSimpleName() + " is not supported");
+      }
+    }
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      int numWorkers,
+      int maxWorkers,
+      CustomTransformation customTransformation,
+      String sourceType,
+      String shardFileName,
+      String sessionFileName)
+      throws IOException {
+    return launchDataflowJob(
+        numWorkers,
+        maxWorkers,
+        customTransformation,
+        sourceType,
+        shardFileName,
+        sessionFileName,
+        Collections.emptyMap());
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      int numWorkers,
+      int maxWorkers,
+      CustomTransformation customTransformation,
+      String sourceType,
+      String shardFileName,
+      String sessionFileName,
+      Map<String, String> extraParams)
+      throws IOException {
+    // default parameters
+    Map<String, String> params = new HashMap<>();
+    if (sessionFileName != null) {
+      params.put("sessionFilePath", getGcsPath(sessionFileName, gcsResourceManager));
+    }
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("spannerProjectId", project);
+    params.put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+    params.put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+    params.put("sourceShardsFilePath", getGcsPath(shardFileName, gcsResourceManager));
+    params.put("changeStreamName", "allstream");
+    params.put("dlqGcsPubSubSubscription", subscriptionName.toString());
+    params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
+    params.put("maxShardConnections", "100");
+    params.put("sourceType", sourceType);
+    params.put("workerMachineType", "n2-standard-4");
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
+
+    if (extraParams != null) {
+      params.putAll(extraParams);
+    }
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+    options
+        .addEnvironment("maxWorkers", maxWorkers)
+        .addEnvironment("numWorkers", numWorkers)
+        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+
+    options.setParameters(params);
+    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    return jobInfo;
+  }
+
+  public String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
+    return ArtifactUtils.getFullGcsPath(
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
+  }
+
+  public Map<String, Double> getCustomCounters(
+      LaunchInfo launchInfo, int numShards, Map<String, Double> metrics) throws IOException {
+    Double successfulEvents =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "success_record_count");
+    metrics.put(
+        "Custom_Counter_SuccessRecordCount", successfulEvents != null ? successfulEvents : 0.0);
+    Double retryableErrors =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "retryable_record_count");
+    metrics.put(
+        "Custom_Counter_RetryableRecordCount", retryableErrors != null ? retryableErrors : 0.0);
+
+    Double severeErrorCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "severe_error_count");
+    metrics.put(
+        "Custom_Counter_SevereErrorCount", severeErrorCount != null ? severeErrorCount : 0.0);
+    Double skippedRecordCount =
+        pipelineLauncher.getMetric(project, region, launchInfo.jobId(), "skipped_record_count");
+    metrics.put(
+        "Custom_Counter_SkippedRecordCount", skippedRecordCount != null ? skippedRecordCount : 0.0);
+
+    for (int i = 1; i <= numShards; ++i) {
+      Double replicationLag =
+          pipelineLauncher.getMetric(
+              project,
+              region,
+              launchInfo.jobId(),
+              "replication_lag_in_seconds_Shard" + i + "_MEAN");
+      metrics.put(
+          "Custom_Counter_MeanReplicationLagShard" + i,
+          replicationLag != null ? replicationLag : 0.0);
+    }
+    return metrics;
+  }
+
+  public void exportMetrics(PipelineLauncher.LaunchInfo jobInfo, int numShards)
+      throws ParseException, IOException, InterruptedException {
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    getCustomCounters(jobInfo, numShards, metrics);
+    getResourceManagerMetrics(metrics);
+
+    // export results
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+        "input/customShard.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+  }
+
+  public void getResourceManagerMetrics(Map<String, Double> metrics) {
+    pubsubResourceManager.collectMetrics(metrics);
+  }
+}

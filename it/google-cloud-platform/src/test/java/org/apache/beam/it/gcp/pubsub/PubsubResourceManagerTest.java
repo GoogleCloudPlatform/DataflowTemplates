@@ -18,6 +18,7 @@
 package org.apache.beam.it.gcp.pubsub;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -38,8 +39,10 @@ import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Rule;
@@ -75,6 +78,7 @@ public final class PubsubResourceManagerTest {
   private Subscription subscription;
   @Mock private Publisher publisher;
   @Mock private PubsubPublisherFactory publisherFactory;
+  @Mock private MonitoringClient monitoringClient;
 
   private PubsubResourceManager testManager;
 
@@ -82,6 +86,7 @@ public final class PubsubResourceManagerTest {
   @Captor private ArgumentCaptor<SubscriptionName> subscriptionNameCaptor;
   @Captor private ArgumentCaptor<String> stringArgumentCaptor;
   @Captor private ArgumentCaptor<PubsubMessage> pubsubMessageCaptor;
+  @Captor private ArgumentCaptor<String> projectIdCaptor;
 
   @Before
   public void setUp() throws IOException {
@@ -93,7 +98,8 @@ public final class PubsubResourceManagerTest {
             publisherFactory,
             topicAdminClient,
             subscriptionAdminClient,
-            schemaServiceClient);
+            schemaServiceClient,
+            null);
 
     topic = Topic.newBuilder().setName(TopicName.of(PROJECT_ID, TOPIC_NAME).toString()).build();
     subscription =
@@ -292,5 +298,83 @@ public final class PubsubResourceManagerTest {
     assertThat(subscriptionNameCaptor.getAllValues()).hasSize(3);
     assertThat(subscriptionNameCaptor.getAllValues())
         .containsExactly(subscriptionName1, subscriptionName2, subscriptionName3);
+  }
+
+  @Test
+  public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
+    assertThrows(
+        PubsubResourceManagerException.class, () -> testManager.collectMetrics(new HashMap<>()));
+  }
+
+  @Test
+  public void testCollectMetricsShouldWorkWhenMonitoringClientIsInitialized() {
+    PubsubResourceManager testManagerWithMonitoringClient =
+        new PubsubResourceManager(
+            TEST_ID,
+            PROJECT_ID,
+            publisherFactory,
+            topicAdminClient,
+            subscriptionAdminClient,
+            schemaServiceClient,
+            monitoringClient);
+
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any()))
+        .thenReturn(null, 2.0, 4.0);
+    SubscriptionName subscriptionName1 = testManager.getSubscriptionName("topic1-sub0");
+    SubscriptionName subscriptionName2 = testManager.getSubscriptionName("topic1-sub1");
+    SubscriptionName subscriptionName3 = testManager.getSubscriptionName("topic1-sub2");
+    Subscription subscription1 =
+        Subscription.newBuilder().setName(subscriptionName1.toString()).build();
+    Subscription subscription2 =
+        Subscription.newBuilder().setName(subscriptionName2.toString()).build();
+    Subscription subscription3 =
+        Subscription.newBuilder().setName(subscriptionName3.toString()).build();
+    when(subscriptionAdminClient.createSubscription(
+            any(SubscriptionName.class), any(TopicName.class), any(), anyInt()))
+        .thenReturn(subscription1, subscription2, subscription3);
+    Topic topic1 =
+        Topic.newBuilder().setName(testManager.getTopicName("topic1").toString()).build();
+    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic1);
+
+    TopicName createdTopic1 = testManagerWithMonitoringClient.createTopic("topic1");
+    testManagerWithMonitoringClient.createSubscription(createdTopic1, "topic1-sub0");
+    testManagerWithMonitoringClient.createSubscription(createdTopic1, "topic1-sub1");
+    testManagerWithMonitoringClient.createSubscription(createdTopic1, "topic1-sub2");
+
+    Map<String, Double> metrics = new HashMap<>();
+    testManagerWithMonitoringClient.collectMetrics(metrics);
+
+    assertEquals(1, metrics.size());
+    assertEquals(2.0, metrics.get("Pubsub_AverageOldestUnackedMessageAge"), 0.0);
+    ArgumentCaptor<String> filterCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(monitoringClient, times(3))
+        .getAggregatedMetric(projectIdCaptor.capture(), filterCaptor.capture(), any(), any());
+    assertThat(projectIdCaptor.getValue()).isEqualTo(PROJECT_ID);
+    assertThat(filterCaptor.getValue())
+        .contains("metric.type=\"pubsub.googleapis.com/subscription/oldest_unacked_message_age\"");
+  }
+
+  @Test
+  public void testCollectMetricsShouldWorkEvenIfNoSubscriptions() {
+    PubsubResourceManager testManagerWithMonitoringClient =
+        new PubsubResourceManager(
+            TEST_ID,
+            PROJECT_ID,
+            publisherFactory,
+            topicAdminClient,
+            subscriptionAdminClient,
+            schemaServiceClient,
+            monitoringClient);
+
+    Map<String, Double> metrics = new HashMap<>();
+    testManagerWithMonitoringClient.collectMetrics(metrics);
+
+    assertEquals(1, metrics.size());
+    assertEquals(0.0, metrics.get("Pubsub_AverageOldestUnackedMessageAge"), 0.0);
+    ArgumentCaptor<String> filterCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(monitoringClient, times(0))
+        .getAggregatedMetric(projectIdCaptor.capture(), filterCaptor.capture(), any(), any());
   }
 }

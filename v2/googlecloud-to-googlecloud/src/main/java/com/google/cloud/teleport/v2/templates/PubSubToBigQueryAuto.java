@@ -33,7 +33,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
         "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription or topic, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
     blocks = {ReadFromPubSub.class, PubsubMessageToTableRow.class, WriteToBigQuery.class},
     dlqBlock = WriteDlqToBigQuery.class,
-    flexContainerName = "pubsub-to-bigquery-auto",
+    flexContainerName = "googlecloud-to-googlecloud",
     contactInformation = "https://cloud.google.com/support",
     // TODO: replace the original template when we are ready to do it, and remove `hidden`.
     hidden = true,

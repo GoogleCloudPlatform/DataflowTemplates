@@ -20,11 +20,13 @@ package org.apache.beam.it.gcp.spanner;
 import static com.google.cloud.spanner.Value.int64;
 import static com.google.cloud.spanner.Value.string;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,16 +35,27 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerExceptionFactory;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,6 +82,7 @@ public final class SpannerResourceManagerTest {
   @Mock private InstanceAdminClient instanceAdminClient;
   @Mock private DatabaseAdminClient databaseAdminClient;
   @Mock private ResultSet resultSet;
+  @Mock private MonitoringClient monitoringClient;
 
   private static final String TEST_ID = "test";
   private static final String PROJECT_ID = "test-project";
@@ -80,6 +94,8 @@ public final class SpannerResourceManagerTest {
   @Captor private ArgumentCaptor<Iterable<String>> statementCaptor;
   @Captor private ArgumentCaptor<String> instanceIdCaptor;
   @Captor private ArgumentCaptor<String> databaseIdCaptor;
+  @Captor private ArgumentCaptor<Database> databaseCaptor;
+  @Captor private ArgumentCaptor<String> projectIdCaptor;
 
   @Before
   public void setUp() {
@@ -138,7 +154,10 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareCreateInstanceMock();
     prepareCreateDatabaseMock();
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(InterruptedException.class);
     String statement =
         "CREATE TABLE Singers (\n"
@@ -175,19 +194,58 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
-        .updateDatabaseDdl(
-            instanceIdCaptor.capture(),
-            databaseIdCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
-    String actualInstanceId = instanceIdCaptor.getValue();
-    String actualDatabaseId = databaseIdCaptor.getValue();
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
-    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
 
-    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_\\d{6}");
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
+    assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
+  }
+
+  @Test
+  public void testExecuteDdlStatementShouldRetryOnResourceExhaustedError()
+      throws ExecutionException, InterruptedException {
+    //   arrange
+    prepareCreateInstanceMock();
+    prepareCreateDatabaseMock();
+    String statement =
+        "CREATE TABLE Singers (\n"
+            + "  SingerId   INT64 NOT NULL,\n"
+            + "  FirstName  STRING(1024),\n"
+            + "  LastName   STRING(1024),\n"
+            + ") PRIMARY KEY (SingerId)";
+
+    RuntimeException resourceExhaustedException =
+        new RuntimeException(
+            "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
+        .thenThrow(resourceExhaustedException)
+        .thenReturn(null);
+
+    // act
+    testManager.executeDdlStatement(statement);
+
+    // assert
+    // verify createInstance, createDatabase, and updateDatabaseDdl were called.
+    verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
+    verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
+    verify(spanner.getDatabaseAdminClient(), times(3))
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
+
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
+    Iterable<String> actualStatement = statementCaptor.getValue();
+
+    assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
+
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_[a-zA-Z0-9]{6}");
     assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
   }
 
@@ -341,6 +399,192 @@ public final class SpannerResourceManagerTest {
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.write(testMutations));
+  }
+
+  @Test
+  public void testWriteInTransactionShouldWorkWhenSpannerWriteSucceeds()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act
+    testManager.writeInTransaction(testMutations);
+
+    // assert
+    ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(1)).buffer(argument.capture());
+    Iterable<Mutation> capturedMutations = argument.getValue();
+
+    assertThat(capturedMutations).containsExactlyElementsIn(testMutations);
+  }
+
+  @Test
+  public void testWriteInTransactionShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
+    // arrange
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act & assert
+    assertThrows(IllegalStateException.class, () -> testManager.writeInTransaction(testMutations));
+  }
+
+  @Test
+  public void testWriteInTransactionShouldThrowExceptionWhenSpannerWriteFails()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(ErrorCode.NOT_FOUND, "Not found");
+            });
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act & assert
+    assertThrows(SpannerException.class, () -> testManager.writeInTransaction(testMutations));
+  }
+
+  @Test
+  public void testExecuteDMLShouldWorkWhenSpannerWriteSucceeds()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act
+    testManager.executeDMLStatements(testStatements);
+
+    // assert
+    ArgumentCaptor<Iterable<Statement>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(1)).batchUpdate(argument.capture());
+    Iterable<Statement> capturedStatements = argument.getValue();
+
+    List<Statement> statementList =
+        testStatements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
+    assertThat(capturedStatements).containsExactlyElementsIn(statementList);
+  }
+
+  @Test
+  public void testExecuteDMLShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
+    // arrange
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act & assert
+    assertThrows(
+        IllegalStateException.class, () -> testManager.executeDMLStatements(testStatements));
+  }
+
+  @Test
+  public void testExecuteDMLShouldThrowExceptionWhenSpannerWriteFails()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.DEADLINE_EXCEEDED, "Deadline exceeded while processing the request");
+            });
+
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act & assert
+    assertThrows(
+        SpannerResourceManagerException.class,
+        () -> testManager.executeDMLStatements(testStatements));
   }
 
   @Test
@@ -526,6 +770,53 @@ public final class SpannerResourceManagerTest {
     verify(spanner).close();
   }
 
+  @Test
+  public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
+    assertThrows(
+        SpannerResourceManagerException.class, () -> testManager.collectMetrics(new HashMap<>()));
+  }
+
+  @Test
+  public void testCollectMetricsShouldThrowExceptionWhenDatabaseIsNotCreated() {
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
+    SpannerResourceManager testManagerWithMonitoringClient =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setMonitoringClient(monitoringClient),
+            spanner);
+    assertThrows(
+        IllegalStateException.class,
+        () -> testManagerWithMonitoringClient.collectMetrics(new HashMap<>()));
+  }
+
+  @Test
+  public void testCollectMetricsShouldWorkWhenMonitoringClientAndDatabaseIsInitialized()
+      throws ExecutionException, InterruptedException {
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(1.1);
+    SpannerResourceManager testManagerWithMonitoringClient =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setMonitoringClient(monitoringClient),
+            spanner);
+    prepareCreateInstanceMock();
+    prepareCreateDatabaseMock();
+    testManagerWithMonitoringClient.executeDdlStatement("");
+
+    Map<String, Double> metrics = new HashMap<>();
+    testManagerWithMonitoringClient.collectMetrics(metrics);
+
+    assertEquals(2, metrics.size());
+    assertEquals(1.1, metrics.get("Spanner_AverageCpuUtilization"), 0.0);
+    assertEquals(1.1, metrics.get("Spanner_MaxCpuUtilization"), 0.0);
+    ArgumentCaptor<String> filterCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(monitoringClient, times(2))
+        .getAggregatedMetric(projectIdCaptor.capture(), filterCaptor.capture(), any(), any());
+    assertThat(projectIdCaptor.getValue()).isEqualTo(PROJECT_ID);
+    assertThat(filterCaptor.getValue())
+        .contains("metric.type=\"spanner.googleapis.com/instance/cpu/utilization\"");
+  }
+
   private void prepareCreateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
         .when(spanner.getDatabaseAdminClient().createDatabase(any(), any()).get())
@@ -534,7 +825,11 @@ public final class SpannerResourceManagerTest {
 
   private void prepareUpdateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
-        .when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+        .when(
+            spanner
+                .getDatabaseAdminClient()
+                .updateDatabaseDdl(any(Database.class), any(), any())
+                .get())
         .thenReturn(null);
   }
 

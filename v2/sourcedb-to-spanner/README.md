@@ -1,16 +1,17 @@
 # SourceDB to Spanner Dataflow Template
 
 The [SourceDBToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/SourceDbToSpanner.java) pipeline
-ingests data by reading from a database via JDBC, optionally applies a Javascript or Python UDF if supplied
-and writes the data to Cloud Spanner database.
+ingests data by reading from a database via JDBC and writes the data to Cloud Spanner database.
 
-Currently, this template works for a basic set of use cases. A not comprehensive
-list of scenarios which are not yet supported.
-to be implemented going forward
-* Generic schema mapping
-* Tables with non integer keys
-* Support for additional sources
-* Support for all datatypes supported in MySQL (And other sources when added)
+Currently, this template works for tables of any size on the follow sources
+* MySQL 8.0+ - String (upto 3 byte characters), Integer like (up to BigInteger
+  including unsigned) and Binary/VarBinary primary keys.
+* MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
+  Binary/VarBinary primary keys.
+* PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
+  BigInteger including unsigned) primary keys.
+
+Tables without primary keys or primary keys not mentioned above are not supported.
 
 ## Getting Started
 
@@ -30,15 +31,11 @@ export PROJECT=<my-project>
 export IMAGE_NAME=sourcedb-to-spanner
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java17-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/${IMAGE_NAME}
 export DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/${IMAGE_NAME}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${IMAGE_NAME}-image-spec.json
-
-export TOPIC=projects/${PROJECT}/topics/<topic-name>
-export SUBSCRIPTION=projects/${PROJECT}/subscriptions/<subscription-name>
-export DEADLETTER_TABLE=${PROJECT}:${DATASET_TEMPLATE}.dead_letter
 
 gcloud config set project ${PROJECT}
 ```
@@ -64,20 +61,89 @@ mvn test
 
 ### Executing Template
 
-The template requires the following parameters:
-* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **jdbcConnectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
+#### Required Parameters
+* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf). Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
+* **username** (username of the source database): The username which can be used to connect to the source database.
+* **password** (username of the source database): The username which can be used to connect to the source database.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+* **outputDirectory** (GCS path of the output directory): The GCS path of the directory where all errors and skipped events are dumped to be used during migrations
 
+#### Optional Parameters
+* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
+* **tables** (Colon seperated list of tables to migrate): Tables that will be migrated to Spanner. Leave this empty if all tables are to be migrated. (Example: table1:table2).
+* **numPartitions** (Number of partitions to create per table): A table is split into partitions and loaded independently. Use higher number of partitions for larger tables. (Example: 1000).
+* **spannerHost** (Cloud Spanner Endpoint): Use this endpoint to connect to Spanner. (Example: https://batch-spanner.googleapis.com)
+* **maxConnections** (Number of connections to create per source database): The max number of connections that can be used at any given time at source. (Example: 100)
+* **sessionFilePath** (GCS path of the session file): The GCS path of the schema mapping file to be used during migrations
 
 Template can be executed using the following API call:
 ```sh
 export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
+
+gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters instanceId=${INSTANCE_ID},databaseId=${DATABASE_ID},inputFilePattern=${GCS_LOCATION},outputDeadletterTable=${DEADLETTER_TABLE}
+        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
+        --additional-experiments=disable_runner_v2
 ```
+#### Replaying DLQ entries.
+Any errors transforming a source row or failures writing to Spanner are written to the `dlq/severe/` path within your `outputDirectory`. It is recommended to retry these DLQ entries before applying any change capture (if any).
+
+To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in one of two retry modes depending on your pipeline state:
+
+*   **`retryDLQ`**: Use this mode if you plan to run the live migration (`regular` mode) concurrently AND use the exact same DLQ directory used in the SourceDbToSpanner (bulk) job. The live migration pipeline will handle the transient errors in the `retry` bucket, while this `retryDLQ` mode safely and exclusively processes the `severe` bucket errors.
+*   **`retryAllDLQ`**: Use this mode if you are only running a bulk run or if the regular Cloud_Datastream_to_Spanner pipeline is stopped. `retryAllDLQ` consumes errors from both the `retry` and `severe` buckets. **WARNING:** Do NOT run `retryAllDLQ` concurrently with an active regular Cloud_Datastream_to_Spanner pipeline as they will conflict.
+
+Sample Command:
+```bash
+gcloud  dataflow flex-template run <jobname> \
+--region=<the region where the dataflow job must run> \
+--template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
+--additional-experiments=use_runner_v2 \
+--parameters datastreamSourceType="mysql",\
+instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
+deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
+```
+
+2.  Or, in `regular` mode by manually moving the severe error files from `dlq/severe` back to `dlq/retry`. The pipeline will automatically pick them up, retry them dlqMaxRetryCount times and move them back to severe bucket in case of failure.
+
+Sample Command:
+```bash
+gcloud  dataflow flex-template run <jobname> \
+--region=<the region where the dataflow job must run> \
+--template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
+--additional-experiments=use_runner_v2 \
+--parameters datastreamSourceType="mysql",\
+instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
+deadLetterQueueDirectory=<outputDirectory/dlq>,dlqMaxRetryCount=<maxRetryCount>,runMode="regular"
+```
+
+Note: For parameter `deadLetterQueueDirectory`, the value should be whatever was passed in `outputDirectory` parameter in Bulk migration before followed by `/dlq` for example, if outputDirectory=`gs://test-bucket/output` was passed for the bulk migration, then deadLetterQueueDirectory should be `gs://test-bucket/output/dlq`
+
+For DLQ Replay for Cassandra source, set the `datastreamSourceType` as `mysql`.
+
+##### Checking if all DLQ entries are applied.
+To check if all DLQ entries have been applied to spanner, you could count the DLQ files in GCS and wait for it to go to 0.
+```bash
+gcloud storage ls <outputDirectory>/dlq/severe/**.json | wc -l
+```
+
+#### End State Monitoring
+
+`retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
+
+However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
+* **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
+* **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.
+
+#### Assumptions
+* The template assumes that:
+  - The source and spanner schemas are compatible with each other.
+  - In case of multi-sharded migrations:
+    * All shards have the same mapping for table and columns from source to spanner.
+    * All shards have same dialect (mixed dialect migration will cause pipeline failure during initialization)
+    * For tables with string primary key, all shards have the same weights for a given collation (the collection weight detection
+      is queried on available shards for efficient parallel discovery).

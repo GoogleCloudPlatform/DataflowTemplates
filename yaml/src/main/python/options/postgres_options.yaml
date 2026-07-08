@@ -1,0 +1,101 @@
+options:
+  - name: "postgres_common_options"
+    parameters:
+      - order: 1
+        name: "jdbcUrl"
+        description: "Connection URL for the JDBC source/sink."
+        help: "The JDBC connection URL."
+        example: "jdbc:postgresql://your-host:5432/your-db"
+        required: true
+        type: text
+      - order: 2
+        name: "username"
+        description: "Username for the JDBC connection."
+        help: "The database username."
+        example: "my_user"
+        required: false
+        type: text
+      - order: 3
+        name: "password"
+        description: "Password for the JDBC connection."
+        help: "The database password."
+        example: "my_secret_password"
+        required: false
+        type: password
+      - order: 4
+        name: "connectionProperties"
+        description: "JDBC connection properties."
+        help: "A semicolon-separated list of key-value pairs for the JDBC connection."
+        example: "key1=value1;key2=value2"
+        required: false
+        type: text
+      - order: 5
+        name: "postgresTable"
+        description: "The name of the Postgres table."
+        help: "The name of the database table."
+        example: "public.my_table"
+        required: false
+        type: text
+      - order: 6
+        name: "query"
+        description: "The SQL query/statement to execute."
+        help: "The SQL query/statement to execute on the source/sink."
+        example: "SELECT * FROM my_table WHERE status = 'active'"
+        required: false
+        type: text
+
+  - name: "postgres_read_options"
+    parameters:
+      - order: 1
+        name: "partitionColumn"
+        description: "The name of a numeric column to be used for partitioning."
+        help: "The name of a numeric column that will be used for partitioning the data."
+        example: "id"
+        required: false
+        type: text
+      - order: 2
+        name: "numPartitions"
+        description: "The number of partitions to divide the data into."
+        help: "The number of partitions to create for parallel reading."
+        example: 10
+        required: false
+        type: integer
+      - order: 3
+        name: "fetchSize"
+        description: "The number of rows to fetch from the database at a time."
+        help: "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors."
+        example: 50000
+        required: false
+        type: integer
+      - order: 4
+        name: "disableAutoCommit"
+        description: "Whether to disable auto-commit on read."
+        help: "Whether to disable auto-commit on read. Required for some databases like Postgres."
+        example: true
+        required: false
+        type: boolean
+      - order: 5
+        name: "outputParallelization"
+        description: "Whether to reshuffle the PCollection to distribute results to all workers."
+        help: "If true, the resulting PCollection will be reshuffled."
+        example: true
+        required: false
+        type: boolean
+
+  - name: "postgres_write_options"
+    parameters:
+      - order: 1
+        name: "batchSize"
+        description: "The number of records to group for each write operation."
+        help: "The number of records to group together for each write."
+        example: 1000
+        required: false
+        type: integer
+        default: 1000
+      - order: 2
+        name: "autoSharding"
+        description: "If true, enables using a dynamically determined number of shards to write."
+        help: "If true, a dynamic number of shards will be used for writing."
+        example: false
+        required: false
+        type: boolean

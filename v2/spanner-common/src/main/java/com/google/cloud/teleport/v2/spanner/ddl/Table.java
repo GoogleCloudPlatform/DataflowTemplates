@@ -22,6 +22,7 @@ import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
@@ -35,7 +36,10 @@ public abstract class Table implements Serializable {
   public abstract String name();
 
   @Nullable
-  public abstract String interleaveInParent();
+  public abstract String interleavingParent();
+
+  @Nullable
+  public abstract String interleaveType();
 
   public abstract ImmutableList<IndexColumn> primaryKeys();
 
@@ -43,9 +47,9 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<Column> columns();
 
-  public abstract ImmutableList<String> indexes();
+  public abstract ImmutableList<Index> indexes();
 
-  public abstract ImmutableList<String> foreignKeys();
+  public abstract ImmutableList<ForeignKey> foreignKeys();
 
   public abstract ImmutableList<String> checkConstraints();
 
@@ -117,22 +121,32 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
-    if (interleaveInParent() != null) {
+    if (interleavingParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
       appendable
           .append(" \nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
+    } else if (interleavingParent() != null && Objects.equals(interleaveType(), "IN")) {
+      appendable
+          .append(" \nINTERLEAVE IN " + identifierQuote)
+          .append(interleavingParent())
+          .append(identifierQuote);
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
-      appendable.append(String.join("\n", foreignKeys()));
+      appendable.append(
+          String.join(
+              "\n", foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList())));
     }
   }
 
@@ -161,22 +175,32 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n) PRIMARY KEY (", "")));
     }
     appendable.append(")");
-    if (interleaveInParent() != null) {
+    if (interleavingParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
       appendable
           .append(",\nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
+    } else if (interleavingParent() != null && Objects.equals(interleaveType(), "IN")) {
+      appendable
+          .append(",\nINTERLEAVE IN " + identifierQuote)
+          .append(interleavingParent())
+          .append(identifierQuote);
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
-      appendable.append(String.join("\n", foreignKeys()));
+      appendable.append(
+          String.join(
+              "\n", foreignKeys().stream().map(f -> f.prettyPrint()).collect(Collectors.toList())));
     }
   }
 
@@ -212,23 +236,25 @@ public abstract class Table implements Serializable {
 
     public abstract String name();
 
-    public abstract Builder interleaveInParent(String parent);
+    public abstract Builder interleavingParent(String parent);
 
-    abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
+    public abstract Builder interleaveType(String interleave);
 
-    abstract Builder onDeleteCascade(boolean onDeleteCascade);
+    public abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 
-    abstract Builder columns(ImmutableList<Column> columns);
+    public abstract Builder onDeleteCascade(boolean onDeleteCascade);
 
-    public abstract Builder indexes(ImmutableList<String> indexes);
+    public abstract Builder columns(ImmutableList<Column> columns);
 
-    public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
+    public abstract Builder indexes(ImmutableList<Index> indexes);
+
+    public abstract Builder foreignKeys(ImmutableList<ForeignKey> foreignKeys);
 
     public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
 
     abstract ImmutableList<Column> columns();
 
-    abstract Builder dialect(Dialect dialect);
+    public abstract Builder dialect(Dialect dialect);
 
     public abstract Dialect dialect();
 

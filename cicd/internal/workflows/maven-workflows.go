@@ -17,15 +17,9 @@
 package workflows
 
 import (
-	"fmt"
-	"log"
-	"path/filepath"
 	"strconv"
-	"strings"
 
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
 )
 
 const (
@@ -37,12 +31,6 @@ const (
 	spotlessCheckCmd   = "spotless:check"
 	checkstyleCheckCmd = "checkstyle:check"
 
-	// regexes
-	javaFileRegex     = "\\.java$"
-	xmlFileRegex      = "\\.xml$"
-	markdownFileRegex = "\\.md$"
-	pomFileRegex      = "pom\\.xml$"
-
 	// notable files
 	unifiedPom = "pom.xml"
 )
@@ -51,6 +39,7 @@ const (
 // `Run` method.
 type MavenFlags interface {
 	IncludeDependencies() string
+	DoNotIncludeDependencies() string
 	IncludeDependents() string
 	SkipCheckstyle() string
 	SkipDependencyAnalysis() string
@@ -61,19 +50,30 @@ type MavenFlags interface {
 	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
-	RunIntegrationTests() string
+	RunIntegrationTests(bool) string
 	RunIntegrationSmokeTests() string
+	RunSpannerStagingIntegrationTests() string
 	RunLoadTests() string
+	RunLoadTestObserver() string
+	RunFailureInjectionTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
 	StaticSpannerInstance(string) string
+	SpannerHost(string) string
+	InternalMaven() string
+	SpecificTest(string) string
+	FailIfNoTests(bool) string
 }
 
 type mvnFlags struct{}
 
 func (*mvnFlags) IncludeDependencies() string {
-	return "-am"
+	return op.IncludeDependencies
+}
+
+func (*mvnFlags) DoNotIncludeDependencies() string {
+	return op.DoNotIncludeDependencies
 }
 
 func (*mvnFlags) IncludeDependents() string {
@@ -116,22 +116,40 @@ func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
 
-func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests,splunkDeps"
+func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {
+	if skipRunnerV2 {
+		return "-PtemplatesIntegrationRunnerV2Tests"
+	}
+	return "-PtemplatesIntegrationTests"
 }
 
 func (*mvnFlags) RunIntegrationSmokeTests() string {
-	return "-PtemplatesIntegrationSmokeTests,splunkDeps"
+	return "-PtemplatesIntegrationSmokeTests"
+}
+
+func (*mvnFlags) RunSpannerStagingIntegrationTests() string {
+	return "-PspannerStagingIntegrationTests"
 }
 
 func (*mvnFlags) RunLoadTests() string {
-	return "-PtemplatesLoadTests,splunkDeps"
+	return "-PtemplatesLoadTests"
 }
 
+func (*mvnFlags) RunLoadTestObserver() string {
+	return "-PtemplatesLoadTestObserve"
+}
+
+func (*mvnFlags) RunFailureInjectionTests() string {
+	return "-PfailureInjectionTest"
+}
+
+// The number of modules Maven is going to build in parallel in a multi-module project.
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
 }
 
+// The number of tests Maven Surefire plugin is going to run in parallel for each Maven build
+// thread. The total number of parallel tests is IntegrationTestParallelism * ThreadCount.
 func (*mvnFlags) IntegrationTestParallelism(count int) string {
 	return "-DitParallelism=" + strconv.Itoa(count)
 }
@@ -142,6 +160,28 @@ func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
 
 func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
 	return "-DspannerInstanceId=" + instanceID
+}
+
+func (*mvnFlags) SpannerHost(host string) string {
+	return "-DspannerHost=" + host
+}
+
+func (*mvnFlags) InternalMaven() string {
+	return "--settings=.mvn/settings.xml"
+}
+
+func (*mvnFlags) SpecificTest(test string) string {
+	if test == "" {
+		return ""
+	}
+	return "-Dtest=" + test
+}
+
+func (*mvnFlags) FailIfNoTests(skip bool) string {
+	if skip {
+		return "-Dsurefire.failIfNoSpecifiedTests=false"
+	}
+	return ""
 }
 
 func NewMavenFlags() MavenFlags {
@@ -199,80 +239,13 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 }
 
 func RunForChangedModules(cmd string, args ...string) error {
-	changed := flags.ChangedFiles(javaFileRegex, xmlFileRegex)
-	if len(changed) == 0 {
-		return nil
-	}
-
 	parsedArgs := []string{}
 	for _, arg := range args {
 		if arg != "" {
 			parsedArgs = append(parsedArgs, arg)
 		}
 	}
-
-	// Collect the modules together for a single call. Maven can work out the install order.
-	modules := make([]string, 0)
-
-	// We need to append the base dependency modules, because they are needed to build all
-	// other modules.
-	for root, children := range repo.GetModulesForPaths(changed) {
-		if len(children) == 0 {
-			modules = append(modules, root)
-			continue
-		}
-
-		// A change to the root POM could impact all children, so build them all.
-		buildAll := false
-		for _, c := range changed {
-			if c == filepath.Join(root, "pom.xml") {
-				buildAll = true
-				break
-			}
-		}
-		if buildAll {
-			modules = append(modules, root)
-			continue
-		}
-
-		withoutRoot := removeRoot(children)
-		if len(withoutRoot) == 0 {
-			log.Printf("All files under %s were irrelevant root-level files", root)
-		}
-		for _, m := range withoutRoot {
-			modules = append(modules, fmt.Sprintf("%s/%s", root, m))
-		}
-	}
-
-	if len(modules) == 0 {
-		log.Println("All modules were filtered out.")
-		return nil
-	}
-
-	has_it := false
-	has_common := false
-	has_v2 := false
-	for _, module := range modules {
-		if len(module) > 1 && module[:2] == "it" {
-			has_it = true
-		}
-		if module == "v2/common" {
-			has_common = true
-		}
-		if module == "v2" {
-			has_v2 = true
-		}
-	}
-	if has_it && !has_common {
-		modules = append(modules, "v2/common")
-	}
-	if (has_v2 || has_common) && !has_it {
-		modules = append(modules, "it")
-	}
-
-	modules = append(modules, "plugins/templates-maven-plugin")
-
-	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), parsedArgs...)
+	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
 type spotlessCheckWorkflow struct{}

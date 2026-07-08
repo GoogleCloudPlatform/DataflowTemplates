@@ -19,78 +19,97 @@ import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
-import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
-import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import org.apache.beam.sdk.transforms.GroupByKey;
+import java.util.concurrent.ThreadLocalRandom;
+import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.driver.TransactionConfig;
+import org.neo4j.importer.v1.Configuration;
+import org.neo4j.importer.v1.ImportSpecification;
+import org.neo4j.importer.v1.sources.Source;
+import org.neo4j.importer.v1.targets.CustomQueryTarget;
+import org.neo4j.importer.v1.targets.EntityTarget;
+import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Neo4j write transformation. */
 public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+  private static final String NODE_BATCH_SIZE_SETTING = "node_target_batch_size";
+  private static final String LEGACY_NODE_BATCH_SIZE_SETTING = "node_write_batch_size";
+  private static final Integer DEFAULT_NODE_BATCH_SIZE = 5000;
+  private static final String RELATIONSHIP_BATCH_SIZE_SETTING = "relationship_target_batch_size";
+  private static final String LEGACY_RELATIONSHIP_BATCH_SIZE_SETTING = "edge_write_batch_size";
+  private static final Integer DEFAULT_RELATIONSHIP_BATCH_SIZE = 1000;
+  private static final String QUERY_BATCH_SIZE_SETTING = "query_target_batch_size";
+  private static final String LEGACY_QUERY_BATCH_SIZE_SETTING = "custom_query_batch_size";
+  private static final Integer DEFAULT_QUERY_BATCH_SIZE = 1000;
+
+  private static final String NODE_PARALLELISM_SETTING = "node_target_parallelism";
+  private static final String LEGACY_NODE_PARALLELISM_SETTING = "node_write_parallelism";
+  private static final Integer DEFAULT_NODE_PARALLELISM_FACTOR = 5;
+  private static final String RELATIONSHIP_PARALLELISM_SETTING = "relationship_target_parallelism";
+  private static final String LEGACY_RELATIONSHIP_PARALLELISM_SETTING = "edge_write_parallelism";
+  private static final Integer DEFAULT_RELATIONSHIP_PARALLELISM_FACTOR = 1;
+  private static final String QUERY_PARALLELISM_SETTING = "query_target_parallelism";
+  private static final String LEGACY_QUERY_PARALLELISM_SETTING = "custom_query_parallelism";
+  private static final Integer DEFAULT_QUERY_PARALLELISM_FACTOR = 1;
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
-  private final JobSpec jobSpec;
+  private final ImportSpecification importSpecification;
   private final Target target;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
+  private final TargetSequence targetSequence;
 
   public Neo4jRowWriterTransform(
-      JobSpec jobSpec, ConnectionParams neoConnection, String templateVersion, Target target) {
-    this(jobSpec, target, () -> new Neo4jConnection(neoConnection, templateVersion));
+      ImportSpecification importSpecification,
+      ConnectionParams neoConnection,
+      String templateVersion,
+      TargetSequence targetSequence,
+      Target target) {
+    this(
+        importSpecification,
+        targetSequence,
+        target,
+        () -> new Neo4jConnection(neoConnection, templateVersion));
   }
 
   @VisibleForTesting
   Neo4jRowWriterTransform(
-      JobSpec jobSpec, Target target, SerializableSupplier<Neo4jConnection> connectionSupplier) {
-    this.jobSpec = jobSpec;
+      ImportSpecification importSpecification,
+      TargetSequence targetSequence,
+      Target target,
+      SerializableSupplier<Neo4jConnection> connectionSupplier) {
+    this.importSpecification = importSpecification;
     this.target = target;
     this.connectionSupplier = connectionSupplier;
+    this.targetSequence = targetSequence;
   }
 
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
-    TargetType targetType = target.getType();
+    var targetType = target.getTargetType();
     ReportedSourceType reportedSourceType = determineReportedSourceType();
-    if (targetType != TargetType.custom_query) {
+    if (targetType == TargetType.NODE || targetType == TargetType.RELATIONSHIP) {
       createIndicesAndConstraints(reportedSourceType);
     }
 
-    Config config = jobSpec.getConfig();
-    int batchSize;
-    int parallelism;
-    switch (targetType) {
-      case node:
-        batchSize = config.getNodeBatchSize();
-        parallelism = config.getNodeParallelism();
-        break;
-      case edge:
-        batchSize = config.getEdgeBatchSize();
-        parallelism = config.getEdgeParallelism();
-        break;
-      case custom_query:
-        batchSize = config.getCustomQueryBatchSize();
-        parallelism = config.getCustomQueryParallelism();
-        break;
-      default:
-        throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
-    }
+    Configuration config = importSpecification.getConfiguration();
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
@@ -103,31 +122,36 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
             connectionSupplier);
 
     return input
-        .apply("Create KV pairs", CreateKvTransform.of(parallelism))
-        .apply("Group by keys", GroupByKey.create())
-        .apply("Split into batches", ParDo.of(SplitIntoBatches.of(batchSize)))
-        .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
+        .apply(
+            "Create KV pairs",
+            WithKeys.of(ThreadLocalRandomInt.of(parallelismFactor(targetType, config))))
+        .apply("Group into batches", GroupIntoBatches.ofSize(batchSize(targetType, config)))
+        .apply(
+            targetSequence.getSequenceNumber(target) + ": Neo4j write " + target.getName(),
+            ParDo.of(neo4jUnwindFn))
         .setRowSchema(input.getSchema());
   }
 
   private ReportedSourceType determineReportedSourceType() {
-    String sourceName = target.getSource();
-    Source source = jobSpec.getSources().get(sourceName);
+    Source source =
+        importSpecification.getSources().stream()
+            .filter(src -> src.getName().equals(target.getSource()))
+            .findFirst()
+            .get();
     return ReportedSourceType.reportedSourceTypeOf(source);
   }
 
   private void createIndicesAndConstraints(ReportedSourceType reportedSourceType) {
-    try (Neo4jConnection neo4jDirectConnect = connectionSupplier.get()) {
-      var capabilities = neo4jDirectConnect.capabilities();
-
-      Set<String> cyphers = generateIndexAndConstraints(capabilities);
-      if (cyphers.isEmpty()) {
+    try (Neo4jConnection connection = connectionSupplier.get()) {
+      var capabilities = connection.capabilities();
+      var statements = CypherGenerator.getSchemaStatements((EntityTarget) target, capabilities);
+      if (statements.isEmpty()) {
         return;
       }
 
-      LOG.info("Adding {} indices and constraints", cyphers.size());
-      for (String cypher : cyphers) {
-        LOG.info("Executing cypher: {}", cypher);
+      LOG.info("Adding {} indices and constraints", statements.size());
+      for (String statement : statements) {
+        LOG.info("Executing cypher: {}", statement);
         try {
           TransactionConfig txConfig =
               TransactionConfig.builder()
@@ -139,34 +163,88 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
                               "source",
                               reportedSourceType.format(),
                               "target-type",
-                              target.getType().name(),
+                              target.getTargetType().name().toLowerCase(Locale.ROOT),
                               "step",
                               "init-schema")))
                   .build();
-          neo4jDirectConnect.executeCypher(cypher, txConfig);
+          connection.runAutocommit(statement, txConfig);
         } catch (Exception e) {
-          LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+          LOG.error("Error executing cypher: {}, {}", statement, e.getMessage());
         }
       }
     }
   }
 
   private String getCypherQuery() {
-    if (target.getType() == TargetType.custom_query) {
-      String cypher = target.getCustomQuery();
-      LOG.info("Custom cypher query: {}", cypher);
-      return cypher;
-    }
-    String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
-    LOG.info("Unwind cypher: {}", unwindCypher);
-    return unwindCypher;
-  }
+    TargetType targetType = target.getTargetType();
 
-  private Set<String> generateIndexAndConstraints(Neo4jCapabilities capabilities) {
-    return CypherGenerator.getIndexAndConstraintsCypherStatements(target, capabilities);
+    if (targetType == TargetType.QUERY) {
+      var query = ((CustomQueryTarget) target).getQuery();
+      LOG.info("Custom cypher query: {}", query);
+      return query;
+    }
+
+    var capabilities = getNeo4jCapabilities();
+    var query =
+        CypherGenerator.getImportStatement(
+            importSpecification, (EntityTarget) target, capabilities);
+    LOG.info("Unwind cypher query: {}", query);
+    return query;
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {
     return (row) -> DataCastingUtils.rowToNeo4jDataMap(row, target);
+  }
+
+  private static int batchSize(TargetType targetType, Configuration config) {
+    return switch (targetType) {
+      case NODE -> config
+          .get(Integer.class, NODE_BATCH_SIZE_SETTING, LEGACY_NODE_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_NODE_BATCH_SIZE);
+      case RELATIONSHIP -> config
+          .get(
+              Integer.class,
+              RELATIONSHIP_BATCH_SIZE_SETTING,
+              LEGACY_RELATIONSHIP_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_RELATIONSHIP_BATCH_SIZE);
+      case QUERY -> config
+          .get(Integer.class, QUERY_BATCH_SIZE_SETTING, LEGACY_QUERY_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_QUERY_BATCH_SIZE);
+    };
+  }
+
+  private static int parallelismFactor(TargetType targetType, Configuration config) {
+    return switch (targetType) {
+      case NODE -> config
+          .get(Integer.class, NODE_PARALLELISM_SETTING, LEGACY_NODE_PARALLELISM_SETTING)
+          .orElse(DEFAULT_NODE_PARALLELISM_FACTOR);
+      case RELATIONSHIP -> config
+          .get(
+              Integer.class,
+              RELATIONSHIP_PARALLELISM_SETTING,
+              LEGACY_RELATIONSHIP_PARALLELISM_SETTING)
+          .orElse(DEFAULT_RELATIONSHIP_PARALLELISM_FACTOR);
+      case QUERY -> config
+          .get(Integer.class, QUERY_PARALLELISM_SETTING, LEGACY_QUERY_PARALLELISM_SETTING)
+          .orElse(DEFAULT_QUERY_PARALLELISM_FACTOR);
+    };
+  }
+
+  private Neo4jCapabilities getNeo4jCapabilities() {
+    try (Neo4jConnection neo4jConnection = connectionSupplier.get()) {
+      return neo4jConnection.capabilities();
+    }
+  }
+
+  private record ThreadLocalRandomInt(int bound) implements SerializableFunction<Row, Integer> {
+
+    public static SerializableFunction<Row, Integer> of(int bound) {
+      return new ThreadLocalRandomInt(bound);
+    }
+
+    @Override
+    public Integer apply(Row input) {
+      return ThreadLocalRandom.current().nextInt(bound);
+    }
   }
 }

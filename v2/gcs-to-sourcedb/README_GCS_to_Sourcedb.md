@@ -1,8 +1,9 @@
 
-GCS to Source DB template
+GCS to Source DB [Deprecated] template
 ---
 Streaming pipeline. Reads Spanner change stream messages from GCS, orders them,
-transforms them, and writes them to a Source Database like MySQL.
+transforms them, and writes them to a Source Database like MySQL. [Deprecated:
+Please use Spanner Change Streams to Source Database template instead].
 
 
 :memo: This is a Google-provided template! Please
@@ -10,30 +11,34 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_to_Sourcedb).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **sourceShardsFilePath** : Source shard details file path in Cloud Storage that contains connection profile of source shards.
-* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **GCSInputDirectoryPath** : Path from where to read the change stream files.
-* **spannerProjectId** : This is the name of the Cloud Spanner project.
-* **metadataInstance** : This is the instance to store the shard progress of the files processed.
-* **metadataDatabase** : This is the database to store  the shard progress of the files processed..
-* **runIdentifier** : The identifier to distinguish between different runs of reverse replication flows.
+* **sourceShardsFilePath**: Source shard details file path in Cloud Storage that contains connection profile of source shards.
+* **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **GCSInputDirectoryPath**: Path from where to read the change stream files.
+* **spannerProjectId**: This is the name of the Cloud Spanner project.
+* **metadataInstance**: This is the instance to store the shard progress of the files processed.
+* **metadataDatabase**: This is the database to store  the shard progress of the files processed..
+* **runIdentifier**: The identifier to distinguish between different runs of reverse replication flows.
 
 ### Optional parameters
 
-* **sourceType** : This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
-* **sourceDbTimezoneOffset** : This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
-* **timerIntervalInMilliSec** : Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
-* **startTimestamp** : Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
-* **windowDuration** : The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
-* **runMode** : Regular writes to source db, reprocess does processing the specific shards marked as REPROCESS, resumeFailed does reprocess of all shards in error state, resumeSuccess continues processing shards in successful state, resumeAll continues processing all shards irrespective of state. Defaults to: regular.
-* **metadataTableSuffix** : Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **sourceType**: This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
+* **sourceDbTimezoneOffset**: This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
+* **timerIntervalInMilliSec**: Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
+* **startTimestamp**: Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
+* **windowDuration**: The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. For example, `5m`.
+* **runMode**: Regular writes to source db, reprocess does processing the specific shards marked as REPROCESS, resumeFailed does reprocess of all shards in error state, resumeSuccess continues processing shards in successful state, resumeAll continues processing all shards irrespective of state. Defaults to: regular.
+* **metadataTableSuffix**: Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **transformationJarPath**: Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
+* **transformationClassName**: Fully qualified class name for the class that contains the custom transformation logic.  When `transformationJarPath` is specified, this field is required. Defaults to empty.
+* **transformationCustomParameters**: The string that contains any custom parameters to pass to the custom transformation class. Defaults to empty.
+* **writeFilteredEventsToGcs**: When set to `true`, writes filtered events from custom transformation to Cloud Storage. Defaults to: false.
 
 
 
@@ -41,7 +46,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -55,7 +60,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/gcs-to-sourcedb
+```
 
 ### Building Template
 
@@ -74,16 +89,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_to_Sourcedb" \
--f v2/gcs-to-sourcedb
+-pl v2/gcs-to-sourcedb -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -128,6 +147,10 @@ export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 export METADATA_TABLE_SUFFIX=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export WRITE_FILTERED_EVENTS_TO_GCS=false
 
 gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -146,7 +169,11 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
-  --parameters "runIdentifier=$RUN_IDENTIFIER"
+  --parameters "runIdentifier=$RUN_IDENTIFIER" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "writeFilteredEventsToGcs=$WRITE_FILTERED_EVENTS_TO_GCS"
 ```
 
 For more information about the command, please check:
@@ -181,6 +208,10 @@ export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 export METADATA_TABLE_SUFFIX=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export WRITE_FILTERED_EVENTS_TO_GCS=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -189,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerIntervalInMilliSec=$TIMER_INTERVAL_IN_MILLI_SEC,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,writeFilteredEventsToGcs=$WRITE_FILTERED_EVENTS_TO_GCS" \
 -f v2/gcs-to-sourcedb
 ```
 
@@ -245,9 +276,13 @@ resource "google_dataflow_flex_template_job" "gcs_to_sourcedb" {
     # sourceDbTimezoneOffset = "+00:00"
     # timerIntervalInMilliSec = "1"
     # startTimestamp = "<startTimestamp>"
-    # windowDuration = "5m"
+    # windowDuration = "<windowDuration>"
     # runMode = "regular"
     # metadataTableSuffix = ""
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
+    # writeFilteredEventsToGcs = "false"
   }
 }
 ```

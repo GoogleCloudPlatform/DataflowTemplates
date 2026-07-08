@@ -11,22 +11,24 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Bigtable_to_GCS_Parquet).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Cloud Bigtable table to export.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
-* **filenamePrefix** : The prefix of the Parquet file name. For example, "table1-". Defaults to: part.
+* **bigtableProjectId**: The ID of the Google Cloud project that contains the Cloud Bigtable instance that you want to read data from.
+* **bigtableInstanceId**: The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Cloud Bigtable table to export.
+* **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: `gs://your-bucket/your-path`.
+* **filenamePrefix**: The prefix of the Parquet file name. For example, `table1-`. Defaults to: `part`.
 
 ### Optional parameters
 
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
+* **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. The default value is decided by Dataflow.
+* **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
+* **minRowCountForPageSizeCheck**: The minimum number of rows to buffer before checking if the page size threshold is reached. With large rows, the default (100) can cause excessive memory use; set a lower value (for example, 1) to flush pages more frequently. The default is 100.
 
 
 
@@ -34,7 +36,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -48,7 +50,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -74,7 +86,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Parquet" \
--f v1
+-pl v1 -am
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -115,6 +127,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export NUM_SHARDS=0
+export BIGTABLE_APP_PROFILE_ID=default
+export MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK=<minRowCountForPageSizeCheck>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --project "$PROJECT" \
@@ -125,7 +139,9 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --parameters "bigtableTableId=$BIGTABLE_TABLE_ID" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "filenamePrefix=$FILENAME_PREFIX" \
-  --parameters "numShards=$NUM_SHARDS"
+  --parameters "numShards=$NUM_SHARDS" \
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
+  --parameters "minRowCountForPageSizeCheck=$MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK"
 ```
 
 For more information about the command, please check:
@@ -152,6 +168,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export NUM_SHARDS=0
+export BIGTABLE_APP_PROFILE_ID=default
+export MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK=<minRowCountForPageSizeCheck>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -160,7 +178,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-parquet-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Parquet" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,numShards=$NUM_SHARDS" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,numShards=$NUM_SHARDS,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,minRowCountForPageSizeCheck=$MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK" \
 -f v1
 ```
 
@@ -209,9 +227,11 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_parquet" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    outputDirectory = "gs://your-bucket/your-path"
+    outputDirectory = "<outputDirectory>"
     filenamePrefix = "part"
     # numShards = "0"
+    # bigtableAppProfileId = "default"
+    # minRowCountForPageSizeCheck = "<minRowCountForPageSizeCheck>"
   }
 }
 ```

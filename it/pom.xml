@@ -28,11 +28,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <awaitility.version>4.2.0</awaitility.version>
+    <awaitility.version>4.3.0</awaitility.version>
     <commons-math3.version>3.6.1</commons-math3.version>
-    <failsafe.version>3.3.0</failsafe.version>
-    <testcontainers.version>1.18.3</testcontainers.version>
-    <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
+    <parquet-avro.version>1.17.0</parquet-avro.version>
+    <dataflow-api.version>v1b3-rev20260118-2.0.0</dataflow-api.version>
   </properties>
 
   <dependencies>
@@ -85,6 +84,11 @@
       <artifactId>failsafe</artifactId>
       <version>${failsafe.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-configuration2</artifactId>
+      <version>${commons-configuration2.version}</version>
+    </dependency>
 
     <!-- Testing -->
     <dependency>
@@ -124,6 +128,18 @@
           <!-- <compilerArgument>-parameters</compilerArgument> -->
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${autovalue.service.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>
@@ -189,5 +205,7 @@
     <module>conditions</module>
     <module>jdbc</module>
     <module>splunk</module>
+    <module>cassandra</module>
+    <module>iceberg</module>
   </modules>
 </project>

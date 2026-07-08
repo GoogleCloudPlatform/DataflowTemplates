@@ -70,10 +70,10 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Spanner_Change_Streams_to_Sharded_File_Sink",
     category = TemplateCategory.STREAMING,
-    displayName = "Spanner Change Streams to Sharded File Sink",
+    displayName = "Spanner Change Streams to Sharded File Sink [Deprecated]",
     description =
         "Streaming pipeline. Ingests data from Spanner Change Streams, splits them into shards and"
-            + " intervals , and writes them to a file sink.",
+            + " intervals , and writes them to a file sink. [Deprecated: Please use Spanner Change Streams to Source Database template instead]",
     optionsClass = Options.class,
     flexContainerName = "spanner-change-streams-to-sharded-file-sink",
     documentation =
@@ -95,6 +95,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 1,
+        groupName = "Source",
         optional = false,
         description = "Name of the change stream to read from",
         helpText =
@@ -105,6 +106,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Instance Id.",
         helpText =
@@ -115,6 +117,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Database Id.",
         helpText =
@@ -125,6 +128,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.ProjectId(
         order = 4,
+        groupName = "Source",
         optional = false,
         description = "Cloud Spanner Project Id.",
         helpText = "This is the name of the Cloud Spanner project.")
@@ -202,6 +206,7 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsWriteFolder(
         order = 11,
+        groupName = "Target",
         optional = false,
         description = "Output file directory in Cloud Storage",
         helpText =

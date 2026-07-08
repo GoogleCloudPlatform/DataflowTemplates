@@ -26,7 +26,26 @@
   <artifactId>googlecloud-to-neo4j</artifactId>
   <modelVersion>4.0.0</modelVersion>
 
+  <properties>
+    <jackson.version>2.21.0</jackson.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>2.4</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
+    <dependency>
+      <groupId>org.neo4j.importer</groupId>
+      <artifactId>import-spec</artifactId>
+      <version>1.0.0-rc17</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
@@ -45,14 +64,14 @@
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.networknt</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <version>1.0.87</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.jsqlparser</groupId>
       <artifactId>jsqlparser</artifactId>
-      <version>4.9</version>
+      <version>5.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.neo4j</groupId>
+      <artifactId>neo4j-cypher-dsl-schema-name-support</artifactId>
+      <version>2025.2.6</version>
     </dependency>
 
     <!-- Test dependencies -->
@@ -73,7 +92,14 @@
       <artifactId>beam-it-neo4j</artifactId>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </build>
 </project>

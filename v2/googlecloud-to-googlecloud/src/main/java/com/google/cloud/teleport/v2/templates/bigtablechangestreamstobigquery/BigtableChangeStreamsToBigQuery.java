@@ -33,11 +33,11 @@ import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -87,7 +87,7 @@ import org.slf4j.LoggerFactory;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-bigquery",
-    flexContainerName = "bigtable-changestreams-to-bigquery",
+    flexContainerName = "googlecloud-to-googlecloud",
     contactInformation = "https://cloud.google.com/support",
     streaming = true)
 public final class BigtableChangeStreamsToBigQuery {

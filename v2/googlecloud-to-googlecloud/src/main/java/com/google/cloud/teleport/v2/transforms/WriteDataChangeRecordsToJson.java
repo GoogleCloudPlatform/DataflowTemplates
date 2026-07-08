@@ -17,10 +17,13 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +38,77 @@ public abstract class WriteDataChangeRecordsToJson {
   private static final Logger LOG = LoggerFactory.getLogger(WriteDataChangeRecordsToJson.class);
 
   static class DataChangeRecordToJsonTextFn extends SimpleFunction<DataChangeRecord, String> {
-    private static Gson gson = new Gson();
+    private static Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+    private String spannerDatabaseId;
+
+    private String spannerInstanceId;
+
+    private String outputMessageMetadata;
+
+    public String spannerDatabaseId() {
+      return spannerDatabaseId;
+    }
+
+    public String spannerInstanceId() {
+      return spannerInstanceId;
+    }
+
+    public String outputMessageMetadata() {
+      return outputMessageMetadata;
+    }
+
+    public DataChangeRecordToJsonTextFn() {}
+
+    private DataChangeRecordToJsonTextFn(Builder builder) {
+      this.spannerDatabaseId = builder.spannerDatabaseId;
+      this.spannerInstanceId = builder.spannerInstanceId;
+      this.outputMessageMetadata = builder.outputMessageMetadata;
+    }
 
     @Override
     public String apply(DataChangeRecord record) {
-      return gson.toJson(record, DataChangeRecord.class);
+      // Early return  if no additional fields are needed to avoid unnecessary json parsing.
+      if (StringUtils.isEmpty(spannerDatabaseId())
+          && StringUtils.isEmpty(spannerInstanceId())
+          && StringUtils.isEmpty(outputMessageMetadata())) {
+        return gson.toJson(record, DataChangeRecord.class);
+      }
+
+      JsonElement jsonElement = gson.toJsonTree(record);
+      if (!StringUtils.isEmpty(spannerDatabaseId()) && !StringUtils.isEmpty(spannerInstanceId())) {
+        jsonElement.getAsJsonObject().addProperty("spannerDatabaseId", spannerDatabaseId());
+        jsonElement.getAsJsonObject().addProperty("spannerInstanceId", spannerInstanceId());
+      }
+      if (!StringUtils.isEmpty(outputMessageMetadata())) {
+        jsonElement.getAsJsonObject().addProperty("outputMessageMetadata", outputMessageMetadata());
+      }
+      return gson.toJson(jsonElement);
+    }
+
+    static class Builder {
+      private String spannerDatabaseId;
+      private String spannerInstanceId;
+
+      private String outputMessageMetadata;
+
+      public Builder setSpannerDatabaseId(String value) {
+        this.spannerDatabaseId = value;
+        return this;
+      }
+
+      public Builder setSpannerInstanceId(String value) {
+        this.spannerInstanceId = value;
+        return this;
+      }
+
+      public Builder setOutputMessageMetadata(String value) {
+        this.outputMessageMetadata = value;
+        return this;
+      }
+
+      public DataChangeRecordToJsonTextFn build() {
+        return new DataChangeRecordToJsonTextFn(this);
+      }
     }
   }
 }

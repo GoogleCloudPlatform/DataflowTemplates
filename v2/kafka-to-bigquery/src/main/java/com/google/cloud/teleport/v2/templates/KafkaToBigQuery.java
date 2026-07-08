@@ -21,7 +21,6 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
@@ -29,7 +28,7 @@ import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
+import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringKVMessageErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
@@ -124,7 +123,8 @@ import org.slf4j.LoggerFactory;
     },
     streaming = true,
     supportsAtLeastOnce = true,
-    supportsExactlyOnce = true)
+    supportsExactlyOnce = true,
+    hidden = true)
 public class KafkaToBigQuery {
 
   /* Logger for class. */
@@ -158,10 +158,33 @@ public class KafkaToBigQuery {
    * at the command-line.
    */
   public interface KafkaToBQOptions
-      extends KafkaReadOptions,
-          JavascriptTextTransformerOptions,
+      extends JavascriptTextTransformerOptions,
           BigQueryCommonOptions.WriteOptions,
           BigQueryStorageApiStreamingOptions {
+
+    @TemplateParameter.Text(
+        order = 1,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[,:a-zA-Z0-9._-]+"},
+        description = "Kafka Bootstrap Server list",
+        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        example = "localhost:9092,127.0.0.1:9093")
+    String getReadBootstrapServers();
+
+    void setReadBootstrapServers(String bootstrapServers);
+
+    @TemplateParameter.Text(
+        order = 2,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[,a-zA-Z0-9._-]+"},
+        description = "Kafka Topic(s) to read input from",
+        helpText = "Kafka topic(s) to read input from.",
+        example = "topic1,topic2")
+    String getKafkaReadTopics();
+
+    void setKafkaReadTopics(String value);
 
     /**
      * Get bootstrap server across releases.
@@ -171,10 +194,12 @@ public class KafkaToBigQuery {
      */
     @TemplateParameter.Text(
         order = 2,
+        groupName = "Source",
         optional = true,
         regexes = {"[,:a-zA-Z0-9._-]+"},
         description = "Kafka Bootstrap Server list",
-        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        helpText =
+            "The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`.",
         example = "localhost:9092,127.0.0.1:9093")
     @Deprecated
     String getBootstrapServers();
@@ -197,10 +222,11 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        groupName = "Source",
         optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
-        helpText = "Kafka topic(s) to read the input from.",
+        helpText = "The Apache Kafka input topics to read from in a comma-separated list. ",
         example = "topic1,topic2")
     String getInputTopics();
 
@@ -252,6 +278,8 @@ public class KafkaToBigQuery {
     @TemplateParameter.Boolean(
         order = 7,
         optional = true,
+        parentName = "useStorageWriteApi",
+        parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
             "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
@@ -368,7 +396,8 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, null))
+                KafkaTransform.readStringFromKafka(bootstrapServers, topicsList, kafkaConfig, false)
+                    .withoutMetadata())
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
@@ -410,7 +439,7 @@ public class KafkaToBigQuery {
         .apply("Flatten", Flatten.pCollections())
         .apply(
             "WriteTransformationFailedRecords",
-            WriteKafkaMessageErrors.newBuilder()
+            WriteStringKVMessageErrors.newBuilder()
                 .setErrorRecordsTable(
                     ObjectUtils.firstNonNull(
                         options.getOutputDeadletterTable(),
@@ -453,7 +482,7 @@ public class KafkaToBigQuery {
             .apply(
                 "ReadFromKafka",
                 KafkaTransform.readAvroFromKafka(
-                    bootstrapServers, topicsList, kafkaConfig, avroSchema, null))
+                    bootstrapServers, topicsList, kafkaConfig, avroSchema, false))
             .setCoder(
                 KvCoder.of(
                     ByteArrayCoder.of(),
@@ -517,7 +546,7 @@ public class KafkaToBigQuery {
           .apply("Flatten", Flatten.pCollections())
           .apply(
               "WriteTransformationFailedRecords",
-              WriteKafkaMessageErrors.newBuilder()
+              WriteStringKVMessageErrors.newBuilder()
                   .setErrorRecordsTable(
                       ObjectUtils.firstNonNull(
                           options.getOutputDeadletterTable(),
