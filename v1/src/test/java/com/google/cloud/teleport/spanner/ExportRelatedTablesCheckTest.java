@@ -234,7 +234,8 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     compareExpectedTables(destDbPrefix + usersChkpt, ImmutableList.of(usersTable));
 
     // Check to see selected tables exported with data and and unselected tables did not
@@ -298,7 +299,8 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     compareExpectedTables(
         destDbPrefix + multiTableChkpt, ImmutableList.of(allTypesTable, usersTable));
 
@@ -370,9 +372,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
-    compareExpectedTables(
-        destDbPrefix + emptyChkpt, ImmutableList.of(emptyTable));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + emptyChkpt, ImmutableList.of(emptyTable));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = Collections.emptyList();
@@ -476,7 +478,8 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     compareExpectedTables(destDbPrefix + chkptTwo, ImmutableList.of(tableC));
 
     // Check to see selected tables exported with data and and unselected tables did not
@@ -761,9 +764,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
-    compareExpectedTables(
-        destDbPrefix + chkptSix, ImmutableList.of(tableB, tableC));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + chkptSix, ImmutableList.of(tableB, tableC));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(tableB, tableC);
@@ -814,7 +817,8 @@ public final class ExportRelatedTablesCheckTest {
             .map(t -> t.name())
             .collect(Collectors.toList());
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     Collections.sort(filteredTables);
     compareExpectedTables(destDbPrefix + chkptSeven, filteredTables);
 
@@ -983,7 +987,8 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure only selected tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     List<String> exportTables =
         ImmutableList.of(tableA, tableB, tableC, tableE, tableF, tableH, tableI, tableJ);
     compareExpectedTables(destDbPrefix + chkptNine, exportTables);

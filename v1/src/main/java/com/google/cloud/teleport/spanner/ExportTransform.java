@@ -438,8 +438,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
                       for (NamedSchema schema : ddl.schemas()) {
                         String prefix = schema.name() + ".";
-                        if (filteredTables.stream()
-                            .anyMatch(t -> t.name().startsWith(prefix))) {
+                        if (filteredTables.stream().anyMatch(t -> t.name().startsWith(prefix))) {
                           c.output(schema.name());
                         }
                       }
