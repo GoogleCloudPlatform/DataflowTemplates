@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapp
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -114,6 +115,10 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
   @Override
   public ImmutableMap<String, UnifiedTypeMapping> getTypeMapping() {
     return MAPPING;
+  }
+
+  public String getSourceType() {
+    return Constants.POSTGRES_SOURCE_TYPE;
   }
 
   @Override

@@ -20,8 +20,8 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.transform.ReaderTransform;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
@@ -78,15 +78,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     this.ddl = ddl;
     this.schemaMapper = schemaMapper;
     this.reader = reader;
-    String dialect = options.getSourceDbDialect();
-    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
-      this.sourceType = Constants.POSTGRES_SOURCE_TYPE;
-    } else if (SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT.equals(dialect)
-        || SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT.equals(dialect)) {
-      this.sourceType = Constants.CASSANDRA_SOURCE_TYPE;
-    } else {
-      this.sourceType = Constants.MYSQL_SOURCE_TYPE;
-    }
+    this.sourceType = SourceConnectorFactory.getSourceConnectorByDialect(options).getSourceType();
   }
 
   @Override

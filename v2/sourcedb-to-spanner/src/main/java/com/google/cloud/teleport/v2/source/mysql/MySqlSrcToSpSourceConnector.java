@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapp
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -90,6 +91,10 @@ public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnec
   @Override
   public ImmutableMap<String, UnifiedTypeMapping> getTypeMapping() {
     return MAPPING;
+  }
+
+  public String getSourceType() {
+    return Constants.MYSQL_SOURCE_TYPE;
   }
 
   @Override
