@@ -323,14 +323,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (Table t : ddl.allTables()) {
-                      c.output(KV.of(t.name(), null));
-                    }
-                    // We want the resulting collection to contain the names of all entities that
-                    // need to be exported, both tables and views.  Ddl holds these separately, so
-                    // we need to add the names of all views separately here.
-                    for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
-                      c.output(KV.of(v.name(), null));
+                    if (tableNames.get().trim().isEmpty()) {
+                      for (Table t : ddl.allTables()) {
+                        c.output(KV.of(t.name(), null));
+                      }
+                      // We want the resulting collection to contain the names of all entities that
+                      // need to be exported, both tables and views. Ddl holds these separately, so
+                      // we need to add the names of all views separately here.
+                      for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
+                        c.output(KV.of(v.name(), null));
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      for (Table t : getFilteredTables(ddl, tablesList)) {
+                        c.output(KV.of(t.name(), null));
+                      }
                     }
                   }
                 }));
@@ -343,9 +350,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Model model : ddl.models()) {
-                      c.output(model.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Model model : ddl.models()) {
+                        c.output(model.name());
+                      }
                     }
                   }
                 }));
@@ -358,9 +367,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (PropertyGraph graph : ddl.propertyGraphs()) {
-                      c.output(graph.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (PropertyGraph graph : ddl.propertyGraphs()) {
+                        c.output(graph.name());
+                      }
                     }
                   }
                 }));
@@ -373,9 +384,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (ChangeStream changeStream : ddl.changeStreams()) {
-                      c.output(changeStream.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (ChangeStream changeStream : ddl.changeStreams()) {
+                        c.output(changeStream.name());
+                      }
                     }
                   }
                 }));
@@ -389,8 +402,20 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (Sequence sequence : ddl.sequences()) {
-                      c.output(sequence.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      for (Sequence sequence : ddl.sequences()) {
+                        c.output(sequence.name());
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
+                      for (Sequence sequence : ddl.sequences()) {
+                        String seqName = sequence.name().toLowerCase();
+                        if (filteredTables.stream()
+                            .anyMatch(t -> t.prettyPrint().toLowerCase().contains(seqName))) {
+                          c.output(sequence.name());
+                        }
+                      }
                     }
                   }
                 }));
@@ -404,8 +429,20 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (NamedSchema t : ddl.schemas()) {
-                      c.output(t.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      for (NamedSchema t : ddl.schemas()) {
+                        c.output(t.name());
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
+                      for (NamedSchema schema : ddl.schemas()) {
+                        String prefix = schema.name() + ".";
+                        if (filteredTables.stream()
+                            .anyMatch(t -> t.name().startsWith(prefix))) {
+                          c.output(schema.name());
+                        }
+                      }
                     }
                   }
                 }));
@@ -418,9 +455,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Placement placement : ddl.placements()) {
-                      c.output(placement.name());
+                    if (tableNames.get().trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Placement placement : ddl.placements()) {
+                        c.output(placement.name());
+                      }
                     }
                   }
                 }));
@@ -433,9 +472,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Udf udf : ddl.udfs()) {
-                      c.output(udf.specificName());
+                    if (tableNames.get().trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Udf udf : ddl.udfs()) {
+                        c.output(udf.specificName());
+                      }
                     }
                   }
                 }));
