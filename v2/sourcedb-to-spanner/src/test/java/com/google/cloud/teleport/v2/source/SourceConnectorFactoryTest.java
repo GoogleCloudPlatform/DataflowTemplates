@@ -43,8 +43,7 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -54,8 +53,7 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -65,8 +63,7 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
   }
@@ -76,8 +73,7 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
   }
