@@ -79,7 +79,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     this.schemaMapper = schemaMapper;
     this.reader = reader;
     this.sourceType =
-        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options).getSourceType();
+        SourceConnectorFactory.getSourceConnectorByDialect(options).getSourceType();
   }
 
   @Override

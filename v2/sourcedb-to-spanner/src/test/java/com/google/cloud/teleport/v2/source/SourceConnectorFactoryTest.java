@@ -44,7 +44,7 @@ public class SourceConnectorFactoryTest {
     options.setSourceDbDialect(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT);
 
     ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
+        SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -55,7 +55,7 @@ public class SourceConnectorFactoryTest {
     options.setSourceDbDialect(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT);
 
     ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
+        SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -66,7 +66,7 @@ public class SourceConnectorFactoryTest {
     options.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
 
     ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
+        SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
   }
@@ -77,7 +77,7 @@ public class SourceConnectorFactoryTest {
     options.setSourceDbDialect(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
 
     ISrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
+        SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
   }
@@ -90,7 +90,7 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect(options));
+            () -> SourceConnectorFactory.getSourceConnectorByDialect(options));
 
     assertThat(thrown)
         .hasMessageThat()
@@ -105,7 +105,7 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect(options));
+            () -> SourceConnectorFactory.getSourceConnectorByDialect(options));
 
     assertThat(thrown).hasMessageThat().contains("Unsupported source database dialect: null");
   }
