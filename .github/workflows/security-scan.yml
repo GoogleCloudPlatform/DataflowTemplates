@@ -1,0 +1,80 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [master, main]
+  pull_request_target:
+    types: [opened, reopened]
+  schedule:
+    # Every day at 6:00 AM UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy security scan
+    # Skip on pull_request_target — that event runs with full secrets and must
+    # never check out / execute PR-supplied code. See dependabot-notify below.
+    # Also skip on fork-based pull_request events.
+    if: github.event_name != 'pull_request_target' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@b22c66273205240d86582638b860f9b25772b4d3 # v3
+        # Fork PRs have restricted GITHUB_TOKEN permissions and cannot upload
+        # SARIF to Security tab. Keep scan behavior, but skip upload in forks.
+        if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Notify Slack on scheduled scan failure
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":rotating_light: Trivy detected HIGH/CRITICAL CVEs on master in ${{ github.repository }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nFindings: ${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=is%3Aopen+tool%3ATrivy"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
+
+  dependabot-notify:
+    name: Notify Slack on Dependabot PR
+    # IMPORTANT: This job uses pull_request_target which has full secrets access.
+    # Do NOT add a `checkout` step here — that would run PR-supplied code with secrets.
+    # This job's only purpose is to POST to Slack with metadata; nothing else.
+    if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":robot_face: Dependabot opened a PR in ${{ github.repository }}\nTitle: ${{ github.event.pull_request.title }}\nPR: ${{ github.event.pull_request.html_url }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
