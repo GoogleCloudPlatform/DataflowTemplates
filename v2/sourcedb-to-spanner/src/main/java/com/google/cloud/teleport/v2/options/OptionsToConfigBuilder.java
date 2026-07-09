@@ -127,7 +127,7 @@ public final class OptionsToConfigBuilder {
       String workerZone,
       String workerMachineType) {
     AbstractJdbcSrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(sqlDialect);
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(sqlDialect);
     JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =
         connector.getSourceSchemaReference(dbName, namespace);

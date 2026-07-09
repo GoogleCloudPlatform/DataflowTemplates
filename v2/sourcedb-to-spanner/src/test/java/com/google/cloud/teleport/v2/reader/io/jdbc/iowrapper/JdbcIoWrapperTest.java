@@ -77,7 +77,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class JdbcIoWrapperTest {
 
   private static JdbcIOWrapperConfig.Builder builderWithMySqlDefaults() {
-    return SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL)
+    return SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.MYSQL)
         .getJdbcIOWrapperConfigBuilder();
   }
 

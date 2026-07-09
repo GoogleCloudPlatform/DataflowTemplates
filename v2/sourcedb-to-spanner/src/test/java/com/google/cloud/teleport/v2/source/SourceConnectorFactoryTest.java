@@ -43,7 +43,8 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -53,7 +54,8 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
   }
@@ -63,7 +65,8 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
   }
@@ -73,7 +76,8 @@ public class SourceConnectorFactoryTest {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
 
-    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
   }
@@ -86,7 +90,7 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceConnectorByDialect(options));
+            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect(options));
 
     assertThat(thrown)
         .hasMessageThat()
@@ -101,7 +105,7 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceConnectorByDialect(options));
+            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect(options));
 
     assertThat(thrown).hasMessageThat().contains("Unsupported source database dialect: null");
   }
@@ -109,7 +113,7 @@ public class SourceConnectorFactoryTest {
   @Test
   public void testGetSourceConnectorByDialect_sqlDialectMySql() {
     AbstractJdbcSrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL);
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.MYSQL);
 
     assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
   }
@@ -117,7 +121,7 @@ public class SourceConnectorFactoryTest {
   @Test
   public void testGetSourceConnectorByDialect_sqlDialectPostgres() {
     AbstractJdbcSrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.POSTGRESQL);
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.POSTGRESQL);
 
     assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
   }
@@ -127,7 +131,7 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceConnectorByDialect((SQLDialect) null));
+            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect((SQLDialect) null));
 
     assertThat(thrown).hasMessageThat().contains("Unsupported SQL dialect: null");
   }

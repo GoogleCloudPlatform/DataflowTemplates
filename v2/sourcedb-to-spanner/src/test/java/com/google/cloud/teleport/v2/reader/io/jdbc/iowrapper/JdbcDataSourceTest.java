@@ -51,7 +51,7 @@ public class JdbcDataSourceTest {
         JdbcSchemaReference.builder().setDbName("testDB").build();
 
     JdbcIOWrapperConfig jdbcIOWrapperConfig =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL)
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.MYSQL)
             .getJdbcIOWrapperConfigBuilder()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
@@ -97,7 +97,7 @@ public class JdbcDataSourceTest {
         JdbcSchemaReference.builder().setDbName("testDB").build();
 
     JdbcIOWrapperConfig jdbcIOWrapperConfig =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL)
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.MYSQL)
             .getJdbcIOWrapperConfigBuilder()
             .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
             .setSourceSchemaReference(testSourceSchemaReference)
