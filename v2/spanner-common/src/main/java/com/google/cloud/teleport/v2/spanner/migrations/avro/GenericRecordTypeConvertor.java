@@ -621,9 +621,17 @@ public class GenericRecordTypeConvertor {
       return bigDecimal.toPlainString();
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
       Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
+      // Handle PostgreSQL "24:00:00" (86400000000000L ns) separately as LocalTime rejects it.
+      if (nanoseconds == 86400000000000L) {
+        return "24:00:00";
+      }
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
       Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
+      // Handle PostgreSQL "24:00:00" (86400000000000L ns) separately as LocalTime rejects it.
+      if (nanoseconds == 86400000000000L) {
+        return "24:00:00";
+      }
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
       // We cannot convert to nanoseconds directly here since that can overflow for Long.

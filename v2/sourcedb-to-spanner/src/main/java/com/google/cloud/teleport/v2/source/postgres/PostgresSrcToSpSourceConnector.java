@@ -89,6 +89,10 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
+          .put("TIME", UnifiedMappingProvider.Type.TIME)
+          .put("TIME WITHOUT TIME ZONE", UnifiedMappingProvider.Type.TIME)
+          .put("TIMETZ", UnifiedMappingProvider.Type.TIME_WITH_TIME_ZONE)
+          .put("TIME WITH TIME ZONE", UnifiedMappingProvider.Type.TIME_WITH_TIME_ZONE)
           .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("TIMESTAMPTZ", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
           .put("TIMESTAMP WITH TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)

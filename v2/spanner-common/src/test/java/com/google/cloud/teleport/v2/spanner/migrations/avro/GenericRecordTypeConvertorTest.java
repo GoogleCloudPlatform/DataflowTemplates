@@ -223,6 +223,16 @@ public class GenericRecordTypeConvertorTest {
             getTestCassandraAnnotationNone());
     assertEquals("Test time_micros_col conversion: ", "13:20:35", result);
 
+    // Test special 24:00:00 value for time_micros
+    genericRecord.put("time_micros_col", 86400000000L);
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test time_micros_col special conversion: ", "24:00:00", result);
+
     col = "time_millis_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
@@ -231,6 +241,16 @@ public class GenericRecordTypeConvertorTest {
             genericRecord.getSchema().getField(col).schema(),
             getTestCassandraAnnotationNone());
     assertEquals("Test time_millis_col conversion: ", "13:20:35", result);
+
+    // Test special 24:00:00 value for time_millis
+    genericRecord.put("time_millis_col", 86400000);
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test time_millis_col special conversion: ", "24:00:00", result);
 
     col = "timestamp_micros_col";
     result =

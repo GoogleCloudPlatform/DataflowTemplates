@@ -104,6 +104,19 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
 
+  private static final ResultSetValueMapper<String> postgresTimeToAvroTimeMicros =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+        // Handle PostgreSQL "24:00:00" manually (86400000000L micros) as LocalTime.parse rejects it.
+        if (value.startsWith("24:00:00")) {
+          return 86400000000L;
+        }
+        java.time.LocalTime time = java.time.LocalTime.parse(value);
+        return java.util.concurrent.TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
+      };
+
   private static final JdbcMappings JDBC_MAPPINGS =
       /*
       Postgres JDBC uses binary encoding for most types ref:org.postgresql.jdbc.PgConnection.getSupportedBinaryOids()
@@ -234,6 +247,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
+          .put("TIME", ResultSet::getString, postgresTimeToAvroTimeMicros, 8)
+          .put("TIME WITHOUT TIME ZONE", ResultSet::getString, postgresTimeToAvroTimeMicros, 8)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
           .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)

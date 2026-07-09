@@ -27,6 +27,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
@@ -57,6 +58,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<BigDecimal>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitBigDecimals(start, end, partitionColumn))
+          .put(
+              LocalTime.class,
+              (BoundarySplitter<LocalTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitLocalTimes(start, end))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
@@ -181,6 +187,24 @@ public class BoundarySplitterFactory {
      * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
+  }
+
+  private static LocalTime splitLocalTimes(LocalTime start, LocalTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = LocalTime.MIN;
+    }
+    if (end == null) {
+      end = LocalTime.MAX;
+    }
+
+    Long midNanos = splitLongs(start.toNanoOfDay(), end.toNanoOfDay());
+    if (midNanos == null) {
+      return null;
+    }
+    return LocalTime.ofNanoOfDay(midNanos);
   }
 
   @VisibleForTesting

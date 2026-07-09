@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -58,6 +59,7 @@ public class BoundaryExtractorFactory {
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
+          .put(LocalTime.class, (BoundaryExtractor<LocalTime>) BoundaryExtractorFactory::fromLocalTimes)
           .put(
               Duration.class,
               (BoundaryExtractor<Duration>)
@@ -297,6 +299,34 @@ public class BoundaryExtractorFactory {
         .setStart(resultSet.getDouble(1))
         .setEnd(resultSet.getDouble(2))
         .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static LocalTime parsePostgresTime(String timeStr) {
+    if (timeStr == null) {
+      return null;
+    }
+    if (timeStr.startsWith("24:00:00")) {
+      return LocalTime.MAX;
+    }
+    return LocalTime.parse(timeStr);
+  }
+
+  private static Boundary<LocalTime> fromLocalTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(LocalTime.class));
+    resultSet.next();
+    return Boundary.<LocalTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(parsePostgresTime(resultSet.getString(1)))
+        .setEnd(parsePostgresTime(resultSet.getString(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

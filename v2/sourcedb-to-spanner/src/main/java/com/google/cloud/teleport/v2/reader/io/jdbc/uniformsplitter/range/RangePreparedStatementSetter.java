@@ -55,13 +55,26 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
   }
 
   /**
-   * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID).
+   * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID),
+   * and convert LocalTime.MAX to "24:00:00" to match PostgreSQL's end-of-day time format.
    */
-  private static Object convertIfUuid(Object val, PartitionColumn pc) {
+  private static Object convertSpecialTypes(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes
         && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
       java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
       return new java.util.UUID(bb.getLong(), bb.getLong());
+    }
+    if (val instanceof java.time.LocalTime localTime) {
+      if (java.time.LocalTime.MAX.equals(localTime)) {
+        org.postgresql.util.PGobject pgObj = new org.postgresql.util.PGobject();
+        pgObj.setType("time");
+        try {
+          pgObj.setValue("24:00:00");
+        } catch (java.sql.SQLException e) {
+          throw new RuntimeException(e);
+        }
+        return pgObj;
+      }
     }
     return val;
   }
@@ -97,8 +110,8 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
     Range range = element;
     for (long i = 0; i < rangeColumns; i++) {
       PartitionColumn pc = partitionColumns.get((int) i);
-      Object start = convertIfUuid(range.start(), pc);
-      Object end = convertIfUuid(range.end(), pc);
+      Object start = convertSpecialTypes(range.start(), pc);
+      Object end = convertSpecialTypes(range.end(), pc);
       preparedStatement.setObject(startParameterIdx++, true /* include column */);
       preparedStatement.setObject(startParameterIdx++, start);
       preparedStatement.setObject(startParameterIdx++, end);

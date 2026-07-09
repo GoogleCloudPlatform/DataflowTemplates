@@ -441,7 +441,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(true)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.DURATION)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.LOCAL_TIME)
                     .setColumnTypeName("time")
                     .setDatetimePrecision(0)
                     .build(),

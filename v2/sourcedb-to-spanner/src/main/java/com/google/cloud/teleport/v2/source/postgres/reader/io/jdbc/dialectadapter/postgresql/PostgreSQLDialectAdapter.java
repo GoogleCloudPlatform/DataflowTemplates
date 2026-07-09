@@ -81,8 +81,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           .put("FLOAT4", SourceColumnIndexInfo.IndexType.FLOAT)
           .put("FLOAT8", SourceColumnIndexInfo.IndexType.DOUBLE)
           .put("DATE", SourceColumnIndexInfo.IndexType.DATE)
-          .put("TIME", SourceColumnIndexInfo.IndexType.DURATION)
-          .put("TIMETZ", SourceColumnIndexInfo.IndexType.DURATION)
+          .put("TIME", SourceColumnIndexInfo.IndexType.LOCAL_TIME)
           .put("BYTEA", SourceColumnIndexInfo.IndexType.BINARY)
           .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
           .build();

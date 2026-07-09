@@ -904,6 +904,74 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
+  public void testFromLocalTime() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(java.time.LocalTime.class)
+            .build();
+    BoundaryExtractor<java.time.LocalTime> extractor = BoundaryExtractorFactory.create(java.time.LocalTime.class);
+    String startStr = "08:00:00";
+    String endStr = "24:00:00";
+    java.time.LocalTime start = java.time.LocalTime.parse("08:00:00");
+    java.time.LocalTime end = java.time.LocalTime.MAX;
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(eq(1))).thenReturn(startStr);
+    when(mockResultSet.getString(eq(2))).thenReturn(endStr);
+    Boundary<java.time.LocalTime> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<java.time.LocalTime>, Boundary<java.time.LocalTime>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(java.time.LocalTime.parse("15:59:59.999999999"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+
+    // Test null bounds
+    when(mockResultSet.getString(eq(1))).thenReturn(null);
+    when(mockResultSet.getString(eq(2))).thenReturn(null);
+    Boundary<java.time.LocalTime> boundaryNull =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+    assertThat(boundaryNull.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
+                mockResultSet,
+                null,
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build()));
+  }
+
+  @Test
   public void testFromUnsupported() {
     assertThrows(
         UnsupportedOperationException.class,

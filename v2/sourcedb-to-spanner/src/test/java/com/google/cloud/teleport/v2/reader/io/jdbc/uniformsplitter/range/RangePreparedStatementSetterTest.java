@@ -360,4 +360,56 @@ public class RangePreparedStatementSetterTest {
     verify(mockStatement).setObject(2, new java.util.UUID(0L, 0L));
     verify(mockStatement).setObject(3, new java.util.UUID(-1L, -1L));
   }
+
+  @Test
+  public void testSetParameters_withLocalTimeMax() throws Exception {
+    java.time.LocalTime start = java.time.LocalTime.parse("08:00:00");
+    java.time.LocalTime end = java.time.LocalTime.MAX;
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_time_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("time_col")
+            .setColumnClass(java.time.LocalTime.class)
+            .setColumnTypeName("time") // Time column type
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("time")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(java.time.LocalTime.class))
+            .setColName("time_col")
+            .setColClass(java.time.LocalTime.class)
+            .setStart(start)
+            .setEnd(end)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    Object capturedEnd = captor.getValue();
+    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
+    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(pgObj.getType()).isEqualTo("time");
+    assertThat(pgObj.getValue()).isEqualTo("24:00:00");
+  }
 }

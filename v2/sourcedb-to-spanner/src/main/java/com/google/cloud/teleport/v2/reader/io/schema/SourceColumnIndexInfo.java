@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -172,20 +173,23 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     FLOAT,
     DOUBLE,
     DURATION,
+    LOCAL_TIME,
     OTHER
   };
 
   // TODO(vardhanvthigle): handle other types
   public static final ImmutableMap<IndexType, Class> INDEX_TYPE_TO_CLASS =
-      ImmutableMap.of(
-          IndexType.NUMERIC, Long.class,
-          IndexType.STRING, String.class,
-          IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
-          IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
-          IndexType.TIME_STAMP, Timestamp.class,
-          IndexType.DATE, java.sql.Date.class,
-          IndexType.DECIMAL, BigDecimal.class,
-          IndexType.FLOAT, Float.class,
-          IndexType.DOUBLE, Double.class,
-          IndexType.DURATION, Duration.class);
+      ImmutableMap.<IndexType, Class>builder()
+          .put(IndexType.NUMERIC, Long.class)
+          .put(IndexType.STRING, String.class)
+          .put(IndexType.BIG_INT_UNSIGNED, BigDecimal.class)
+          .put(IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS)
+          .put(IndexType.TIME_STAMP, Timestamp.class)
+          .put(IndexType.DATE, java.sql.Date.class)
+          .put(IndexType.DECIMAL, BigDecimal.class)
+          .put(IndexType.FLOAT, Float.class)
+          .put(IndexType.DOUBLE, Double.class)
+          .put(IndexType.DURATION, Duration.class)
+          .put(IndexType.LOCAL_TIME, LocalTime.class)
+          .build();
 }

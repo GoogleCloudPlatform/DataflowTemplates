@@ -79,6 +79,8 @@ public class PostgreSQLMappingProviderTest {
         .put("SMALLINT", "\"int\"")
         .put("SMALLSERIAL", "\"int\"")
         .put("TEXT", "\"string\"")
+        .put("TIME", "{\"type\":\"long\",\"logicalType\":\"time-micros\"}")
+        .put("TIME WITHOUT TIME ZONE", "{\"type\":\"long\",\"logicalType\":\"time-micros\"}")
         .put("TIMESTAMP", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put(
             "TIMESTAMPTZ",
