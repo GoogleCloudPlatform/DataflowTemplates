@@ -13,10 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider;
+package com.google.cloud.teleport.v2.source.postgres.reader.io.schema.typemapping.provider;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.junit.Test;
@@ -28,16 +29,17 @@ public class PostgreSQLMappingProviderTest {
     // We don't have a use case for arrays yet.
     Long[] testArrayBounds = {};
     ImmutableMap<String, String> stringifiedMapping =
-        PostgreSQLMappingProvider.getMapping().entrySet().stream()
-            .map(
-                e ->
-                    Map.entry(
-                        e.getKey(),
-                        e.getValue()
-                            .getSchema(testMods, testArrayBounds)
-                            .toString()
-                            .replaceAll("\\s+", "")))
-            .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+        new PostgresSrcToSpSourceConnector()
+            .getTypeMapping().entrySet().stream()
+                .map(
+                    e ->
+                        Map.entry(
+                            e.getKey(),
+                            e.getValue()
+                                .getSchema(testMods, testArrayBounds)
+                                .toString()
+                                .replaceAll("\\s+", "")))
+                .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
     assertThat(stringifiedMapping).isEqualTo(expectedMapping());
   }
 

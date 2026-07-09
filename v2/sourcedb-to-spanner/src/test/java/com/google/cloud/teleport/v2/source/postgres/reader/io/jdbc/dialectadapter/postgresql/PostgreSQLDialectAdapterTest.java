@@ -19,7 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
@@ -42,6 +45,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import javax.sql.DataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -786,5 +790,33 @@ public class PostgreSQLDialectAdapterTest {
     assertThat(result).hasSize(1);
     assertThat(result).containsKey(table1);
     assertThat(result).doesNotContainKey(extraTable);
+  }
+
+  @Test
+  public void testSetDataSourceLoginTimeout() {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    when(mockBasicDataSource.getUrl()).thenReturn("jdbc://testIp:5432/testDB");
+
+    long timeoutMs = 1000L;
+    adapter.setDataSourceLoginTimeout(mockBasicDataSource, timeoutMs);
+
+    verify(mockBasicDataSource).setMaxWaitMillis(timeoutMs);
+    verify(mockBasicDataSource).addConnectionProperty("loginTimeout", "1");
+    verify(mockBasicDataSource).addConnectionProperty("connectTimeout", "1");
+    verify(mockBasicDataSource).addConnectionProperty("socketTimeout", "1");
+  }
+
+  @Test
+  public void testSetDataSourceLoginTimeout_doesNotOverrideExistingUrlParams() {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    when(mockBasicDataSource.getUrl())
+        .thenReturn("jdbc://testIp:5432/testDB?connectTimeout=2000&socketTimeout=2000");
+
+    long timeoutMs = 1000L;
+    adapter.setDataSourceLoginTimeout(mockBasicDataSource, timeoutMs);
+
+    verify(mockBasicDataSource).setMaxWaitMillis(timeoutMs);
+    verify(mockBasicDataSource, never()).addConnectionProperty(eq("connectTimeout"), anyString());
+    verify(mockBasicDataSource, never()).addConnectionProperty(eq("socketTimeout"), anyString());
   }
 }

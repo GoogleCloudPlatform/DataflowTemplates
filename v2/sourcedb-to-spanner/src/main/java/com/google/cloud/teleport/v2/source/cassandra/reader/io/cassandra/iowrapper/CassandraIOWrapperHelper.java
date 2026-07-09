@@ -27,7 +27,8 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappings.CassandraMappingsProvider;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -128,7 +129,9 @@ class CassandraIOWrapperHelper {
         .map(
             tableEntry -> {
               SourceTableSchema.Builder sourceTableSchemaBuilder =
-                  SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableEntry.getKey());
+                  SourceTableSchema.builder(
+                          new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+                      .setTableName(tableEntry.getKey());
               tableEntry
                   .getValue()
                   .entrySet()

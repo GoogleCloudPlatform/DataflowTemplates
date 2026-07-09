@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.ReaderImpl;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
@@ -65,7 +65,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
   private Ddl ddl;
   private ISchemaMapper schemaMapper;
   private ReaderImpl reader;
-  private SQLDialect sqlDialect;
+  private String sourceType;
 
   public MigrateTableTransform(
       SourceDbToSpannerOptions options,
@@ -78,7 +78,15 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     this.ddl = ddl;
     this.schemaMapper = schemaMapper;
     this.reader = reader;
-    this.sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
+    String dialect = options.getSourceDbDialect();
+    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
+      this.sourceType = Constants.POSTGRES_SOURCE_TYPE;
+    } else if (SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT.equals(dialect)
+        || SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT.equals(dialect)) {
+      this.sourceType = Constants.CASSANDRA_SOURCE_TYPE;
+    } else {
+      this.sourceType = Constants.MYSQL_SOURCE_TYPE;
+    }
   }
 
   @Override
@@ -133,7 +141,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     // Dump Failed rows to DLQ
     String dlqDirectory = outputDirectory + "dlq/severe/";
     LOG.info("DLQ directory: {}", dlqDirectory);
-    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl, sqlDialect, this.schemaMapper);
+    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl, sourceType, this.schemaMapper);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -146,7 +154,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     String filterEventsDirectory = outputDirectory + "filteredEvents/";
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     DeadLetterQueue filteredEventsQueue =
-        DeadLetterQueue.create(filterEventsDirectory, ddl, sqlDialect, this.schemaMapper);
+        DeadLetterQueue.create(filterEventsDirectory, ddl, sourceType, this.schemaMapper);
     filteredEventsQueue.filteredEventsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)

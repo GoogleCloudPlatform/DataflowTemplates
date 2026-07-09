@@ -45,7 +45,8 @@ import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscovery
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappings.CassandraMappingsProvider;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -132,7 +133,8 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
                 .setKeyspaceName(dataSource.cassandra().loggedKeySpace())
                 .build());
     SourceTableSchema.Builder sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(PRIMITIVE_TYPES_TABLE);
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+            .setTableName(PRIMITIVE_TYPES_TABLE);
     discoverTableSchema
         .get(PRIMITIVE_TYPES_TABLE)
         .forEach(
@@ -338,7 +340,8 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
                 ImmutableList.of(PRIMITIVE_TYPES_TABLE));
 
         SourceTableSchema.Builder sourceTableSchemaBuilder =
-            SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(PRIMITIVE_TYPES_TABLE);
+            SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+                .setTableName(PRIMITIVE_TYPES_TABLE);
         discoverTableSchema
             .get(PRIMITIVE_TYPES_TABLE)
             .forEach(

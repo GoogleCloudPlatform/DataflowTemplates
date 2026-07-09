@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.confi
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
@@ -33,8 +32,6 @@ import org.joda.time.Duration;
 
 /** MySql Default Configuration for {@link JdbcIoWrapper JdbcIoWrapper}. */
 public class MySqlConfigDefaults {
-
-  public static final MapperType DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE = MapperType.MYSQL;
   public static final DialectAdapter DEFAULT_MYSQL_DIALECT_ADAPTER =
       new MysqlDialectAdapter(MySqlVersion.DEFAULT);
   public static final JdbcValueMappingsProvider DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER =

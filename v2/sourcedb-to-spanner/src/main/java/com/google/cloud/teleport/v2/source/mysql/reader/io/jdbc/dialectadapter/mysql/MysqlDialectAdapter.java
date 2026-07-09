@@ -54,6 +54,7 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,6 +104,32 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
+  }
+
+  @Override
+  public void setDataSourceLoginTimeout(
+      DataSource dataSource, long connectivityTimeoutMilliSeconds) {
+    if (dataSource instanceof BasicDataSource) {
+      BasicDataSource basicDataSource = (BasicDataSource) dataSource;
+      basicDataSource.setMaxWaitMillis(connectivityTimeoutMilliSeconds);
+      String connectivityTimeout = String.valueOf(connectivityTimeoutMilliSeconds);
+      setConnectionProperty(basicDataSource, "connectTimeout", connectivityTimeout);
+      setConnectionProperty(basicDataSource, "socketTimeout", connectivityTimeout);
+    }
+  }
+
+  private void setConnectionProperty(BasicDataSource dataSource, String property, String value) {
+    String url = dataSource.getUrl();
+    if (!url.contains(property)) {
+      dataSource.addConnectionProperty(property, value);
+      logger.info("Set {} = {}  for schema discovery of {}", property, value, dataSource);
+    } else {
+      logger.warn(
+          "Property {} already set in URL {}. Not overriding with {} for schema discovery.",
+          property,
+          url,
+          value);
+    }
   }
 
   /**

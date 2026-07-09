@@ -41,6 +41,16 @@ import java.util.Map;
 public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitterDBAdapter {
 
   /**
+   * Set the login timeout and other connectivity properties for the datasource. //TODO- see how to
+   * move this to the connector. Dialect adaptor need not have a reference to the datasource.
+   *
+   * @param dataSource The datasource.
+   * @param connectivityTimeoutMilliSeconds The timeout in milliseconds.
+   */
+  default void setDataSourceLoginTimeout(
+      javax.sql.DataSource dataSource, long connectivityTimeoutMilliSeconds) {}
+
+  /**
    * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
    * passed via options.
    *

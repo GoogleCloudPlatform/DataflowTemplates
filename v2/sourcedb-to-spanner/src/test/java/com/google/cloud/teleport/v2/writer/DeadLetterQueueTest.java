@@ -25,10 +25,11 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -92,8 +93,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testCreateGCSDLQ() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     assertEquals("testDir", dlq.getDlqDirectory());
 
     assertTrue(dlq.createDLQTransform("testDir") instanceof WriteDLQ);
@@ -109,7 +109,8 @@ public class DeadLetterQueueTest {
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("", "mydb");
     SourceTableSchema schema =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "new_quantity", new SourceColumnType("Bigint", new Long[] {}, null))
@@ -134,7 +135,7 @@ public class DeadLetterQueueTest {
         DeadLetterQueue.create(
             "LOG",
             spannerDdlWithLogicalTypes,
-            SQLDialect.MYSQL,
+            "mysql",
             getIdentityMapper(spannerDdlWithLogicalTypes));
 
     RowContext r1 =
@@ -169,8 +170,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testCreateIgnoreDlq() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "IGNORE", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("IGNORE", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     assertEquals("IGNORE", dlq.getDlqDirectory());
     assertNull(dlq.createDLQTransform("IGNORE"));
   }
@@ -178,14 +178,14 @@ public class DeadLetterQueueTest {
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(null, spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create(null, spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     dlq.createDLQTransform(null);
   }
 
   @Test
   public void testFilteredRowsToLog() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("LOG", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
@@ -213,7 +213,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testFailedMutationsToDLQ_exercisesDoFn() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("LOG", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     Mutation m1 = Mutation.newInsertBuilder("testTable").set("id").to(1).build();
     MutationGroup mg = MutationGroup.create(m1);
 
@@ -226,14 +226,13 @@ public class DeadLetterQueueTest {
   @Test
   public void testLogicalTypes() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("LOG", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
   }
 
   @Test
   public void testFailedRowsToLog() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "LOG", spannerDdl, SQLDialect.POSTGRESQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("LOG", spannerDdl, "postgresql", getIdentityMapper(spannerDdl));
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
@@ -292,8 +291,7 @@ public class DeadLetterQueueTest {
     Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
         .thenReturn("migration_id");
 
-    DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", ddl, SQLDialect.MYSQL, mockSchemaMapper);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", ddl, "mysql", mockSchemaMapper);
 
     RowContext r1 =
         RowContext.builder()
@@ -322,8 +320,7 @@ public class DeadLetterQueueTest {
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("nonExistentTable");
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -349,8 +346,7 @@ public class DeadLetterQueueTest {
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.POSTGRESQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "postgresql", getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -374,8 +370,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testMutationToDlqElement() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
             .set("firstName")
@@ -395,7 +390,8 @@ public class DeadLetterQueueTest {
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "id", new SourceColumnType("Bigint", new Long[] {}, null))
@@ -406,8 +402,7 @@ public class DeadLetterQueueTest {
             .build();
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -476,7 +471,7 @@ public class DeadLetterQueueTest {
     srcTableToShardIdColumnMap.put("srcTable", "shard_id");
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", ddlWithShardId, SQLDialect.MYSQL, mockSchemaMapper);
+        DeadLetterQueue.create("testDir", ddlWithShardId, "mysql", mockSchemaMapper);
 
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
@@ -521,7 +516,7 @@ public class DeadLetterQueueTest {
         .thenReturn("shard_id"); // Even if mapper knows the name, DDL doesn't have it
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", ddlNoShardId, SQLDialect.MYSQL, mockSchemaMapper);
+        DeadLetterQueue.create("testDir", ddlNoShardId, "mysql", mockSchemaMapper);
 
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
@@ -546,7 +541,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testMutationToDlqElementWithBinaryAndNumericTypes() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, "mysql", null);
     Mutation mutation =
         Mutation.newInsertBuilder("testTable")
             .set("id")
@@ -583,7 +578,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testMutationToDlqElementWithBytesArray() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, "mysql", null);
     Mutation mutation =
         Mutation.newInsertBuilder("testTable")
             .set("id")
@@ -633,7 +628,7 @@ public class DeadLetterQueueTest {
         .thenReturn("srcTable");
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", ddlWithShardId, SQLDialect.MYSQL, mockSchemaMapper);
+        DeadLetterQueue.create("testDir", ddlWithShardId, "mysql", mockSchemaMapper);
 
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
@@ -656,8 +651,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testMutationToDlqElementWithImplicitShardId() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
 
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
@@ -682,8 +676,7 @@ public class DeadLetterQueueTest {
   @Test
   public void testMutationToDlqElementWithNullShardId() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            "testDir", spannerDdl, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+        DeadLetterQueue.create("testDir", spannerDdl, "mysql", getIdentityMapper(spannerDdl));
 
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
@@ -702,7 +695,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testMutationToDlqElementWithNaNAndInfinity() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, "mysql", null);
     Mutation mutation =
         Mutation.newInsertBuilder("testTable")
             .set("id")
@@ -730,7 +723,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testMutationToDlqElement_MoreTypes() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, "mysql", null);
     Mutation mutation =
         Mutation.newInsertBuilder("testTable")
             .set("bool_col")
@@ -761,7 +754,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testMutationToDlqElement_ExplicitNullValue() {
-    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, SQLDialect.MYSQL, null);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, "mysql", null);
     // Add a field that is explicitly set to null Value
     Mutation mutation =
         Mutation.newInsertBuilder("testTable")
@@ -782,8 +775,7 @@ public class DeadLetterQueueTest {
     Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
         .thenReturn("migration_shard_id");
 
-    DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, SQLDialect.MYSQL, mockSchemaMapper);
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", spannerDdl, "mysql", mockSchemaMapper);
 
     Mutation m =
         Mutation.newInsertBuilder("srcTable")

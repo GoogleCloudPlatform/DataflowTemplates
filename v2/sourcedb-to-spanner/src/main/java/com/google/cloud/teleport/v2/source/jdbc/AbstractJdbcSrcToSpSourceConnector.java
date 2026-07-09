@@ -20,12 +20,14 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrappe
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.DbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController;
+import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
@@ -86,4 +88,7 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSour
       String connectionProperties,
       String namespace,
       Integer fetchSize);
+
+  /** Gets the type mapping for the source database. */
+  public abstract ImmutableMap<String, UnifiedTypeMapping> getTypeMapping();
 }

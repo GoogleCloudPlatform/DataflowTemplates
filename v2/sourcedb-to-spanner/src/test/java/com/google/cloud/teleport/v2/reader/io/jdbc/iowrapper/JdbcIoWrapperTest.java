@@ -20,13 +20,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.reader.auth.dbauth.LocalCredentialsProvider;
@@ -52,7 +49,9 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -669,75 +668,6 @@ public class JdbcIoWrapperTest {
   }
 
   @Test
-  public void testLoginTimeout() throws RetriableSchemaDiscoveryException {
-
-    int testLoginTimeoutMilliseconds = 1000;
-    int testLoginTimeoutSeconds = 1;
-
-    doNothing().when(mockBasicDataSource).setMaxWaitMillis(testLoginTimeoutMilliseconds);
-    when(mockBasicDataSource.getUrl())
-        .thenReturn("jdbc://testIp:3306/testDB")
-        .thenReturn("jdbc://testIp:3306/testDB")
-        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000")
-        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000")
-        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000");
-    doNothing()
-        .when(mockBasicDataSource)
-        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeoutMilliseconds));
-    doNothing()
-        .when(mockBasicDataSource)
-        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeoutMilliseconds));
-    doNothing()
-        .when(mockBasicDataSource)
-        .addConnectionProperty("loginTimeout", String.valueOf(testLoginTimeoutSeconds));
-
-    SourceSchemaReference testSourceSchemaReference =
-        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
-
-    JdbcIOWrapperConfig config =
-        builderWithMySqlDefaults()
-            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-            .setSourceSchemaReference(testSourceSchemaReference)
-            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
-            .setShardID("test")
-            .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
-            .setDbAuth(
-                LocalCredentialsProvider.builder()
-                    .setUserName("testUser")
-                    .setPassword("testPassword")
-                    .build())
-            .setJdbcDriverJars("")
-            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-            .setDialectAdapter(mockDialectAdapter)
-            .build();
-    JdbcIOWrapperConfig configWithTimeoutSet =
-        config.toBuilder()
-            .setSourceDbDialect(SQLDialect.MYSQL)
-            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
-            .build();
-    JdbcIOWrapperConfig configWithUrlTimeout =
-        config.toBuilder()
-            .setSourceDbDialect(SQLDialect.POSTGRESQL)
-            .setSourceDbURL(
-                "jdbc:derby://myhost/memory:TestingDB;create=true?socketTimeout=10&connectTimeout=10")
-            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeoutMilliseconds)
-            .build();
-
-    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithTimeoutSet);
-    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithUrlTimeout);
-
-    assertThat(configWithTimeoutSet.schemaDiscoveryConnectivityTimeoutMilliSeconds())
-        .isEqualTo(testLoginTimeoutMilliseconds);
-    verify(mockBasicDataSource, times(2)).setMaxWaitMillis(testLoginTimeoutMilliseconds);
-    verify(mockBasicDataSource, times(1))
-        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeoutMilliseconds));
-    verify(mockBasicDataSource, times(1))
-        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeoutMilliseconds));
-    verify(mockBasicDataSource, times(1))
-        .addConnectionProperty("loginTimeout", String.valueOf(testLoginTimeoutSeconds));
-  }
-
-  @Test
   public void testIndexTypeToColumnClass() {
 
     assertThat(
@@ -933,7 +863,8 @@ public class JdbcIoWrapperTest {
                     .build())
             .build();
     SourceTableSchema tableSchema2 =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t2")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
@@ -977,13 +908,15 @@ public class JdbcIoWrapperTest {
                     .build())
             .build();
     SourceTableSchema tableSchema3a =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t3a")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
             .build();
     SourceTableSchema tableSchema3b =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t3b")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
@@ -1024,7 +957,8 @@ public class JdbcIoWrapperTest {
     TableConfig tableConfig5 =
         TableConfig.builder("t5").setDataSourceId(uniformConfig5.id()).build();
     SourceTableSchema tableSchema5 =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t5")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
@@ -1052,13 +986,15 @@ public class JdbcIoWrapperTest {
     TableConfig tableConfig6b =
         TableConfig.builder("t6b").setDataSourceId(uniformConfig6.id()).build();
     SourceTableSchema tableSchema6a =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t6a")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
             .build();
     SourceTableSchema tableSchema6b =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t6b")
             .setEstimatedRowSize(100L)
             .addSourceColumnNameToSourceColumnType(colName, colType)
@@ -1352,7 +1288,8 @@ public class JdbcIoWrapperTest {
 
     SourceColumnType colType = new SourceColumnType("INTEGER", new Long[] {}, null);
     SourceTableSchema tableSchema1 =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t1")
             .setTableSchemaUUID("uuid1")
             .setEstimatedRowSize(100L)
@@ -1372,7 +1309,8 @@ public class JdbcIoWrapperTest {
             .build();
 
     SourceTableSchema tableSchema2 =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName("t2")
             .setTableSchemaUUID("uuid2")
             .setEstimatedRowSize(200L)
@@ -1624,7 +1562,8 @@ public class JdbcIoWrapperTest {
         SourceSchema.builder()
             .setSchemaReference(config.sourceSchemaReference())
             .addTableSchema(
-                SourceTableSchema.builder(SQLDialect.MYSQL)
+                SourceTableSchema.builder(
+                        new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
                     .setTableName(tableName)
                     .setTableSchemaUUID("uuid")
                     .setEstimatedRowSize(100L)
@@ -1674,7 +1613,8 @@ public class JdbcIoWrapperTest {
         SourceSchema.builder()
             .setSchemaReference(configUniform.sourceSchemaReference())
             .addTableSchema(
-                SourceTableSchema.builder(SQLDialect.MYSQL)
+                SourceTableSchema.builder(
+                        new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
                     .setTableName(tableName)
                     .setTableSchemaUUID("uuid")
                     .setEstimatedRowSize(100L)

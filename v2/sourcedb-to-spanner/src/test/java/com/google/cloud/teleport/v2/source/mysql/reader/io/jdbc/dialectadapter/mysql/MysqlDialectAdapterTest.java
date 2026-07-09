@@ -18,10 +18,13 @@ package com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.auto.value.AutoValue;
@@ -48,6 +51,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import javax.sql.DataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -900,6 +904,35 @@ public class MysqlDialectAdapterTest {
   public void testEscapeMySql() {
     assertThat(MysqlDialectAdapter.escapeMySql("binary")).isEqualTo("`binary`");
     assertThat(MysqlDialectAdapter.escapeMySql("`binary`")).isEqualTo("`binary`");
+  }
+
+  @Test
+  public void testSetDataSourceLoginTimeout() {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    when(mockBasicDataSource.getUrl()).thenReturn("jdbc://testIp:3306/testDB");
+
+    long timeoutMs = 1000L;
+    new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        .setDataSourceLoginTimeout(mockBasicDataSource, timeoutMs);
+
+    verify(mockBasicDataSource).setMaxWaitMillis(timeoutMs);
+    verify(mockBasicDataSource).addConnectionProperty("connectTimeout", "1000");
+    verify(mockBasicDataSource).addConnectionProperty("socketTimeout", "1000");
+  }
+
+  @Test
+  public void testSetDataSourceLoginTimeout_doesNotOverrideExistingUrlParams() {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    when(mockBasicDataSource.getUrl())
+        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000&socketTimeout=2000");
+
+    long timeoutMs = 1000L;
+    new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+        .setDataSourceLoginTimeout(mockBasicDataSource, timeoutMs);
+
+    verify(mockBasicDataSource).setMaxWaitMillis(timeoutMs);
+    verify(mockBasicDataSource, never()).addConnectionProperty(eq("connectTimeout"), anyString());
+    verify(mockBasicDataSource, never()).addConnectionProperty(eq("socketTimeout"), anyString());
   }
 
   @Test

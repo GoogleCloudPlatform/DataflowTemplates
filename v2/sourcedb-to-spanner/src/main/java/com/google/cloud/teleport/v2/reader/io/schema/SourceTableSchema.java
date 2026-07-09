@@ -16,9 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -70,19 +68,12 @@ public abstract class SourceTableSchema implements Serializable {
     return avroSchema().getField(PAYLOAD_FIELD_NAME).schema();
   }
 
-  /* TODO(vardhanvthigle@): Add more information as needed by other modules, like:
+  /**
+   * Build a {@link SourceTableSchema} object. This method can be used to set schema details, like
    * primary keys, indexing information, foreign key constraints etc.
    */
-
-  public static Builder builder(SQLDialect dialect) {
-    if (dialect == SQLDialect.POSTGRESQL) {
-      return builder(MapperType.POSTGRESQL);
-    }
-    return builder(MapperType.MYSQL);
-  }
-
-  public static Builder builder(MapperType mapperType) {
-    var builder = new AutoValue_SourceTableSchema.Builder().initialize(mapperType);
+  public static Builder builder(UnifiedTypeMapper unifiedTypeMapper) {
+    var builder = new AutoValue_SourceTableSchema.Builder().initialize(unifiedTypeMapper);
     builder.setTableSchemaUUID(UUID.randomUUID().toString());
     return builder;
   }
@@ -95,7 +86,7 @@ public abstract class SourceTableSchema implements Serializable {
 
     public abstract Builder setEstimatedRowSize(@Nullable Long value);
 
-    @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
+    @VisibleForTesting protected UnifiedTypeMapper unifiedTypeMapper;
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
@@ -110,7 +101,7 @@ public abstract class SourceTableSchema implements Serializable {
       this.payloadFieldAssembler =
           this.payloadFieldAssembler
               .name(sourceColumnName)
-              .type(new UnifiedTypeMapper(this.mapperType).getSchema(sourceColumnType))
+              .type(this.unifiedTypeMapper.getSchema(sourceColumnType))
               .noDefault();
       return this;
     }
@@ -141,8 +132,8 @@ public abstract class SourceTableSchema implements Serializable {
 
     abstract SourceTableSchema autoBuild();
 
-    public Builder initialize(UnifiedTypeMapper.MapperType mapperType) {
-      this.mapperType = mapperType;
+    public Builder initialize(UnifiedTypeMapper unifiedTypeMapper) {
+      this.unifiedTypeMapper = unifiedTypeMapper;
       this.setPrimaryKeyColumns(ImmutableList.of());
       return this;
     }

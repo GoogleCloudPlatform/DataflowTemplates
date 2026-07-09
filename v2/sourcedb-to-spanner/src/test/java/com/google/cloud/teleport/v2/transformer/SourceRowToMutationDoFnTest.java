@@ -27,10 +27,11 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -374,7 +375,8 @@ public class SourceRowToMutationDoFnTest {
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
 
     SourceTableSchema schema =
-        SourceTableSchema.builder(SQLDialect.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "firstName", new SourceColumnType("varchar", new Long[] {20L}, null))
