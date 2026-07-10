@@ -33,52 +33,51 @@ SET @byte_literals = CONCAT(
 
 -- Four byte code points.
 SET @four_byte_codepoints = CONCAT(
-  '(SELECT * FROM (SELECT ',
-    'CONVERT(UNHEX(CONCAT(t1.h, t2.h, t3.h, t4.h)) USING ', @db_charset, ') AS charset_char ',
-    'FROM (', @byte_literals, ') AS t1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t2 ON 1=1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t3 ON 1=1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t4 ON 1=1 ',
-    ') AS dt ',
-    'WHERE CHAR_LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL'
-  ')'
+  'SELECT CONCAT(t1.h, t2.h, t3.h, t4.h) AS hex_val ',
+  'FROM (', @byte_literals, ') AS t1 ',
+  'CROSS JOIN (', @byte_literals, ') AS t2 ',
+  'CROSS JOIN (', @byte_literals, ') AS t3 ',
+  'CROSS JOIN (', @byte_literals, ') AS t4 ',
+  'WHERE t1.h BETWEEN ''f0'' AND ''f4'' AND t2.h BETWEEN ''80'' AND ''bf'' AND t3.h BETWEEN ''80'' AND ''bf'' AND t4.h BETWEEN ''80'' AND ''bf'''
 );
 
 -- Three byte code points.
 SET @three_byte_codepoints = CONCAT(
-  '(SELECT * FROM (SELECT ',
-    'CONVERT(UNHEX(CONCAT(t1.h, t2.h, t3.h)) USING ', @db_charset, ') AS charset_char ',
-    'FROM (', @byte_literals, ') AS t1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t2 ON 1=1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t3 ON 1=1 ',
-    ') AS dt ',
-    'WHERE CHAR_LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL'
-  ')'
+  'SELECT CONCAT(t1.h, t2.h, t3.h) AS hex_val ',
+  'FROM (', @byte_literals, ') AS t1 ',
+  'CROSS JOIN (', @byte_literals, ') AS t2 ',
+  'CROSS JOIN (', @byte_literals, ') AS t3 ',
+  'WHERE t1.h BETWEEN ''e0'' AND ''ef'' AND t2.h BETWEEN ''80'' AND ''bf'' AND t3.h BETWEEN ''80'' AND ''bf'''
 );
 
 -- Two byte code points.
 SET @two_byte_codepoints = CONCAT(
-  '(SELECT * FROM (SELECT ',
-    'CONVERT(UNHEX(CONCAT(t1.h, t2.h)) USING ', @db_charset, ') AS charset_char ',
-    'FROM (', @byte_literals, ') AS t1 ',
-    'LEFT JOIN (', @byte_literals, ') AS t2 ON 1=1 ',
-    ') AS dt ',
-    'WHERE CHAR_LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL'
-  ')'
+  'SELECT CONCAT(t1.h, t2.h) AS hex_val ',
+  'FROM (', @byte_literals, ') AS t1 ',
+  'CROSS JOIN (', @byte_literals, ') AS t2 ',
+  'WHERE t1.h BETWEEN ''c2'' AND ''df'' AND t2.h BETWEEN ''80'' AND ''bf'''
 );
 
 -- Single byte code points.
 SET @one_byte_codepoints = CONCAT(
-  '(SELECT * FROM (SELECT ',
-    'CONVERT(UNHEX(t1.h) USING ', @db_charset, ') AS charset_char ',
-    'FROM (', @byte_literals, ') AS t1',
-    ') AS dt ', -- derived table
-    'WHERE CHAR_LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL'
-  ')'
+  'SELECT t1.h AS hex_val ',
+  'FROM (', @byte_literals, ') AS t1 ',
+  'WHERE t1.h BETWEEN ''00'' AND ''7f'''
 );
 
+SET @all_utf8_hex = CONCAT(@four_byte_codepoints, ' UNION ALL ', @three_byte_codepoints, ' UNION ALL ', @two_byte_codepoints, ' UNION ALL ', @one_byte_codepoints);
+
 -- all variable length code points representing a single character within the @db_charset from length 0 till 4.
-SET @charset_chars = CONCAT(@three_byte_codepoints, ' UNION ALL ', @two_byte_codepoints, ' UNION ALL ', @one_byte_codepoints);
+SET @charset_chars = CONCAT(
+  '(SELECT charset_char FROM ( ',
+    'SELECT CONVERT(CONVERT(UNHEX(hex_val) USING utf8mb4) USING ', @db_charset, ') AS charset_char, ',
+    'CONVERT(UNHEX(hex_val) USING utf8mb4) AS utf8_char ',
+    'FROM (', @all_utf8_hex, ') AS all_chars ',
+    'HAVING utf8_char IS NOT NULL AND hex_val NOT BETWEEN ''eda080'' AND ''edbfbf'' ',
+  ') AS valid_utf8_chars ',
+  'WHERE charset_char IS NOT NULL AND (charset_char != ''?'' OR utf8_char = ''?'') ',
+  'AND CHAR_LENGTH(charset_char) <= 1)'
+);
 
 SET @SPACE=CONCAT('CONVERT('' '' USING ', @db_charset,')');
 SET @ALPHABET=CONCAT('CONVERT(''a'' USING ', @db_charset,')');
