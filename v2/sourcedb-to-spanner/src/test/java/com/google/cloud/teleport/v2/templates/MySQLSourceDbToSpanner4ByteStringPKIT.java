@@ -64,17 +64,17 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
     List<Map<String, Object>> data = new ArrayList<>();
 
     Map<String, Object> row1 = new HashMap<>();
-    row1.put(ID, "😀");
+    row1.put(ID, "\uD83D\uDE00");
     row1.put(DESCRIPTION, "Grinning Face");
     data.add(row1);
 
     Map<String, Object> row2 = new HashMap<>();
-    row2.put(ID, "😁");
+    row2.put(ID, "\uD83D\uDE01");
     row2.put(DESCRIPTION, "Beaming Face with Smiling Eyes");
     data.add(row2);
 
     Map<String, Object> row3 = new HashMap<>();
-    row3.put(ID, "😂");
+    row3.put(ID, "\uD83D\uDE02");
     row3.put(DESCRIPTION, "Face with Tears of Joy");
     data.add(row3);
 
@@ -109,13 +109,13 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
       stmt.executeUpdate("SET NAMES utf8mb4");
       
       stmt.executeUpdate(
-          "INSERT INTO " + TABLE + "(id, description) VALUES ('😀', 'Grinning Face')");
+          "INSERT INTO " + TABLE + "(id, description) VALUES ('\uD83D\uDE00', 'Grinning Face')");
       stmt.executeUpdate(
           "INSERT INTO "
               + TABLE
-              + "(id, description) VALUES ('😁', 'Beaming Face with Smiling Eyes')");
+              + "(id, description) VALUES ('\uD83D\uDE01', 'Beaming Face with Smiling Eyes')");
       stmt.executeUpdate(
-          "INSERT INTO " + TABLE + "(id, description) VALUES ('😂', 'Face with Tears of Joy')");
+          "INSERT INTO " + TABLE + "(id, description) VALUES ('\uD83D\uDE02', 'Face with Tears of Joy')");
     } catch (java.sql.SQLException e) {
       throw new RuntimeException("Failed to insert 4-byte characters", e);
     }
