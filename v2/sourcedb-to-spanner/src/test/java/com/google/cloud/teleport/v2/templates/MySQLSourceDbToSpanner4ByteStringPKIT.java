@@ -97,28 +97,17 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
     List<Map<String, Object>> mySQLData = getMySQLData();
     mySQLResourceManager.createTable(TABLE, getMySQLSchema());
 
-    // The default MySQL Testcontainers JDBC connection uses utf8mb3 or latin1, causing 4-byte
-    // emojis to be downcasted to '?'. We bypass the manager to inject 'characterEncoding=UTF-8'.
-    String jdbcUrl = mySQLResourceManager.getUri() + "?characterEncoding=UTF-8";
-    try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
-            jdbcUrl, mySQLResourceManager.getUsername(), mySQLResourceManager.getPassword());
-        java.sql.Statement stmt = conn.createStatement()) {
-      
-      // Force the MySQL connection to use utf8mb4 for this session, ensuring the driver
-      // doesn't downcast the emojis to '?' before execution.
-      stmt.executeUpdate("SET NAMES utf8mb4");
-      
-      stmt.executeUpdate(
-          "INSERT INTO " + TABLE + "(id, description) VALUES ('\uD83D\uDE00', 'Grinning Face')");
-      stmt.executeUpdate(
-          "INSERT INTO "
-              + TABLE
-              + "(id, description) VALUES ('\uD83D\uDE01', 'Beaming Face with Smiling Eyes')");
-      stmt.executeUpdate(
-          "INSERT INTO " + TABLE + "(id, description) VALUES ('\uD83D\uDE02', 'Face with Tears of Joy')");
-    } catch (java.sql.SQLException e) {
-      throw new RuntimeException("Failed to insert 4-byte characters", e);
-    }
+    // The MySQL JDBC driver in this environment stubbornly downcasts 4-byte characters to '?' 
+    // even with characterEncoding=UTF-8 and SET NAMES utf8mb4. To successfully insert them, 
+    // we must bypass JDBC string encoding by passing the raw UTF-8 hex bytes directly to MySQL.
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO " + TABLE + "(id, description) VALUES (UNHEX('F09F9880'), 'Grinning Face')");
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO "
+            + TABLE
+            + "(id, description) VALUES (UNHEX('F09F9881'), 'Beaming Face with Smiling Eyes')");
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO " + TABLE + "(id, description) VALUES (UNHEX('F09F9882'), 'Face with Tears of Joy')");
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
