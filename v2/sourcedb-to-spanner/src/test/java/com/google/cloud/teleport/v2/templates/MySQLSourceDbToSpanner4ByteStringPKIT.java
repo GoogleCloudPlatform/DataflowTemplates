@@ -103,6 +103,11 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
     try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
             jdbcUrl, mySQLResourceManager.getUsername(), mySQLResourceManager.getPassword());
         java.sql.Statement stmt = conn.createStatement()) {
+      
+      // Force the MySQL connection to use utf8mb4 for this session, ensuring the driver
+      // doesn't downcast the emojis to '?' before execution.
+      stmt.executeUpdate("SET NAMES utf8mb4");
+      
       stmt.executeUpdate(
           "INSERT INTO " + TABLE + "(id, description) VALUES ('😀', 'Grinning Face')");
       stmt.executeUpdate(
