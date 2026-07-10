@@ -71,7 +71,8 @@ SET @all_utf8_hex = CONCAT(@four_byte_codepoints, ' UNION ALL ', @three_byte_cod
 SET @charset_chars = CONCAT(
   '(SELECT charset_char FROM ( ',
     'SELECT CONVERT(CONVERT(UNHEX(hex_val) USING utf8mb4) USING ', @db_charset, ') AS charset_char, ',
-    'CONVERT(UNHEX(hex_val) USING utf8mb4) AS utf8_char ',
+    'CONVERT(UNHEX(hex_val) USING utf8mb4) AS utf8_char, ',
+    'hex_val ',
     'FROM (', @all_utf8_hex, ') AS all_chars ',
     'HAVING utf8_char IS NOT NULL AND hex_val NOT BETWEEN ''eda080'' AND ''edbfbf'' ',
   ') AS valid_utf8_chars ',

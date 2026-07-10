@@ -30,7 +30,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +44,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static MySQLResourceManager mySQLResourceManager;
+  public static CloudMySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String TABLE = "table4bytepk";
@@ -53,9 +53,11 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
   private static final String SPANNER_DDL_RESOURCE =
       "SourceDbToSpanner4ByteStringPKIT/spanner-schema.sql";
 
+
+
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
     HashMap<String, String> columns = new HashMap<>();
-    columns.put(ID, "VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL");
+    columns.put(ID, "VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL");
     columns.put(DESCRIPTION, "VARCHAR(200)");
     return new JDBCResourceManager.JDBCSchema(columns, ID);
   }
@@ -83,7 +85,7 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
 
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = setUpCloudMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -96,18 +98,7 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
   public void testMySqlToSpanner() throws IOException {
     List<Map<String, Object>> mySQLData = getMySQLData();
     mySQLResourceManager.createTable(TABLE, getMySQLSchema());
-
-    // The MySQL JDBC driver in this environment stubbornly downcasts 4-byte characters to '?' 
-    // even with characterEncoding=UTF-8 and SET NAMES utf8mb4. To successfully insert them, 
-    // we must bypass JDBC string encoding by passing the raw UTF-8 hex bytes directly to MySQL.
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO " + TABLE + "(id, description) VALUES (UNHEX('F09F9880'), 'Grinning Face')");
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO "
-            + TABLE
-            + "(id, description) VALUES (UNHEX('F09F9881'), 'Beaming Face with Smiling Eyes')");
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO " + TABLE + "(id, description) VALUES (UNHEX('F09F9882'), 'Face with Tears of Joy')");
+    mySQLResourceManager.write(TABLE, mySQLData);
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
