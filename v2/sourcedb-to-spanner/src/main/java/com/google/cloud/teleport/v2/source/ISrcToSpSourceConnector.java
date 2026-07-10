@@ -31,6 +31,15 @@ public interface ISrcToSpSourceConnector {
   String getSourceType();
 
   /**
+   * Return source type to be used in DLQ. //TODO check how this can be removed.
+   *
+   * @return
+   */
+  default String getDlqSourceType() {
+    return getSourceType();
+  }
+
+  /**
    * Executes the migration pipeline for the source database.
    *
    * @param options Pipeline options.

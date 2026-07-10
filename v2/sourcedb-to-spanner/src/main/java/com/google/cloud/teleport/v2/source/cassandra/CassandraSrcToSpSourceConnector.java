@@ -32,6 +32,11 @@ public class CassandraSrcToSpSourceConnector implements ISrcToSpSourceConnector 
     return Constants.CASSANDRA_SOURCE_TYPE;
   }
 
+  public String getDlqSourceType() {
+    // TODO - fix the DLQ handling to remove this.
+    return Constants.MYSQL_SOURCE_TYPE;
+  }
+
   @Override
   public PipelineResult executeMigration(
       SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {

@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
@@ -69,6 +70,9 @@ public class DeadLetterQueue implements Serializable {
 
   private final String sourceType;
 
+  /** Source type to use in the dlq. Ideally fix the dlq to just use the regular source type. */
+  private final String dlqSourceType;
+
   private final ISchemaMapper schemaMapper;
 
   public static final Counter FAILED_MUTATION_COUNTER =
@@ -94,6 +98,8 @@ public class DeadLetterQueue implements Serializable {
     this.dlqDirectory = dlqDirectory;
     this.ddl = ddl;
     this.sourceType = sourceType;
+    this.dlqSourceType =
+        SourceConnectorFactory.getSourceConnectorBySourceType(sourceType).getDlqSourceType();
     this.schemaMapper = iSchemaMapper;
   }
 
@@ -324,8 +330,7 @@ public class DeadLetterQueue implements Serializable {
     json.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, timeStamp);
     json.put("_metadata_read_timestamp", timeStamp);
     json.put("_metadata_dataflow_timestamp", timeStamp);
-    // TODO- fix this. This should be dialect type not source type
-    json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, this.sourceType);
+    json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, this.dlqSourceType);
   }
 
   /*
