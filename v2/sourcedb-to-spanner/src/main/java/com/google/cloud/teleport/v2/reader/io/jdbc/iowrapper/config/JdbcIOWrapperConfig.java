@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference.Kind;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -78,8 +78,8 @@ public abstract class JdbcIOWrapperConfig {
   /* Name of the JDbc Driver Class. */
   public abstract String jdbcDriverClassName();
 
-  /** Schema Mapper Type, defaults to MySQl. */
-  public abstract MapperType schemaMapperType();
+  /** Schema Mapper, defaults to MySQL mapping. */
+  public abstract UnifiedTypeMapper unifiedTypeMapper();
 
   /** Dialect Adapter. */
   public abstract DialectAdapter dialectAdapter();
@@ -313,7 +313,7 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setDbAuth(DbAuth value);
 
-    public abstract Builder setSchemaMapperType(MapperType value);
+    public abstract Builder setUnifiedTypeMapper(UnifiedTypeMapper value);
 
     public abstract Builder setDialectAdapter(DialectAdapter value);
 

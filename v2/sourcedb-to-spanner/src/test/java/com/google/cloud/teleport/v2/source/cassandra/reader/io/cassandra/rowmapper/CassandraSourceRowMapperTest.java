@@ -48,11 +48,12 @@ import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscovery
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraConnector;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSourceOss;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.SslContextFactory;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappings.CassandraMappingsProvider;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -148,7 +149,8 @@ public class CassandraSourceRowMapperTest {
                     .build()));
 
     SourceTableSchema.Builder sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+            .setTableName(tableName);
     new CassandraSchemaDiscovery()
         .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
         .get(tableName)
@@ -231,7 +233,8 @@ public class CassandraSourceRowMapperTest {
                     .build()));
 
     SourceTableSchema.Builder sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+            .setTableName(tableName);
     new CassandraSchemaDiscovery()
         .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
         .get(tableName)
@@ -304,7 +307,8 @@ public class CassandraSourceRowMapperTest {
                     .build()));
 
     SourceTableSchema.Builder sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
+            .setTableName(tableName);
     new CassandraSchemaDiscovery()
         .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
         .get(tableName)
@@ -369,7 +373,7 @@ public class CassandraSourceRowMapperTest {
             CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
 
     SourceTableSchema sourceTableSchema =
-        SourceTableSchema.builder(MapperType.CASSANDRA)
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
             .setTableName("testTable")
             .addSourceColumnNameToSourceColumnType(
                 testIntCol, new SourceColumnType("int", null, null))
@@ -420,7 +424,7 @@ public class CassandraSourceRowMapperTest {
             CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
 
     SourceTableSchema sourceTableSchema =
-        SourceTableSchema.builder(MapperType.CASSANDRA)
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
             .setTableName("testTable")
             .addSourceColumnNameToSourceColumnType(
                 testIntCol, new SourceColumnType("int", null, null))
@@ -462,7 +466,7 @@ public class CassandraSourceRowMapperTest {
             CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
 
     SourceTableSchema sourceTableSchema =
-        SourceTableSchema.builder(MapperType.CASSANDRA)
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
             .setTableName("testTable")
             .addSourceColumnNameToSourceColumnType(
                 testIntCol, new SourceColumnType("int", null, null))
@@ -506,7 +510,7 @@ public class CassandraSourceRowMapperTest {
             CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
 
     SourceTableSchema sourceTableSchema =
-        SourceTableSchema.builder(MapperType.CASSANDRA)
+        SourceTableSchema.builder(new UnifiedTypeMapper(CassandraMappingsProvider.getMapping()))
             .setTableName("testTable")
             .addSourceColumnNameToSourceColumnType(
                 testIntCol, new SourceColumnType("int", null, null))

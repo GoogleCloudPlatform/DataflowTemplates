@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.cassandra;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraIOWrapperFactory;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.templates.DbConfigContainerDefaultImpl;
 import com.google.cloud.teleport.v2.templates.PipelineController;
 import org.apache.beam.sdk.Pipeline;
@@ -26,6 +27,15 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
 /** Cassandra implementation of {@link ISrcToSpSourceConnector}. */
 public class CassandraSrcToSpSourceConnector implements ISrcToSpSourceConnector {
+
+  public String getSourceType() {
+    return Constants.CASSANDRA_SOURCE_TYPE;
+  }
+
+  public String getDlqSourceType() {
+    // TODO - fix the DLQ handling to remove this.
+    return Constants.MYSQL_SOURCE_TYPE;
+  }
 
   @Override
   public PipelineResult executeMigration(

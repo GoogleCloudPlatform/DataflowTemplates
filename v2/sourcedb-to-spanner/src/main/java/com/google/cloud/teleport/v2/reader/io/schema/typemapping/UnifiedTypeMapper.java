@@ -15,12 +15,10 @@
  */
 package com.google.cloud.teleport.v2.reader.io.schema.typemapping;
 
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.MysqlMappingProvider;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.PostgreSQLMappingProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.Unsupported;
-import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.mappings.CassandraMappingsProvider;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableMap;
+import java.io.Serializable;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -28,36 +26,23 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Precondit
 /**
  * Maps the source schema to unified avro type.
  *
+ * <p>//TODO- check if this can be rolled into the connector.
+ *
  * @see <a href = https://cloud.google.com/datastream/docs/unified-types> Mappings of unified types
  *     to source and destination data types</a>
  */
-public final class UnifiedTypeMapper {
+public final class UnifiedTypeMapper implements Serializable {
 
-  /**
-   * A static map of the type MAPPINGS for all source database types constructed at class load time.
-   */
-  private static final ImmutableMap<MapperType, ImmutableMap<String, UnifiedTypeMapping>> mappers =
-      ImmutableMap.of(
-          MapperType.MYSQL,
-          MysqlMappingProvider.getMapping(),
-          MapperType.POSTGRESQL,
-          PostgreSQLMappingProvider.getMapping(),
-          MapperType.CASSANDRA,
-          CassandraMappingsProvider.getMapping());
-
-  private final MapperType mapperType;
+  private final ImmutableMap<String, UnifiedTypeMapping> mapping;
 
   /**
    * Constructs the {@link UnifiedTypeMapper}.
    *
-   * @param mapperType type of the mapping. For example: {@link MapperType#MYSQL}
-   *     <p><b>Note: Currently only {@link MapperType#MYSQL} is supported as {@code mapperType}.</b>
+   * @param mapping type mapping for source database types.
    */
-  public UnifiedTypeMapper(MapperType mapperType) {
-    Preconditions.checkArgument(
-        mappers.containsKey(mapperType),
-        String.format("Mapper type %s is not supported.", mapperType));
-    this.mapperType = mapperType;
+  public UnifiedTypeMapper(ImmutableMap<String, UnifiedTypeMapping> mapping) {
+    Preconditions.checkNotNull(mapping, "Mapping cannot be null");
+    this.mapping = mapping;
   }
 
   /**
@@ -92,18 +77,8 @@ public final class UnifiedTypeMapper {
    * TODO(vardhanvthigle): Handle Nested collections.
    */
   private Schema getBasicSchema(SourceColumnType columnType) {
-    return mappers
-        .get(this.mapperType)
+    return mapping
         .getOrDefault(columnType.getName().toUpperCase(), new Unsupported())
         .getSchema(columnType.getMods(), columnType.getArrayBounds());
-  }
-
-  /** Type of the database for the type mapping. */
-  public enum MapperType {
-    MYSQL,
-    POSTGRESQL,
-    ORACLE,
-    SQLSERVER,
-    CASSANDRA
   }
 }

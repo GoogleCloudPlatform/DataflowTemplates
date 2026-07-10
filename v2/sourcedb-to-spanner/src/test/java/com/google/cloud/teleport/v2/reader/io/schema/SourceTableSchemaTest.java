@@ -17,8 +17,9 @@ package com.google.cloud.teleport.v2.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 import com.google.common.collect.ImmutableList;
 import junit.framework.TestCase;
 import org.apache.avro.SchemaBuilder;
@@ -82,7 +83,8 @@ public class SourceTableSchemaTest extends TestCase {
     Assert.assertThrows(
         java.lang.IllegalStateException.class,
         () ->
-            SourceTableSchema.builder(SQLDialect.MYSQL)
+            SourceTableSchema.builder(
+                    new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
                 .setTableName(tableName)
                 .setEstimatedRowSize(0L)
                 .build());
@@ -90,12 +92,15 @@ public class SourceTableSchemaTest extends TestCase {
 
   @Test
   public void testMySqlMapperType() {
-    assertThat(SourceTableSchema.builder(SQLDialect.MYSQL).mapperType).isEqualTo(MapperType.MYSQL);
+    UnifiedTypeMapper mapper =
+        new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping());
+    assertThat(SourceTableSchema.builder(mapper).unifiedTypeMapper).isEqualTo(mapper);
   }
 
   @Test
   public void testPostgreSqlMapperType() {
-    assertThat(SourceTableSchema.builder(SQLDialect.POSTGRESQL).mapperType)
-        .isEqualTo(MapperType.POSTGRESQL);
+    UnifiedTypeMapper mapper =
+        new UnifiedTypeMapper(new PostgresSrcToSpSourceConnector().getTypeMapping());
+    assertThat(SourceTableSchema.builder(mapper).unifiedTypeMapper).isEqualTo(mapper);
   }
 }

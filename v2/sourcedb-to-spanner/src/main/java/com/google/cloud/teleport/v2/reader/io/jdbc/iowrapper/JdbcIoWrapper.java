@@ -168,7 +168,11 @@ public final class JdbcIoWrapper implements IoWrapper {
 
     BasicDataSource dataSource = (BasicDataSource) dataSourceConfiguration.buildDatasource();
     try {
-      setDataSourceLoginTimeout((BasicDataSource) dataSource, config);
+      config
+          .dialectAdapter()
+          .setDataSourceLoginTimeout(
+              dataSource, config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
+
       SchemaDiscovery schemaDiscovery =
           new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
 
@@ -201,48 +205,6 @@ public final class JdbcIoWrapper implements IoWrapper {
    * @param dataSource
    * @param config
    */
-  @VisibleForTesting
-  protected static void setDataSourceLoginTimeout(
-      BasicDataSource dataSource, JdbcIOWrapperConfig config) {
-
-    dataSource.setMaxWaitMillis(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
-
-    String connectivityTimeout;
-    switch (config.sourceDbDialect()) {
-      case MYSQL:
-        connectivityTimeout =
-            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds());
-        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
-        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
-        break;
-      case POSTGRESQL:
-        connectivityTimeout =
-            String.valueOf(config.schemaDiscoveryConnectivityTimeoutMilliSeconds() / 1000);
-        setConnectionProperty(dataSource, "loginTimeout", connectivityTimeout);
-        setConnectionProperty(dataSource, "connectTimeout", connectivityTimeout);
-        setConnectionProperty(dataSource, "socketTimeout", connectivityTimeout);
-        break;
-      default:
-        logger.error(
-            "No connectivity timeout overrides implemented for dialect {}. In case of misconfigured network connectivity, schema discovery could timeout without correct error reporting.");
-    }
-  }
-
-  private static void setConnectionProperty(
-      BasicDataSource dataSource, String property, String value) {
-
-    String url = dataSource.getUrl();
-    if (!url.contains(property)) {
-      dataSource.addConnectionProperty(property, value);
-      logger.info("Set {} = {}  for schema discovery of {}", property, value, dataSource);
-    } else {
-      logger.warn(
-          "Property {} already set in URL {}. Not overriding with {} for schema discovery. The default over-ride helps in failing fast in case of misconfigured network connectivity.",
-          property,
-          url,
-          value);
-    }
-  }
 
   /**
    * Return a read transforms for the tables to migrate.
@@ -376,7 +338,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         .map(
             tableEntry -> {
               SourceTableSchema.Builder sourceTableSchemaBuilder =
-                  SourceTableSchema.builder(config.sourceDbDialect())
+                  SourceTableSchema.builder(config.unifiedTypeMapper())
                       .setTableName(tableEntry.getKey());
               tableEntry
                   .getValue()

@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.reader.io.schema.typemapping;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.Unsupported;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.collect.ImmutableMap;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.junit.Assert;
@@ -27,26 +27,25 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
-/** Test class for {@link Decimal}. */
+/** Test class for {@link UnifiedTypeMapper}. */
 @RunWith(MockitoJUnitRunner.class)
 public class UnifiedTypeMapperTest {
   @Test
   public void testUnifiedTypeMapper() {
-    assertThat(
-            new UnifiedTypeMapper(MapperType.MYSQL)
-                .getSchema(new SourceColumnType("bigint", null, null)))
+    ImmutableMap<String, UnifiedTypeMapping> mockMapping =
+        ImmutableMap.of("BIGINT", (mods, arrayBounds) -> SchemaBuilder.builder().longType());
+
+    UnifiedTypeMapper mapper = new UnifiedTypeMapper(mockMapping);
+
+    assertThat(mapper.getSchema(new SourceColumnType("bigint", null, null)))
         .isEqualTo(SchemaBuilder.builder().unionOf().nullType().and().longType().endUnion());
     Schema unknownType =
-        new UnifiedTypeMapper(MapperType.MYSQL)
-            .getSchema(new SourceColumnType("NewTypeUnknownToTheWorld", null, null));
+        mapper.getSchema(new SourceColumnType("NewTypeUnknownToTheWorld", null, null));
     assertThat(new Unsupported().isUnsupported(unknownType)).isTrue();
   }
 
   @Test
   public void testPreconditions() {
-
-    Assert.assertThrows(
-        java.lang.IllegalArgumentException.class,
-        () -> new UnifiedTypeMapper(MapperType.SQLSERVER));
+    Assert.assertThrows(java.lang.NullPointerException.class, () -> new UnifiedTypeMapper(null));
   }
 }

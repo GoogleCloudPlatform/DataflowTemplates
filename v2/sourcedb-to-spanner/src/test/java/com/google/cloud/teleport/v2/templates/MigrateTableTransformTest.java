@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.transform.ReaderTransform;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -169,7 +170,8 @@ public class MigrateTableTransformTest {
     final long testReadTime = 1712751118L;
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema =
-        SourceTableSchema.builder(UnifiedTypeMapper.MapperType.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "id", new SourceColumnType("INTEGER", new Long[] {}, null))

@@ -16,7 +16,8 @@
 package com.google.cloud.teleport.v2.reader.io.schema;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
-import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 
 /** Test Utility class for Generating test schema. */
@@ -31,7 +32,8 @@ public class SchemaTestUtils {
   }
 
   public static SourceTableSchema.Builder generateTestTableSchemaBuilder(String tableName) {
-    return SourceTableSchema.builder(SQLDialect.MYSQL)
+    return SourceTableSchema.builder(
+            new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
         .setTableName(tableName)
         .addSourceColumnNameToSourceColumnType(
             TEST_FIELD_NAME_1, new SourceColumnType("varchar", new Long[] {20L}, null))
