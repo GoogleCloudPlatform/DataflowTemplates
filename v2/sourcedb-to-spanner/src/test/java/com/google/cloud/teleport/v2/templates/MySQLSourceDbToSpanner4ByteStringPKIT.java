@@ -97,15 +97,23 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
     List<Map<String, Object>> mySQLData = getMySQLData();
     mySQLResourceManager.createTable(TABLE, getMySQLSchema());
 
-    // Insert 4-byte characters directly into the database.
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO " + TABLE + "(id, description) VALUES ('😀', 'Grinning Face')");
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO "
-            + TABLE
-            + "(id, description) VALUES ('😁', 'Beaming Face with Smiling Eyes')");
-    mySQLResourceManager.runSQLUpdate(
-        "INSERT INTO " + TABLE + "(id, description) VALUES ('😂', 'Face with Tears of Joy')");
+    // The default MySQL Testcontainers JDBC connection uses utf8mb3 or latin1, causing 4-byte
+    // emojis to be downcasted to '?'. We bypass the manager to inject 'characterEncoding=UTF-8'.
+    String jdbcUrl = mySQLResourceManager.getUri() + "?characterEncoding=UTF-8";
+    try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+            jdbcUrl, mySQLResourceManager.getUsername(), mySQLResourceManager.getPassword());
+        java.sql.Statement stmt = conn.createStatement()) {
+      stmt.executeUpdate(
+          "INSERT INTO " + TABLE + "(id, description) VALUES ('😀', 'Grinning Face')");
+      stmt.executeUpdate(
+          "INSERT INTO "
+              + TABLE
+              + "(id, description) VALUES ('😁', 'Beaming Face with Smiling Eyes')");
+      stmt.executeUpdate(
+          "INSERT INTO " + TABLE + "(id, description) VALUES ('😂', 'Face with Tears of Joy')");
+    } catch (java.sql.SQLException e) {
+      throw new RuntimeException("Failed to insert 4-byte characters", e);
+    }
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
