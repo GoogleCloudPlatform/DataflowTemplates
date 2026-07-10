@@ -96,7 +96,16 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
   public void testMySqlToSpanner() throws IOException {
     List<Map<String, Object>> mySQLData = getMySQLData();
     mySQLResourceManager.createTable(TABLE, getMySQLSchema());
-    mySQLResourceManager.write(TABLE, mySQLData);
+
+    // Insert 4-byte characters directly into the database.
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO " + TABLE + "(id, description) VALUES ('😀', 'Grinning Face')");
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO "
+            + TABLE
+            + "(id, description) VALUES ('😁', 'Beaming Face with Smiling Eyes')");
+    mySQLResourceManager.runSQLUpdate(
+        "INSERT INTO " + TABLE + "(id, description) VALUES ('😂', 'Face with Tears of Joy')");
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
