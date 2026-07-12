@@ -73,7 +73,7 @@ import org.junit.experimental.categories.Category;
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
-  public static final String INSTANCE_PARTITION_ID = "mr-partition";
+  public static final String INSTANCE_PARTITION_ID = "default";
 
   public static SpannerResourceManager sharedSpannerResourceManager;
   public static SpannerResourceManager sharedPgSpannerResourceManager;
@@ -190,9 +190,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         SpannerResourceManager.builder(
                 testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
-                "nam6",
-                dialect)
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+                System.getProperty("spannerMultiRegion", "nam3"),
+                dialect);
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
     }
