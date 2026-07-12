@@ -26,6 +26,10 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -59,7 +63,12 @@ public class BoundaryExtractorFactory {
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
-          .put(LocalTime.class, (BoundaryExtractor<LocalTime>) BoundaryExtractorFactory::fromLocalTimes)
+          .put(
+              LocalTime.class,
+              (BoundaryExtractor<LocalTime>) BoundaryExtractorFactory::fromLocalTimes)
+          .put(
+              OffsetTime.class,
+              (BoundaryExtractor<OffsetTime>) BoundaryExtractorFactory::fromOffsetTimes)
           .put(
               Duration.class,
               (BoundaryExtractor<Duration>)
@@ -329,6 +338,46 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  private static Boundary<OffsetTime> fromOffsetTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(OffsetTime.class));
+    resultSet.next();
+
+    return Boundary.<OffsetTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(parsePostgresOffsetTime(resultSet.getString(1)))
+        .setEnd(parsePostgresOffsetTime(resultSet.getString(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(OffsetTime.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static final DateTimeFormatter TIMETZ_FORMAT =
+      new DateTimeFormatterBuilder()
+          .appendPattern("HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+          .optionalEnd()
+          .appendOffset("+HH:mm", "+00")
+          .toFormatter();
+
+  private static OffsetTime parsePostgresOffsetTime(String timeStr) {
+    if (timeStr == null) {
+      return null;
+    }
+    if (timeStr.startsWith("24:00:00")) {
+      String replacedStr = "00" + timeStr.substring(2);
+      OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
+      return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
+    }
+    return OffsetTime.parse(timeStr, TIMETZ_FORMAT);
   }
 
   private static Boundary<Duration> fromDurations(

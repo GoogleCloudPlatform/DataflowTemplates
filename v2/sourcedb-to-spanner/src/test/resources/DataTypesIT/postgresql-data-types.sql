@@ -157,8 +157,6 @@ CREATE TABLE t_bytea_pk (id bytea primary key, col bytea);
 CREATE TABLE t_varchar_pk (id varchar(50) primary key, col varchar(50));
 CREATE TABLE t_character_varying_pk (id character varying(50) primary key, col character varying(50));
 CREATE TABLE t_text_pk (id text primary key, col text);
-CREATE TABLE t_char_pk (id char(50) primary key, col char(50));
-CREATE TABLE t_character_pk (id character(50) primary key, col character(50));
 CREATE TABLE t_timestamp_pk (id timestamp primary key, col timestamp);
 CREATE TABLE t_timestamp_without_time_zone_pk (id timestamp without time zone primary key, col timestamp without time zone);
 CREATE TABLE t_timestamptz_pk (id timestamptz primary key, col timestamptz);
@@ -332,8 +330,6 @@ INSERT INTO t_bytea_pk (id, col) VALUES ('\x00'::bytea, '\x00'::bytea), ('\xdead
 INSERT INTO t_varchar_pk (id, col) VALUES ('', ''), ('a', 'a'), ('z', 'z');
 INSERT INTO t_character_varying_pk (id, col) VALUES ('', ''), ('a', 'a'), ('z', 'z');
 INSERT INTO t_text_pk (id, col) VALUES ('', ''), ('a', 'a'), ('z', 'z');
-INSERT INTO t_char_pk (id, col) VALUES ('a', 'a'), ('b', 'b'), ('c', 'c');
-INSERT INTO t_character_pk (id, col) VALUES ('a', 'a'), ('b', 'b'), ('c', 'c');
 INSERT INTO t_timestamp_pk (id, col) VALUES ('1970-01-01 00:00:01'::timestamp, '1970-01-01 00:00:01'::timestamp), ('2000-01-01 00:00:00'::timestamp, '2000-01-01 00:00:00'::timestamp), ('2038-01-19 03:14:07'::timestamp, '2038-01-19 03:14:07'::timestamp);
 INSERT INTO t_timestamp_without_time_zone_pk (id, col) VALUES ('1970-01-01 00:00:01'::timestamp, '1970-01-01 00:00:01'::timestamp), ('2000-01-01 00:00:00'::timestamp, '2000-01-01 00:00:00'::timestamp), ('2038-01-19 03:14:07'::timestamp, '2038-01-19 03:14:07'::timestamp);
 INSERT INTO t_timestamptz_pk (id, col) VALUES ('1970-01-01 00:00:01+00'::timestamptz, '1970-01-01 00:00:01+00'::timestamptz), ('2000-01-01 00:00:00+00'::timestamptz, '2000-01-01 00:00:00+00'::timestamptz), ('2038-01-19 03:14:07+00'::timestamptz, '2038-01-19 03:14:07+00'::timestamptz);

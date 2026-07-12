@@ -82,6 +82,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           .put("FLOAT8", SourceColumnIndexInfo.IndexType.DOUBLE)
           .put("DATE", SourceColumnIndexInfo.IndexType.DATE)
           .put("TIME", SourceColumnIndexInfo.IndexType.LOCAL_TIME)
+          .put("TIMETZ", SourceColumnIndexInfo.IndexType.OFFSET_TIME)
           .put("BYTEA", SourceColumnIndexInfo.IndexType.BINARY)
           .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
           .build();
@@ -431,26 +432,19 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setIndexType(indexType);
 
           // Floating-point partition columns require a step size for equality checks and splitting.
-          if (indexType == SourceColumnIndexInfo.IndexType.FLOAT) {
-            indexBuilder.setDecimalStepSize(new BigDecimal("0.00001"));
-          } else if (indexType == SourceColumnIndexInfo.IndexType.DOUBLE) {
-            indexBuilder.setDecimalStepSize(new BigDecimal("0.0000000001"));
-          } else if (indexType == SourceColumnIndexInfo.IndexType.DECIMAL) {
-            long numericScale = resultSet.getLong("numeric_scale");
-            if (!resultSet.wasNull()) {
-              indexBuilder.setNumericScale((int) numericScale);
-            } else {
-              indexBuilder.setNumericScale(0);
+          switch (indexType) {
+            case FLOAT -> indexBuilder.setDecimalStepSize(new BigDecimal("0.00001"));
+            case DOUBLE -> indexBuilder.setDecimalStepSize(new BigDecimal("0.0000000001"));
+            case DECIMAL -> {
+              long numericScale = resultSet.getLong("numeric_scale");
+              indexBuilder.setNumericScale(resultSet.wasNull() ? 0 : (int) numericScale);
             }
-          } else if (indexType == SourceColumnIndexInfo.IndexType.DURATION
-              || indexType == SourceColumnIndexInfo.IndexType.TIME_STAMP) {
-            long datetimePrecision = resultSet.getLong("datetime_precision");
-            if (!resultSet.wasNull()) {
-              indexBuilder.setDatetimePrecision((int) datetimePrecision);
-            } else {
-              indexBuilder.setDatetimePrecision(
-                  6); // Postgres default precision for time is microseconds (6)
+            case DURATION, TIME_STAMP, LOCAL_TIME, OFFSET_TIME -> {
+              long datetimePrecision = resultSet.getLong("datetime_precision");
+              // Postgres default precision for time is microseconds (6)
+              indexBuilder.setDatetimePrecision(resultSet.wasNull() ? 6 : (int) datetimePrecision);
             }
+            default -> {}
           }
 
           String collation = resultSet.getString("collation");

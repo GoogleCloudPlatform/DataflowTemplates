@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalTime;
+import java.time.OffsetTime;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -174,6 +175,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     DOUBLE,
     DURATION,
     LOCAL_TIME,
+    OFFSET_TIME,
     OTHER
   };
 
@@ -191,5 +193,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           .put(IndexType.DOUBLE, Double.class)
           .put(IndexType.DURATION, Duration.class)
           .put(IndexType.LOCAL_TIME, LocalTime.class)
+          .put(IndexType.OFFSET_TIME, OffsetTime.class)
           .build();
 }

@@ -411,7 +411,8 @@ public class BoundarySplitterFactoryTest {
 
   @Test
   public void testLocalTimeBoundarySplitter() {
-    BoundarySplitter<java.time.LocalTime> splitter = BoundarySplitterFactory.create(java.time.LocalTime.class);
+    BoundarySplitter<java.time.LocalTime> splitter =
+        BoundarySplitterFactory.create(java.time.LocalTime.class);
 
     java.time.LocalTime start = java.time.LocalTime.parse("08:00:00");
     java.time.LocalTime end = java.time.LocalTime.parse("16:00:00");
@@ -419,18 +420,57 @@ public class BoundarySplitterFactoryTest {
 
     // Standard closed range: Midpoint between 08:00:00 and 16:00:00 is 12:00:00.
     assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
-    
+
     // Fully open range: Midpoint is null (meaning no split possible).
     assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
-    
+
     // Open start: Midpoint between LocalTime.MIN (00:00:00) and 16:00:00 is 08:00:00.
-    assertThat(splitter.getSplitPoint(null, end, null, null, null)).isEqualTo(java.time.LocalTime.parse("08:00:00"));
-    
-    // Open end: Midpoint between 08:00:00 and LocalTime.MAX (23:59:59.999999999) is 15:59:59.999999999.
-    assertThat(splitter.getSplitPoint(start, null, null, null, null)).isEqualTo(java.time.LocalTime.parse("15:59:59.999999999"));
-    
+    assertThat(splitter.getSplitPoint(null, end, null, null, null))
+        .isEqualTo(java.time.LocalTime.parse("08:00:00"));
+
+    // Open end: Midpoint between 08:00:00 and LocalTime.MAX (23:59:59.999999999) is
+    // 15:59:59.999999999.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null))
+        .isEqualTo(java.time.LocalTime.parse("15:59:59.999999999"));
+
     // Identical bounds: Midpoint evaluates to the start value when start == end.
     assertThat(splitter.getSplitPoint(start, start, null, null, null)).isEqualTo(start);
+  }
+
+  @Test
+  public void testOffsetTimeBoundarySplitter() {
+    BoundarySplitter<java.time.OffsetTime> splitter =
+        BoundarySplitterFactory.create(java.time.OffsetTime.class);
+
+    java.time.OffsetTime start = java.time.OffsetTime.parse("08:00:00+05:00");
+    java.time.OffsetTime end = java.time.OffsetTime.parse("16:00:00+05:00");
+    java.time.OffsetTime mid = java.time.OffsetTime.parse("12:00:00+05:00");
+
+    // Standard closed range: Midpoint between 08:00:00 and 16:00:00 is 12:00:00.
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
+
+    // Fully open range: Midpoint is null (meaning no split possible).
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+
+    // Open start: Midpoint between LocalTime.MIN (00:00:00) and 16:00:00 is 08:00:00.
+    assertThat(splitter.getSplitPoint(null, end, null, null, null))
+        .isEqualTo(java.time.OffsetTime.parse("08:00:00+05:00"));
+
+    // Open end: Midpoint between 08:00:00 and LocalTime.MAX (23:59:59.999999999) is
+    // 15:59:59.999999999.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null))
+        .isEqualTo(java.time.OffsetTime.parse("15:59:59.999999999+05:00"));
+
+    // Identical bounds: Midpoint evaluates to the start value when start == end.
+    assertThat(splitter.getSplitPoint(start, start, null, null, null)).isEqualTo(start);
+
+    // Crossing UTC Midnight Boundary:
+    // 02:00+05:00 is 21:00 UTC (previous day). 06:00+05:00 is 01:00 UTC (current day).
+    // The midpoint should correctly wrap back around to 04:00+05:00 (23:00 UTC).
+    java.time.OffsetTime crossStart = java.time.OffsetTime.parse("02:00:00+05:00");
+    java.time.OffsetTime crossEnd = java.time.OffsetTime.parse("06:00:00+05:00");
+    java.time.OffsetTime crossMid = java.time.OffsetTime.parse("04:00:00+05:00");
+    assertThat(splitter.getSplitPoint(crossStart, crossEnd, null, null, null)).isEqualTo(crossMid);
   }
 
   @Test

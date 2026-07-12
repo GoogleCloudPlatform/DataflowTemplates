@@ -424,6 +424,22 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.TIMESTAMPTZ_SCHEMA);
     assertEquals("Test timestampTz conversion: ", "2020-10-13T14:30:00.056483Z", result);
 
+    // Tests for timeTz type.
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "time_with_time_zone_column",
+            AvroTestingHelper.createTimeTzRecord(52200056483L, 19800000),
+            AvroTestingHelper.TIMETZ_SCHEMA);
+    assertEquals("Test timeTz conversion: ", "14:30:00.056483+05:30", result);
+
+    // Test for timeTz special 24:00:00 value with an offset.
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "time_with_time_zone_column",
+            AvroTestingHelper.createTimeTzRecord(86400000000L, 19800000),
+            AvroTestingHelper.TIMETZ_SCHEMA);
+    assertEquals("Test timeTz special conversion: ", "24:00:00+05:30", result);
+
     // Tests for datetime type.
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(

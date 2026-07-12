@@ -91,6 +91,12 @@ public class PostgreSQLMappingProviderTest {
         .put(
             "TIMESTAMP WITHOUT TIME ZONE",
             "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
+        .put(
+            "TIMETZ",
+            "{\"type\":\"record\",\"name\":\"timeTz\",\"fields\":[{\"name\":\"time\",\"type\":{\"type\":\"long\",\"logicalType\":\"time-micros\"}},{\"name\":\"offset\",\"type\":{\"type\":\"int\",\"logicalType\":\"time-millis\"}}]}")
+        .put(
+            "TIME WITH TIME ZONE",
+            "{\"type\":\"record\",\"name\":\"timeTz\",\"fields\":[{\"name\":\"time\",\"type\":{\"type\":\"long\",\"logicalType\":\"time-micros\"}},{\"name\":\"offset\",\"type\":{\"type\":\"int\",\"logicalType\":\"time-millis\"}}]}")
         .put("UUID", "\"string\"")
         .put("VARBIT", "\"bytes\"")
         .put("VARCHAR", "\"string\"")

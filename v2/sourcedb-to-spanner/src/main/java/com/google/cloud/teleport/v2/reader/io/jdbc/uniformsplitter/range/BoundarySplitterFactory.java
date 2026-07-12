@@ -28,6 +28,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
@@ -63,6 +65,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<LocalTime>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitLocalTimes(start, end))
+          .put(
+              OffsetTime.class,
+              (BoundarySplitter<OffsetTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitOffsetTimes(start, end))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
@@ -205,6 +212,39 @@ public class BoundarySplitterFactory {
       return null;
     }
     return LocalTime.ofNanoOfDay(midNanos);
+  }
+
+  private static OffsetTime splitOffsetTimes(OffsetTime start, OffsetTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = OffsetTime.of(LocalTime.MIN, end.getOffset());
+    }
+    if (end == null) {
+      end = OffsetTime.of(LocalTime.MAX, start.getOffset());
+    }
+
+    long startNanos = start.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
+    long endNanos = end.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
+
+    long nanosPerDay = 86_400_000_000_000L;
+    if (endNanos < startNanos) {
+      endNanos += nanosPerDay;
+    }
+
+    Long midNanos = splitLongs(startNanos, endNanos);
+    if (midNanos == null) {
+      return null;
+    }
+
+    midNanos = midNanos % nanosPerDay;
+
+    OffsetTime currentEnd =
+        OffsetTime.of(LocalTime.ofNanoOfDay(midNanos), ZoneOffset.UTC)
+            .withOffsetSameInstant(start.getOffset());
+
+    return currentEnd;
   }
 
   @VisibleForTesting

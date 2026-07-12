@@ -412,4 +412,110 @@ public class RangePreparedStatementSetterTest {
     assertThat(pgObj.getType()).isEqualTo("time");
     assertThat(pgObj.getValue()).isEqualTo("24:00:00");
   }
+
+  @Test
+  public void testSetParameters_withOffsetTimeMax() throws Exception {
+    java.time.OffsetTime start = java.time.OffsetTime.parse("08:00:00+05:00");
+    java.time.OffsetTime end =
+        java.time.OffsetTime.of(java.time.LocalTime.MAX, java.time.ZoneOffset.ofHours(5));
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_timetz_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("timetz_col")
+            .setColumnClass(java.time.OffsetTime.class)
+            .setColumnTypeName("timetz")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("timetz")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(java.time.OffsetTime.class))
+            .setColName("timetz_col")
+            .setColClass(java.time.OffsetTime.class)
+            .setStart(start)
+            .setEnd(end)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    Object capturedEnd = captor.getValue();
+    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
+    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(pgObj.getType()).isEqualTo("timetz");
+    assertThat(pgObj.getValue()).isEqualTo("24:00:00+05:00");
+  }
+
+  @Test
+  public void testSetParameters_withOffsetTimeMax_zuluOffset() throws Exception {
+    java.time.OffsetTime start = java.time.OffsetTime.parse("08:00:00Z");
+    java.time.OffsetTime end =
+        java.time.OffsetTime.of(java.time.LocalTime.MAX, java.time.ZoneOffset.UTC);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_timetz_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("timetz_col")
+            .setColumnClass(java.time.OffsetTime.class)
+            .setColumnTypeName("timetz")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("timetz")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(java.time.OffsetTime.class))
+            .setColName("timetz_col")
+            .setColClass(java.time.OffsetTime.class)
+            .setStart(start)
+            .setEnd(end)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    Object capturedEnd = captor.getValue();
+    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
+    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(pgObj.getType()).isEqualTo("timetz");
+    assertThat(pgObj.getValue()).isEqualTo("24:00:00+00");
+  }
 }

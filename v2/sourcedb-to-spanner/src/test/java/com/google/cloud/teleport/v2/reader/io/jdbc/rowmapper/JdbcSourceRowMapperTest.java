@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
@@ -866,22 +867,26 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIME")
-                .mappedValue(0L)
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03")
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIME WITHOUT TIME ZONE")
                 .inputValue("01:02:03")
-                .mappedValue(null) // Unsupported
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("TIMETZ")
                 .inputValue("01:02:03-05")
-                .mappedValue(null) // Unsupported
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000)
+                        .build())
                 .build())
         .add(
             Column.builder()

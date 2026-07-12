@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.m
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.sql.PreparedStatement;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -56,7 +58,8 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
 
   /**
    * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID),
-   * and convert LocalTime.MAX to "24:00:00" to match PostgreSQL's end-of-day time format.
+   * and convert LocalTime.MAX (and OffsetTime at LocalTime.MAX) to "24:00:00" to match PostgreSQL's
+   * end-of-day time format.
    */
   private static Object convertSpecialTypes(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes
@@ -64,12 +67,28 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
       return new java.util.UUID(bb.getLong(), bb.getLong());
     }
-    if (val instanceof java.time.LocalTime localTime) {
-      if (java.time.LocalTime.MAX.equals(localTime)) {
+    if (val instanceof LocalTime localTime) {
+      if (LocalTime.MAX.equals(localTime)) {
         org.postgresql.util.PGobject pgObj = new org.postgresql.util.PGobject();
         pgObj.setType("time");
         try {
           pgObj.setValue("24:00:00");
+        } catch (java.sql.SQLException e) {
+          throw new RuntimeException(e);
+        }
+        return pgObj;
+      }
+    }
+    if (val instanceof OffsetTime offsetTime) {
+      if (LocalTime.MAX.equals(offsetTime.toLocalTime())) {
+        org.postgresql.util.PGobject pgObj = new org.postgresql.util.PGobject();
+        pgObj.setType("timetz");
+        try {
+          String offsetStr = offsetTime.getOffset().toString();
+          if ("Z".equals(offsetStr)) {
+            offsetStr = "+00";
+          }
+          pgObj.setValue("24:00:00" + offsetStr);
         } catch (java.sql.SQLException e) {
           throw new RuntimeException(e);
         }

@@ -36,6 +36,17 @@ public class AvroTestingHelper {
           .noDefault()
           .endRecord();
 
+  public static final Schema TIMETZ_SCHEMA =
+      SchemaBuilder.record("timeTz")
+          .fields()
+          .name("time")
+          .type(LogicalTypes.timeMicros().addToSchema(Schema.create(Schema.Type.LONG)))
+          .noDefault()
+          .name("offset")
+          .type(LogicalTypes.timeMillis().addToSchema(Schema.create(Schema.Type.INT)))
+          .noDefault()
+          .endRecord();
+
   public static final Schema DATETIME_SCHEMA =
       SchemaBuilder.record("datetime")
           .fields()
@@ -103,6 +114,13 @@ public class AvroTestingHelper {
   public static GenericRecord createTimestampTzRecord(Long timestamp, Integer offset) {
     GenericRecord genericRecord = new GenericData.Record(TIMESTAMPTZ_SCHEMA);
     genericRecord.put("timestamp", timestamp);
+    genericRecord.put("offset", offset);
+    return genericRecord;
+  }
+
+  public static GenericRecord createTimeTzRecord(Long time, Integer offset) {
+    GenericRecord genericRecord = new GenericData.Record(TIMETZ_SCHEMA);
+    genericRecord.put("time", time);
     genericRecord.put("offset", offset);
     return genericRecord;
   }

@@ -452,7 +452,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(true)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.DURATION)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.OFFSET_TIME)
                     .setColumnTypeName("timetz")
                     .setDatetimePrecision(0)
                     .build(),

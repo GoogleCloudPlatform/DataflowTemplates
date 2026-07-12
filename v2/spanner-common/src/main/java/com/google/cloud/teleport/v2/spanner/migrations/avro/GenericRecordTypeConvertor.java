@@ -713,6 +713,27 @@ public class GenericRecordTypeConvertor {
       return fullDate
           .withZoneSameInstant(ZoneId.of("UTC"))
           .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    } else if (fieldSchema.getName().equals("timeTz")) {
+      Long timeMicros = Long.valueOf(element.get("time").toString());
+      ZoneOffset offset =
+          ZoneOffset.ofTotalSeconds(Integer.valueOf(element.get("offset").toString()) / 1000);
+
+      String timeString;
+      // Handle PostgreSQL "24:00:00" (86400000000L micros) separately as LocalTime rejects it.
+      if (timeMicros == 86400000000L) {
+        timeString = "24:00:00";
+      } else {
+        timeString =
+            LocalTime.ofNanoOfDay(TimeUnit.MICROSECONDS.toNanos(timeMicros))
+                .format(DateTimeFormatter.ISO_LOCAL_TIME);
+      }
+
+      String offsetString = offset.toString();
+      if (offsetString.equals("Z")) {
+        offsetString = "+00:00";
+      }
+
+      return timeString + offsetString;
     } else if (fieldSchema.getName().equals("datetime")) {
       // Convert to timestamp string.
       Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));

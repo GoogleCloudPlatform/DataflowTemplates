@@ -21,11 +21,14 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsPr
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -48,6 +51,15 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final DateTimeFormatter TIMESTAMPTZ_FORMAT =
       new DateTimeFormatterBuilder()
           .appendPattern("yyyy-MM-dd HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+          .optionalEnd()
+          .appendOffset("+HH:mm", "+00")
+          .toFormatter();
+
+  private static final DateTimeFormatter TIMETZ_FORMAT =
+      new DateTimeFormatterBuilder()
+          .appendPattern("HH:mm:ss")
           .optionalStart()
           .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
           .optionalEnd()
@@ -104,17 +116,51 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
 
+  private static final ResultSetValueMapper<String> timetzToAvro =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+
+        long timeMicros;
+        int offsetMillis;
+
+        // Temporarily swap 24:00:00 to 00:00:00 so Java can parse the offset cleanly
+        String parseableValue = value;
+        boolean is24 = false;
+        if (value.startsWith("24:00:00")) {
+          parseableValue = "00" + value.substring(2);
+          is24 = true;
+        }
+
+        OffsetTime parsedTime = OffsetTime.parse(parseableValue, TIMETZ_FORMAT);
+
+        if (is24) {
+          timeMicros = 86400000000L;
+        } else {
+          timeMicros = TimeUnit.NANOSECONDS.toMicros(parsedTime.toLocalTime().toNanoOfDay());
+        }
+
+        offsetMillis = (int) TimeUnit.SECONDS.toMillis(parsedTime.getOffset().getTotalSeconds());
+
+        return new GenericRecordBuilder(TimeTz.SCHEMA)
+            .set(TimeTz.TIME_FIELD_NAME, timeMicros)
+            .set(TimeTz.OFFSET_FIELD_NAME, offsetMillis)
+            .build();
+      };
+
   private static final ResultSetValueMapper<String> postgresTimeToAvroTimeMicros =
       (value, schema) -> {
         if (value == null) {
           return null;
         }
-        // Handle PostgreSQL "24:00:00" manually (86400000000L micros) as LocalTime.parse rejects it.
+        // Handle PostgreSQL "24:00:00" manually (86400000000L micros)
+        // as LocalTime.parse rejects it.
         if (value.startsWith("24:00:00")) {
           return 86400000000L;
         }
-        java.time.LocalTime time = java.time.LocalTime.parse(value);
-        return java.util.concurrent.TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
+        LocalTime time = LocalTime.parse(value);
+        return TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
       };
 
   private static final JdbcMappings JDBC_MAPPINGS =
@@ -249,6 +295,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               })
           .put("TIME", ResultSet::getString, postgresTimeToAvroTimeMicros, 8)
           .put("TIME WITHOUT TIME ZONE", ResultSet::getString, postgresTimeToAvroTimeMicros, 8)
+          .put("TIMETZ", ResultSet::getString, timetzToAvro, 8)
+          .put("TIME WITH TIME ZONE", ResultSet::getString, timetzToAvro, 8)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
           .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)

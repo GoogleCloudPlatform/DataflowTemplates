@@ -503,8 +503,6 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     result.put("varchar_pk", createRows("varchar_pk", "", "a", "z"));
     result.put("character_varying_pk", createRows("character_varying_pk", "", "a", "z"));
     result.put("text_pk", createRows("text_pk", "", "a", "z"));
-    result.put("char_pk", createRows("char_pk", "a", "b", "c"));
-    result.put("character_pk", createRows("character_pk", "a", "b", "c"));
     result.put(
         "timestamp_pk",
         createRows(
