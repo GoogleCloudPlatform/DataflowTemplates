@@ -13,6 +13,7 @@
 # limitations under the License.
 
 name: Spanner Staging integration tests
+run-name: Spanner ${{ inputs.spannerHost == 'https://batch-spanner.googleapis.com' && 'Production' || inputs.spannerHost == 'https://preprod-spanner.sandbox.googleapis.com' && 'Staging' || inputs.spannerHost == 'https://staging-wrenchworks.sandbox.googleapis.com' && 'Cloud-devel' || 'Integration' }} Tests
 
 on:
   pull_request:
