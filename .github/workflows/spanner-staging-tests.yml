@@ -59,7 +59,7 @@ jobs:
     - name: Run Integration Tests
       env:
         SPANNER_HOST: ${{ inputs.spannerHost || 'https://staging-wrenchworks.sandbox.googleapis.com' }}
-        SPANNER_MULTI_REGION: ${{ inputs.spannerMultiRegion || 'nam3' }}
+        SPANNER_MULTI_REGION: ${{ inputs.spannerMultiRegion || (inputs.spannerHost == 'https://preprod-spanner.sandbox.googleapis.com' && 'nam-private1' || 'nam3') }}
       run: |
         ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="v1" \

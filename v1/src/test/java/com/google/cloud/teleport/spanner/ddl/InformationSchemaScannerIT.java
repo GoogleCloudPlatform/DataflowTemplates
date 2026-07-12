@@ -188,10 +188,10 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
-                testName + "-" + UUID.randomUUID().toString().substring(0, 8),
-                projectId,
-                System.getProperty("spannerMultiRegion", "nam3"),
-                dialect);
+            testName + "-" + UUID.randomUUID().toString().substring(0, 8),
+            projectId,
+            System.getProperty("spannerMultiRegion", "nam3"),
+            dialect);
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
     }
