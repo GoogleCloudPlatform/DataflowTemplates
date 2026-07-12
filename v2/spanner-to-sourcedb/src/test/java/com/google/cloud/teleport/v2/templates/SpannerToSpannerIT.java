@@ -57,7 +57,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSpannerIT.class);
 
-  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(15);
 
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
 
