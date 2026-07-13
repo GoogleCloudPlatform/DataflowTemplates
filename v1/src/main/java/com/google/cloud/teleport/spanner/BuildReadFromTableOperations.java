@@ -71,8 +71,9 @@ class BuildReadFromTableOperations
                 List<String> tablesList = Collections.emptyList();
 
                 // If the user provides a comma-separated list of strings, parse it into a List
-                if (!tables.get().trim().isEmpty()) {
-                  tablesList = Arrays.asList(tables.get().split(",\\s*"));
+                String tablesVal = tables.get();
+                if (tablesVal != null && !tablesVal.trim().isEmpty()) {
+                  tablesList = Arrays.asList(tablesVal.split(",\\s*"));
                 }
 
                 for (Table table : getFilteredTables(ddl, tablesList)) {

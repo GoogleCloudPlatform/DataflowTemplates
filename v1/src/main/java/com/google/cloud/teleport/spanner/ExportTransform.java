@@ -249,7 +249,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                     // If the user sets shouldRelatedTables to true without providing
                     // a list of export tables, throw an exception.
-                    if (tableNames.get().trim().isEmpty() && exportRelatedTables.get()) {
+                    String tableNamesVal = tableNames.get();
+                    boolean hasTableNames = tableNamesVal != null && !tableNamesVal.trim().isEmpty();
+
+                    // If the user sets shouldRelatedTables to true without providing
+                    // a list of export tables, throw an exception.
+                    if (!hasTableNames && exportRelatedTables.get()) {
                       throw new Exception(
                           "Invalid usage of --tableNames and --shouldExportRelatedTables. Set"
                               + " --shouldExportRelatedTables=true only if --tableNames is given"
@@ -257,8 +262,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     }
 
                     // If the user provides a comma-separated list of strings, parse it into a List
-                    if (!tableNames.get().trim().isEmpty()) {
-                      tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                    if (hasTableNames) {
+                      tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                     }
 
                     // If the user provided any invalid table names, throw an exception.
@@ -323,7 +328,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       for (Table t : ddl.allTables()) {
                         c.output(KV.of(t.name(), null));
                       }
@@ -334,7 +340,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                         c.output(KV.of(v.name(), null));
                       }
                     } else {
-                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                       for (Table t : getFilteredTables(ddl, tablesList)) {
                         c.output(KV.of(t.name(), null));
                       }
@@ -350,7 +356,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       Ddl ddl = c.element();
                       for (Model model : ddl.models()) {
                         c.output(model.name());
@@ -367,7 +374,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       Ddl ddl = c.element();
                       for (PropertyGraph graph : ddl.propertyGraphs()) {
                         c.output(graph.name());
@@ -384,7 +392,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       Ddl ddl = c.element();
                       for (ChangeStream changeStream : ddl.changeStreams()) {
                         c.output(changeStream.name());
@@ -402,12 +411,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       for (Sequence sequence : ddl.sequences()) {
                         c.output(sequence.name());
                       }
                     } else {
-                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                       Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
                       for (Sequence sequence : ddl.sequences()) {
                         String seqName = sequence.name().toLowerCase();
@@ -429,12 +439,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       for (NamedSchema t : ddl.schemas()) {
                         c.output(t.name());
                       }
                     } else {
-                      List<String> tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                       Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
                       for (NamedSchema schema : ddl.schemas()) {
                         String prefix = schema.name() + ".";
@@ -454,7 +465,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       Ddl ddl = c.element();
                       for (Placement placement : ddl.placements()) {
                         c.output(placement.name());
@@ -471,7 +483,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    if (tableNames.get().trim().isEmpty()) {
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
                       Ddl ddl = c.element();
                       for (Udf udf : ddl.udfs()) {
                         c.output(udf.specificName());
