@@ -37,7 +37,7 @@ on:
         description: 'Spanner multi-region to use for tests.'
         type: string
         required: false
-        default: 'nam3'
+        default: ''
 
 permissions: write-all
 
