@@ -27,10 +27,10 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,8 +52,6 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
   private static final String DESCRIPTION = "description";
   private static final String SPANNER_DDL_RESOURCE =
       "SourceDbToSpanner4ByteStringPKIT/spanner-schema.sql";
-
-
 
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
     HashMap<String, String> columns = new HashMap<>();

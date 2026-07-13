@@ -58,9 +58,9 @@ public class BoundaryTypeMapperImplTest {
     collationMapperBuilder
         .addCharacter(
             CollationOrderRow.builder()
-                .setCharsetChar('a')
-                .setEquivalentChar('A')
-                .setEquivalentCharPadSpace('A')
+                .setCharsetChar("a")
+                .setEquivalentChar("A")
+                .setEquivalentCharPadSpace("A")
                 .setCodepointRank(0L)
                 .setCodepointRankPadSpace(0L)
                 .setIsEmpty(false)
@@ -68,9 +68,9 @@ public class BoundaryTypeMapperImplTest {
                 .build())
         .addCharacter(
             CollationOrderRow.builder()
-                .setCharsetChar('A')
-                .setEquivalentChar('A')
-                .setEquivalentCharPadSpace('A')
+                .setCharsetChar("A")
+                .setEquivalentChar("A")
+                .setEquivalentCharPadSpace("A")
                 .setCodepointRank(0L)
                 .setCodepointRankPadSpace(0L)
                 .setIsEmpty(false)
