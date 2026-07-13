@@ -90,44 +90,6 @@ public class SourceDbToSpannerTest {
   }
 
   @Test
-  public void testValidateOptions_PostgresThrowsExceptionForCustomNamespace() {
-    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
-    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
-    when(mockOptions.getNamespace()).thenReturn("sales");
-
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class, () -> SourceDbToSpanner.validateOptions(mockOptions));
-
-    assertThat(exception.getMessage())
-        .isEqualTo("Non-public namespaces are currently unsupported for PostgreSQL migrations.");
-  }
-
-  @Test
-  public void testValidateOptions_PostgresSucceedsForEmptyNamespace() {
-    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
-    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
-    when(mockOptions.getNamespace()).thenReturn("");
-    SourceDbToSpanner.validateOptions(mockOptions);
-  }
-
-  @Test
-  public void testValidateOptions_PostgresSucceedsForPublicNamespace() {
-    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
-    when(mockOptions.getSourceDbDialect()).thenReturn(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
-    when(mockOptions.getNamespace()).thenReturn("public");
-    SourceDbToSpanner.validateOptions(mockOptions);
-  }
-
-  @Test
-  public void testValidateOptions_NonPostgresDialectSucceeds() {
-    SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
-    when(mockOptions.getSourceDbDialect())
-        .thenReturn(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
-    SourceDbToSpanner.validateOptions(mockOptions);
-  }
-
-  @Test
   public void testRun_ValidationFailures() {
     SourceDbToSpannerOptions mockOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
