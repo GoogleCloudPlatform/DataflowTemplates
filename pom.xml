@@ -83,7 +83,7 @@
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
     <log4j-2.version>2.25.4</log4j-2.version>
-    <mock-server-netty.version>5.15.0</mock-server-netty.version>
+    <mock-server-netty.version>7.4.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
     <re2j.version>1.8</re2j.version>
