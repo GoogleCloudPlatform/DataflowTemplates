@@ -43,7 +43,7 @@ public abstract class CollationIndex implements Serializable {
    * Map of character to it's index position based on collation order. Helps us map a string to big
    * integer.
    */
-  public abstract ImmutableMap<Character, Long> characterToIndex();
+  public abstract ImmutableMap<String, Long> characterToIndex();
 
   /**
    * Map if Index back to character based on collation order. Helps us unmap a big integer to
@@ -51,7 +51,7 @@ public abstract class CollationIndex implements Serializable {
    * case-insensitive collations, 'a' and 'A' will have the same index in {@link
    * #characterToIndex()} and {@link #indexToCharacter()} will map the index to 'A'.
    */
-  public abstract ImmutableMap<Long, Character> indexToCharacter();
+  public abstract ImmutableMap<Long, String> indexToCharacter();
 
   public static CollationIndex.Builder builder() {
     return new AutoValue_CollationIndex.Builder();
@@ -61,11 +61,11 @@ public abstract class CollationIndex implements Serializable {
     return indexToCharacter().size();
   }
 
-  public long getOrdinalPosition(Character c) {
+  public long getOrdinalPosition(String c) {
     return characterToIndex().get(c);
   }
 
-  public Character getCharacterFromPosition(Long position) {
+  public String getCharacterFromPosition(Long position) {
     return indexToCharacter().get(position);
   }
 
@@ -80,15 +80,15 @@ public abstract class CollationIndex implements Serializable {
 
     abstract CollationIndexType indexType();
 
-    private Map<Character, Long> charToIndexCache = new HashMap<>();
-    private Map<Long, Character> indexToCharacterCache = new HashMap<>();
-    private Map<Character, Long> indexToCharacterReverseCache = new HashMap<>();
+    private Map<String, Long> charToIndexCache = new HashMap<>();
+    private Map<Long, String> indexToCharacterCache = new HashMap<>();
+    private Map<String, Long> indexToCharacterReverseCache = new HashMap<>();
 
-    abstract Builder setIndexToCharacter(ImmutableMap<Long, Character> value);
+    abstract Builder setIndexToCharacter(ImmutableMap<Long, String> value);
 
-    abstract Builder setCharacterToIndex(ImmutableMap<Character, Long> value);
+    abstract Builder setCharacterToIndex(ImmutableMap<String, Long> value);
 
-    public Builder addCharacter(Character charsetChar, Character equivalentChar, Long index) {
+    public Builder addCharacter(String charsetChar, String equivalentChar, Long index) {
       logger.debug(
           "Registering character order for {}, index-type = {}, character = {}, equivalentCharacter = {}, index = {}, isBlank = {}",
           collationReference(),
