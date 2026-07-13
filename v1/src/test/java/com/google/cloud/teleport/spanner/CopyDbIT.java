@@ -52,8 +52,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 /**
  * Integration test for {@link ExportPipeline} and {@link ImportPipeline}.
@@ -65,7 +63,6 @@ import org.junit.runners.JUnit4;
  */
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
-@RunWith(JUnit4.class)
 public class CopyDbIT extends SpannerTemplateITBase {
 
   // Resource managers for the source database (exported) and destination database (imported).
@@ -95,11 +92,21 @@ public class CopyDbIT extends SpannerTemplateITBase {
   private void createAndPopulate(Ddl ddl, int numBatches) {
     // Initialize the databases with the appropriate dialect dynamically.
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-source",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-dest",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
 
@@ -257,11 +264,21 @@ public class CopyDbIT extends SpannerTemplateITBase {
 
   private void createAndPopulate(String sqlFile, Dialect dialect, int numBatches) throws Exception {
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", dialect)
+        SpannerResourceManager.builder(
+                testName + "-source",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                dialect)
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", dialect)
+        SpannerResourceManager.builder(
+                testName + "-dest",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                dialect)
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
 

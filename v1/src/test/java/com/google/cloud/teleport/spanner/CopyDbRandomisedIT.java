@@ -22,6 +22,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Column;
@@ -48,8 +49,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 /**
  * Integration test for {@link ExportPipeline} and {@link ImportPipeline}.
@@ -58,9 +57,8 @@ import org.junit.runners.JUnit4;
  * using Avro format, and subsequently importing that exact data into a fresh Spanner database. It
  * focuses on testing with randomly generated schemas and data.
  */
-@Category(IntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
-@RunWith(JUnit4.class)
 public class CopyDbRandomisedIT extends SpannerTemplateITBase {
 
   private SpannerResourceManager sourceResourceManager;
@@ -76,11 +74,21 @@ public class CopyDbRandomisedIT extends SpannerTemplateITBase {
 
   private void createAndPopulate(Ddl ddl, int numBatches) {
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-source",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-dest",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
 
