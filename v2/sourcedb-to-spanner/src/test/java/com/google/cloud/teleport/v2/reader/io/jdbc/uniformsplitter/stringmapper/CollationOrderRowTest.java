@@ -23,7 +23,6 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.string
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
 import static com.google.common.truth.Truth.assertThat;
-
 import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
@@ -83,5 +82,4 @@ public class CollationOrderRowTest {
                 .setIsSpace(false)
                 .build());
   }
-
 }
