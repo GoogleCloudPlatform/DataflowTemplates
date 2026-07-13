@@ -34,8 +34,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
 import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.IORedirectUtil;
@@ -395,5 +397,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException(e);
     }
+  }
+
+  @Override
+  protected PipelineOperator.Config.Builder wrapConfiguration(
+      PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(Duration.ofMinutes(15));
+    }
+    return builder;
   }
 }
