@@ -200,7 +200,7 @@ public final class SpannerResourceManager implements ResourceManager {
     } else if (!hasInstance) {
       LOG.info("Creating instance {} in project {}.", instanceId, projectId);
       try {
-        InstanceInfo instanceInfo =
+        InstanceInfo.Builder instanceInfoBuilder =
             InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
                 .setInstanceConfigId(
                     InstanceConfigId.of(
@@ -211,9 +211,11 @@ public final class SpannerResourceManager implements ResourceManager {
                             ? region
                             : "regional-" + region))
                 .setDisplayName(instanceId)
-                .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
-                .setNodeCount(nodeCount)
-                .build();
+                .setNodeCount(nodeCount);
+        if (!region.contains("private")) {
+          instanceInfoBuilder.setEdition(Edition.ENTERPRISE_PLUS); // Needed by Full Text Search.
+        }
+        InstanceInfo instanceInfo = instanceInfoBuilder.build();
 
         // Retry creation if there's a quota error
         Instance instance =
