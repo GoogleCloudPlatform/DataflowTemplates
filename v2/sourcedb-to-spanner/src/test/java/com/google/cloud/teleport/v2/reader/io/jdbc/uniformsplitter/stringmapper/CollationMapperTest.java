@@ -71,9 +71,9 @@ public class CollationMapperTest {
     for (Character c : enAlphabetsBuilder.build()) {
       CollationOrderRow collationOrderRow =
           CollationOrderRow.builder()
-              .setCharsetChar(c)
-              .setEquivalentChar(Character.toUpperCase(c))
-              .setEquivalentCharPadSpace(Character.toUpperCase(c))
+              .setCharsetChar(String.valueOf(c))
+              .setEquivalentChar(String.valueOf(Character.toUpperCase(c)))
+              .setEquivalentCharPadSpace(String.valueOf(Character.toUpperCase(c)))
               .setCodepointRank((long) (Character.toUpperCase(c) - 'A'))
               .setCodepointRankPadSpace((long) (Character.toUpperCase(c) - 'A'))
               .setIsEmpty(false)
@@ -84,9 +84,9 @@ public class CollationMapperTest {
     /** Add blank character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('\0')
-            .setEquivalentChar('\0')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar("\0")
+            .setEquivalentChar("\0")
+            .setEquivalentCharPadSpace("\0")
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(true)
@@ -136,9 +136,9 @@ public class CollationMapperTest {
     for (Character c : enAlphabetsBuilder.build()) {
       CollationOrderRow collationOrderRow =
           CollationOrderRow.builder()
-              .setCharsetChar(c)
-              .setEquivalentChar(Character.toUpperCase(c))
-              .setEquivalentCharPadSpace(Character.toUpperCase(c))
+              .setCharsetChar(String.valueOf(c))
+              .setEquivalentChar(String.valueOf(Character.toUpperCase(c)))
+              .setEquivalentCharPadSpace(String.valueOf(Character.toUpperCase(c)))
               .setCodepointRank((long) (Character.toUpperCase(c) - 'A' + 1))
               .setCodepointRankPadSpace((long) (Character.toUpperCase(c) - 'A'))
               .setIsEmpty(false)
@@ -149,9 +149,9 @@ public class CollationMapperTest {
     /** Add Space Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar(' ')
-            .setEquivalentChar(' ')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar(" ")
+            .setEquivalentChar(" ")
+            .setEquivalentCharPadSpace("\0")
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -183,9 +183,9 @@ public class CollationMapperTest {
     /* Add space character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar(' ')
-            .setEquivalentChar(' ')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar(" ")
+            .setEquivalentChar(" ")
+            .setEquivalentCharPadSpace("\0")
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -194,9 +194,9 @@ public class CollationMapperTest {
     /* Add empty Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('\0')
-            .setEquivalentChar('\0')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar("\0")
+            .setEquivalentChar("\0")
+            .setEquivalentCharPadSpace("\0")
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(true)
@@ -224,9 +224,9 @@ public class CollationMapperTest {
     /* Add Single Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('a')
-            .setEquivalentChar('a')
-            .setEquivalentCharPadSpace('a')
+            .setCharsetChar("a")
+            .setEquivalentChar("a")
+            .setEquivalentCharPadSpace("a")
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)

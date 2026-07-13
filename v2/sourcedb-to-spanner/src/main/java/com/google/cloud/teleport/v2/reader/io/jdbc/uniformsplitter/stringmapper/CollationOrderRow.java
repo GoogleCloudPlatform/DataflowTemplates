@@ -24,7 +24,6 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.string
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.base.Preconditions;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.slf4j.Logger;
@@ -41,10 +40,10 @@ public abstract class CollationOrderRow {
   private static final Logger logger = LoggerFactory.getLogger(CollationOrderRow.class);
 
   /** Character in the character set. */
-  public abstract Character charsetChar();
+  public abstract String charsetChar();
 
   /** A character with lowest rank charset_char character is equal to as per the collation. */
-  public abstract Character equivalentChar();
+  public abstract String equivalentChar();
 
   /** 0 offset rank of this character as per the collation sort ordering at all positions. */
   public abstract Long codepointRank();
@@ -54,7 +53,7 @@ public abstract class CollationOrderRow {
    * trailing position, in case a PAD SPACE comparison is needed. Unless you are looking at space
    * like characters, this will be exactly same as equivalent_character.
    */
-  public abstract Character equivalentCharPadSpace();
+  public abstract String equivalentCharPadSpace();
 
   /**
    * A character with lowest rank charset_char character is equal to as per the collation at
@@ -110,21 +109,11 @@ public abstract class CollationOrderRow {
         isEmpty,
         isSpace);
 
-    Preconditions.checkArgument(
-        charSetChar.length() <= 1, "Found a long character in collation output " + charSetChar);
-    Preconditions.checkArgument(
-        equivalentCharsetChar.length() <= 1,
-        "Found a long equivalent character in collation output " + equivalentCharsetChar);
-    Preconditions.checkArgument(
-        equivalentCharsetCharPadSpace.length() <= 1,
-        "Found a long equivalent character for pad space in collation output "
-            + equivalentCharsetChar);
-
     return CollationOrderRow.builder()
-        .setCharsetChar(charSetChar.charAt(0))
-        .setEquivalentChar(equivalentCharsetChar.charAt(0))
+        .setCharsetChar(charSetChar)
+        .setEquivalentChar(equivalentCharsetChar)
         .setCodepointRank(codePointRank)
-        .setEquivalentCharPadSpace(equivalentCharsetCharPadSpace.charAt(0))
+        .setEquivalentCharPadSpace(equivalentCharsetCharPadSpace)
         .setCodepointRankPadSpace(codePointRankPadSpace)
         .setIsEmpty(isEmpty)
         .setIsSpace(isSpace)
@@ -134,13 +123,13 @@ public abstract class CollationOrderRow {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setCharsetChar(Character value);
+    public abstract Builder setCharsetChar(String value);
 
-    public abstract Builder setEquivalentChar(Character value);
+    public abstract Builder setEquivalentChar(String value);
 
     public abstract Builder setCodepointRank(Long value);
 
-    public abstract Builder setEquivalentCharPadSpace(Character value);
+    public abstract Builder setEquivalentCharPadSpace(String value);
 
     public abstract Builder setCodepointRankPadSpace(Long value);
 
