@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -426,7 +427,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                               .collect(Collectors.toList());
                       for (Sequence sequence : ddl.sequences()) {
                         String seqName = sequence.name().toLowerCase();
-                        if (prettyPrintedTables.stream().anyMatch(t -> t.contains(seqName))) {
+                        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(seqName) + "\\b");
+                        if (prettyPrintedTables.stream().anyMatch(t -> pattern.matcher(t).find())) {
                           c.output(sequence.name());
                         }
                       }
