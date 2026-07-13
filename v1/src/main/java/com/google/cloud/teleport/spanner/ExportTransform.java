@@ -419,10 +419,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     } else {
                       List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                       Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
+                      List<String> prettyPrintedTables =
+                          filteredTables.stream()
+                              .map(t -> t.prettyPrint().toLowerCase())
+                              .collect(Collectors.toList());
                       for (Sequence sequence : ddl.sequences()) {
                         String seqName = sequence.name().toLowerCase();
-                        if (filteredTables.stream()
-                            .anyMatch(t -> t.prettyPrint().toLowerCase().contains(seqName))) {
+                        if (prettyPrintedTables.stream().anyMatch(t -> t.contains(seqName))) {
                           c.output(sequence.name());
                         }
                       }
