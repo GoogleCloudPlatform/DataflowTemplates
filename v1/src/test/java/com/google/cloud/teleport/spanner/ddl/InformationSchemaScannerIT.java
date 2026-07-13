@@ -188,10 +188,11 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
-            testName + "-" + UUID.randomUUID().toString().substring(0, 8),
-            projectId,
-            System.getProperty("spannerMultiRegion", "nam3"),
-            dialect);
+                testName + "-" + UUID.randomUUID().toString().substring(0, 8),
+                projectId,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                dialect)
+            .setNodeCount(2);
     if (protoDescriptors != null) {
       builder.setProtoDescriptors(protoDescriptors);
     }
@@ -1995,6 +1996,10 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
   public void placementsAndPlacementTables() throws Exception {
     setupResourceManager(Dialect.GOOGLE_STANDARD_SQL);
     try {
+      String multiRegion = System.getProperty("spannerMultiRegion", "nam3");
+      String leader1 = multiRegion.startsWith("nam-private") ? "us-west1" : "us-east1";
+      String leader2 = multiRegion.startsWith("nam-private") ? "us-west2" : "us-east4";
+
       List<String> statements =
           Arrays.asList(
               "ALTER DATABASE `"
@@ -2003,10 +2008,14 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               "CREATE PLACEMENT `pl1_placements`\n\tOPTIONS (instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
+              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\""
+                  + leader1
+                  + "\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\""
+                  + leader2
+                  + "\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")",
               "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"

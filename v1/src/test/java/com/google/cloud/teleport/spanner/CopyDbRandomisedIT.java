@@ -74,11 +74,21 @@ public class CopyDbRandomisedIT extends SpannerTemplateITBase {
 
   private void createAndPopulate(Ddl ddl, int numBatches) {
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-source",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, ddl.dialect())
+        SpannerResourceManager.builder(
+                testName + "-dest",
+                PROJECT,
+                System.getProperty("spannerMultiRegion", "nam3"),
+                ddl.dialect())
+            .setNodeCount(2)
             .useCustomHost(spannerHost)
             .build();
 
