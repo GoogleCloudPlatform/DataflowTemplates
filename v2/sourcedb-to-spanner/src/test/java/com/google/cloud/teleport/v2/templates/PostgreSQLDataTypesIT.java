@@ -76,7 +76,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     System.setProperty("numWorkers", "20");
     Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("numPartitions", "100");
+    jobParameters.put("numPartitions", "10");
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
