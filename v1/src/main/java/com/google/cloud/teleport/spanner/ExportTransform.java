@@ -250,7 +250,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     // If the user sets shouldRelatedTables to true without providing
                     // a list of export tables, throw an exception.
                     String tableNamesVal = tableNames.get();
-                    boolean hasTableNames = tableNamesVal != null && !tableNamesVal.trim().isEmpty();
+                    boolean hasTableNames =
+                        tableNamesVal != null && !tableNamesVal.trim().isEmpty();
 
                     // If the user sets shouldRelatedTables to true without providing
                     // a list of export tables, throw an exception.
