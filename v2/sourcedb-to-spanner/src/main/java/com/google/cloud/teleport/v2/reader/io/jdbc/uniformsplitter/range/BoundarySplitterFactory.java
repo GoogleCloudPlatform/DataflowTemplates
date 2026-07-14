@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -118,6 +119,25 @@ public class BoundarySplitterFactory {
       throw new UnsupportedOperationException("Range Splitter not implemented for class " + c);
     }
     return splitter;
+  }
+
+  public static BoundarySplitter<String> createBitSplitter() {
+    return (start, end, partitionColumn, boundaryTypeMapper, processContext) -> {
+      if (start == null && end == null) {
+        return null;
+      }
+      BigInteger startInt = start == null ? null : new BigInteger(start, 2);
+      BigInteger endInt = end == null ? null : new BigInteger(end, 2);
+      
+      BigInteger midpoint = splitBigIntegers(startInt, endInt);
+      
+      String midString = midpoint.toString(2);
+      
+      int targetLength = start != null ? start.length() : (end != null ? end.length() : 0);
+      midString = Strings.padStart(midString, targetLength, '0');
+      
+      return midString;
+    };
   }
 
   private BoundarySplitterFactory() {}

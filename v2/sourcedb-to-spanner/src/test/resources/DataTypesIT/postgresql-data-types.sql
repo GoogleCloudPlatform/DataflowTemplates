@@ -172,6 +172,7 @@ CREATE TABLE t_time_pk (id time primary key, col integer);
 CREATE TABLE t_time_without_time_zone_pk (id time without time zone primary key, col integer);
 CREATE TABLE t_timetz_pk (id timetz primary key, col integer);
 CREATE TABLE t_time_with_time_zone_pk (id time with time zone primary key, col integer);
+CREATE TABLE t_bit_pk (id bit primary key, col integer);
 
 INSERT INTO t_bigint (col) VALUES (-9223372036854775808), (9223372036854775807), (42), (NULL);
 INSERT INTO t_bigint_to_string (col) VALUES (-9223372036854775808), (9223372036854775807), (42), (NULL);
@@ -345,6 +346,7 @@ INSERT INTO t_time_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time,
 INSERT INTO t_time_without_time_zone_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time, 2);
 INSERT INTO t_timetz_pk (id, col) VALUES ('00:00:00+00'::timetz, 1), ('12:00:00+00'::timetz, 2);
 INSERT INTO t_time_with_time_zone_pk (id, col) VALUES ('00:00:00+00'::timetz, 1), ('12:00:00+00'::timetz, 2);
+INSERT INTO t_bit_pk (id, col) VALUES (0::bit, 1), (1::bit, 2);
 
 CREATE TABLE t_uuid_pk (
   id uuid NOT NULL,

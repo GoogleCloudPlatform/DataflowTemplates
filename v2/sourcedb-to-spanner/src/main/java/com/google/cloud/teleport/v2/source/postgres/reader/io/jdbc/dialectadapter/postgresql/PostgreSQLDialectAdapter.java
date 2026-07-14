@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -85,7 +86,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           .put("TIMETZ", SourceColumnIndexInfo.IndexType.OFFSET_TIME)
           .put("BYTEA", SourceColumnIndexInfo.IndexType.BINARY)
           .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
+          .put("BIT", SourceColumnIndexInfo.IndexType.BIT)
           .build();
+
+  private static final ImmutableSet<String> CUSTOM_BOUNDARY_QUERY_TYPES =
+      ImmutableSet.of(UUID_TYPE.toUpperCase(), "BYTEA", "BIT");
 
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>
@@ -260,9 +265,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
-          if (UUID_TYPE.equalsIgnoreCase(columnType) || "BYTEA".equalsIgnoreCase(columnType)) {
+          if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(columnType.toUpperCase())) {
             logger.info(
-                "Discovered UUID/BYTEA column '{}' in table '{}'; enabling custom boundary queries",
+                "Discovered {} column '{}' in table '{}'; enabling custom boundary queries",
+                columnType,
                 columnName,
                 tableName);
             customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
@@ -416,7 +422,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String typeName =
               Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
           final String columnName = resultSet.getString("column_name");
-          if (UUID_TYPE.equalsIgnoreCase(typeName) || "BYTEA".equalsIgnoreCase(typeName)) {
+          if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(typeName.toUpperCase())) {
             customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           SourceColumnIndexInfo.IndexType indexType = indexTypeFrom(typeCategory, typeName);
@@ -431,7 +437,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setColumnTypeName(typeName)
                   .setIndexType(indexType);
 
-          // Floating-point partition columns require a step size for equality checks and splitting.
           switch (indexType) {
             case FLOAT -> indexBuilder.setDecimalStepSize(new BigDecimal("0.00001"));
             case DOUBLE -> indexBuilder.setDecimalStepSize(new BigDecimal("0.0000000001"));

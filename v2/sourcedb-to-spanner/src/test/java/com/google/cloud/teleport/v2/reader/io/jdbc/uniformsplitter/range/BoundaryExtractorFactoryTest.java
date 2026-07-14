@@ -387,6 +387,36 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
+  public void testFromBitStrings() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("bit")
+            .setColumnName("col1")
+            .setColumnClass(String.class)
+            .build();
+    BoundaryExtractor<String> extractor = BoundaryExtractorFactory.create(String.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn("0000");
+    when(mockResultSet.getString(2)).thenReturn("1010");
+
+    // Passing null for boundaryTypeMapper should succeed for BIT columns
+    Boundary<String> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
+    assertThat(boundary.start()).isEqualTo("0000");
+    assertThat(boundary.end()).isEqualTo("1010");
+    assertThat(boundary.isSplittable(null)).isTrue();
+  }
+
+  @Test
   public void testFromBinary() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =

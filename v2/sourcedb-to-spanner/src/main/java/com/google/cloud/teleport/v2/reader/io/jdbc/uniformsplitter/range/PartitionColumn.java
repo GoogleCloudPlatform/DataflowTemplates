@@ -98,10 +98,13 @@ public abstract class PartitionColumn implements Serializable {
 
     public PartitionColumn build() {
       PartitionColumn partitionColumn = this.autoBuild();
+      
+      boolean isBit = "bit".equalsIgnoreCase(partitionColumn.columnTypeName());
+
       Preconditions.checkState(
           (partitionColumn.columnClass() == String.class
-                  && partitionColumn.stringCollation() != null
-                  && partitionColumn.stringMaxLength() != null)
+                  && (partitionColumn.stringCollation() != null || isBit)
+                  && (partitionColumn.stringMaxLength() != null || isBit))
               || (partitionColumn.columnClass() != String.class
                   && partitionColumn.stringCollation() == null
                   && partitionColumn.stringMaxLength() == null),

@@ -243,16 +243,21 @@ public class BoundaryExtractorFactory {
       TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
-    Preconditions.checkArgument(
-        boundaryTypeMapper != null,
-        "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+    boolean isBit = "bit".equalsIgnoreCase(partitionColumn.columnTypeName());
+    
+    if (!isBit) {
+      Preconditions.checkArgument(
+          boundaryTypeMapper != null,
+          "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+    }
+    
     resultSet.next();
     return Boundary.<String>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
-        .setBoundarySplitter(BoundarySplitterFactory.create(String.class))
+        .setBoundarySplitter(isBit ? BoundarySplitterFactory.createBitSplitter() : BoundarySplitterFactory.create(String.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

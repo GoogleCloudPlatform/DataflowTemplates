@@ -176,6 +176,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     DURATION,
     LOCAL_TIME,
     OFFSET_TIME,
+    BIT,
     OTHER
   };
 
@@ -194,5 +195,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           .put(IndexType.DURATION, Duration.class)
           .put(IndexType.LOCAL_TIME, LocalTime.class)
           .put(IndexType.OFFSET_TIME, OffsetTime.class)
+          .put(IndexType.BIT, String.class)
           .build();
 }

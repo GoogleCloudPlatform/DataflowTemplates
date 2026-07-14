@@ -35,7 +35,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.postgresql.util.PGobject;
 
 /** Test class for {@link RangePreparedStatementSetter}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -362,6 +365,64 @@ public class RangePreparedStatementSetterTest {
   }
 
   @Test
+  public void testSetParameters_withBit() throws Exception {
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_bit_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("bit_col")
+            .setColumnClass(String.class)
+            .setColumnTypeName("bit")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("bit")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.createBitSplitter())
+            .setColName("bit_col")
+            .setColClass(String.class)
+            .setStart("0000")
+            .setEnd("1010")
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    ArgumentCaptor<Object> captor2 = ArgumentCaptor.forClass(Object.class);
+    ArgumentCaptor<Object> captor3 = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(2), captor2.capture());
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor3.capture());
+
+    Object capturedStart = captor2.getValue();
+    assertThat(capturedStart).isInstanceOf(PGobject.class);
+    PGobject startPgObj = (PGobject) capturedStart;
+    assertThat(startPgObj.getType()).isEqualTo("bit");
+    assertThat(startPgObj.getValue()).isEqualTo("0000");
+
+    Object capturedEnd = captor3.getValue();
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject endPgObj = (PGobject) capturedEnd;
+    assertThat(endPgObj.getType()).isEqualTo("bit");
+    assertThat(endPgObj.getValue()).isEqualTo("1010");
+  }
+
+  @Test
   public void testSetParameters_withLocalTimeMax() throws Exception {
     java.time.LocalTime start = java.time.LocalTime.parse("08:00:00");
     java.time.LocalTime end = java.time.LocalTime.MAX;
@@ -404,11 +465,11 @@ public class RangePreparedStatementSetterTest {
         new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
     setter.setParameters(range, mockStatement);
 
-    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
-    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor.capture());
     Object capturedEnd = captor.getValue();
-    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
-    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject pgObj = (PGobject) capturedEnd;
     assertThat(pgObj.getType()).isEqualTo("time");
     assertThat(pgObj.getValue()).isEqualTo("24:00:00");
   }
@@ -457,11 +518,11 @@ public class RangePreparedStatementSetterTest {
         new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
     setter.setParameters(range, mockStatement);
 
-    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
-    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor.capture());
     Object capturedEnd = captor.getValue();
-    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
-    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject pgObj = (PGobject) capturedEnd;
     assertThat(pgObj.getType()).isEqualTo("timetz");
     assertThat(pgObj.getValue()).isEqualTo("24:00:00+05:00");
   }
@@ -510,11 +571,11 @@ public class RangePreparedStatementSetterTest {
         new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
     setter.setParameters(range, mockStatement);
 
-    org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
-    verify(mockStatement).setObject(org.mockito.ArgumentMatchers.eq(3), captor.capture());
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor.capture());
     Object capturedEnd = captor.getValue();
-    assertThat(capturedEnd).isInstanceOf(org.postgresql.util.PGobject.class);
-    org.postgresql.util.PGobject pgObj = (org.postgresql.util.PGobject) capturedEnd;
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject pgObj = (PGobject) capturedEnd;
     assertThat(pgObj.getType()).isEqualTo("timetz");
     assertThat(pgObj.getValue()).isEqualTo("24:00:00+00");
   }

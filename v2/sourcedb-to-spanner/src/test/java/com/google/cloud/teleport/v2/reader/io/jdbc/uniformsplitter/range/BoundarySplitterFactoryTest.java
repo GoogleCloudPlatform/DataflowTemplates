@@ -295,6 +295,35 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testBitBoundarySplitter() {
+    BoundarySplitter<String> splitter = BoundarySplitterFactory.createBitSplitter();
+
+    String start = "0000";
+    String end = "1010";
+    String expectedMid = "0101";
+
+    // 1. Standard Split
+    // Verifies that valid binary start and end strings successfully calculate the correct midpoint.
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
+
+    // 2. Both Boundaries Null
+    // Verifies that providing no boundaries skips splitting and safely returns null.
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+
+    // 3. Open Lower Bound
+    // Verifies that a null start boundary implies a minimum value default (0) for calculating the midpoint.
+    assertThat(splitter.getSplitPoint(null, end, null, null, null)).isEqualTo(expectedMid);
+
+    // 4. Open Upper Bound
+    // Verifies that a null end boundary implies a minimum value default (0) for calculating the midpoint.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null)).isEqualTo(start);
+
+    // 5. Unbalanced String Lengths
+    // Verifies that string lengths are dynamically padded to match the maximum length before calculating the midpoint.
+    assertThat(splitter.getSplitPoint("0000", "1000", null, null, null)).isEqualTo("0100");
+  }
+
+  @Test
   public void testStringBoundarySplitter() {
 
     BoundaryTypeMapper mapper = new TestBoundaryTypeMapper();

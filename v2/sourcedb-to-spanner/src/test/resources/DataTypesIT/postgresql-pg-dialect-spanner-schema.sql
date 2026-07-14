@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS t_time_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_time_without_time_zone_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_timetz_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_time_with_time_zone_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_bit_pk (id BYTEA, col bigint, PRIMARY KEY (id));
 
 CREATE TABLE IF NOT EXISTS t_uuid_pk (
     id UUID NOT NULL,
