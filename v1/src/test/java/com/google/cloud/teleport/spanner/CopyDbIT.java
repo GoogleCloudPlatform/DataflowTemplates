@@ -91,9 +91,10 @@ public class CopyDbIT extends SpannerTemplateITBase {
    */
   private void createAndPopulate(Ddl ddl, int numBatches) {
     // Initialize the databases with the appropriate dialect dynamically.
-    SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
-        .useCustomHost(spannerHost)
-        .build();
+    sourceResourceManager =
+        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
+            .useCustomHost(spannerHost)
+            .build();
     destResourceManager =
         SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
             .useCustomHost(spannerHost)
