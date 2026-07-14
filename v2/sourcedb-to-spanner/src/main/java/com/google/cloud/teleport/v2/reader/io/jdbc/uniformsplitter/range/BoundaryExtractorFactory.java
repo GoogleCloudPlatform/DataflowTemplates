@@ -20,6 +20,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,11 +29,13 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -41,6 +45,21 @@ import org.slf4j.LoggerFactory;
 public class BoundaryExtractorFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(BoundaryExtractorFactory.class);
+
+  private static final Pattern TIME_PATTERN = 
+      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
+
+  private static final Pattern TIMETZ_PATTERN = 
+      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}(:\\d{2}(:\\d{2})?)?)?$");
+
+  private static final DateTimeFormatter TIMETZ_FORMAT =
+      new DateTimeFormatterBuilder()
+          .appendPattern("HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+          .optionalEnd()
+          .appendOffset("+HH:mm", "+00")
+          .toFormatter();
 
   @FunctionalInterface
   public interface BoundaryDurationExtractor extends Serializable {
@@ -312,14 +331,29 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
-  private static LocalTime parsePostgresTime(String timeStr) {
-    if (timeStr == null) {
+  private static LocalTime parsePostgresTimeBytes(byte[] bytes) {
+    if (bytes == null) {
       return null;
     }
-    if (timeStr.startsWith("24:00:00")) {
-      return LocalTime.MAX;
+
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+
+    // Text format
+    if (TIME_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        return LocalTime.MAX;
+      }
+      return LocalTime.parse(textFormat);
+    } else if (bytes.length == 8) {
+      // Binary format
+      long microseconds = ByteBuffer.wrap(bytes).getLong();
+      if (microseconds == 86400000000L) {
+        return LocalTime.MAX;
+      }
+      return LocalTime.ofNanoOfDay(microseconds * 1000L);
     }
-    return LocalTime.parse(timeStr);
+
+    throw new IllegalArgumentException("Unknown time format received for boundaries");
   }
 
   private static Boundary<LocalTime> fromLocalTimes(
@@ -333,8 +367,8 @@ public class BoundaryExtractorFactory {
     return Boundary.<LocalTime>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
-        .setStart(parsePostgresTime(resultSet.getString(1)))
-        .setEnd(parsePostgresTime(resultSet.getString(2)))
+        .setStart(parsePostgresTimeBytes(resultSet.getBytes(1)))
+        .setEnd(parsePostgresTimeBytes(resultSet.getBytes(2)))
         .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
@@ -352,32 +386,44 @@ public class BoundaryExtractorFactory {
     return Boundary.<OffsetTime>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
-        .setStart(parsePostgresOffsetTime(resultSet.getString(1)))
-        .setEnd(parsePostgresOffsetTime(resultSet.getString(2)))
+        .setStart(parsePostgresOffsetTimeBytes(resultSet.getBytes(1)))
+        .setEnd(parsePostgresOffsetTimeBytes(resultSet.getBytes(2)))
         .setBoundarySplitter(BoundarySplitterFactory.create(OffsetTime.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }
 
-  private static final DateTimeFormatter TIMETZ_FORMAT =
-      new DateTimeFormatterBuilder()
-          .appendPattern("HH:mm:ss")
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
-          .optionalEnd()
-          .appendOffset("+HH:mm", "+00")
-          .toFormatter();
-
-  private static OffsetTime parsePostgresOffsetTime(String timeStr) {
-    if (timeStr == null) {
+  private static OffsetTime parsePostgresOffsetTimeBytes(byte[] bytes) {
+    if (bytes == null) {
       return null;
     }
-    if (timeStr.startsWith("24:00:00")) {
-      String replacedStr = "00" + timeStr.substring(2);
-      OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
-      return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
+
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+
+    // Text format
+    if (TIMETZ_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        String replacedStr = "00" + textFormat.substring(2);
+        OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
+        return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
+      }
+      return OffsetTime.parse(textFormat, TIMETZ_FORMAT);
+    } else if (bytes.length == 12) {
+      // Binary format
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+      long microseconds = buffer.getLong();
+      int offsetSeconds = buffer.getInt();
+      
+      // PostgreSQL stores timezone offset inverted (West of UTC is positive).
+      ZoneOffset offset = ZoneOffset.ofTotalSeconds(-offsetSeconds);
+      
+      if (microseconds == 86400000000L) {
+        return OffsetTime.of(LocalTime.MAX, offset);
+      }
+      return OffsetTime.of(LocalTime.ofNanoOfDay(microseconds * 1000L), offset);
     }
-    return OffsetTime.parse(timeStr, TIMETZ_FORMAT);
+
+    throw new IllegalArgumentException("Unknown TIMETZ format received for boundaries");
   }
 
   private static Boundary<Duration> fromDurations(

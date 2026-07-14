@@ -30,11 +30,15 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -909,19 +913,19 @@ public class BoundaryExtractorFactoryTest {
         PartitionColumn.builder()
             .setColumnTypeName("dummy")
             .setColumnName("col1")
-            .setColumnClass(java.time.LocalTime.class)
+            .setColumnClass(LocalTime.class)
             .build();
-    BoundaryExtractor<java.time.LocalTime> extractor =
-        BoundaryExtractorFactory.create(java.time.LocalTime.class);
+    BoundaryExtractor<LocalTime> extractor =
+        BoundaryExtractorFactory.create(LocalTime.class);
     String startStr = "08:00:00";
     String endStr = "24:00:00";
-    java.time.LocalTime start = java.time.LocalTime.parse("08:00:00");
-    java.time.LocalTime end = java.time.LocalTime.MAX;
+    LocalTime start = LocalTime.parse("08:00:00");
+    LocalTime end = LocalTime.MAX;
 
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getString(eq(1))).thenReturn(startStr);
-    when(mockResultSet.getString(eq(2))).thenReturn(endStr);
-    Boundary<java.time.LocalTime> boundary =
+    when(mockResultSet.getBytes(eq(1))).thenReturn(startStr.getBytes(StandardCharsets.UTF_8));
+    when(mockResultSet.getBytes(eq(2))).thenReturn(endStr.getBytes(StandardCharsets.UTF_8));
+    Boundary<LocalTime> boundary =
         extractor.getBoundary(
             partitionColumn,
             mockResultSet,
@@ -932,16 +936,16 @@ public class BoundaryExtractorFactoryTest {
                 .build());
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
-    Pair<Boundary<java.time.LocalTime>, Boundary<java.time.LocalTime>> split = boundary.split(null);
+    Pair<Boundary<LocalTime>, Boundary<LocalTime>> split = boundary.split(null);
     assertThat(split.getLeft().start()).isEqualTo(start);
     assertThat(split.getRight().end()).isEqualTo(end);
-    assertThat(split.getLeft().end()).isEqualTo(java.time.LocalTime.parse("15:59:59.999999999"));
+    assertThat(split.getLeft().end()).isEqualTo(LocalTime.parse("15:59:59.999999999"));
     assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
 
     // Test null bounds
-    when(mockResultSet.getString(eq(1))).thenReturn(null);
-    when(mockResultSet.getString(eq(2))).thenReturn(null);
-    Boundary<java.time.LocalTime> boundaryNull =
+    when(mockResultSet.getBytes(eq(1))).thenReturn(null);
+    when(mockResultSet.getBytes(eq(2))).thenReturn(null);
+    Boundary<LocalTime> boundaryNull =
         extractor.getBoundary(
             partitionColumn,
             mockResultSet,
@@ -978,20 +982,20 @@ public class BoundaryExtractorFactoryTest {
         PartitionColumn.builder()
             .setColumnTypeName("dummy")
             .setColumnName("col1")
-            .setColumnClass(java.time.OffsetTime.class)
+            .setColumnClass(OffsetTime.class)
             .build();
-    BoundaryExtractor<java.time.OffsetTime> extractor =
-        BoundaryExtractorFactory.create(java.time.OffsetTime.class);
+    BoundaryExtractor<OffsetTime> extractor =
+        BoundaryExtractorFactory.create(OffsetTime.class);
     String startStr = "08:00:00+05:00";
     String endStr = "24:00:00+05:00";
-    java.time.OffsetTime start = java.time.OffsetTime.parse("08:00:00+05:00");
-    java.time.OffsetTime end =
-        java.time.OffsetTime.of(java.time.LocalTime.MAX, java.time.ZoneOffset.ofHours(5));
+    OffsetTime start = OffsetTime.parse("08:00:00+05:00");
+    OffsetTime end =
+        OffsetTime.of(LocalTime.MAX, ZoneOffset.ofHours(5));
 
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getString(eq(1))).thenReturn(startStr);
-    when(mockResultSet.getString(eq(2))).thenReturn(endStr);
-    Boundary<java.time.OffsetTime> boundary =
+    when(mockResultSet.getBytes(eq(1))).thenReturn(startStr.getBytes(StandardCharsets.UTF_8));
+    when(mockResultSet.getBytes(eq(2))).thenReturn(endStr.getBytes(StandardCharsets.UTF_8));
+    Boundary<OffsetTime> boundary =
         extractor.getBoundary(
             partitionColumn,
             mockResultSet,
@@ -1002,18 +1006,18 @@ public class BoundaryExtractorFactoryTest {
                 .build());
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
-    Pair<Boundary<java.time.OffsetTime>, Boundary<java.time.OffsetTime>> split =
+    Pair<Boundary<OffsetTime>, Boundary<OffsetTime>> split =
         boundary.split(null);
     assertThat(split.getLeft().start()).isEqualTo(start);
     assertThat(split.getRight().end()).isEqualTo(end);
     assertThat(split.getLeft().end())
-        .isEqualTo(java.time.OffsetTime.parse("15:59:59.999999999+05:00"));
+        .isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
     assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
 
     // Test null bounds
-    when(mockResultSet.getString(eq(1))).thenReturn(null);
-    when(mockResultSet.getString(eq(2))).thenReturn(null);
-    Boundary<java.time.OffsetTime> boundaryNull =
+    when(mockResultSet.getBytes(eq(1))).thenReturn(null);
+    when(mockResultSet.getBytes(eq(2))).thenReturn(null);
+    Boundary<OffsetTime> boundaryNull =
         extractor.getBoundary(
             partitionColumn,
             mockResultSet,
