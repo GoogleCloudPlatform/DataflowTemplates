@@ -85,14 +85,10 @@ public class PostgreSQLPartitionedTablesIT extends SourceDbToSpannerITBase {
         launchDataflowJob(
             getClass().getSimpleName() + "GSQL",
             null,
-            getClass().getSimpleName() + "/gsql",
+            null,
             postgresSQLResourceManager,
             gsqlSpannerResourceManager,
-            new HashMap<>() {
-              {
-                put("tables", "measurements_range,employees_list,orders_hash");
-              }
-            },
+            new HashMap<>(),
             null);
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
@@ -108,14 +104,10 @@ public class PostgreSQLPartitionedTablesIT extends SourceDbToSpannerITBase {
         launchDataflowJob(
             getClass().getSimpleName() + "PG",
             null,
-            getClass().getSimpleName() + "/pg",
+            null,
             postgresSQLResourceManager,
             pgDialectSpannerResourceManager,
-            new HashMap<>() {
-              {
-                put("tables", "measurements_range,employees_list,orders_hash");
-              }
-            },
+            new HashMap<>(),
             null);
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
