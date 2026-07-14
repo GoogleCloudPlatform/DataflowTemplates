@@ -68,7 +68,6 @@ func main() {
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
 		flags.SpannerHost(),
-		flags.SpannerMultiRegion(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
 		flags.StaticOracleHost(),

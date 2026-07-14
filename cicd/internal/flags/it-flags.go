@@ -31,7 +31,6 @@ var (
 	dHostIp                             string
 	dPrivateConnectivity                string
 	dSpannerHost                        string
-	dSpannerMultiRegion                 string
 	dReleaseMode                        bool
 	dRetryFailures                      string
 	dCloudProxyHost                     string
@@ -54,7 +53,6 @@ func RegisterItFlags() {
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
 	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
 	flag.StringVar(&dSpannerHost, "it-spanner-host", "", "(optional) A custom endpoint to override Spanner API requests")
-	flag.StringVar(&dSpannerMultiRegion, "it-spanner-multi-region", "", "(optional) A custom Spanner multi-region")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
 	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
@@ -109,13 +107,6 @@ func PrivateConnectivity() string {
 func SpannerHost() string {
 	if dSpannerHost != "" {
 		return "-DspannerHost=" + dSpannerHost
-	}
-	return ""
-}
-
-func SpannerMultiRegion() string {
-	if dSpannerMultiRegion != "" {
-		return "-DspannerMultiRegion=" + dSpannerMultiRegion
 	}
 	return ""
 }
