@@ -63,14 +63,16 @@ public class BatchAndWriteFnTest {
   @Test
   public void constructor_nonPositiveBatchSize_fallsBackToDefault() {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 0, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 0, null, 10, 10, mock(PCollectionView.class), null, null);
     assertNotNull(fn);
   }
 
   @Test
   public void testSetup_initializesDefaultWriterAndFaker() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setup();
 
     assertNotNull(fn.getWriter());
@@ -82,7 +84,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testSetup_retainsInjectedWriterAndFaker() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     Faker mockFaker = mock(Faker.class);
 
@@ -98,7 +101,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testStartBundle_callsBatcherStartBundle() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     MutationBatcher mockBatcher = mock(MutationBatcher.class);
     fn.setBatcher(mockBatcher);
 
@@ -121,7 +125,8 @@ public class BatchAndWriteFnTest {
     Row row = Row.withSchema(rowSchema).addValue(1L).build();
     when(c.element()).thenReturn(KV.of(0, GeneratedRecord.create("Users", row)));
 
-    BatchAndWriteFn fn = new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView);
+    BatchAndWriteFn fn =
+        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView, null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     fn.setWriter(mockWriter);
     fn.setup();
@@ -156,7 +161,8 @@ public class BatchAndWriteFnTest {
     Row row = Row.withSchema(rowSchema).addValue(1L).build();
     when(c.element()).thenReturn(KV.of(0, GeneratedRecord.create("Users", row)));
 
-    BatchAndWriteFn fn = new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView);
+    BatchAndWriteFn fn =
+        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView, null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     fn.setWriter(mockWriter);
     fn.setup();
@@ -196,7 +202,8 @@ public class BatchAndWriteFnTest {
     Row row = Row.withSchema(rowSchema).addValue(1L).build();
     when(c.element()).thenReturn(KV.of(0, GeneratedRecord.create("Users", row)));
 
-    BatchAndWriteFn fn = new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView);
+    BatchAndWriteFn fn =
+        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView, null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     fn.setWriter(mockWriter);
     fn.setup();
@@ -234,7 +241,8 @@ public class BatchAndWriteFnTest {
     Row row = Row.withSchema(rowSchema).addValue(1L).build();
     when(c.element()).thenReturn(KV.of(0, GeneratedRecord.create("Users", row)));
 
-    BatchAndWriteFn fn = new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView);
+    BatchAndWriteFn fn =
+        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, schemaView, null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     doThrow(new RuntimeException("simulated sink failure"))
         .when(mockWriter)
@@ -257,7 +265,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testOnTimer_restoresInsertTopoOrderFromStateWhenNull() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setWriter(mock(DataWriter.class));
     fn.setup();
     fn.startBundle();
@@ -284,7 +293,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testOnTimer_skipsStateReadWhenInsertTopoOrderIsPresent() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setWriter(mock(DataWriter.class));
     fn.setup();
     fn.startBundle();
@@ -309,7 +319,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testOnTimer_exceptionRoutesToDlq() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setWriter(mock(DataWriter.class));
     fn.setup();
     fn.startBundle();
@@ -336,7 +347,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testFinishBundle_flushesBatcherAndEmitsPendingDlq() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setWriter(mock(DataWriter.class));
     fn.setup();
     fn.startBundle();
@@ -362,7 +374,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testTeardown_closesWriterSuccessfully() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     fn.setWriter(mockWriter);
 
@@ -374,7 +387,8 @@ public class BatchAndWriteFnTest {
   @Test
   public void testTeardown_nullWriterDoesNothing() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     fn.setWriter(null);
 
     fn.teardown();
@@ -383,7 +397,8 @@ public class BatchAndWriteFnTest {
   @Test(expected = RuntimeException.class)
   public void testTeardown_writerCloseThrowsException() throws Exception {
     BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class));
+        new BatchAndWriteFn(
+            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
     DataWriter mockWriter = mock(DataWriter.class);
     doThrow(new RuntimeException("simulated close error")).when(mockWriter).close();
     fn.setWriter(mockWriter);

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dofn;
 
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
@@ -82,7 +83,8 @@ final class RowAssembler {
       LinkedHashMap<String, Object> pkValues,
       DataGeneratorTable table,
       Row originalRow,
-      Faker faker) {
+      Faker faker,
+      CustomDataGenerator customGenerator) {
     Schema.Builder schemaBuilder = Schema.builder();
     List<Object> values = new ArrayList<>();
     Set<String> pkSet = new HashSet<>(table.primaryKeys());
@@ -112,13 +114,24 @@ final class RowAssembler {
         Object val =
             (originalRow != null && originalRow.getSchema().hasField(col.name()))
                 ? originalRow.getValue(col.name())
-                : DataGeneratorUtils.generateValue(col, faker);
+                : DataGeneratorUtils.generateValue(table.name(), col, faker, customGenerator);
         values.add(val);
       } else {
-        values.add(DataGeneratorUtils.generateValue(col, faker));
+        values.add(DataGeneratorUtils.generateValue(table.name(), col, faker, customGenerator));
       }
     }
-    return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    try {
+      return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to assemble row for table '"
+              + table.name()
+              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + schemaBuilder.build()
+              + ", Values: "
+              + values,
+          e);
+    }
   }
 
   /**
@@ -143,7 +156,18 @@ final class RowAssembler {
         values.add(null);
       }
     }
-    return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    try {
+      return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to assemble DELETE row for table '"
+              + table.name()
+              + "'. Expected schema: "
+              + schemaBuilder.build()
+              + ", Values: "
+              + values,
+          e);
+    }
   }
 
   /**
@@ -175,7 +199,18 @@ final class RowAssembler {
           Schema.Field.of(Constants.SHARD_ID_COLUMN_NAME, Schema.FieldType.STRING));
       values.add(fullRow.getString(Constants.SHARD_ID_COLUMN_NAME));
     }
-    return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    try {
+      return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to assemble reduced row for table '"
+              + table.name()
+              + "'. Expected schema: "
+              + schemaBuilder.build()
+              + ", Values: "
+              + values,
+          e);
+    }
   }
 
   /**
@@ -185,7 +220,8 @@ final class RowAssembler {
    *
    * <p>If {@code partialRow} already contains every non-skipped column, it is returned unchanged.
    */
-  static Row completeRow(DataGeneratorTable table, Row partialRow, Faker faker) {
+  static Row completeRow(
+      DataGeneratorTable table, Row partialRow, Faker faker, CustomDataGenerator customGenerator) {
     boolean hasAllColumns = true;
     for (DataGeneratorColumn col : table.columns()) {
       if (col.isSkipped()) {
@@ -209,7 +245,7 @@ final class RowAssembler {
       Object val =
           partialRow.getSchema().hasField(col.name())
               ? partialRow.getValue(col.name())
-              : DataGeneratorUtils.generateValue(col, faker);
+              : DataGeneratorUtils.generateValue(table.name(), col, faker, customGenerator);
       schemaBuilder.addField(
           Schema.Field.of(col.name(), DataGeneratorUtils.mapToBeamFieldType(col.logicalType())));
       values.add(val);
@@ -222,7 +258,18 @@ final class RowAssembler {
       values.add(shardId);
     }
 
-    return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    try {
+      return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to complete row for table '"
+              + table.name()
+              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + schemaBuilder.build()
+              + ", Values: "
+              + values,
+          e);
+    }
   }
 
   static LinkedHashMap<String, Object> pkValuesOf(Row row, DataGeneratorTable table) {

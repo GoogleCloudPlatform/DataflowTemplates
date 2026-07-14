@@ -46,15 +46,23 @@ public class GeneratePrimaryKey
   private final SinkConfig sinkConfig;
   private final String sinkType;
 
-  public GeneratePrimaryKey(SinkConfig sinkConfig, String sinkType) {
+  private final String customJarPath;
+  private final String customClassName;
+
+  public GeneratePrimaryKey(
+      SinkConfig sinkConfig, String sinkType, String customJarPath, String customClassName) {
     this.sinkConfig = sinkConfig;
     this.sinkType = sinkType;
+    this.customJarPath = customJarPath;
+    this.customClassName = customClassName;
   }
 
-  @Override
   public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
     return input
-        .apply("GeneratePrimaryKeyFn", ParDo.of(new GeneratePrimaryKeyFn(sinkConfig, sinkType)))
+        .apply(
+            "GeneratePrimaryKeyFn",
+            ParDo.of(
+                new GeneratePrimaryKeyFn(sinkConfig, sinkType, customJarPath, customClassName)))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Row.class)));
   }
 }

@@ -154,6 +154,27 @@ public interface CdcDataGeneratorOptions
 
   void setMaxParallelism(Integer value);
 
+  @TemplateParameter.GcsReadFile(
+      order = 13,
+      optional = true,
+      description = "Custom JAR Path",
+      helpText =
+          "GCS path to a custom JAR file containing the custom data generator implementation.",
+      example = "gs://your-bucket/path/to/custom.jar")
+  String getCustomJarPath();
+
+  void setCustomJarPath(String value);
+
+  @TemplateParameter.Text(
+      order = 14,
+      optional = true,
+      description = "Custom Class Name",
+      helpText = "The fully qualified class name of the custom data generator implementation.",
+      example = "com.mycompany.MyCustomGenerator")
+  String getCustomClassName();
+
+  void setCustomClassName(String value);
+
   enum SinkType {
     SPANNER,
     MYSQL

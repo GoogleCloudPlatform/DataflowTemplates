@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import java.math.BigDecimal;
@@ -482,5 +483,27 @@ public class DataGeneratorUtilsTest {
         new com.fasterxml.jackson.databind.ObjectMapper().readTree(jsonStr);
     Assert.assertTrue(node.get("tags").isArray());
     Assert.assertEquals(42, node.get("tags").get(1).asInt());
+  }
+
+  @Test
+  public void testGenerateValueWithCustomGenerator() {
+    DataGeneratorColumn col =
+        DataGeneratorColumn.builder()
+            .name("c1")
+            .logicalType(LogicalType.STRING)
+            .isNullable(false)
+            .isGenerated(false)
+            .build();
+
+    CustomDataGenerator mockGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            return "CUSTOM_VALUE";
+          }
+        };
+
+    Object val = DataGeneratorUtils.generateValue(col, faker, mockGenerator);
+    assertEquals("CUSTOM_VALUE", val);
   }
 }

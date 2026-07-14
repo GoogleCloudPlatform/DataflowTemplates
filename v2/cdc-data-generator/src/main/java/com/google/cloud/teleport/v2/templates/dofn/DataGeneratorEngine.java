@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dofn;
 
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
@@ -119,6 +120,7 @@ public class DataGeneratorEngine {
   private final Integer updateInterval;
   private final Integer deleteInterval;
   private final Faker faker;
+  private final CustomDataGenerator customGenerator;
 
   private transient volatile DataGeneratorSchema schema;
 
@@ -131,10 +133,15 @@ public class DataGeneratorEngine {
   private final Counter unresolvableFkChildrenDropped =
       Metrics.counter(DataGeneratorEngine.class, "unresolvableFkChildrenDropped");
 
-  public DataGeneratorEngine(Integer updateInterval, Integer deleteInterval, Faker faker) {
+  public DataGeneratorEngine(
+      Integer updateInterval,
+      Integer deleteInterval,
+      Faker faker,
+      CustomDataGenerator customGenerator) {
     this.updateInterval = updateInterval;
     this.deleteInterval = deleteInterval;
     this.faker = faker;
+    this.customGenerator = customGenerator;
   }
 
   /**
@@ -254,7 +261,7 @@ public class DataGeneratorEngine {
     tableMapState.put(tableName, table);
 
     // 1. Complete Row & Buffer Insert Mutation
-    Row fullRow = RowAssembler.completeRow(table, row, faker);
+    Row fullRow = RowAssembler.completeRow(table, row, faker, customGenerator);
     String shardId =
         fullRow.getSchema().hasField(Constants.SHARD_ID_COLUMN_NAME)
             ? fullRow.getString(Constants.SHARD_ID_COLUMN_NAME)
@@ -503,7 +510,7 @@ public class DataGeneratorEngine {
       if (columnValues.containsKey(col.name())) {
         val = columnValues.get(col.name());
       } else {
-        val = DataGeneratorUtils.generateValue(col, faker);
+        val = DataGeneratorUtils.generateValue(childTable.name(), col, faker, customGenerator);
       }
       schemaBuilder.addField(
           Schema.Field.of(col.name(), DataGeneratorUtils.mapToBeamFieldType(col.logicalType())));
@@ -517,7 +524,18 @@ public class DataGeneratorEngine {
     schemaBuilder.addField(
         Schema.Field.of(Constants.SHARD_ID_COLUMN_NAME, Schema.FieldType.STRING));
     values.add(shardId);
-    return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    try {
+      return Row.withSchema(schemaBuilder.build()).addValues(values).build();
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to assemble row for child table '"
+              + childTable.name()
+              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + schemaBuilder.build()
+              + ", Values: "
+              + values,
+          e);
+    }
   }
 
   /**
@@ -576,7 +594,9 @@ public class DataGeneratorEngine {
             : "";
 
     if (Constants.MUTATION_UPDATE.equals(event.type)) {
-      Row updateRow = RowAssembler.generateUpdateRow(event.pkValues, table, originalRow, faker);
+      Row updateRow =
+          RowAssembler.generateUpdateRow(
+              event.pkValues, table, originalRow, faker, customGenerator);
       batcher.bufferRow(
           event.tableName, updateRow, Constants.MUTATION_UPDATE, table, shardId, insertTopoOrder);
       updatesGenerated.inc();

@@ -109,7 +109,7 @@ public class RowAssemblerTest {
             .build();
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 99L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, /* originalRow= */ null, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, /* originalRow= */ null, faker, null);
     assertThat((Long) update.getValue("id")).isEqualTo(99L);
     assertThat(update.getString("name")).isNotEmpty();
   }
@@ -133,7 +133,7 @@ public class RowAssemblerTest {
             .build();
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 1L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, null, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, null, faker, null);
     assertThat(update.getSchema().hasField("ghost")).isFalse();
     assertThat(update.getSchema().hasField("id")).isTrue();
   }
@@ -153,7 +153,7 @@ public class RowAssemblerTest {
 
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 1L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, original, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, original, faker, null);
     assertThat(update.getString("email")).isEqualTo("alice@example.com");
   }
 
@@ -265,7 +265,7 @@ public class RowAssemblerTest {
             .build();
     Schema schema = Schema.builder().addInt64Field("id").addStringField("name").build();
     Row complete = Row.withSchema(schema).addValues(1L, "Alice").build();
-    Row result = RowAssembler.completeRow(table, complete, faker);
+    Row result = RowAssembler.completeRow(table, complete, faker, null);
     assertThat((Long) result.getValue("id")).isEqualTo(1L);
     assertThat(result.getString("name")).isEqualTo("Alice");
   }
@@ -278,7 +278,7 @@ public class RowAssemblerTest {
             .build();
     Schema partialSchema = Schema.builder().addInt64Field("id").build();
     Row partial = Row.withSchema(partialSchema).addValue(7L).build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat((Long) full.getValue("id")).isEqualTo(7L);
     assertThat(full.getString("name")).isNotNull();
   }
@@ -292,7 +292,7 @@ public class RowAssemblerTest {
     Schema partialSchema =
         Schema.builder().addInt64Field("id").addStringField(Constants.SHARD_ID_COLUMN_NAME).build();
     Row partial = Row.withSchema(partialSchema).addValues(1L, "shardX").build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat(full.getSchema().hasField(Constants.SHARD_ID_COLUMN_NAME)).isTrue();
     assertThat(full.getString(Constants.SHARD_ID_COLUMN_NAME)).isEqualTo("shardX");
   }
@@ -316,7 +316,7 @@ public class RowAssemblerTest {
             .build();
     Schema partialSchema = Schema.builder().addInt64Field("id").build();
     Row partial = Row.withSchema(partialSchema).addValue(1L).build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat(full.getSchema().hasField("ghost")).isFalse();
   }
 

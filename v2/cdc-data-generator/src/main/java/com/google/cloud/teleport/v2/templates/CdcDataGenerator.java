@@ -137,7 +137,12 @@ public class CdcDataGenerator {
     // Generate Primary Keys
     PCollection<KV<String, Row>> pendingRows =
         ticks.apply(
-            "GeneratePrimaryKey", new GeneratePrimaryKey(sinkConfig, options.getSinkType().name()));
+            "GeneratePrimaryKey",
+            new GeneratePrimaryKey(
+                sinkConfig,
+                options.getSinkType().name(),
+                options.getCustomJarPath(),
+                options.getCustomClassName()));
 
     // Reshuffle based on Hash(TableName + PK) to ensure same PK goes to same worker
     PCollection<KV<Integer, GeneratedRecord>> reshuffledRows =
@@ -180,7 +185,9 @@ public class CdcDataGenerator {
                             options.getJdbcPoolSize(),
                             updateIntervalMs,
                             deleteIntervalMs,
-                            schemaView))
+                            schemaView,
+                            options.getCustomJarPath(),
+                            options.getCustomClassName()))
                     .withSideInputs(schemaView))
             .setCoder(StringUtf8Coder.of());
 
