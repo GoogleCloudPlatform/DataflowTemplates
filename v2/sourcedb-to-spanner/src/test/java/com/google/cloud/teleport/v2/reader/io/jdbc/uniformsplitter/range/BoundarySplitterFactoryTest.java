@@ -311,15 +311,18 @@ public class BoundarySplitterFactoryTest {
     assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
 
     // 3. Open Lower Bound
-    // Verifies that a null start boundary implies a minimum value default (0) for calculating the midpoint.
+    // Verifies that a null start boundary implies a minimum value default (0) for calculating the
+    // midpoint.
     assertThat(splitter.getSplitPoint(null, end, null, null, null)).isEqualTo(expectedMid);
 
     // 4. Open Upper Bound
-    // Verifies that a null end boundary implies a minimum value default (0) for calculating the midpoint.
+    // Verifies that a null end boundary implies a minimum value default (0) for calculating the
+    // midpoint.
     assertThat(splitter.getSplitPoint(start, null, null, null, null)).isEqualTo(start);
 
     // 5. Unbalanced String Lengths
-    // Verifies that string lengths are dynamically padded to match the maximum length before calculating the midpoint.
+    // Verifies that string lengths are dynamically padded to match the maximum length before
+    // calculating the midpoint.
     assertThat(splitter.getSplitPoint("0000", "1000", null, null, null)).isEqualTo("0100");
   }
 

@@ -945,8 +945,7 @@ public class BoundaryExtractorFactoryTest {
             .setColumnName("col1")
             .setColumnClass(LocalTime.class)
             .build();
-    BoundaryExtractor<LocalTime> extractor =
-        BoundaryExtractorFactory.create(LocalTime.class);
+    BoundaryExtractor<LocalTime> extractor = BoundaryExtractorFactory.create(LocalTime.class);
     String startStr = "08:00:00";
     String endStr = "24:00:00";
     LocalTime start = LocalTime.parse("08:00:00");
@@ -1014,13 +1013,11 @@ public class BoundaryExtractorFactoryTest {
             .setColumnName("col1")
             .setColumnClass(OffsetTime.class)
             .build();
-    BoundaryExtractor<OffsetTime> extractor =
-        BoundaryExtractorFactory.create(OffsetTime.class);
+    BoundaryExtractor<OffsetTime> extractor = BoundaryExtractorFactory.create(OffsetTime.class);
     String startStr = "08:00:00+05:00";
     String endStr = "24:00:00+05:00";
     OffsetTime start = OffsetTime.parse("08:00:00+05:00");
-    OffsetTime end =
-        OffsetTime.of(LocalTime.MAX, ZoneOffset.ofHours(5));
+    OffsetTime end = OffsetTime.of(LocalTime.MAX, ZoneOffset.ofHours(5));
 
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBytes(eq(1))).thenReturn(startStr.getBytes(StandardCharsets.UTF_8));
@@ -1036,12 +1033,10 @@ public class BoundaryExtractorFactoryTest {
                 .build());
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
-    Pair<Boundary<OffsetTime>, Boundary<OffsetTime>> split =
-        boundary.split(null);
+    Pair<Boundary<OffsetTime>, Boundary<OffsetTime>> split = boundary.split(null);
     assertThat(split.getLeft().start()).isEqualTo(start);
     assertThat(split.getRight().end()).isEqualTo(end);
-    assertThat(split.getLeft().end())
-        .isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
+    assertThat(split.getLeft().end()).isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
     assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
 
     // Test null bounds

@@ -46,10 +46,9 @@ public class BoundaryExtractorFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(BoundaryExtractorFactory.class);
 
-  private static final Pattern TIME_PATTERN = 
-      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
+  private static final Pattern TIME_PATTERN = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
 
-  private static final Pattern TIMETZ_PATTERN = 
+  private static final Pattern TIMETZ_PATTERN =
       Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}(:\\d{2}(:\\d{2})?)?)?$");
 
   private static final DateTimeFormatter TIMETZ_FORMAT =
@@ -244,20 +243,23 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
     boolean isBit = "bit".equalsIgnoreCase(partitionColumn.columnTypeName());
-    
+
     if (!isBit) {
       Preconditions.checkArgument(
           boundaryTypeMapper != null,
           "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
     }
-    
+
     resultSet.next();
     return Boundary.<String>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
-        .setBoundarySplitter(isBit ? BoundarySplitterFactory.createBitSplitter() : BoundarySplitterFactory.create(String.class))
+        .setBoundarySplitter(
+            isBit
+                ? BoundarySplitterFactory.createBitSplitter()
+                : BoundarySplitterFactory.create(String.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }
@@ -418,10 +420,10 @@ public class BoundaryExtractorFactory {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       long microseconds = buffer.getLong();
       int offsetSeconds = buffer.getInt();
-      
+
       // PostgreSQL stores timezone offset inverted (West of UTC is positive).
       ZoneOffset offset = ZoneOffset.ofTotalSeconds(-offsetSeconds);
-      
+
       if (microseconds == 86400000000L) {
         return OffsetTime.of(LocalTime.MAX, offset);
       }

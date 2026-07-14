@@ -367,10 +367,7 @@ public class RangePreparedStatementSetterTest {
   @Test
   public void testSetParameters_withBit() throws Exception {
     TableIdentifier tableId =
-        TableIdentifier.builder()
-            .setDataSourceId("test_ds")
-            .setTableName("test_bit_table")
-            .build();
+        TableIdentifier.builder().setDataSourceId("test_ds").setTableName("test_bit_table").build();
     PartitionColumn col =
         PartitionColumn.builder()
             .setColumnName("bit_col")

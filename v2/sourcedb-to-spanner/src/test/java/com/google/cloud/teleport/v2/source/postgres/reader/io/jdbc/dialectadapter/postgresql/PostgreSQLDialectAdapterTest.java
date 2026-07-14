@@ -364,20 +364,10 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getString("collation")).thenReturn(null);
     when(mockResultSet.getString("column_name"))
         .thenReturn(
-            "col_numeric",
-            "col_float4",
-            "col_float8",
-            "col_date",
-            "col_time",
-            "col_timetz");
+            "col_numeric", "col_float4", "col_float8", "col_date", "col_time", "col_timetz");
     when(mockResultSet.getString("index_name"))
         .thenReturn(
-            "idx_numeric",
-            "idx_float4",
-            "idx_float8",
-            "idx_date",
-            "idx_time",
-            "idx_timetz");
+            "idx_numeric", "idx_float4", "idx_float8", "idx_date", "idx_time", "idx_timetz");
     when(mockResultSet.getString("type_category")).thenReturn("N", "N", "N", "D", "D", "D");
     when(mockResultSet.getString("type_name"))
         .thenReturn("numeric", "float4", "float8", "date", "time", "timetz");
@@ -689,8 +679,7 @@ public class PostgreSQLDialectAdapterTest {
     // 3b. Assert that getBoundaryQuery generates correct partitioned query for BIT column (using
     // CTE with subqueries)
     assertThat(
-            adapter.getBoundaryQuery(
-                "my_schema.table1", ImmutableList.of("parent_col"), "col_bit"))
+            adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of("parent_col"), "col_bit"))
         .isEqualTo(
             "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_bit FROM my_schema.table1 "
                 + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "

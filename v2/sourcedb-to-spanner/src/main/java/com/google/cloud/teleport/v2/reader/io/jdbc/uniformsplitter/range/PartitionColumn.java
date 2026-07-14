@@ -98,7 +98,7 @@ public abstract class PartitionColumn implements Serializable {
 
     public PartitionColumn build() {
       PartitionColumn partitionColumn = this.autoBuild();
-      
+
       boolean isBit = "bit".equalsIgnoreCase(partitionColumn.columnTypeName());
 
       Preconditions.checkState(
@@ -108,7 +108,8 @@ public abstract class PartitionColumn implements Serializable {
               || (partitionColumn.columnClass() != String.class
                   && partitionColumn.stringCollation() == null
                   && partitionColumn.stringMaxLength() == null),
-          "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
+          "String columns must specify collation, and non string columns must not specify"
+              + " collation. PartitionColum = "
               + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == BigDecimal.class

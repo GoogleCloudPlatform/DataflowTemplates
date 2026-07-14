@@ -68,8 +68,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .appendOffset("+HH:mm", "+00")
           .toFormatter();
 
-  private static final Pattern TIME_PATTERN =
-      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
+  private static final Pattern TIME_PATTERN = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
 
   private static final Pattern TIMETZ_PATTERN =
       Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}(:\\d{2}(:\\d{2})?)?)?$");
@@ -365,7 +364,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
     LOG.info(
-        "Unknown column type: {}. Defaulting to size: 65,535. If easily possible let's add logs to indicate that we have used a max value for fetch-size estimation.",
+        "Unknown column type: {}. Defaulting to size: 65,535. If easily possible let's add logs to"
+            + " indicate that we have used a max value for fetch-size estimation.",
         sourceColumnType);
     return 65_535;
   }

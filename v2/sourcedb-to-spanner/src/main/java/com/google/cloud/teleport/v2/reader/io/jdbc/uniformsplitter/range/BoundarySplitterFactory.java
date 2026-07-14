@@ -128,14 +128,14 @@ public class BoundarySplitterFactory {
       }
       BigInteger startInt = start == null ? null : new BigInteger(start, 2);
       BigInteger endInt = end == null ? null : new BigInteger(end, 2);
-      
+
       BigInteger midpoint = splitBigIntegers(startInt, endInt);
-      
+
       String midString = midpoint.toString(2);
-      
+
       int targetLength = start != null ? start.length() : (end != null ? end.length() : 0);
       midString = Strings.padStart(midString, targetLength, '0');
-      
+
       return midString;
     };
   }

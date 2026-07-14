@@ -69,7 +69,7 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
       return new java.util.UUID(bb.getLong(), bb.getLong());
     }
-    
+
     if (val instanceof String bitStr && "bit".equalsIgnoreCase(pc.columnTypeName())) {
       PGobject pgObj = new PGobject();
       pgObj.setType("bit");
