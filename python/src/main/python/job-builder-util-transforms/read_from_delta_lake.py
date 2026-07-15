@@ -15,12 +15,12 @@ class ReadDeltaLakeDoFn(DoFn):
       table: str,
       version: Optional[int] = None,
       timestamp: Optional[str] = None,
-      hadoop_config: Optional[Mapping[str, str]] = None,
+      storage_options: Optional[Mapping[str, str]] = None,
   ):
     self.table = table
     self.version = version
     self.timestamp = timestamp
-    self.hadoop_config = hadoop_config
+    self.storage_options = storage_options
 
   def process(self, unused_element):
     """Reads the Delta Lake table and yields each row as a dictionary."""
@@ -29,14 +29,14 @@ class ReadDeltaLakeDoFn(DoFn):
     dt = DeltaTable(
         table_uri=self.table,
         version=self.version,
-        storage_options=self.hadoop_config,
+        storage_options=self.storage_options,
     )
     if self.timestamp is not None:
       dt.load_as_version(self.timestamp)
 
-    pyarrow_table = dt.to_pyarrow_table()
-    for row in pyarrow_table.to_pylist():
-      yield row
+    for batch in dt.to_pyarrow_dataset().to_batches():
+      for row in batch.to_pylist():
+        yield row
 
 
 class ReadFromDeltaLake(PTransform):
@@ -46,7 +46,8 @@ class ReadFromDeltaLake(PTransform):
     table: Identifier or path of the Delta Lake table.
     version: Version of the Delta Lake table to read.
     timestamp: Timestamp of the Delta Lake table to read.
-    hadoop_config: Hadoop/storage configuration properties.
+    storage_options: Storage options (e.g. cloud-specific options like
+      google_service_account_key) for connecting to storage.
   """
 
   def __init__(
@@ -54,13 +55,13 @@ class ReadFromDeltaLake(PTransform):
       table: str,
       version: Optional[int] = None,
       timestamp: Optional[str] = None,
-      hadoop_config: Optional[Mapping[str, str]] = None,
+      storage_options: Optional[Mapping[str, str]] = None,
   ):
     super().__init__()
     self.table = table
     self.version = version
     self.timestamp = timestamp
-    self.hadoop_config = hadoop_config
+    self.storage_options = storage_options
 
   def expand(self, pbegin):
     """Expands the ReadFromDeltaLake transform."""
@@ -72,7 +73,7 @@ class ReadFromDeltaLake(PTransform):
                 table=self.table,
                 version=self.version,
                 timestamp=self.timestamp,
-                hadoop_config=self.hadoop_config,
+                storage_options=self.storage_options,
             )
         )
     )
