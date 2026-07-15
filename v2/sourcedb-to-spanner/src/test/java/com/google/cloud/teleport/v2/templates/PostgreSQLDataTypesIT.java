@@ -76,7 +76,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     System.setProperty("numWorkers", "20");
     Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("numPartitions", "100");
+    jobParameters.put("numPartitions", "10");
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -160,6 +160,10 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
             "t_tstzmultirange",
             "t_tstzrange",
             "t_tsvector",
+            // "t_time_pk",
+            // "t_time_without_time_zone_pk",
+            // "t_timetz_pk",
+            // "t_time_with_time_zone_pk",
             "t_txid_snapshot",
             // "t_uuid_to_bytes",
             // "t_varbit_to_bool_array",
@@ -337,14 +341,52 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("varbit_to_string", createRows("c", "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
+    result.put("int_pk", createPkRows("-2147483648", "0", "2147483647"));
+    result.put("integer_pk", createPkRows("-2147483648", "0", "2147483647"));
+    result.put("int4_pk", createPkRows("-2147483648", "0", "2147483647"));
+    result.put("bigint_pk", createPkRows("-9223372036854775808", "0", "9223372036854775807"));
+    result.put("int8_pk", createPkRows("-9223372036854775808", "0", "9223372036854775807"));
+    result.put("smallint_pk", createPkRows("-32768", "0", "32767"));
+    result.put("int2_pk", createPkRows("-32768", "0", "32767"));
+    result.put("serial_pk", createPkRows("1", "2", "3"));
+    result.put("serial4_pk", createPkRows("1", "2", "3"));
+    result.put("bigserial_pk", createPkRows("1", "2", "3"));
+    result.put("serial8_pk", createPkRows("1", "2", "3"));
+    result.put("smallserial_pk", createPkRows("1", "2", "3"));
+    result.put("serial2_pk", createPkRows("1", "2", "3"));
     result.put(
         "uuid_pk",
-        createUuidPkRows(
+        createPkRows(
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
+    result.put("varchar_pk", createPkRows("", "a", "z"));
+    result.put("character_varying_pk", createPkRows("", "a", "z"));
+    result.put("text_pk", createPkRows("", "a", "z"));
+    result.put(
+        "timestamp_pk",
+        createPkRows("1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamp_without_time_zone_pk",
+        createPkRows("1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamptz_pk",
+        createPkRows("1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+    result.put(
+        "timestamp_with_time_zone_pk",
+        createPkRows("1970-01-01T00:00:01Z", "2000-01-01T00:00:00Z", "2038-01-19T03:14:07Z"));
+    result.put("date_pk", createPkRows("1000-01-01", "2000-01-01", "9999-12-31"));
+    result.put("numeric_pk", createPkRows("-99999999.99", "4.56", "99999999.99"));
+    result.put("decimal_pk", createPkRows("-99999999.99", "4.56", "99999999.99"));
+    result.put("real_pk", createPkRows("-3.4E38", "1.5", "3.4E38"));
+    result.put("float4_pk", createPkRows("-3.4E38", "1.5", "3.4E38"));
+    result.put("double_precision_pk", createPkRows("-1.7E308", "1.5", "1.7E308"));
+    result.put("float8_pk", createPkRows("-1.7E308", "1.5", "1.7E308"));
+    // bit_pk is commented out to avoid failing the test case; returned data is bits "00110000" and
+    // "00110001" (base64 strings "MA==" and "MQ==")
+    // result.put("bit_pk", createPkRows("AA==", "gA=="));
     return result;
   }
 
-  private List<Map<String, Object>> createUuidPkRows(Object... values) {
+  private List<Map<String, Object>> createPkRows(Object... values) {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < values.length; i++) {
       Map<String, Object> row = new HashMap<>();

@@ -26,6 +26,8 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -295,6 +297,33 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testBitBoundarySplitter() {
+    BoundarySplitter<String> splitter = BoundarySplitterFactory.createBitSplitter();
+
+    String start = "0100";
+    String end = "1010";
+    String expectedMid = "0111";
+
+    // 1. Standard Split
+    // Verifies that valid binary start and end strings successfully calculate the correct midpoint.
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
+
+    // 2. Both Boundaries Null
+    // Verifies that providing no boundaries skips splitting and safely returns null.
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+
+    // 3. Open Lower Bound
+    // Verifies that a null start boundary implies a minimum value default (0) for calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(null, end, null, null, null)).isEqualTo("0101");
+
+    // 4. Open Upper Bound
+    // Verifies that a null end boundary implies a minimum value default (0) for calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null)).isEqualTo("0010");
+  }
+
+  @Test
   public void testStringBoundarySplitter() {
 
     BoundaryTypeMapper mapper = new TestBoundaryTypeMapper();
@@ -407,6 +436,79 @@ public class BoundarySplitterFactoryTest {
                     .autoBuild(),
                 mapper,
                 null));
+  }
+
+  @Test
+  public void testLocalTimeBoundarySplitter() {
+    BoundarySplitter<LocalTime> splitter = BoundarySplitterFactory.create(LocalTime.class);
+
+    LocalTime start = LocalTime.parse("08:00:00");
+    LocalTime end = LocalTime.parse("16:00:00");
+    LocalTime mid = LocalTime.parse("12:00:00");
+
+    // 1. Standard Split
+    // Verifies that valid LocalTime start and end bounds successfully calculate the correct
+    // midpoint.
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
+
+    // 2. Both Boundaries Null
+    // Verifies that providing no boundaries skips splitting and safely returns null.
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+
+    // 3. Open Lower Bound
+    // Verifies that a null start boundary implies a minimum value default (LocalTime.MIN) for
+    // calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(null, end, null, null, null))
+        .isEqualTo(LocalTime.parse("08:00:00"));
+
+    // 4. Open Upper Bound
+    // Verifies that a null end boundary implies a maximum value default (LocalTime.MAX) for
+    // calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null))
+        .isEqualTo(LocalTime.parse("15:59:59.999999999"));
+  }
+
+  @Test
+  public void testOffsetTimeBoundarySplitter() {
+    BoundarySplitter<OffsetTime> splitter = BoundarySplitterFactory.create(OffsetTime.class);
+
+    OffsetTime start = OffsetTime.parse("08:00:00+05:00");
+    OffsetTime end = OffsetTime.parse("16:00:00+05:00");
+    OffsetTime mid = OffsetTime.parse("12:00:00+05:00");
+
+    // 1. Standard Split
+    // Verifies that valid OffsetTime start and end bounds successfully calculate the correct
+    // midpoint.
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
+
+    // 2. Both Boundaries Null
+    // Verifies that providing no boundaries skips splitting and safely returns null.
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+
+    // 3. Open Lower Bound
+    // Verifies that a null start boundary implies a minimum value default (LocalTime.MIN) for
+    // calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(null, end, null, null, null))
+        .isEqualTo(OffsetTime.parse("08:00:00+05:00"));
+
+    // 4. Open Upper Bound
+    // Verifies that a null end boundary implies a maximum value default (LocalTime.MAX) for
+    // calculating the
+    // midpoint.
+    assertThat(splitter.getSplitPoint(start, null, null, null, null))
+        .isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
+
+    // 5. Crossing UTC Midnight Boundary
+    // Verifies robust midpoint calculation when the time bounds cross the UTC midnight boundary.
+    // 02:00+05:00 is 21:00 UTC (previous day). 06:00+05:00 is 01:00 UTC (current day).
+    // The midpoint should correctly wrap back around to 04:00+05:00 (23:00 UTC).
+    OffsetTime crossStart = OffsetTime.parse("02:00:00+05:00");
+    OffsetTime crossEnd = OffsetTime.parse("06:00:00+05:00");
+    OffsetTime crossMid = OffsetTime.parse("04:00:00+05:00");
+    assertThat(splitter.getSplitPoint(crossStart, crossEnd, null, null, null)).isEqualTo(crossMid);
   }
 
   @Test

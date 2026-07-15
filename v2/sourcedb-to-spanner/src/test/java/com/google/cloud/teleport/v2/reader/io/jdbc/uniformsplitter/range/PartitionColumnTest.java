@@ -51,6 +51,13 @@ public class PartitionColumnTest {
             .setStringMaxLength(255)
             .build();
 
+    PartitionColumn bitPartitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("bit")
+            .setColumnName("col1")
+            .setColumnClass(String.class)
+            .build();
+
     assertThat(integerPartitionColumn.columnClass()).isEqualTo(Integer.class);
     assertThat(integerPartitionColumn.columnName()).isEqualTo("col1");
     assertThat(integerPartitionColumn.stringCollation()).isNull();
@@ -58,6 +65,9 @@ public class PartitionColumnTest {
         .isEqualTo("latin1_swedish_ci");
     assertThat(stringPartitionColumn.stringMaxLength()).isEqualTo(255);
     assertThat(integerPartitionColumn.columnTypeName()).isEqualTo("INTEGER");
+    assertThat(bitPartitionColumn.columnTypeName()).isEqualTo("bit");
+    assertThat(bitPartitionColumn.stringCollation()).isNull();
+    assertThat(bitPartitionColumn.stringMaxLength()).isNull();
   }
 
   @Test
