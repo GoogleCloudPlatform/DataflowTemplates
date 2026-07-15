@@ -342,6 +342,106 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(2L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
                     .setColumnTypeName("timestamp")
+                    .setDatetimePrecision(6)
+                    .build()));
+  }
+
+  @Test
+  public void testDiscoverTableIndexesWithExplicitTypeMappings()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, false);
+
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("column_name"))
+        .thenReturn(
+            "col_numeric", "col_float4", "col_float8", "col_date", "col_time", "col_timetz");
+    when(mockResultSet.getString("index_name"))
+        .thenReturn(
+            "idx_numeric", "idx_float4", "idx_float8", "idx_date", "idx_time", "idx_timetz");
+    when(mockResultSet.getString("type_category")).thenReturn("N", "N", "N", "D", "D", "D");
+    when(mockResultSet.getString("type_name"))
+        .thenReturn("numeric", "float4", "float8", "date", "time", "timetz");
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(indexes)
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_numeric")
+                    .setIndexName("idx_numeric")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DECIMAL)
+                    .setColumnTypeName("numeric")
+                    .setNumericScale(0)
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_float4")
+                    .setIndexName("idx_float4")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.FLOAT)
+                    .setColumnTypeName("float4")
+                    .setDecimalStepSize(new java.math.BigDecimal("0.00001"))
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_float8")
+                    .setIndexName("idx_float8")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DOUBLE)
+                    .setColumnTypeName("float8")
+                    .setDecimalStepSize(new java.math.BigDecimal("0.0000000001"))
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_date")
+                    .setIndexName("idx_date")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DATE)
+                    .setColumnTypeName("date")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_time")
+                    .setIndexName("idx_time")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.LOCAL_TIME)
+                    .setColumnTypeName("time")
+                    .setDatetimePrecision(0)
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_timetz")
+                    .setIndexName("idx_timetz")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.OFFSET_TIME)
+                    .setColumnTypeName("timetz")
+                    .setDatetimePrecision(0)
                     .build()));
   }
 
@@ -427,6 +527,89 @@ public class PostgreSQLDialectAdapterTest {
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_uuid"), 1000L))
         .isEqualTo(
             "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
+  }
+
+  @Test
+  public void testDiscoverTableIndexesWithBit()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getString("column_name")).thenReturn("col_bit");
+    when(mockResultSet.getString("index_name")).thenReturn("table_bit_idx");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("type_category")).thenReturn("V");
+    when(mockResultSet.getString("type_name")).thenReturn("bit");
+    when(mockResultSet.getInt("type_length")).thenReturn(0);
+    when(mockResultSet.wasNull()).thenReturn(true);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    // 1. Assert discovered index info matches expected schema mapping
+    assertThat(indexes)
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_bit")
+                    .setIndexName("table_bit_idx")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.BIT)
+                    .setColumnTypeName("bit")
+                    .build()));
+
+    SourceColumnIndexInfo info = indexes.get("my_schema.table1").get(0);
+
+    // 2. Assert that a PartitionColumn can be built successfully from this index info (precondition
+    // check)
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName(info.columnName())
+            .setColumnClass(String.class)
+            .setColumnTypeName(info.columnTypeName())
+            .build();
+
+    assertThat(partitionColumn).isNotNull();
+    assertThat(partitionColumn.columnClass()).isEqualTo(String.class);
+    assertThat(partitionColumn.columnTypeName()).isEqualTo("bit");
+
+    // 3. Assert that getBoundaryQuery correctly wraps this discovered BIT column in optimized
+    // subqueries
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_bit"))
+        .isEqualTo(
+            "SELECT (SELECT col_bit FROM my_schema.table1 ORDER BY col_bit ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_bit FROM my_schema.table1 ORDER BY col_bit DESC NULLS LAST LIMIT 1)");
+
+    // 3b. Assert that getBoundaryQuery generates correct partitioned query for BIT column (using
+    // CTE with subqueries)
+    assertThat(
+            adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of("parent_col"), "col_bit"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_bit FROM my_schema.table1 "
+                + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "
+                + "SELECT (SELECT col_bit FROM filtered_uuid ORDER BY col_bit ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_bit FROM filtered_uuid ORDER BY col_bit DESC NULLS LAST LIMIT 1)");
+
+    // 4. Assert that getReadQuery generates the correct query for BIT column
+    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_bit")))
+        .isEqualTo(
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bit >= ? AND (col_bit < ? OR (? = TRUE AND col_bit = ?))))");
+
+    // 5. Assert that getCountQuery generates the correct query for BIT column
+    assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_bit"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bit >= ? AND (col_bit < ? OR (? = TRUE AND col_bit = ?))))");
   }
 
   @Test

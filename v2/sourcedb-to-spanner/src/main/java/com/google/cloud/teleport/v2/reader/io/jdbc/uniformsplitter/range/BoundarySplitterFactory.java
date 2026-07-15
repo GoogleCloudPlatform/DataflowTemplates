@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -27,6 +28,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
@@ -57,6 +61,16 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<BigDecimal>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitBigDecimals(start, end, partitionColumn))
+          .put(
+              LocalTime.class,
+              (BoundarySplitter<LocalTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitLocalTimes(start, end))
+          .put(
+              OffsetTime.class,
+              (BoundarySplitter<OffsetTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitOffsetTimes(start, end))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
@@ -105,6 +119,25 @@ public class BoundarySplitterFactory {
       throw new UnsupportedOperationException("Range Splitter not implemented for class " + c);
     }
     return splitter;
+  }
+
+  public static BoundarySplitter<String> createBitSplitter() {
+    return (start, end, partitionColumn, boundaryTypeMapper, processContext) -> {
+      if (start == null && end == null) {
+        return null;
+      }
+      BigInteger startInt = start == null ? null : new BigInteger(start, 2);
+      BigInteger endInt = end == null ? null : new BigInteger(end, 2);
+
+      BigInteger midpoint = splitBigIntegers(startInt, endInt);
+
+      String midString = midpoint.toString(2);
+
+      int targetLength = start != null ? start.length() : (end != null ? end.length() : 0);
+      midString = Strings.padStart(midString, targetLength, '0');
+
+      return midString;
+    };
   }
 
   private BoundarySplitterFactory() {}
@@ -181,6 +214,57 @@ public class BoundarySplitterFactory {
      * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
+  }
+
+  private static LocalTime splitLocalTimes(LocalTime start, LocalTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = LocalTime.MIN;
+    }
+    if (end == null) {
+      end = LocalTime.MAX;
+    }
+
+    Long midNanos = splitLongs(start.toNanoOfDay(), end.toNanoOfDay());
+    if (midNanos == null) {
+      return null;
+    }
+    return LocalTime.ofNanoOfDay(midNanos);
+  }
+
+  private static OffsetTime splitOffsetTimes(OffsetTime start, OffsetTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = OffsetTime.of(LocalTime.MIN, end.getOffset());
+    }
+    if (end == null) {
+      end = OffsetTime.of(LocalTime.MAX, start.getOffset());
+    }
+
+    long startNanos = start.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
+    long endNanos = end.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
+
+    long nanosPerDay = 86_400_000_000_000L;
+    if (endNanos < startNanos) {
+      endNanos += nanosPerDay;
+    }
+
+    Long midNanos = splitLongs(startNanos, endNanos);
+    if (midNanos == null) {
+      return null;
+    }
+
+    midNanos = midNanos % nanosPerDay;
+
+    OffsetTime currentEnd =
+        OffsetTime.of(LocalTime.ofNanoOfDay(midNanos), ZoneOffset.UTC)
+            .withOffsetSameInstant(start.getOffset());
+
+    return currentEnd;
   }
 
   @VisibleForTesting
