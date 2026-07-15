@@ -381,7 +381,7 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return result;
     }
 
-    result = Long.valueOf(height()).compareTo(Long.valueOf(other.height()));
+    result = Long.compare(height(), other.height());
     if (result != 0) {
       return result;
     }
@@ -392,11 +392,11 @@ public abstract class Range implements Serializable, Comparable<Range> {
         return result;
       }
     }
-    result = Long.valueOf(this.count()).compareTo(other.count());
+    result = Long.compare(this.count(), other.count());
     if (result != 0) {
       return result;
     }
-    result = Long.valueOf(this.approxCount()).compareTo(other.approxCount());
+    result = Long.compare(this.approxCount(), other.approxCount());
 
     Preconditions.checkState(
         result != 0,

@@ -49,6 +49,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -66,6 +68,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   private static final Logger logger = LoggerFactory.getLogger(PostgreSQLDialectAdapter.class);
+
+  private static final Pattern ROWS_PATTERN = Pattern.compile("rows=(\\d+)");
 
   private static final int VARCHAR_MAX_LENGTH = 65535;
 
@@ -614,11 +618,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   public long parseApproximateCount(ResultSet rs) throws SQLException {
     if (rs.next()) {
       String explainPlan = rs.getString(1);
-      // PostgreSQL default EXPLAIN format contains "rows=N"
-      java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("rows=(\\d+)");
-      java.util.regex.Matcher matcher = pattern.matcher(explainPlan);
-      if (matcher.find()) {
-        return Long.parseLong(matcher.group(1));
+      if (explainPlan != null) {
+        Matcher matcher = ROWS_PATTERN.matcher(explainPlan);
+        if (matcher.find()) {
+          return Long.parseLong(matcher.group(1));
+        }
       }
     }
     return -1L;

@@ -182,7 +182,7 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       PreparedStatement stmt =
           conn.prepareStatement(
               countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-      stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
+      stmt.setQueryTimeout(Math.max(1, (int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000)));
       rangePreparedStatementSetter.setParameters(input, stmt);
       ResultSet rs = stmt.executeQuery();
       if (rs.next()) {
@@ -247,7 +247,7 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
     }
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
-      stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
+      stmt.setQueryTimeout(Math.max(1, (int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000)));
       rangePreparedStatementSetter.setParameters(input, stmt);
       try (ResultSet rs = stmt.executeQuery()) {
         long approxCount = dbAdapter.parseApproximateCount(rs);
