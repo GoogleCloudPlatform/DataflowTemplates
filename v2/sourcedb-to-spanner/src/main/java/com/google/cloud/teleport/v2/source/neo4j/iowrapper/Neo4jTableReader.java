@@ -84,9 +84,10 @@ public class Neo4jTableReader extends PTransform<PBegin, PCollection<SourceRow>>
   public PCollection<SourceRow> expand(PBegin input) {
     String tableName = sourceTableSchema.tableName();
     String elementType = "GraphNode".equals(tableName) ? "node" : "edge";
-    String maxQuery = "node".equals(elementType)
-        ? "MATCH (n) RETURN max(id(n))"
-        : "MATCH ()-[r]->() RETURN max(id(r))";
+    String maxQuery =
+        "node".equals(elementType)
+            ? "MATCH (n) RETURN max(id(n))"
+            : "MATCH ()-[r]->() RETURN max(id(r))";
 
     long maxId = fetchMaxId(maxQuery);
     LOG.info("Neo4j database returned max {} ID: {}", elementType, maxId);

@@ -51,8 +51,7 @@ public final class Neo4jIoWrapper implements IoWrapper, Serializable {
         SourceSchemaReference.ofNeo4j(
             Neo4jSchemaReference.builder().setDatabaseName("neo4j").build());
 
-    SourceSchema.Builder schemaBuilder =
-        SourceSchema.builder().setSchemaReference(schemaReference);
+    SourceSchema.Builder schemaBuilder = SourceSchema.builder().setSchemaReference(schemaReference);
 
     UnifiedTypeMapper typeMapper = new UnifiedTypeMapper(Neo4jMappingsProvider.getMapping());
 
@@ -61,9 +60,12 @@ public final class Neo4jIoWrapper implements IoWrapper, Serializable {
         SourceTableSchema.builder(typeMapper)
             .setTableName("GraphNode")
             .setPrimaryKeyColumns(ImmutableList.of("id"))
-            .addSourceColumnNameToSourceColumnType("id", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("label", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("properties", new SourceColumnType("JSON", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "id", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "label", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "properties", new SourceColumnType("JSON", new Long[0], null))
             .build();
     schemaBuilder.addTableSchema(nodeTableSchema);
 
@@ -72,11 +74,16 @@ public final class Neo4jIoWrapper implements IoWrapper, Serializable {
         SourceTableSchema.builder(typeMapper)
             .setTableName("GraphEdge")
             .setPrimaryKeyColumns(ImmutableList.of("id", "dest_id", "edge_id"))
-            .addSourceColumnNameToSourceColumnType("id", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("dest_id", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("edge_id", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("label", new SourceColumnType("STRING", new Long[0], null))
-            .addSourceColumnNameToSourceColumnType("properties", new SourceColumnType("JSON", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "id", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "dest_id", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "edge_id", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "label", new SourceColumnType("STRING", new Long[0], null))
+            .addSourceColumnNameToSourceColumnType(
+                "properties", new SourceColumnType("JSON", new Long[0], null))
             .build();
     schemaBuilder.addTableSchema(edgeTableSchema);
 

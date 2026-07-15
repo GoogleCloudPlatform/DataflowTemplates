@@ -44,8 +44,7 @@ public class Neo4jIoWrapperFactoryTest {
     options.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
 
     assertThrows(
-        IllegalArgumentException.class,
-        () -> Neo4jIoWrapperFactory.fromPipelineOptions(options));
+        IllegalArgumentException.class, () -> Neo4jIoWrapperFactory.fromPipelineOptions(options));
   }
 
   @Test
@@ -56,7 +55,6 @@ public class Neo4jIoWrapperFactoryTest {
     options.setNeo4jPassword("password");
 
     assertThrows(
-        NullPointerException.class,
-        () -> Neo4jIoWrapperFactory.fromPipelineOptions(options));
+        NullPointerException.class, () -> Neo4jIoWrapperFactory.fromPipelineOptions(options));
   }
 }

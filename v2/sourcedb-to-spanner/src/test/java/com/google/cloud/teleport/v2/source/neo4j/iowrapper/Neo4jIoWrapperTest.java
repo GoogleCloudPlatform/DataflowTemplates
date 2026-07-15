@@ -34,8 +34,7 @@ public class Neo4jIoWrapperTest {
   @Test
   public void testDiscoverTableSchema() {
     Neo4jIoWrapper ioWrapper =
-        new Neo4jIoWrapper(
-            "bolt://localhost:7687", "neo4j", "password", 1000, ImmutableList.of());
+        new Neo4jIoWrapper("bolt://localhost:7687", "neo4j", "password", 1000, ImmutableList.of());
 
     List<SourceSchema> schemas = ioWrapper.discoverTableSchema();
     assertEquals(1, schemas.size());
@@ -65,7 +64,8 @@ public class Neo4jIoWrapperTest {
     assertTrue(nodeSchema.sourceColumnNameToSourceColumnType().containsKey("properties"));
     assertEquals("STRING", nodeSchema.sourceColumnNameToSourceColumnType().get("id").getName());
     assertEquals("STRING", nodeSchema.sourceColumnNameToSourceColumnType().get("label").getName());
-    assertEquals("JSON", nodeSchema.sourceColumnNameToSourceColumnType().get("properties").getName());
+    assertEquals(
+        "JSON", nodeSchema.sourceColumnNameToSourceColumnType().get("properties").getName());
 
     // Verify GraphEdge columns
     SourceTableSchema edgeSchema =
@@ -81,17 +81,19 @@ public class Neo4jIoWrapperTest {
     assertTrue(edgeSchema.sourceColumnNameToSourceColumnType().containsKey("label"));
     assertTrue(edgeSchema.sourceColumnNameToSourceColumnType().containsKey("properties"));
     assertEquals("STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("id").getName());
-    assertEquals("STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("dest_id").getName());
-    assertEquals("STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("edge_id").getName());
+    assertEquals(
+        "STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("dest_id").getName());
+    assertEquals(
+        "STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("edge_id").getName());
     assertEquals("STRING", edgeSchema.sourceColumnNameToSourceColumnType().get("label").getName());
-    assertEquals("JSON", edgeSchema.sourceColumnNameToSourceColumnType().get("properties").getName());
+    assertEquals(
+        "JSON", edgeSchema.sourceColumnNameToSourceColumnType().get("properties").getName());
   }
 
   @Test
   public void testGetTableReaders() {
     Neo4jIoWrapper ioWrapper =
-        new Neo4jIoWrapper(
-            "bolt://localhost:7687", "neo4j", "password", 1000, ImmutableList.of());
+        new Neo4jIoWrapper("bolt://localhost:7687", "neo4j", "password", 1000, ImmutableList.of());
 
     var readers = ioWrapper.getTableReaders();
     assertEquals(2, readers.size());
