@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.reader.io.schema;
 import com.google.auto.value.AutoOneOf;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.source.neo4j.schema.Neo4jSchemaReference;
 import java.io.Serializable;
 
 /**
@@ -38,7 +39,8 @@ public abstract class SourceSchemaReference implements Serializable {
 
   public enum Kind {
     JDBC,
-    CASSANDRA
+    CASSANDRA,
+    NEO4J
   };
 
   public abstract Kind getKind();
@@ -47,6 +49,8 @@ public abstract class SourceSchemaReference implements Serializable {
 
   public abstract CassandraSchemaReference cassandra();
 
+  public abstract Neo4jSchemaReference neo4j();
+
   public static SourceSchemaReference ofJdbc(JdbcSchemaReference jdbcSchemaReference) {
     return AutoOneOf_SourceSchemaReference.jdbc(jdbcSchemaReference);
   }
@@ -54,6 +58,10 @@ public abstract class SourceSchemaReference implements Serializable {
   public static SourceSchemaReference ofCassandra(
       CassandraSchemaReference cassandraSchemaReference) {
     return AutoOneOf_SourceSchemaReference.cassandra(cassandraSchemaReference);
+  }
+
+  public static SourceSchemaReference ofNeo4j(Neo4jSchemaReference neo4jSchemaReference) {
+    return AutoOneOf_SourceSchemaReference.neo4j(neo4jSchemaReference);
   }
 
   /**
@@ -67,6 +75,8 @@ public abstract class SourceSchemaReference implements Serializable {
         return this.jdbc().getName();
       case CASSANDRA:
         return this.cassandra().getName();
+      case NEO4J:
+        return this.neo4j().getName();
       default:
         throw new IllegalStateException("name not implemented for kind " + this.getKind());
     }
