@@ -1,42 +1,11 @@
 """Module containing transforms to read data from Delta Lake tables."""
 
 from typing import Mapping, Optional
-import apache_beam as beam
-from apache_beam.transforms import DoFn
-from apache_beam.transforms import ParDo
 from apache_beam.transforms import PTransform
+from apache_beam.transforms import managed
+from apache_beam.transforms.external import SchemaAwareExternalTransform
 
-
-class ReadDeltaLakeDoFn(DoFn):
-  """A DoFn that opens and reads records from a Delta Lake table."""
-
-  def __init__(
-      self,
-      table: str,
-      version: Optional[int] = None,
-      timestamp: Optional[str] = None,
-      storage_options: Optional[Mapping[str, str]] = None,
-  ):
-    self.table = table
-    self.version = version
-    self.timestamp = timestamp
-    self.storage_options = storage_options
-
-  def process(self, unused_element):
-    """Reads the Delta Lake table and yields each row as a dictionary."""
-    from deltalake import DeltaTable
-
-    dt = DeltaTable(
-        table_uri=self.table,
-        version=self.version,
-        storage_options=self.storage_options,
-    )
-    if self.timestamp is not None:
-      dt.load_as_version(self.timestamp)
-
-    for batch in dt.to_pyarrow_dataset().to_batches():
-      for row in batch.to_pylist():
-        yield row
+DELTA_LAKE_READ_URN = "beam:schematransform:org.apache.beam:delta_lake_read:v1"
 
 
 class ReadFromDeltaLake(PTransform):
@@ -46,8 +15,7 @@ class ReadFromDeltaLake(PTransform):
     table: Identifier or path of the Delta Lake table.
     version: Version of the Delta Lake table to read.
     timestamp: Timestamp of the Delta Lake table to read.
-    storage_options: Storage options (e.g. cloud-specific options like
-      google_service_account_key) for connecting to storage.
+    hadoop_config: Properties passed to Hadoop Configuration.
   """
 
   def __init__(
@@ -55,25 +23,35 @@ class ReadFromDeltaLake(PTransform):
       table: str,
       version: Optional[int] = None,
       timestamp: Optional[str] = None,
-      storage_options: Optional[Mapping[str, str]] = None,
+      hadoop_config: Optional[Mapping[str, str]] = None,
   ):
     super().__init__()
     self.table = table
     self.version = version
     self.timestamp = timestamp
-    self.storage_options = storage_options
+    self.hadoop_config = hadoop_config
+
 
   def expand(self, pbegin):
     """Expands the ReadFromDeltaLake transform."""
-    return (
-        pbegin
-        | beam.Create([None])
-        | ParDo(
-            ReadDeltaLakeDoFn(
-                table=self.table,
-                version=self.version,
-                timestamp=self.timestamp,
-                storage_options=self.storage_options,
-            )
-        )
-    )
+    config = {
+        'table': self.table,
+    }
+    if self.version is not None:
+      config['version'] = self.version
+    if self.timestamp is not None:
+      config['timestamp'] = self.timestamp
+    if self.hadoop_config is not None:
+      config['hadoop_config'] = dict(self.hadoop_config)
+
+    delta_source = getattr(managed, 'DELTA', 'delta')
+    if hasattr(managed, 'Read') and delta_source in getattr(
+        managed.Read, '_READ_TRANSFORMS', {}
+    ):
+      return pbegin | managed.Read(delta_source, config=config)
+    else:
+      return pbegin | SchemaAwareExternalTransform(
+          identifier=DELTA_LAKE_READ_URN, **config
+      )
+
+

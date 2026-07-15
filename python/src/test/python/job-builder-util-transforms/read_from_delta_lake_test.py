@@ -1,68 +1,71 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import apache_beam as beam
-from apache_beam.testing.test_pipeline import TestPipeline
-from apache_beam.testing.util import assert_that, equal_to
-
-from read_from_delta_lake import ReadDeltaLakeDoFn, ReadFromDeltaLake
+from apache_beam.transforms import managed
+from read_from_delta_lake import DELTA_LAKE_READ_URN, ReadFromDeltaLake
 
 
 class ReadFromDeltaLakeTest(unittest.TestCase):
 
-  def test_read_delta_lake_dofn(self):
-    mock_deltalake = MagicMock()
-    mock_batch = MagicMock()
-    mock_batch.to_pylist.return_value = [
-        {'id': 1, 'name': 'Alice'},
-        {'id': 2, 'name': 'Bob'},
-    ]
-    mock_dataset = MagicMock()
-    mock_dataset.to_batches.return_value = [mock_batch]
-    mock_dt_instance = MagicMock()
-    mock_dt_instance.to_pyarrow_dataset.return_value = mock_dataset
-    mock_deltalake.DeltaTable.return_value = mock_dt_instance
+  @patch('read_from_delta_lake.SchemaAwareExternalTransform')
+  @patch.object(managed, 'DELTA', 'delta', create=True)
+  @patch('read_from_delta_lake.managed.Read')
+  def test_read_from_delta_lake_managed_read(self, mock_managed_read, mock_saet):
+    mock_managed_read._READ_TRANSFORMS = {'delta': DELTA_LAKE_READ_URN}
+    mock_transform = MagicMock()
+    mock_managed_read.return_value = mock_transform
 
-    with patch.dict(sys.modules, {'deltalake': mock_deltalake}):
-      dofn = ReadDeltaLakeDoFn(
-          table='gs://bucket/delta',
-          version=1,
-          timestamp='2026-01-01T00:00:00Z',
-          storage_options={'google_service_account_key': 'key_data'},
-      )
-      outputs = list(dofn.process(None))
 
-    mock_deltalake.DeltaTable.assert_called_once_with(
-        table_uri='gs://bucket/delta',
-        version=1,
-        storage_options={'google_service_account_key': 'key_data'},
+    table = 'gs://bucket/delta_table'
+    version = 2
+    timestamp = '2026-05-01T12:00:00Z'
+    hadoop_config = {'fs.gs.project.id': 'test-project'}
+
+    transform = ReadFromDeltaLake(
+        table=table,
+        version=version,
+        timestamp=timestamp,
+        hadoop_config=hadoop_config,
     )
-    mock_dt_instance.load_as_version.assert_called_once_with('2026-01-01T00:00:00Z')
-    mock_dt_instance.to_pyarrow_dataset.assert_called_once_with()
-    self.assertEqual(outputs, [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}])
 
-  def test_read_from_delta_lake_transform(self):
-    mock_deltalake = MagicMock()
-    mock_batch = MagicMock()
-    mock_batch.to_pylist.return_value = [
-        {'id': 10, 'value': 'test_data'}
-    ]
-    mock_dataset = MagicMock()
-    mock_dataset.to_batches.return_value = [mock_batch]
-    mock_dt_instance = MagicMock()
-    mock_dt_instance.to_pyarrow_dataset.return_value = mock_dataset
-    mock_deltalake.DeltaTable.return_value = mock_dt_instance
+    pbegin = MagicMock()
+    transform.expand(pbegin)
 
-    with patch.dict(sys.modules, {'deltalake': mock_deltalake}):
-      with TestPipeline() as p:
-        output = p | ReadFromDeltaLake(
-            table='gs://bucket/delta_table',
-            version=2,
-            timestamp='2026-05-01T12:00:00Z',
-            storage_options={'google_service_account_key': 'key_data'},
-        )
-        assert_that(output, equal_to([{'id': 10, 'value': 'test_data'}]))
+    mock_managed_read.assert_called_once_with(
+        'delta',
+        config={
+            'table': table,
+            'version': version,
+            'timestamp': timestamp,
+            'hadoop_config': hadoop_config,
+        },
+    )
+
+
+  @patch('read_from_delta_lake.SchemaAwareExternalTransform')
+  def test_read_from_delta_lake_fallback(self, mock_saet):
+    mock_transform = MagicMock()
+    mock_saet.return_value = mock_transform
+
+    table = '/path/to/table'
+    hadoop_config = {'fs.gs.project.id': 'test-project'}
+
+    transform = ReadFromDeltaLake(
+        table=table,
+        hadoop_config=hadoop_config,
+    )
+
+    pbegin = MagicMock()
+    transform.expand(pbegin)
+
+    mock_saet.assert_called_once_with(
+        identifier=DELTA_LAKE_READ_URN,
+        table=table,
+        hadoop_config=hadoop_config,
+    )
+
 
 
 if __name__ == '__main__':
   unittest.main()
+
+
