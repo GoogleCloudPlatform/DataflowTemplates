@@ -1,0 +1,42 @@
+{
+  "type" : "record",
+  "name" : "SourceRowWithMetadata",
+  "fields" : [ {
+    "name" : "tableName",
+    "type" : "string"
+  }, {
+    "name" : "shardId",
+    "type" : [ "string", "null" ]
+  }, {
+    "name" : "primaryKeys",
+    "type" : {
+      "type" : "array",
+      "items" : "string"
+    }
+  }, {
+    "name" : "payload",
+    "type" : {
+      "type" : "record",
+      "name" : "payload",
+      "fields" : [ {
+        "name" : "user_id",
+        "type" : [ "null", "long" ]
+      }, {
+        "name" : "event_id",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "full_name",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "age",
+        "type" : [ "null", "int" ]
+      }, {
+        "name" : "created_at",
+        "type" : [ "null", {
+          "type": "long",
+          "logicalType": "timestamp-micros"
+        } ]
+      } ]
+    }
+  } ]
+}
