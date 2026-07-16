@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -15,8 +30,8 @@ import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
 /**
  * Test helper class for verifying BigQuery output from the gcs-spanner-dv pipeline.
  *
- * This class provides strongly-typed Data Transfer Objects (DTOs) and assertion mappers
- * to safely compare expected validation results against the actual rows written to BigQuery.
+ * <p>This class provides strongly-typed Data Transfer Objects (DTOs) and assertion mappers to
+ * safely compare expected validation results against the actual rows written to BigQuery.
  */
 public final class GCSSpannerDVTestAsserts {
 
@@ -24,55 +39,76 @@ public final class GCSSpannerDVTestAsserts {
 
   public static void assertValidationSummary(
       BigQueryResourceManager bigQueryResourceManager, List<ValidationSummaryDto> expected) {
-    assertThat(bigQueryResourceManager.getRowCount("ValidationSummary")).isEqualTo((long) expected.size());
+    assertThat(bigQueryResourceManager.getRowCount("ValidationSummary"))
+        .isEqualTo((long) expected.size());
     TableResult summaryResult = bigQueryResourceManager.readTable("ValidationSummary");
     List<Map<String, Object>> summaryRows = BigQueryAsserts.tableResultToRecords(summaryResult);
-    List<ValidationSummaryDto> summaryDtos = summaryRows.stream()
-        .map(row -> new ValidationSummaryDto(
-            (String) row.get(ValidationSummary.STATUS_COLUMN_NAME),
-            ((Number) row.get(ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME)).longValue(),
-            ((Number) row.get(ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME)).longValue(),
-            ((Number) row.get(ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME)).longValue(),
-            (String) row.get(ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME)))
-        .collect(Collectors.toList());
+    List<ValidationSummaryDto> summaryDtos =
+        summaryRows.stream()
+            .map(
+                row ->
+                    new ValidationSummaryDto(
+                        (String) row.get(ValidationSummary.STATUS_COLUMN_NAME),
+                        ((Number) row.get(ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME))
+                            .longValue(),
+                        ((Number) row.get(ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME))
+                            .longValue(),
+                        ((Number) row.get(ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME))
+                            .longValue(),
+                        (String) row.get(ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME)))
+            .collect(Collectors.toList());
 
     assertThat(summaryDtos).containsExactlyElementsIn(expected);
   }
 
   public static void assertTableValidationStats(
       BigQueryResourceManager bigQueryResourceManager, List<TableValidationStatsDto> expected) {
-    assertThat(bigQueryResourceManager.getRowCount("TableValidationStats")).isEqualTo((long) expected.size());
+    assertThat(bigQueryResourceManager.getRowCount("TableValidationStats"))
+        .isEqualTo((long) expected.size());
     TableResult statsResult = bigQueryResourceManager.readTable("TableValidationStats");
     List<Map<String, Object>> statsRows = BigQueryAsserts.tableResultToRecords(statsResult);
-    
-    List<TableValidationStatsDto> statsDtos = statsRows.stream()
-        .map(row -> new TableValidationStatsDto(
-            (String) row.get(TableValidationStats.SCHEMA_NAME),
-            row.get(TableValidationStats.TABLE_NAME_COLUMN_NAME).toString(),
-            (String) row.get(TableValidationStats.STATUS_COLUMN_NAME),
-            ((Number) row.get(TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME)).longValue(),
-            ((Number) row.get(TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME)).longValue(),
-            ((Number) row.get(TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME)).longValue(),
-            ((Number) row.get(TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME)).longValue()))
-        .collect(Collectors.toList());
+
+    List<TableValidationStatsDto> statsDtos =
+        statsRows.stream()
+            .map(
+                row ->
+                    new TableValidationStatsDto(
+                        (String) row.get(TableValidationStats.SCHEMA_NAME),
+                        row.get(TableValidationStats.TABLE_NAME_COLUMN_NAME).toString(),
+                        (String) row.get(TableValidationStats.STATUS_COLUMN_NAME),
+                        ((Number) row.get(TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME))
+                            .longValue(),
+                        ((Number) row.get(TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME))
+                            .longValue(),
+                        ((Number) row.get(TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME))
+                            .longValue(),
+                        ((Number) row.get(TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME))
+                            .longValue()))
+            .collect(Collectors.toList());
 
     assertThat(statsDtos).containsExactlyElementsIn(expected);
   }
 
   public static void assertMismatchedRecords(
       BigQueryResourceManager bigQueryResourceManager, List<MismatchedRecordDto> expected) {
-    assertThat(bigQueryResourceManager.getRowCount("MismatchedRecords")).isEqualTo((long) expected.size());
+    assertThat(bigQueryResourceManager.getRowCount("MismatchedRecords"))
+        .isEqualTo((long) expected.size());
     TableResult mismatchesResult = bigQueryResourceManager.readTable("MismatchedRecords");
     List<Map<String, Object>> mismatchRows = BigQueryAsserts.tableResultToRecords(mismatchesResult);
-    
-    List<MismatchedRecordDto> mismatchDtos = mismatchRows.stream()
-        .map(row -> new MismatchedRecordDto(
-            (String) row.get(MismatchedRecord.SHARD_ID_COLUMN_NAME),
-            (String) row.get(MismatchedRecord.SCHEMA_NAME),
-            (String) row.get(MismatchedRecord.TABLE_NAME_COLUMN_NAME),
-            row.get(MismatchedRecord.RECORD_KEY_COLUMN_NAME).toString().replaceAll("\\s+", ""),
-            row.get(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME).toString()))
-        .collect(Collectors.toList());
+
+    List<MismatchedRecordDto> mismatchDtos =
+        mismatchRows.stream()
+            .map(
+                row ->
+                    new MismatchedRecordDto(
+                        (String) row.get(MismatchedRecord.SHARD_ID_COLUMN_NAME),
+                        (String) row.get(MismatchedRecord.SCHEMA_NAME),
+                        (String) row.get(MismatchedRecord.TABLE_NAME_COLUMN_NAME),
+                        row.get(MismatchedRecord.RECORD_KEY_COLUMN_NAME)
+                            .toString()
+                            .replaceAll("\\s+", ""),
+                        row.get(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME).toString()))
+            .collect(Collectors.toList());
 
     assertThat(mismatchDtos).containsExactlyElementsIn(expected);
   }
@@ -84,7 +120,12 @@ public final class GCSSpannerDVTestAsserts {
     public final Long totalRowsMismatched;
     public final String tablesWithMismatches;
 
-    public ValidationSummaryDto(String status, Long totalTablesValidated, Long totalRowsMatched, Long totalRowsMismatched, String tablesWithMismatches) {
+    public ValidationSummaryDto(
+        String status,
+        Long totalTablesValidated,
+        Long totalRowsMatched,
+        Long totalRowsMismatched,
+        String tablesWithMismatches) {
       this.status = status;
       this.totalTablesValidated = totalTablesValidated;
       this.totalRowsMatched = totalRowsMatched;
@@ -110,17 +151,29 @@ public final class GCSSpannerDVTestAsserts {
 
     @Override
     public int hashCode() {
-      return java.util.Objects.hash(status, totalTablesValidated, totalRowsMatched, totalRowsMismatched, tablesWithMismatches);
+      return java.util.Objects.hash(
+          status,
+          totalTablesValidated,
+          totalRowsMatched,
+          totalRowsMismatched,
+          tablesWithMismatches);
     }
 
     @Override
     public String toString() {
       return "ValidationSummaryDto{"
-          + "status='" + status + '\''
-          + ", totalTablesValidated=" + totalTablesValidated
-          + ", totalRowsMatched=" + totalRowsMatched
-          + ", totalRowsMismatched=" + totalRowsMismatched
-          + ", tablesWithMismatches='" + tablesWithMismatches + '\''
+          + "status='"
+          + status
+          + '\''
+          + ", totalTablesValidated="
+          + totalTablesValidated
+          + ", totalRowsMatched="
+          + totalRowsMatched
+          + ", totalRowsMismatched="
+          + totalRowsMismatched
+          + ", tablesWithMismatches='"
+          + tablesWithMismatches
+          + '\''
           + '}';
     }
   }
@@ -134,7 +187,14 @@ public final class GCSSpannerDVTestAsserts {
     public final Long matchedRowCount;
     public final Long mismatchRowCount;
 
-    public TableValidationStatsDto(String schemaName, String tableName, String status, Long sourceRowCount, Long destinationRowCount, Long matchedRowCount, Long mismatchRowCount) {
+    public TableValidationStatsDto(
+        String schemaName,
+        String tableName,
+        String status,
+        Long sourceRowCount,
+        Long destinationRowCount,
+        Long matchedRowCount,
+        Long mismatchRowCount) {
       this.schemaName = schemaName;
       this.tableName = tableName;
       this.status = status;
@@ -164,19 +224,36 @@ public final class GCSSpannerDVTestAsserts {
 
     @Override
     public int hashCode() {
-      return java.util.Objects.hash(schemaName, tableName, status, sourceRowCount, destinationRowCount, matchedRowCount, mismatchRowCount);
+      return java.util.Objects.hash(
+          schemaName,
+          tableName,
+          status,
+          sourceRowCount,
+          destinationRowCount,
+          matchedRowCount,
+          mismatchRowCount);
     }
 
     @Override
     public String toString() {
       return "TableValidationStatsDto{"
-          + "schemaName='" + schemaName + '\''
-          + ", tableName='" + tableName + '\''
-          + ", status='" + status + '\''
-          + ", sourceRowCount=" + sourceRowCount
-          + ", destinationRowCount=" + destinationRowCount
-          + ", matchedRowCount=" + matchedRowCount
-          + ", mismatchRowCount=" + mismatchRowCount
+          + "schemaName='"
+          + schemaName
+          + '\''
+          + ", tableName='"
+          + tableName
+          + '\''
+          + ", status='"
+          + status
+          + '\''
+          + ", sourceRowCount="
+          + sourceRowCount
+          + ", destinationRowCount="
+          + destinationRowCount
+          + ", matchedRowCount="
+          + matchedRowCount
+          + ", mismatchRowCount="
+          + mismatchRowCount
           + '}';
     }
   }
@@ -188,7 +265,12 @@ public final class GCSSpannerDVTestAsserts {
     public final String recordKey;
     public final String mismatchType;
 
-    public MismatchedRecordDto(String shardId, String schemaName, String tableName, String recordKey, String mismatchType) {
+    public MismatchedRecordDto(
+        String shardId,
+        String schemaName,
+        String tableName,
+        String recordKey,
+        String mismatchType) {
       this.shardId = shardId;
       this.schemaName = schemaName;
       this.tableName = tableName;
@@ -220,11 +302,21 @@ public final class GCSSpannerDVTestAsserts {
     @Override
     public String toString() {
       return "MismatchedRecordDto{"
-          + "shardId='" + shardId + '\''
-          + ", schemaName='" + schemaName + '\''
-          + ", tableName='" + tableName + '\''
-          + ", recordKey='" + recordKey + '\''
-          + ", mismatchType='" + mismatchType + '\''
+          + "shardId='"
+          + shardId
+          + '\''
+          + ", schemaName='"
+          + schemaName
+          + '\''
+          + ", tableName='"
+          + tableName
+          + '\''
+          + ", recordKey='"
+          + recordKey
+          + '\''
+          + ", mismatchType='"
+          + mismatchType
+          + '\''
           + '}';
     }
   }

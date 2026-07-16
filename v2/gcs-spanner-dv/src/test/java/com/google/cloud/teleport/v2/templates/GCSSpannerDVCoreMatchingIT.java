@@ -41,26 +41,21 @@ import org.slf4j.LoggerFactory;
 /**
  * Integration test for GCSSpannerDV pipeline covering the core matching logic.
  *
- * <p>Intent:
- * This test validates the core functional accuracy of the gcs-spanner-dv batch pipeline by
- * verifying that it can correctly identify and categorize rows into MATCHED, MISSING_IN_DESTINATION,
- * MISSING_IN_SOURCE, and mismatches.
+ * <p>Intent: This test validates the core functional accuracy of the gcs-spanner-dv batch pipeline
+ * by verifying that it can correctly identify and categorize rows into MATCHED,
+ * MISSING_IN_DESTINATION, MISSING_IN_SOURCE, and mismatches.
  *
- * <p>Simulation Methodology:
- * We create two tables to validate multi-table logic:
- * 1. `Users` table (4 rows simulating 4 scenarios):
- *    - Exactly Matching: Present in both source and destination identically.
- *    - Missing in Spanner: Present in source only.
- *    - Missing in Source: Present in Spanner only.
- *    - Mismatched Values: Present in both, but with different values.
- * 2. `AccountRoles` table (3 rows):
- *    - All 3 rows are exactly matching to simulate a completely healthy table.
+ * <p>Simulation Methodology: We create two tables to validate multi-table logic: 1. `Users` table
+ * (4 rows simulating 4 scenarios): - Exactly Matching: Present in both source and destination
+ * identically. - Missing in Spanner: Present in source only. - Missing in Source: Present in
+ * Spanner only. - Mismatched Values: Present in both, but with different values. 2. `AccountRoles`
+ * table (3 rows): - All 3 rows are exactly matching to simulate a completely healthy table.
  *
- *
- * <p>Assertions:
- * - **ValidationSummary**: Verified that exactly one row exists globally, rolling up metrics correctly across all tables.
- * - **TableValidationStats**: Verified that each table (`Users`, `AccountRoles`) produced exactly one row with accurate, independent status and counts.
- * - **MismatchedRecords**: Verified every individual discrepancy is explicitly logged and categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary keys.
+ * <p>Assertions: - **ValidationSummary**: Verified that exactly one row exists globally, rolling up
+ * metrics correctly across all tables. - **TableValidationStats**: Verified that each table
+ * (`Users`, `AccountRoles`) produced exactly one row with accurate, independent status and counts.
+ * - **MismatchedRecords**: Verified every individual discrepancy is explicitly logged and
+ * categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary keys.
  */
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
@@ -94,54 +89,102 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
     GCSSpannerDVAvroSetupHelper setupHelper = new GCSSpannerDVAvroSetupHelper();
-    
+
     // 1. Generate and Upload Avro Records (Source)
     LOG.info("Generating and Uploading Avro Records to GCS");
-    
+
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
     Instant t2 = Instant.parse("2024-01-02T10:00:00Z");
     Instant t3 = Instant.parse("2024-01-03T10:00:00Z");
     Instant t4 = Instant.parse("2024-01-04T10:00:00Z");
-    
+
     // 1 matched record, 1 record present only in source, 1 record with different value
-    List<GenericRecord> usersRecords = Arrays.asList(
-        setupHelper.createUsersRecord(1L, "E1", "Alice", 30, t1, null), // Matched in both source and spanner
-        setupHelper.createUsersRecord(2L, "E2", "Bob", 31, t2, null), // Present in source but not in destination
-        setupHelper.createUsersRecord(4L, "E4", "David", 35, t4, null) // Mismatched record: Source age is 35, while spanner has 40
-    );
-    
+    List<GenericRecord> usersRecords =
+        Arrays.asList(
+            setupHelper.createUsersRecord(
+                1L, "E1", "Alice", 30, t1, null), // Matched in both source and spanner
+            setupHelper.createUsersRecord(
+                2L, "E2", "Bob", 31, t2, null), // Present in source but not in destination
+            setupHelper.createUsersRecord(
+                4L, "E4", "David", 35, t4,
+                null) // Mismatched record: Source age is 35, while spanner has 40
+            );
+
     // All records are matched in Spanner
-    List<GenericRecord> rolesRecords = Arrays.asList(
-        setupHelper.createAccountRolesRecord(1, "ADMIN", null),
-        setupHelper.createAccountRolesRecord(2, "USER", null),
-        setupHelper.createAccountRolesRecord(3, "GUEST", null)
-    );
+    List<GenericRecord> rolesRecords =
+        Arrays.asList(
+            setupHelper.createAccountRolesRecord(1, "ADMIN", null),
+            setupHelper.createAccountRolesRecord(2, "USER", null),
+            setupHelper.createAccountRolesRecord(3, "GUEST", null));
 
     String gcsInputDirectory = getGcsPath("input");
-    setupHelper.uploadAvroFileToGcs(gcsClient, "input/users.avro", setupHelper.getUsersSchema(), usersRecords);
-    setupHelper.uploadAvroFileToGcs(gcsClient, "input/roles.avro", setupHelper.getAccountRolesSchema(), rolesRecords);
-
+    setupHelper.uploadAvroFileToGcs(
+        gcsClient, "input/users.avro", setupHelper.getUsersSchema(), usersRecords);
+    setupHelper.uploadAvroFileToGcs(
+        gcsClient, "input/roles.avro", setupHelper.getAccountRolesSchema(), rolesRecords);
 
     // 2. Inject Spanner Records (Destination)
     LOG.info("Injecting Spanner records");
 
     spannerResourceManager.write(
         Arrays.asList(
-            // Users: 1 matched record, 1 record present only in destination, 1 record with different values
+            // Users: 1 matched record, 1 record present only in destination, 1 record with
+            // different values
             Mutation.newInsertOrUpdateBuilder("Users")
-                .set("user_id").to(1L).set("event_id").to("E1").set("full_name").to("Alice")
-                .set("age").to(30L).set("created_at").to(com.google.cloud.Timestamp.parseTimestamp(t1.toString())).build(), // Matched in both source and spanner
+                .set("user_id")
+                .to(1L)
+                .set("event_id")
+                .to("E1")
+                .set("full_name")
+                .to("Alice")
+                .set("age")
+                .to(30L)
+                .set("created_at")
+                .to(com.google.cloud.Timestamp.parseTimestamp(t1.toString()))
+                .build(), // Matched in both source and spanner
             Mutation.newInsertOrUpdateBuilder("Users")
-                .set("user_id").to(3L).set("event_id").to("E3").set("full_name").to("Charlie")
-                .set("age").to(32L).set("created_at").to(com.google.cloud.Timestamp.parseTimestamp(t3.toString())).build(), // Present in Spanner but not in source
+                .set("user_id")
+                .to(3L)
+                .set("event_id")
+                .to("E3")
+                .set("full_name")
+                .to("Charlie")
+                .set("age")
+                .to(32L)
+                .set("created_at")
+                .to(com.google.cloud.Timestamp.parseTimestamp(t3.toString()))
+                .build(), // Present in Spanner but not in source
             Mutation.newInsertOrUpdateBuilder("Users")
-                .set("user_id").to(4L).set("event_id").to("E4").set("full_name").to("David")
-                .set("age").to(40L).set("created_at").to(com.google.cloud.Timestamp.parseTimestamp(t4.toString())).build(), // Mismatched age
+                .set("user_id")
+                .to(4L)
+                .set("event_id")
+                .to("E4")
+                .set("full_name")
+                .to("David")
+                .set("age")
+                .to(40L)
+                .set("created_at")
+                .to(com.google.cloud.Timestamp.parseTimestamp(t4.toString()))
+                .build(), // Mismatched age
             // AccountRoles: 3 matched records
-            Mutation.newInsertOrUpdateBuilder("AccountRoles").set("role_id").to(1L).set("role_name").to("ADMIN").build(),
-            Mutation.newInsertOrUpdateBuilder("AccountRoles").set("role_id").to(2L).set("role_name").to("USER").build(),
-            Mutation.newInsertOrUpdateBuilder("AccountRoles").set("role_id").to(3L).set("role_name").to("GUEST").build()
-        ));
+            Mutation.newInsertOrUpdateBuilder("AccountRoles")
+                .set("role_id")
+                .to(1L)
+                .set("role_name")
+                .to("ADMIN")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("AccountRoles")
+                .set("role_id")
+                .to(2L)
+                .set("role_name")
+                .to("USER")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("AccountRoles")
+                .set("role_id")
+                .to(3L)
+                .set("role_name")
+                .to("GUEST")
+                .build()));
 
     // Wait for Spanner's 15-second exact staleness read bound in SpannerReaderTransform
     Thread.sleep(15000);
@@ -169,25 +212,24 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     // 4. Assert BigQuery Validation Results
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
-        Arrays.asList(new ValidationSummaryDto("MISMATCH", 2L, 4L, 4L, "Users"))
-    );
+        Arrays.asList(new ValidationSummaryDto("MISMATCH", 2L, 4L, 4L, "Users")));
 
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         Arrays.asList(
             new TableValidationStatsDto(null, "Users", "MISMATCH", 3L, 3L, 1L, 4L),
-            new TableValidationStatsDto(null, "AccountRoles", "MATCH", 3L, 3L, 3L, 0L)
-        )
-    );
+            new TableValidationStatsDto(null, "AccountRoles", "MATCH", 3L, 3L, 3L, 0L)));
 
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
-            new MismatchedRecordDto(null, null, "Users", "[user_id:2,event_id:E2]", "MISSING_IN_DESTINATION"),
-            new MismatchedRecordDto(null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_DESTINATION"),
-            new MismatchedRecordDto(null, null, "Users", "[user_id:3,event_id:E3]", "MISSING_IN_SOURCE"),
-            new MismatchedRecordDto(null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_SOURCE")
-        )
-    );
+            new MismatchedRecordDto(
+                null, null, "Users", "[user_id:2,event_id:E2]", "MISSING_IN_DESTINATION"),
+            new MismatchedRecordDto(
+                null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_DESTINATION"),
+            new MismatchedRecordDto(
+                null, null, "Users", "[user_id:3,event_id:E3]", "MISSING_IN_SOURCE"),
+            new MismatchedRecordDto(
+                null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_SOURCE")));
   }
 }

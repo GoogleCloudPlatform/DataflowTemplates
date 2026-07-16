@@ -29,9 +29,9 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.it.gcp.artifacts.ArtifactClient;
 
 /**
- * A centralized helper class for setting up Avro data in GCS for integration tests.
- * This class abstracts away the boilerplate of loading Avro schemas, building records,
- * and serializing them into .avro files uploaded to GCS.
+ * A centralized helper class for setting up Avro data in GCS for integration tests. This class
+ * abstracts away the boilerplate of loading Avro schemas, building records, and serializing them
+ * into .avro files uploaded to GCS.
  */
 public class GCSSpannerDVAvroSetupHelper {
 
@@ -122,7 +122,7 @@ public class GCSSpannerDVAvroSetupHelper {
 
     payloadBuilder.set("role_id", roleId);
     payloadBuilder.set("role_name", roleName);
-    
+
     outerBuilder.set("payload", payloadBuilder.build());
     return outerBuilder.build();
   }

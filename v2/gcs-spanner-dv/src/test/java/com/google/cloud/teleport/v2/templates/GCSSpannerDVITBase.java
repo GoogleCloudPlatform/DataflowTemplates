@@ -109,7 +109,8 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
    * @param bigQueryDataset BigQuery dataset
    * @param gcsInputDirectory GCS input directory
    * @param sessionFileResourceName Session file name with path relative to resources directory
-   * @param schemaOverridesFileResourceName Schema overrides file name with path relative to resources directory
+   * @param schemaOverridesFileResourceName Schema overrides file name with path relative to
+   *     resources directory
    * @param tableOverrides Table overrides mapping string
    * @param columnOverrides Column overrides mapping string
    * @param customTransformation Custom transformation logic
@@ -138,7 +139,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     params.put("databaseId", spannerResourceManager.getDatabaseId());
     params.put("bigQueryDataset", bigQueryDataset);
     params.put("gcsInputDirectory", gcsInputDirectory);
-    
+
     if (sessionFileResourceName != null) {
       LOG.info("uploading session file from resource: {}", sessionFileResourceName);
       gcsClient.uploadArtifact(
@@ -147,9 +148,11 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     }
 
     if (schemaOverridesFileResourceName != null) {
-      LOG.info("uploading schema overrides file from resource: {}", schemaOverridesFileResourceName);
+      LOG.info(
+          "uploading schema overrides file from resource: {}", schemaOverridesFileResourceName);
       gcsClient.uploadArtifact(
-          "schema_overrides.json", Resources.getResource(schemaOverridesFileResourceName).getPath());
+          "schema_overrides.json",
+          Resources.getResource(schemaOverridesFileResourceName).getPath());
       params.put("schemaOverridesFilePath", getGcsPath("schema_overrides.json"));
     }
 
@@ -163,9 +166,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
 
     if (customTransformation != null) {
       LOG.info("Custom transformation provided: {}", customTransformation.classPath());
-      params.put(
-          "transformationJarPath",
-          getGcsPath(customTransformation.jarPath()));
+      params.put("transformationJarPath", getGcsPath(customTransformation.jarPath()));
       params.put("transformationClassName", customTransformation.classPath());
       if (customTransformation.customParameters() != null) {
         params.put("transformationCustomParameters", customTransformation.customParameters());
