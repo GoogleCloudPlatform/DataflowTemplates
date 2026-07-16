@@ -1,0 +1,81 @@
+template:
+  name: "Pubsub_To_Iceberg_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Pub/Sub to Iceberg (YAML)"
+  description: >
+    The Pub/Sub to Iceberg template is a streaming pipeline that ingests data
+    from a Pub/Sub topic or subscription and writes the records to an Apache Iceberg table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "PubsubToIceberg.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Pub/Sub topic or subscription must exist.",
+    "The target Iceberg table must exist and be accessible through the provided catalog."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "pubsub_options"
+    - "iceberg_options"
+
+  parameters:
+    - pubsub_common_options
+    - pubsub_read_options
+    - iceberg_common_options
+    - iceberg_write_options
+    - iceberg_streaming_write_options
+    - name: "sdfCheckpointAfterDuration"
+      label: "SDF Checkpoint After Duration"
+      description: "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns."
+      help: "Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options"
+      example: "30s"
+      default: "30s"
+      required: false
+      type: text
+    - name: "sdfCheckpointAfterOutputBytes"
+      label: "SDF Checkpoint After Output Bytes"
+      description: "Dataflow Pipeline Option: Output bytes after which to checkpoint stateful DoFns."
+      help: "Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options"
+      example: "536870912"
+      default: "536870912"
+      required: false
+      type: integer
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPubSub
+      name: ReadFromPubSub
+      config:
+        topic: {{ topic }}
+        subscription: {{ subscription }}
+        format: {{ format }}
+        schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributesMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
+
+    - type: WriteToIceberg
+      name: WriteToIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        keep: {{ keep }}
+        only: {{ only }}
+        partition_fields: {{ partitionFields }}
+        table_properties: {{ tableProperties }}
+        triggering_frequency_seconds: {{ triggeringFrequencySeconds }}
+
+options:
+  streaming: true
+  dataflow_service_options:
+    - sdf_checkpoint_after_duration={{ sdfCheckpointAfterDuration | default('30s') }}
+    - sdf_checkpoint_after_output_bytes={{ sdfCheckpointAfterOutputBytes | default('536870912') }}
