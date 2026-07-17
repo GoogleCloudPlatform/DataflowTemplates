@@ -102,22 +102,6 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
   }
 
   /**
-   * Helper function for uploading mock Avro files to GCS.
-   *
-   * @param gcsPrefix GCS prefix
-   * @param resourceFileName Mock Avro file in resources directory
-   * @throws IOException If an I/O error occurs
-   */
-  protected void uploadMockAvroFiles(String gcsPrefix, String resourceFileName) throws IOException {
-    String destinationPath = gcsPrefix + "/" + resourceFileName;
-    byte[] bytes = Resources.toByteArray(Resources.getResource(resourceFileName));
-    java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("mock", ".avro");
-    java.nio.file.Files.write(tempFile, bytes);
-    gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), destinationPath);
-    java.nio.file.Files.delete(tempFile);
-  }
-
-  /**
    * Launches the Dataflow job.
    *
    * @param options Pipeline launcher options

@@ -46,7 +46,7 @@ public class GCSSpannerDVAvroSetupHelper {
       USERS_SCHEMA = new Schema.Parser().parse(usersIs);
       ACCOUNT_ROLES_SCHEMA = new Schema.Parser().parse(rolesIs);
     } catch (IOException e) {
-      throw new ExceptionInInitializerError("Failed to load Avro schemas: " + e.getMessage());
+      throw new RuntimeException("Failed to load Avro schemas", e);
     }
   }
 
@@ -119,7 +119,10 @@ public class GCSSpannerDVAvroSetupHelper {
     payloadBuilder.set("event_id", eventId);
     payloadBuilder.set("full_name", fullName);
     payloadBuilder.set("age", age);
-    long micros = (timestamp.getEpochSecond() * 1_000_000L) + (timestamp.getNano() / 1000L);
+    Long micros =
+        timestamp == null
+            ? null
+            : (timestamp.getEpochSecond() * 1_000_000L) + (timestamp.getNano() / 1000L);
     payloadBuilder.set("created_at", micros);
 
     outerBuilder.set("payload", payloadBuilder.build());
