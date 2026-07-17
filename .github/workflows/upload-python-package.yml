@@ -47,6 +47,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # TODO(BEAM-2.76.0): Remove Java setup and background expansion service steps once Beam is upgraded to 2.76.0,
+      # as the official 2.76.0 expansion service shadowJar will natively package the Delta Lake IO classes.
+      # See PR#4038 for further details on code removal.
       - name: Set up Java
         uses: actions/setup-java@v4
         with:

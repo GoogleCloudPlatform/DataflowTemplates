@@ -120,6 +120,7 @@
       <version>1.17.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- TODO(BEAM-2.76.0): Remove expansion-service, io-delta, and jamm dependencies once Beam is upgraded to 2.76.0 -->
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-expansion-service</artifactId>
