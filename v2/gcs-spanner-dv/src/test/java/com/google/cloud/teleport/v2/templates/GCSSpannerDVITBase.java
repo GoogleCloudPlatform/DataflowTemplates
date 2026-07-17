@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.PipelineUtils;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -48,14 +46,14 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
   protected BigQueryResourceManager bigQueryResourceManager;
 
   public SpannerResourceManager setUpSpannerResourceManager() {
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION)
-        .maybeUseStaticInstance()
-        .build();
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     return spannerResourceManager;
   }
 
   public BigQueryResourceManager setUpBigQueryResourceManager() {
-    bigQueryResourceManager = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    bigQueryResourceManager =
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     return bigQueryResourceManager;
   }
 
@@ -81,10 +79,8 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     String ddl =
         String.join(
             "\n", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    List<String> ddls = Arrays.stream(ddl.split(";"))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .toList();
+    List<String> ddls =
+        Arrays.stream(ddl.split(";")).map(String::trim).filter(s -> !s.isEmpty()).toList();
     spannerResourceManager.executeDdlStatements(ddls);
   }
 
@@ -100,10 +96,8 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     String dml =
         String.join(
             "\n", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    List<String> dmls = Arrays.stream(dml.split(";"))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .toList();
+    List<String> dmls =
+        Arrays.stream(dml.split(";")).map(String::trim).filter(s -> !s.isEmpty()).toList();
     spannerResourceManager.executeDMLStatements(dmls);
   }
 

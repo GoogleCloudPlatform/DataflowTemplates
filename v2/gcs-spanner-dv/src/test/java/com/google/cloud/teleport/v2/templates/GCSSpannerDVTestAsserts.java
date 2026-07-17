@@ -97,9 +97,5 @@ public final class GCSSpannerDVTestAsserts {
       Long mismatchRowCount) {}
 
   public record MismatchedRecordDto(
-      String shardId,
-      String schemaName,
-      String tableName,
-      String recordKey,
-      String mismatchType) {}
+      String shardId, String schemaName, String tableName, String recordKey, String mismatchType) {}
 }

@@ -39,8 +39,10 @@ public class GCSSpannerDVAvroSetupHelper {
   private static final Schema ACCOUNT_ROLES_SCHEMA;
 
   static {
-    try (java.io.InputStream usersIs = Resources.getResource("GCSSpannerDVAvroSetupHelper/users.avsc").openStream();
-         java.io.InputStream rolesIs = Resources.getResource("GCSSpannerDVAvroSetupHelper/account_roles.avsc").openStream()) {
+    try (java.io.InputStream usersIs =
+            Resources.getResource("GCSSpannerDVAvroSetupHelper/users.avsc").openStream();
+        java.io.InputStream rolesIs =
+            Resources.getResource("GCSSpannerDVAvroSetupHelper/account_roles.avsc").openStream()) {
       USERS_SCHEMA = new Schema.Parser().parse(usersIs);
       ACCOUNT_ROLES_SCHEMA = new Schema.Parser().parse(rolesIs);
     } catch (IOException e) {
@@ -86,7 +88,7 @@ public class GCSSpannerDVAvroSetupHelper {
           dataFileWriter.append(record);
         }
       }
-  
+
       // Upload the temporary file to GCS
       gcsClient.uploadArtifact(gcsFileName, tempFile.getAbsolutePath());
     } finally {
@@ -98,7 +100,12 @@ public class GCSSpannerDVAvroSetupHelper {
   // --- Private Helper Methods ---
 
   public GenericRecord createUsersRecord(
-      Long userId, String eventId, String fullName, Integer age, Instant timestamp, String shardId) {
+      Long userId,
+      String eventId,
+      String fullName,
+      Integer age,
+      Instant timestamp,
+      String shardId) {
 
     GenericRecordBuilder outerBuilder = new GenericRecordBuilder(usersSchema);
     outerBuilder.set("tableName", "Users");

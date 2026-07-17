@@ -29,6 +29,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -53,12 +54,14 @@ import org.slf4j.LoggerFactory;
  * - **MismatchedRecords**: Verified every individual discrepancy is explicitly logged and
  * categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary keys.
  */
+@Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVCoreMatchingIT.class);
-  private static final String SPANNER_DDL_RESOURCE = "GCSSpannerDVCoreMatchingIT/CoreMatchingSchema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "GCSSpannerDVCoreMatchingIT/CoreMatchingSchema.sql";
 
   @Before
   public void setUp() throws IOException {
@@ -72,8 +75,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     LOG.info("Spanner instance created");
   }
-
-
 
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
@@ -234,8 +235,8 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
         Arrays.asList(
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
-            // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category. 
-            // Differing row values (like User 4's age) are emitted as two discrepancies: 
+            // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category.
+            // Differing row values (like User 4's age) are emitted as two discrepancies:
             // one MISSING_IN_SOURCE and one MISSING_IN_DESTINATION.
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
