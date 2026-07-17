@@ -31,7 +31,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.junit.After;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +56,9 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     return bigQueryResourceManager;
   }
 
-  @After
-  public void tearDownBase() {
+  @Override
+  public void tearDownBase() throws IOException {
+    super.tearDownBase();
     if (spannerResourceManager != null) {
       spannerResourceManager.cleanupAll();
     }
