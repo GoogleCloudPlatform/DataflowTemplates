@@ -3,6 +3,7 @@
 from typing import Mapping, Optional
 from apache_beam.transforms import PTransform
 from apache_beam.transforms import managed
+from apache_beam.transforms.external import BeamJarExpansionService
 from apache_beam.transforms.external import SchemaAwareExternalTransform
 
 DELTA_LAKE_READ_URN = "beam:schematransform:org.apache.beam:delta_lake_read:v1"
@@ -51,7 +52,11 @@ class ReadFromDeltaLake(PTransform):
       return pbegin | managed.Read(delta_source, config=config)
     else:
       return pbegin | SchemaAwareExternalTransform(
-          identifier=DELTA_LAKE_READ_URN, **config
+          identifier=DELTA_LAKE_READ_URN,
+          expansion_service=BeamJarExpansionService(
+              'sdks:java:io:expansion-service:shadowJar'
+          ),
+          **config,
       )
 
 
