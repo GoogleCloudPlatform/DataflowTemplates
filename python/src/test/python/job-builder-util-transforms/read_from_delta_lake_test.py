@@ -4,14 +4,14 @@ import unittest
 from unittest.mock import ANY, MagicMock, patch
 import apache_beam as beam
 from apache_beam.testing.test_pipeline import TestPipeline
-
-if os.environ.get('LOCAL_TEST_LOOPBACK') == '1':
-  TestPipeline.pytest_test_pipeline_options = '--runner=FnApiRunner --environment_type=LOOPBACK'
 from apache_beam.testing.util import assert_that, equal_to
 from apache_beam.transforms import managed
 import pyarrow as pa
 import pyarrow.parquet as pq
 from read_from_delta_lake import DELTA_LAKE_READ_URN, ReadFromDeltaLake
+
+if os.environ.get('LOCAL_TEST_LOOPBACK') == '1':
+  TestPipeline.pytest_test_pipeline_options = '--runner=FnApiRunner --environment_type=LOOPBACK'
 
 
 class ReadFromDeltaLakeTest(unittest.TestCase):
