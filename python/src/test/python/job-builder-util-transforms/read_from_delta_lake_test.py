@@ -69,6 +69,7 @@ class ReadFromDeltaLakeTest(unittest.TestCase):
     mock_saet.assert_called_once_with(
         identifier=DELTA_LAKE_READ_URN,
         expansion_service=ANY,
+        rearrange_based_on_discovery=True,
         table=table,
         hadoop_config=hadoop_config,
     )

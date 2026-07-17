@@ -56,6 +56,7 @@ class ReadFromDeltaLake(PTransform):
           expansion_service=BeamJarExpansionService(
               'sdks:java:io:expansion-service:shadowJar'
           ),
+          rearrange_based_on_discovery=True,
           **config,
       )
 
