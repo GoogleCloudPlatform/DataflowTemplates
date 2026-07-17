@@ -35,20 +35,25 @@ import org.apache.beam.it.gcp.artifacts.ArtifactClient;
  */
 public class GCSSpannerDVAvroSetupHelper {
 
+  private static final Schema USERS_SCHEMA;
+  private static final Schema ACCOUNT_ROLES_SCHEMA;
+
+  static {
+    try (java.io.InputStream usersIs = Resources.getResource("GCSSpannerDVAvroSetupHelper/users.avsc").openStream();
+         java.io.InputStream rolesIs = Resources.getResource("GCSSpannerDVAvroSetupHelper/account_roles.avsc").openStream()) {
+      USERS_SCHEMA = new Schema.Parser().parse(usersIs);
+      ACCOUNT_ROLES_SCHEMA = new Schema.Parser().parse(rolesIs);
+    } catch (IOException e) {
+      throw new ExceptionInInitializerError("Failed to load Avro schemas: " + e.getMessage());
+    }
+  }
+
   private final Schema usersSchema;
   private final Schema accountRolesSchema;
 
   public GCSSpannerDVAvroSetupHelper() throws IOException {
-    // Parse the schemas exactly once when the helper is instantiated.
-    // Assumes you will save the extracted production schemas to these paths in src/test/resources/
-    this.usersSchema =
-        new Schema.Parser()
-            .parse(Resources.getResource("GCSSpannerDVAvroSetupHelper/users.avsc").openStream());
-    this.accountRolesSchema =
-        new Schema.Parser()
-            .parse(
-                Resources.getResource("GCSSpannerDVAvroSetupHelper/account_roles.avsc")
-                    .openStream());
+    this.usersSchema = USERS_SCHEMA;
+    this.accountRolesSchema = ACCOUNT_ROLES_SCHEMA;
   }
 
   public Schema getUsersSchema() {
@@ -74,24 +79,26 @@ public class GCSSpannerDVAvroSetupHelper {
     tempFile.deleteOnExit();
 
     GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
-    try (DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter)) {
-      dataFileWriter.create(schema, tempFile);
-      for (GenericRecord record : records) {
-        dataFileWriter.append(record);
+    try {
+      try (DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter)) {
+        dataFileWriter.create(schema, tempFile);
+        for (GenericRecord record : records) {
+          dataFileWriter.append(record);
+        }
       }
+  
+      // Upload the temporary file to GCS
+      gcsClient.uploadArtifact(gcsFileName, tempFile.getAbsolutePath());
+    } finally {
+      // Clean up locally
+      tempFile.delete();
     }
-
-    // Upload the temporary file to GCS
-    gcsClient.uploadArtifact(gcsFileName, tempFile.getAbsolutePath());
-
-    // Clean up locally
-    tempFile.delete();
   }
 
   // --- Private Helper Methods ---
 
   public GenericRecord createUsersRecord(
-      long userId, String eventId, String fullName, int age, Instant timestamp, String shardId) {
+      Long userId, String eventId, String fullName, Integer age, Instant timestamp, String shardId) {
 
     GenericRecordBuilder outerBuilder = new GenericRecordBuilder(usersSchema);
     outerBuilder.set("tableName", "Users");
@@ -105,13 +112,14 @@ public class GCSSpannerDVAvroSetupHelper {
     payloadBuilder.set("event_id", eventId);
     payloadBuilder.set("full_name", fullName);
     payloadBuilder.set("age", age);
-    payloadBuilder.set("created_at", timestamp.toEpochMilli() * 1000L); // Convert to micros
+    long micros = (timestamp.getEpochSecond() * 1_000_000L) + (timestamp.getNano() / 1000L);
+    payloadBuilder.set("created_at", micros);
 
     outerBuilder.set("payload", payloadBuilder.build());
     return outerBuilder.build();
   }
 
-  public GenericRecord createAccountRolesRecord(int roleId, String roleName, String shardId) {
+  public GenericRecord createAccountRolesRecord(Integer roleId, String roleName, String shardId) {
     GenericRecordBuilder outerBuilder = new GenericRecordBuilder(accountRolesSchema);
     outerBuilder.set("tableName", "AccountRoles");
     outerBuilder.set("shardId", shardId);

@@ -27,10 +27,6 @@ import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
-import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,11 +58,7 @@ import org.slf4j.LoggerFactory;
 public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVCoreMatchingIT.class);
-
-  private SpannerResourceManager spannerResourceManager;
-  private BigQueryResourceManager bigQueryResourceManager;
-
-  private static final String SPANNER_DDL_RESOURCE = "GCSSpannerDVCoreMatchingIT/Users.sql";
+  private static final String SPANNER_DDL_RESOURCE = "GCSSpannerDVCoreMatchingIT/CoreMatchingSchema.sql";
 
   @Before
   public void setUp() throws IOException {
@@ -81,10 +73,7 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     LOG.info("Spanner instance created");
   }
 
-  @After
-  public void tearDown() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, bigQueryResourceManager);
-  }
+
 
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
@@ -186,8 +175,8 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
                 .to("GUEST")
                 .build()));
 
-    // Wait for Spanner's 15-second exact staleness read bound in SpannerReaderTransform
-    Thread.sleep(15000);
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
 
     // 3. Launch Pipeline
     LOG.info("Launching Dataflow validation job");
@@ -212,24 +201,47 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     // 4. Assert BigQuery Validation Results
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
-        Arrays.asList(new ValidationSummaryDto("MISMATCH", 2L, 4L, 4L, "Users")));
+        Arrays.asList(
+            new ValidationSummaryDto(
+                /* status= */ "MISMATCH",
+                /* totalTablesValidated= */ 2L,
+                /* totalRowsMatched= */ 4L,
+                /* totalRowsMismatched= */ 4L,
+                /* tablesWithMismatches= */ "Users")));
 
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         Arrays.asList(
-            new TableValidationStatsDto(null, "Users", "MISMATCH", 3L, 3L, 1L, 4L),
-            new TableValidationStatsDto(null, "AccountRoles", "MATCH", 3L, 3L, 3L, 0L)));
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "Users",
+                /* status= */ "MISMATCH",
+                /* sourceRowCount= */ 3L,
+                /* destinationRowCount= */ 3L,
+                /* matchedRowCount= */ 1L,
+                /* mismatchRowCount= */ 4L),
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "AccountRoles",
+                /* status= */ "MATCH",
+                /* sourceRowCount= */ 3L,
+                /* destinationRowCount= */ 3L,
+                /* matchedRowCount= */ 3L,
+                /* mismatchRowCount= */ 0L)));
 
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:2,event_id:E2]", "MISSING_IN_DESTINATION"),
+                null, null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
+            // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category. 
+            // Differing row values (like User 4's age) are emitted as two discrepancies: 
+            // one MISSING_IN_SOURCE and one MISSING_IN_DESTINATION.
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_DESTINATION"),
+                null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:3,event_id:E3]", "MISSING_IN_SOURCE"),
+                null, null, "Users", "[user_id:3, event_id:E3]", "MISSING_IN_SOURCE"),
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:4,event_id:E4]", "MISSING_IN_SOURCE")));
+                null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_SOURCE")));
   }
 }

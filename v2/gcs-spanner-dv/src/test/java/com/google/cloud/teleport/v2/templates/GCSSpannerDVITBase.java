@@ -29,9 +29,11 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.junit.After;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,14 +44,29 @@ import org.slf4j.LoggerFactory;
 public abstract class GCSSpannerDVITBase extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVITBase.class);
 
+  protected SpannerResourceManager spannerResourceManager;
+  protected BigQueryResourceManager bigQueryResourceManager;
+
   public SpannerResourceManager setUpSpannerResourceManager() {
-    return SpannerResourceManager.builder(testName, PROJECT, REGION)
+    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION)
         .maybeUseStaticInstance()
         .build();
+    return spannerResourceManager;
   }
 
   public BigQueryResourceManager setUpBigQueryResourceManager() {
-    return BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    bigQueryResourceManager = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    return bigQueryResourceManager;
+  }
+
+  @After
+  public void tearDownBase() {
+    if (spannerResourceManager != null) {
+      spannerResourceManager.cleanupAll();
+    }
+    if (bigQueryResourceManager != null) {
+      bigQueryResourceManager.cleanupAll();
+    }
   }
 
   /**
@@ -63,9 +80,11 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
     String ddl =
         String.join(
-            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    List<String> ddls = Arrays.stream(ddl.split(";")).toList();
+            "\n", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+    List<String> ddls = Arrays.stream(ddl.split(";"))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .toList();
     spannerResourceManager.executeDdlStatements(ddls);
   }
 
@@ -80,9 +99,11 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
     String dml =
         String.join(
-            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    dml = dml.trim();
-    List<String> dmls = Arrays.stream(dml.split(";")).toList();
+            "\n", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+    List<String> dmls = Arrays.stream(dml.split(";"))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .toList();
     spannerResourceManager.executeDMLStatements(dmls);
   }
 
@@ -95,8 +116,11 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
    */
   protected void uploadMockAvroFiles(String gcsPrefix, String resourceFileName) throws IOException {
     String destinationPath = gcsPrefix + "/" + resourceFileName;
-    gcsClient.copyFileToGcs(
-        Paths.get(Resources.getResource(resourceFileName).getPath()), destinationPath);
+    byte[] bytes = Resources.toByteArray(Resources.getResource(resourceFileName));
+    java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("mock", ".avro");
+    java.nio.file.Files.write(tempFile, bytes);
+    gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), destinationPath);
+    java.nio.file.Files.delete(tempFile);
   }
 
   /**
@@ -180,9 +204,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
 
     // overridden parameters
     if (jobParameters != null) {
-      for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
-        params.put(entry.getKey(), entry.getValue());
-      }
+      params.putAll(jobParameters);
     }
 
     options.setParameters(params);
