@@ -127,18 +127,15 @@ public class CopyDbIT extends SpannerTemplateITBase {
     }
   }
 
-  private void runTest() throws Exception {
-    runTest(Dialect.GOOGLE_STANDARD_SQL);
-  }
-
   /**
    * Executes the end-to-end flow: 1. Launches Export Pipeline to write source DB to GCS. 2.
    * Dynamically resolves the generated GCS path. 3. Launches Import Pipeline to read from GCS into
    * the destination DB. 4. Validates that the schema and data match exactly.
    *
    * @param dialect The Spanner dialect being tested.
+   * @param runIndexDdlInParallel Whether to run index DDL statements in parallel.
    */
-  private void runTest(Dialect dialect) throws Exception {
+  private void runTest(Dialect dialect, boolean runIndexDdlInParallel) throws Exception {
     String outputDir = getGcsPath("output_" + testName + "/");
 
     // ----------------------------------------------------------------------
@@ -190,7 +187,8 @@ public class CopyDbIT extends SpannerTemplateITBase {
             .addParameter("waitForIndexes", "true")
             .addParameter("waitForForeignKeys", "true")
             .addParameter("waitForChangeStreams", "true")
-            .addParameter("waitForSequences", "true");
+            .addParameter("waitForSequences", "true")
+            .addParameter("runIndexDdlInParallel", Boolean.toString(runIndexDdlInParallel));
     if (spannerHost != null) {
       importConfig.addParameter("spannerHost", spannerHost);
     }
@@ -306,20 +304,44 @@ public class CopyDbIT extends SpannerTemplateITBase {
 
   @Test
   public void testAllSchemaAndDataGsql() throws Exception {
-    createAndPopulate("CopyDbIT-AllSchemaAndData-gsql.sql", Dialect.GOOGLE_STANDARD_SQL, 100);
-    runTest(Dialect.GOOGLE_STANDARD_SQL);
+    createAndPopulate(
+        /* sqlFile= */ "CopyDbIT-AllSchemaAndData-gsql.sql",
+        /* dialect= */ Dialect.GOOGLE_STANDARD_SQL,
+        /* numBatches= */ 100);
+    runTest(/* dialect= */ Dialect.GOOGLE_STANDARD_SQL, /* runIndexDdlInParallel= */ false);
+  }
+
+  @Test
+  public void testAllSchemaAndDataGsql_parallelIndexes() throws Exception {
+    createAndPopulate(
+        /* sqlFile= */ "CopyDbIT-AllSchemaAndData-gsql.sql",
+        /* dialect= */ Dialect.GOOGLE_STANDARD_SQL,
+        /* numBatches= */ 100);
+    runTest(/* dialect= */ Dialect.GOOGLE_STANDARD_SQL, /* runIndexDdlInParallel= */ true);
   }
 
   @Test
   public void testAllSchemaAndDataPg() throws Exception {
-    createAndPopulate("CopyDbIT-AllSchemaAndData-pg.sql", Dialect.POSTGRESQL, 100);
-    runTest(Dialect.POSTGRESQL);
+    createAndPopulate(
+        /* sqlFile= */ "CopyDbIT-AllSchemaAndData-pg.sql",
+        /* dialect= */ Dialect.POSTGRESQL,
+        /* numBatches= */ 100);
+    runTest(/* dialect= */ Dialect.POSTGRESQL, /* runIndexDdlInParallel= */ false);
+  }
+
+  @Test
+  public void testAllSchemaAndDataPg_parallelIndexes() throws Exception {
+    createAndPopulate(
+        /* sqlFile= */ "CopyDbIT-AllSchemaAndData-pg.sql",
+        /* dialect= */ Dialect.POSTGRESQL,
+        /* numBatches= */ 100);
+    runTest(/* dialect= */ Dialect.POSTGRESQL, /* runIndexDdlInParallel= */ true);
   }
 
   @Test
   public void testEmptyDbGsql() throws Exception {
     Ddl ddl = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
-    createAndPopulate(ddl, 0);
-    runTest(Dialect.GOOGLE_STANDARD_SQL);
+    createAndPopulate(ddl, /* numBatches= */ 0);
+    runTest(/* dialect= */ Dialect.GOOGLE_STANDARD_SQL, /* runIndexDdlInParallel= */ false);
   }
 }
