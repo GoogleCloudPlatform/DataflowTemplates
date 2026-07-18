@@ -370,9 +370,19 @@ public class CopyDbIT extends SpannerTemplateITBase {
   @Test
   public void test100IndexesWith100MbDataEachGsql() throws Exception {
     Dialect dialect = Dialect.GOOGLE_STANDARD_SQL;
-    Ddl.Builder builder = Ddl.builder(dialect);
+
+    sourceResourceManager =
+        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", dialect)
+            .useCustomHost(spannerHost)
+            .build();
+    destResourceManager =
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", dialect)
+            .useCustomHost(spannerHost)
+            .build();
+    destResourceManager.executeDdlStatements(Collections.emptyList());
 
     for (int t = 0; t < 10; t++) {
+      Ddl.Builder builder = Ddl.builder(dialect);
       String tableName = "Table" + t;
       Table.Builder tableBuilder =
           builder
@@ -395,25 +405,9 @@ public class CopyDbIT extends SpannerTemplateITBase {
       }
       tableBuilder.indexes(indexes.build());
       tableBuilder.endTable();
+      Ddl tableDdl = builder.build();
+      sourceResourceManager.executeDdlStatements(tableDdl.statements());
     }
-    Ddl ddl = builder.build();
-
-    sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", dialect)
-            .useCustomHost(spannerHost)
-            .build();
-    destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", dialect)
-            .useCustomHost(spannerHost)
-            .build();
-
-    // Spanner allows max 50 statements in a single updateDatabaseDdl request
-    List<String> ddlStatements = ddl.statements();
-    for (int i = 0; i < ddlStatements.size(); i += 50) {
-      sourceResourceManager.executeDdlStatements(
-          ddlStatements.subList(i, Math.min(i + 50, ddlStatements.size())));
-    }
-    destResourceManager.executeDdlStatements(Collections.emptyList());
 
     // Generate 100MB of data
     // 100,000 rows * 1KB string = 100MB
