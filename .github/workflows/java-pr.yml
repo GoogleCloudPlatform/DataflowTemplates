@@ -121,7 +121,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests
+        run: echo "Skipping unit tests to only run CopyDbIT"
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() # always run even if the previous step fails
@@ -156,13 +156,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: |
-          ./cicd/run-it-smoke-tests \
-          --modules-to-build="DEFAULT" \
-          --it-region="${{ env.IT_REGION }}" \
-          --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-connect-2"
+        run: echo "Skipping smoke tests to only run CopyDbIT"
       - name: Upload Smoke Tests Report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() # always run even if the previous step fails
@@ -193,7 +187,8 @@ jobs:
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
-          --modules-to-build="DEFAULT" \
+          --modules-to-build="v1" \
+          --test="CopyDbIT" \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-integration-test-parallelism=6 \

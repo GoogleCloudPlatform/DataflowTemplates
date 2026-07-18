@@ -155,7 +155,7 @@ public class ImportPipeline {
         description = "Create Indexes early",
         helpText =
             "Specifies whether early index creation is enabled. If the template runs a large number of DDL statements, it's more efficient to create indexes before loading data. Therefore, the default behavior is to create the indexes first when the number of DDL statements exceeds a threshold. To disable this feature, set `earlyIndexCreateFlag` to `false`. The default value is `true`.")
-    @Default.Boolean(true)
+    @Default.Boolean(false)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();
 
     void setEarlyIndexCreateFlag(ValueProvider<Boolean> value);
