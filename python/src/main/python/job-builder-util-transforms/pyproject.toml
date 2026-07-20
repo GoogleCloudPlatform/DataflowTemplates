@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "job-builder-util-transforms"
-version = "0.2.0"
+version = "0.1.0"
 description = "Utility transforms for job builder"
 authors = ["Google Cloud Platform"]
 packages = [
