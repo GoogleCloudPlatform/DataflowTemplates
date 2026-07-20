@@ -340,10 +340,10 @@ INSERT INTO t_real_pk (id, col) VALUES (-3.4e38, 1), (1.5, 2), (3.4e38, 3);
 INSERT INTO t_float4_pk (id, col) VALUES (-3.4e38, 1), (1.5, 2), (3.4e38, 3);
 INSERT INTO t_double_precision_pk (id, col) VALUES (-1.7e308, 1), (1.5, 2), (1.7e308, 3);
 INSERT INTO t_float8_pk (id, col) VALUES (-1.7e308, 1), (1.5, 2), (1.7e308, 3);
-INSERT INTO t_time_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time, 2);
-INSERT INTO t_time_without_time_zone_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time, 2);
-INSERT INTO t_timetz_pk (id, col) VALUES ('00:00:00+00'::timetz, 1), ('12:00:00+00'::timetz, 2);
-INSERT INTO t_time_with_time_zone_pk (id, col) VALUES ('00:00:00+00'::timetz, 1), ('12:00:00+00'::timetz, 2);
+INSERT INTO t_time_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time, 2), ('24:00:00'::time, 3);
+INSERT INTO t_time_without_time_zone_pk (id, col) VALUES ('00:00:00'::time, 1), ('12:00:00'::time, 2), ('24:00:00'::time, 3);
+INSERT INTO t_timetz_pk (id, col) VALUES ('00:00:00-08:00'::timetz, 1), ('12:00:00+05:30'::timetz, 2), ('24:00:00+10:00'::timetz, 3);
+INSERT INTO t_time_with_time_zone_pk (id, col) VALUES ('00:00:00-08:00'::timetz, 1), ('12:00:00+05:30'::timetz, 2), ('24:00:00+10:00'::timetz, 3);
 INSERT INTO t_bit_pk (id, col) VALUES (0::bit, 1), (1::bit, 2);
 
 CREATE TABLE t_uuid_pk (
