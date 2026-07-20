@@ -124,9 +124,9 @@ final class RowAssembler {
       return Row.withSchema(schemaBuilder.build()).addValues(values).build();
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to assemble row for table '"
+          "Failed to assemble UPDATE event for table '"
               + table.name()
-              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + "'. (If using a CustomDataGenerator, check its return types). Expected schema: "
               + schemaBuilder.build()
               + ", Values: "
               + values,
@@ -160,7 +160,7 @@ final class RowAssembler {
       return Row.withSchema(schemaBuilder.build()).addValues(values).build();
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to assemble DELETE row for table '"
+          "Failed to assemble DELETE event for table '"
               + table.name()
               + "'. Expected schema: "
               + schemaBuilder.build()
@@ -203,7 +203,7 @@ final class RowAssembler {
       return Row.withSchema(schemaBuilder.build()).addValues(values).build();
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to assemble reduced row for table '"
+          "Failed to assemble cached state for table '"
               + table.name()
               + "'. Expected schema: "
               + schemaBuilder.build()
@@ -262,9 +262,9 @@ final class RowAssembler {
       return Row.withSchema(schemaBuilder.build()).addValues(values).build();
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to complete row for table '"
+          "Failed to assemble INSERT event for table '"
               + table.name()
-              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + "'. (If using a CustomDataGenerator, check its return types). Expected schema: "
               + schemaBuilder.build()
               + ", Values: "
               + values,

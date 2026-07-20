@@ -115,7 +115,10 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
       out.output(KV.of(table.name(), rowBuilder.build()));
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to assemble PK row for table '" + table.name() + "'. Expected schema: " + schema,
+          "Failed to assemble root primary key for table '"
+              + table.name()
+              + "'. (If using a CustomDataGenerator, check its return types). Expected schema: "
+              + schema,
           e);
     }
   }

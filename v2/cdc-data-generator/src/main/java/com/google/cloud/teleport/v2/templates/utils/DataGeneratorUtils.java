@@ -59,19 +59,6 @@ public final class DataGeneratorUtils {
    * <p>The returned Java type matches what {@link #mapToBeamFieldType(LogicalType)} declares for
    * the same logical type, so the value can be added directly to a {@code Row.Builder}.
    */
-  public static Object generateValue(DataGeneratorColumn column, Faker faker) {
-    return generateValue("default_table", column, faker, null);
-  }
-
-  public static Object generateValue(
-      DataGeneratorColumn column, Faker faker, CustomDataGenerator customGenerator) {
-    return generateValue("default_table", column, faker, customGenerator);
-  }
-
-  public static Object generateValue(String tableName, DataGeneratorColumn column, Faker faker) {
-    return generateValue(tableName, column, faker, null);
-  }
-
   public static Object generateValue(
       String tableName,
       DataGeneratorColumn column,

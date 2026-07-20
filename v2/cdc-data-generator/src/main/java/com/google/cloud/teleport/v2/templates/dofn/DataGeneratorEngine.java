@@ -528,9 +528,9 @@ public class DataGeneratorEngine {
       return Row.withSchema(schemaBuilder.build()).addValues(values).build();
     } catch (IllegalArgumentException | ClassCastException e) {
       throw new RuntimeException(
-          "Failed to assemble row for child table '"
+          "Failed to assemble INSERT event for child table '"
               + childTable.name()
-              + "'. Check your CustomDataGenerator return types. Expected schema: "
+              + "'. (If using a CustomDataGenerator, check its return types). Expected schema: "
               + schemaBuilder.build()
               + ", Values: "
               + values,
