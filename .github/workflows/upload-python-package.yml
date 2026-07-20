@@ -57,7 +57,7 @@ jobs:
           java-version: '17'
 
       - name: Build Java Dependencies
-        run: mvn test-compile -pl yaml
+        run: mvn package -pl yaml -am -DskipTests
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -101,6 +101,7 @@ jobs:
           GCS_PACKAGE_PATH="$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
           if [ "$ONLY_UPLOAD_LISTING" != "true" ]; then
             gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$GCS_PACKAGE_PATH"
+            gcloud storage cp yaml/target/template-yaml-1.0-SNAPSHOT-shaded.jar "$BUCKET_PATH/$DATE/expansion-service-custom-$VERSION.jar"
           fi
           PACKAGE_PATH_NO_GS="${GCS_PACKAGE_PATH#gs://}"
           sed "s|<package_path>|$PACKAGE_PATH_NO_GS|g" python/src/main/python/job-builder-util-transforms/provider_listing_template.yaml > "python/src/main/python/job-builder-util-transforms/yaml_provider_listing_$VERSION.yaml"
