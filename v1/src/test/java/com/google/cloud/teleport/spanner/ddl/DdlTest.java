@@ -636,6 +636,69 @@ public class DdlTest {
   }
 
   @Test
+  public void testTableOptions() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("CustomDictionary")
+            .column("Key")
+            .string()
+            .max()
+            .notNull()
+            .endColumn()
+            .column("Value")
+            .type(Type.array(Type.string()))
+            .max()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("Key")
+            .end()
+            .tableOptions(ImmutableList.of("fulltext_dictionary_table=true"))
+            .endTable()
+            .build();
+
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `CustomDictionary` ("
+                + " `Key` STRING(MAX) NOT NULL,"
+                + " `Value` ARRAY<STRING(MAX)> NOT NULL,"
+                + " ) PRIMARY KEY (`Key` ASC),"
+                + " OPTIONS (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
+  public void pgTestTableOptions() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("CustomDictionary")
+            .column("Key")
+            .pgVarchar()
+            .notNull()
+            .endColumn()
+            .column("Value")
+            .type(Type.pgArray(Type.pgVarchar()))
+            .max()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("Key")
+            .end()
+            .tableOptions(ImmutableList.of("fulltext_dictionary_table=true"))
+            .endTable()
+            .build();
+
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"CustomDictionary\" ("
+                + " \"Key\" character varying NOT NULL,"
+                + " \"Value\" character varying[] NOT NULL,"
+                + " PRIMARY KEY (\"Key\")"
+                + " ) WITH (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
   public void testIndex() {
     Index.Builder builder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL)

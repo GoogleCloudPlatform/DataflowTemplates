@@ -42,3 +42,11 @@ DROP SEARCH INDEX IF EXISTS "%PREFIX%SearchIndex";
 CREATE SEARCH INDEX "%PREFIX%SearchIndex"
   ON "%PREFIX%Singers"("NameTokens") ORDER BY "Id" WHERE "Id" IS NOT NULL
   WITH (sort_order_sharding=TRUE);
+
+DROP TABLE IF EXISTS "%PREFIX%_CustomDictionary";
+CREATE TABLE "%PREFIX%_CustomDictionary" (
+    "Key" character varying NOT NULL,
+    "Value" character varying[] NOT NULL,
+    PRIMARY KEY("Key")
+) WITH (fulltext_dictionary_table=true);
+
