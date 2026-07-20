@@ -361,23 +361,27 @@ public class BoundaryExtractorFactory {
       return null;
     }
 
-    String textFormat = new String(bytes, StandardCharsets.UTF_8);
-
-    // Text format
-    if (TIME_PATTERN.matcher(textFormat).matches()) {
-      if (textFormat.startsWith("24:00:00")) {
-        return LocalTime.MAX;
-      }
-      return LocalTime.parse(textFormat);
-    }
-
     // Binary format
-    if (bytes.length == 8) {
+    // A PostgreSQL binary time payload represents microseconds since midnight.
+    // Max value is 86,400,000,000, which takes at most 5 bytes.
+    // Thus, the first byte of a valid 8-byte binary time payload will always be 0x00.
+    // Text payloads (like "08:00:00") will start with an ASCII digit byte ('0'-'9'), never 0x00.
+    // This allows us to safely distinguish binary format without string allocation.
+    if (bytes.length == 8 && bytes[0] == 0) {
       long microseconds = ByteBuffer.wrap(bytes).getLong();
       if (microseconds == 86400000000L) {
         return LocalTime.MAX;
       }
       return LocalTime.ofNanoOfDay(microseconds * 1000L);
+    }
+
+    // Text format
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+    if (TIME_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        return LocalTime.MAX;
+      }
+      return LocalTime.parse(textFormat);
     }
 
     throw new IllegalArgumentException("Unknown time format received for boundaries");
@@ -407,20 +411,12 @@ public class BoundaryExtractorFactory {
       return null;
     }
 
-    String textFormat = new String(bytes, StandardCharsets.UTF_8);
-
-    // Text format
-    if (TIMETZ_PATTERN.matcher(textFormat).matches()) {
-      if (textFormat.startsWith("24:00:00")) {
-        String replacedStr = "00" + textFormat.substring(2);
-        OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
-        return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
-      }
-      return OffsetTime.parse(textFormat, TIMETZ_FORMAT);
-    }
-
     // Binary format
-    if (bytes.length == 12) {
+    // The first 8 bytes of a 12-byte PostgreSQL binary timetz payload represent
+    // microseconds since midnight (max 86,400,000,000), meaning the first byte is always 0x00.
+    // A text payload (like "08:00:00+00") starts with an ASCII digit ('0'-'9').
+    // This allows us to safely distinguish binary format without string allocation.
+    if (bytes.length == 12 && bytes[0] == 0) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       long microseconds = buffer.getLong();
       int offsetSeconds = buffer.getInt();
@@ -432,6 +428,17 @@ public class BoundaryExtractorFactory {
         return OffsetTime.of(LocalTime.MAX, offset);
       }
       return OffsetTime.of(LocalTime.ofNanoOfDay(microseconds * 1000L), offset);
+    }
+
+    // Text format
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+    if (TIMETZ_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        String replacedStr = "00" + textFormat.substring(2);
+        OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
+        return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
+      }
+      return OffsetTime.parse(textFormat, TIMETZ_FORMAT);
     }
 
     throw new IllegalArgumentException("Unknown TIMETZ format received for boundaries");

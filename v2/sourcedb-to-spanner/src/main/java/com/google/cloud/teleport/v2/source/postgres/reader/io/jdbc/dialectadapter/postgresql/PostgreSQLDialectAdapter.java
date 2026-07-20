@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
@@ -84,11 +85,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           .put("TIME", SourceColumnIndexInfo.IndexType.LOCAL_TIME)
           .put("TIMETZ", SourceColumnIndexInfo.IndexType.OFFSET_TIME)
           .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
-          .put("BIT", SourceColumnIndexInfo.IndexType.BIT)
+          .put(BIT_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BIT)
           .build();
 
   private static final ImmutableSet<String> CUSTOM_BOUNDARY_QUERY_TYPES =
-      ImmutableSet.of(UUID_TYPE.toUpperCase(), "BIT");
+      ImmutableSet.of(UUID_TYPE.toUpperCase(), BIT_TYPE.toUpperCase());
 
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>

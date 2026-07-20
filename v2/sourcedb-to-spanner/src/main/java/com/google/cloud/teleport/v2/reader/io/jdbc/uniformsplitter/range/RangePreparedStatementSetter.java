@@ -70,9 +70,10 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       return new java.util.UUID(bb.getLong(), bb.getLong());
     }
 
-    if (val instanceof String bitStr && "bit".equalsIgnoreCase(pc.columnTypeName())) {
+    if (val instanceof String bitStr
+        && JdbcCommonConstants.BIT_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
       PGobject pgObj = new PGobject();
-      pgObj.setType("bit");
+      pgObj.setType(JdbcCommonConstants.BIT_TYPE);
       try {
         pgObj.setValue(bitStr);
       } catch (SQLException e) {
