@@ -123,7 +123,16 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
             + "  if (data['_metadata_retry_count'] === undefined) {\n"
             + "    throw 'You shall not pass!';\n"
             + "  }\n"
-            + "  data['NAME'] = data['NAME'].toUpperCase();\n"
+            + "  var nameKey = null;\n"
+            + "  for (var key in data) {\n"
+            + "    if (key.toUpperCase() === 'NAME') {\n"
+            + "      nameKey = key;\n"
+            + "      break;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  if (nameKey && data[nameKey]) {\n"
+            + "    data[nameKey] = data[nameKey].toUpperCase();\n"
+            + "  }\n"
             + "  return JSON.stringify(data);\n"
             + "}");
 
