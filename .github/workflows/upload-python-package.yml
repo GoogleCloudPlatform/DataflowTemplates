@@ -79,9 +79,9 @@ jobs:
           LOCAL_TEST_LOOPBACK: '1'
           BEAM_SERVICE_OVERRIDES: '{"sdks:java:io:expansion-service:shadowJar": "localhost:8097"}'
         run: |
-          # Start the expansion service in the background from the repository root
-          (cd "$GITHUB_WORKSPACE" && mvn exec:exec -pl yaml -Dexec.classpathScope=test -Dexec.executable="java" -Dexec.args="-classpath %classpath org.apache.beam.sdk.expansion.service.ExpansionService 8097 --alsoStartLoopbackWorker=true") &
-          # Wait 15 seconds for the service to compile and start up
+          # Start the expansion service in the background from the shaded jar
+          java -cp "$GITHUB_WORKSPACE/yaml/target/template-yaml-1.0-SNAPSHOT-shaded.jar" org.apache.beam.sdk.expansion.service.ExpansionService 8097 --alsoStartLoopbackWorker=true &
+          # Wait 15 seconds for the service to start up
           sleep 15
           # Execute pytest
           poetry run pytest ../../../test/python/job-builder-util-transforms/
