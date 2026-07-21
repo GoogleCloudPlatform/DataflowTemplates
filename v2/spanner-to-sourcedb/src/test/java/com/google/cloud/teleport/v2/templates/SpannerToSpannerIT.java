@@ -334,9 +334,27 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
       String checkCol,
       Object expectedColValue,
       long testStartTimeMs) {
+    assertReplicationWithTimeout(
+        table,
+        expectedRowCount,
+        columns,
+        checkCol,
+        expectedColValue,
+        testStartTimeMs,
+        TEST_TIMEOUT);
+  }
+
+  private void assertReplicationWithTimeout(
+      String table,
+      int expectedRowCount,
+      List<String> columns,
+      String checkCol,
+      Object expectedColValue,
+      long testStartTimeMs,
+      Duration timeout) {
 
     Duration timeElapsed = Duration.ofMillis(System.currentTimeMillis() - testStartTimeMs);
-    Duration remainingTimeout = TEST_TIMEOUT.minus(timeElapsed);
+    Duration remainingTimeout = timeout.minus(timeElapsed);
 
     if (remainingTimeout.isNegative() || remainingTimeout.isZero()) {
       remainingTimeout = Duration.ofSeconds(1);
@@ -395,5 +413,77 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
                   return false;
                 });
     assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void spannerToSpannerInterleavedOutOfOrderTest() throws InterruptedException {
+    assertThatPipeline(jobInfo).isRunning();
+
+    long testStartTimeMs = System.currentTimeMillis();
+
+    // Because the Spanner Source Database enforces integrity (INTERLEAVE), we cannot
+    // write a Child before a Parent to simulate an out-of-order replication event directly.
+    // Instead, this test simulates out-of-order delivery by:
+    // 1. Replicating both rows normally.
+    // 2. Deleting the Parent directly in the Destination database.
+    // 3. Updating the Child in the Source. The pipeline will attempt to write it to the
+    //    Destination, which will throw a NOT_FOUND error because the Parent is missing.
+    // 4. The pipeline will retry the Child write. We then restore the Parent,
+    //    allowing the retrying Child to finally succeed.
+    spannerResourceManager.write(
+        Mutation.newInsertOrUpdateBuilder("Parent")
+            .set("id")
+            .to(1L)
+            .set("description")
+            .to("Parent row")
+            .build());
+    spannerResourceManager.write(
+        Mutation.newInsertOrUpdateBuilder("Child")
+            .set("id")
+            .to(1L)
+            .set("child_id")
+            .to(1L)
+            .set("description")
+            .to("Child row")
+            .build());
+
+    assertReplication(
+        "Child",
+        1,
+        List.of("id", "child_id", "description"),
+        "description",
+        "Child row",
+        testStartTimeMs);
+
+    spannerDestinationResourceManager.write(
+        Mutation.delete("Parent", com.google.cloud.spanner.Key.of(1L)));
+
+    spannerResourceManager.write(
+        Mutation.newInsertOrUpdateBuilder("Child")
+            .set("id")
+            .to(1L)
+            .set("child_id")
+            .to(1L)
+            .set("description")
+            .to("Updated Child")
+            .build());
+
+    Thread.sleep(5000);
+
+    spannerResourceManager.write(
+        Mutation.newInsertOrUpdateBuilder("Parent")
+            .set("id")
+            .to(1L)
+            .set("description")
+            .to("Updated Parent")
+            .build());
+
+    assertReplication(
+        "Child",
+        1,
+        List.of("id", "child_id", "description"),
+        "description",
+        "Updated Child",
+        testStartTimeMs);
   }
 }

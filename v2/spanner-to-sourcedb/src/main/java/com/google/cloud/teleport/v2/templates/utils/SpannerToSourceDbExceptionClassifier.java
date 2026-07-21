@@ -35,7 +35,6 @@ public class SpannerToSourceDbExceptionClassifier {
           ErrorCode.ALREADY_EXISTS,
           ErrorCode.OUT_OF_RANGE,
           ErrorCode.INVALID_ARGUMENT,
-          ErrorCode.NOT_FOUND,
           ErrorCode.FAILED_PRECONDITION,
           ErrorCode.PERMISSION_DENIED,
           ErrorCode.UNAUTHENTICATED,
