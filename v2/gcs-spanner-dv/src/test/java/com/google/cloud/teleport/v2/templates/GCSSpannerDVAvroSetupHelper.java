@@ -25,9 +25,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
 /**
- * A centralized helper class for setting up Avro data in GCS for integration tests. This class
- * abstracts away the boilerplate of loading Avro schemas, building records, and serializing them
- * into .avro files uploaded to GCS.
+ * A centralized helper class designed to reduce boilerplate when generating Avro test data for
+ * integration tests. This class abstracts away the loading of standard Avro schemas and constructs
+ * complex nested Avro records via a fluent builder.
  */
 public class GCSSpannerDVAvroSetupHelper {
 
@@ -46,6 +46,10 @@ public class GCSSpannerDVAvroSetupHelper {
     }
   }
 
+  /**
+   * Defines standard table schemas that are universally used across multiple integration tests.
+   * Centralizing these definitions prevents schema drift across tests and minimizes setup code.
+   */
   public enum TableDef {
     USERS(USERS_SCHEMA, "Users", Arrays.asList("user_id", "event_id")),
     ACCOUNT_ROLES(ACCOUNT_ROLES_SCHEMA, "AccountRoles", Arrays.asList("role_id"));
@@ -61,6 +65,13 @@ public class GCSSpannerDVAvroSetupHelper {
     }
   }
 
+  /**
+   * A fluent builder for constructing Avro {@link GenericRecord}s that conform to the nested schema
+   * required by the Spanner Data Validation pipeline.
+   *
+   * <p>This builder encapsulates two underlying Avro builders: an outer record for metadata
+   * (tableName, shardId, primaryKeys) and an inner record for the table's specific column payload.
+   */
   public static class RecordBuilder {
     private final GenericRecordBuilder outerBuilder;
     private final GenericRecordBuilder payloadBuilder;
