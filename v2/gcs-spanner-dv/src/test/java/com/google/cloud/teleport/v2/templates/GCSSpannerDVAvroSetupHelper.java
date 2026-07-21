@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -62,31 +61,38 @@ public class GCSSpannerDVAvroSetupHelper {
     }
   }
 
-  public static GenericRecord createRecord(
-      TableDef table, String shardId, Map<String, Object> columns) {
-    GenericRecordBuilder outerBuilder = new GenericRecordBuilder(table.schema);
-    outerBuilder.set("tableName", table.tableName);
-    outerBuilder.set("shardId", shardId);
-    outerBuilder.set("primaryKeys", table.primaryKeys);
+  public static class RecordBuilder {
+    private final GenericRecordBuilder outerBuilder;
+    private final GenericRecordBuilder payloadBuilder;
+    private final Schema payloadSchema;
+    private final String tableName;
 
-    Schema payloadSchema = table.schema.getField("payload").schema();
-    GenericRecordBuilder payloadBuilder = new GenericRecordBuilder(payloadSchema);
+    public RecordBuilder(TableDef table, String shardId) {
+      this.tableName = table.tableName;
+      this.outerBuilder = new GenericRecordBuilder(table.schema);
+      this.outerBuilder.set("tableName", table.tableName);
+      this.outerBuilder.set("shardId", shardId);
+      this.outerBuilder.set("primaryKeys", table.primaryKeys);
 
-    for (Map.Entry<String, Object> entry : columns.entrySet()) {
-      String columnName = entry.getKey();
+      this.payloadSchema = table.schema.getField("payload").schema();
+      this.payloadBuilder = new GenericRecordBuilder(payloadSchema);
+    }
+
+    public RecordBuilder set(String columnName, Object value) {
       if (payloadSchema.getField(columnName) == null) {
         throw new IllegalArgumentException(
             String.format(
-                "Column '%s' does not exist in the Avro schema for table '%s'. Please check for typos.",
-                columnName, table.tableName));
+                "Column '%s' does not exist in schema '%s'. Please check for typos.",
+                columnName, tableName));
       }
-
-      Object value = convertToAvroFormat(entry.getValue());
-      payloadBuilder.set(columnName, value);
+      payloadBuilder.set(columnName, convertToAvroFormat(value));
+      return this;
     }
 
-    outerBuilder.set("payload", payloadBuilder.build());
-    return outerBuilder.build();
+    public GenericRecord build() {
+      outerBuilder.set("payload", payloadBuilder.build());
+      return outerBuilder.build();
+    }
   }
 
   /**

@@ -20,10 +20,12 @@
       "name" : "payload",
       "fields" : [ {
         "name" : "role_id",
-        "type" : [ "null", "int" ]
+        "type" : [ "null", "int" ],
+        "default": null
       }, {
         "name" : "role_name",
-        "type" : [ "null", "string" ]
+        "type" : [ "null", "string" ],
+        "default": null
       } ]
     }
   } ]
