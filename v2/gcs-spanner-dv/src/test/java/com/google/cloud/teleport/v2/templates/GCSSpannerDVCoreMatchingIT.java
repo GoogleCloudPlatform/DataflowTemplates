@@ -38,21 +38,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Integration test for GCSSpannerDV pipeline covering the core matching logic.
  *
- * <p>Intent: This test validates the core functional accuracy of the gcs-spanner-dv batch pipeline
- * by verifying that it can correctly identify and categorize rows into MATCHED,
- * MISSING_IN_DESTINATION, MISSING_IN_SOURCE, and mismatches.
- *
- * <p>Simulation Methodology: We create two tables to validate multi-table logic: 1. `Users` table
- * (4 rows simulating 4 scenarios): - Exactly Matching: Present in both source and destination
- * identically. - Missing in Spanner: Present in source only. - Missing in Source: Present in
- * Spanner only. - Mismatched Values: Present in both, but with different values. 2. `AccountRoles`
- * table (3 rows): - All 3 rows are exactly matching to simulate a completely healthy table.
- *
- * <p>Assertions: - **ValidationSummary**: Verified that exactly one row exists globally, rolling up
- * metrics correctly across all tables. - **TableValidationStats**: Verified that each table
- * (`Users`, `AccountRoles`) produced exactly one row with accurate, independent status and counts.
- * - **MismatchedRecords**: Verified every individual discrepancy is explicitly logged and
- * categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary keys.
+ * <p>This test validates the core functional accuracy of the gcs-spanner-dv batch pipeline by
+ * verifying that it can correctly identify and categorize rows into MATCHED,
+ * MISSING_IN_DESTINATION, MISSING_IN_SOURCE, and mismatches. This test also validates the
+ * pipeline's behavior when multiple instances of the exact same row exist in the source Avro data.
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -74,6 +63,35 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     LOG.info("Spanner instance created");
   }
 
+  /**
+   * Validates multi-table matching logic across various scenarios:
+   *
+   * <p>1. `Users` table (4 rows for 4 scenarios):
+   *
+   * <ul>
+   *   <li><b>Exactly Matching</b>: Present in both source and destination identically.
+   *   <li><b>Missing in Spanner</b>: Present in source only.
+   *   <li><b>Missing in Source</b>: Present in Spanner only.
+   *   <li><b>Mismatched Values</b>: Present in both, but with different values.
+   * </ul>
+   *
+   * <p>2. `AccountRoles` table (3 rows):
+   *
+   * <ul>
+   *   <li>All 3 rows exactly matching to simulate a healthy table.
+   * </ul>
+   *
+   * <p>Assertions:
+   *
+   * <ul>
+   *   <li><b>ValidationSummary</b>: One global row rolling up metrics correctly across all tables.
+   *   <li><b>TableValidationStats</b>: One row per table with accurate, independent status and
+   *       counts.
+   *   <li><b>MismatchedRecords</b>: Every individual discrepancy is explicitly logged and
+   *       categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary
+   *       keys.
+   * </ul>
+   */
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
 
@@ -272,5 +290,135 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
                 null, null, "Users", "[user_id:3, event_id:E3]", "MISSING_IN_SOURCE"),
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_SOURCE")));
+  }
+
+  /**
+   * Validates the pipeline's handling of duplicate source records in Avro, covering two edge cases:
+   *
+   * <ul>
+   *   <li><b>Users (Duplicate Source, 1 Spanner Match)</b>: If there are multiple instances of the
+   *       exact same row in the source Avro, and Spanner has a corresponding record (due to Spanner
+   *       enforcing unique PKs), all duplicates are rolled up and marked as MATCHED.
+   *   <li><b>AccountRoles (Duplicate Source, 0 Spanner Match)</b>: If there are duplicates in the
+   *       source Avro without a corresponding record in Spanner, each duplicate is reported as an
+   *       independent MISSING_IN_DESTINATION mismatch record.
+   * </ul>
+   */
+  @Test
+  public void validationTestWithDuplicateAvroRecords() throws Exception {
+    LOG.info("Generating and Uploading Avro Records to GCS with duplicates");
+
+    Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
+
+    // 1. Create duplicate Avro records for Users (2 identical rows)
+    GenericRecord usersRecord =
+        new GCSSpannerDVAvroSetupHelper.RecordBuilder(
+                GCSSpannerDVAvroSetupHelper.TableDef.USERS, null)
+            .set("user_id", 1L)
+            .set("event_id", "E1")
+            .set("full_name", "Alice")
+            .set("age", 30)
+            .set("created_at", t1)
+            .build();
+
+    List<GenericRecord> usersRecords = Arrays.asList(usersRecord, usersRecord);
+
+    // Create duplicate Avro records for AccountRoles (2 identical rows)
+    GenericRecord rolesRecord =
+        new GCSSpannerDVAvroSetupHelper.RecordBuilder(
+                GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES, null)
+            .set("role_id", 100)
+            .set("role_name", "TEST_ROLE")
+            .build();
+
+    List<GenericRecord> rolesRecords = Arrays.asList(rolesRecord, rolesRecord);
+
+    String gcsInputDirectory = getGcsPath("input");
+    uploadAvroFileToGcs(
+        "input/users.avro", GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema, usersRecords);
+    uploadAvroFileToGcs(
+        "input/account_roles.avro",
+        GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema,
+        rolesRecords);
+
+    // 2. Inject a single Spanner Record for Users (Destination enforces PK)
+    // No Spanner record for AccountRoles!
+    LOG.info("Injecting a single Spanner record");
+    spannerResourceManager.write(
+        Arrays.asList(
+            Mutation.newInsertOrUpdateBuilder("Users")
+                .set("user_id")
+                .to(1L)
+                .set("event_id")
+                .to("E1")
+                .set("full_name")
+                .to("Alice")
+                .set("age")
+                .to(30L)
+                .set("created_at")
+                .to(com.google.cloud.Timestamp.parseTimestamp(t1.toString()))
+                .build()));
+
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
+
+    // 3. Launch Pipeline
+    LOG.info("Launching Dataflow validation job");
+    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
+    LaunchInfo jobInfo =
+        launchDataflowJob(
+            options,
+            testName,
+            PROJECT,
+            spannerResourceManager,
+            bigQueryResourceManager.getDatasetId(),
+            gcsInputDirectory,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    pipelineOperator().waitUntilDone(createConfig(jobInfo));
+
+    // 4. Assert BigQuery Validation Results
+    GCSSpannerDVTestAsserts.assertValidationSummary(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new ValidationSummaryDto(
+                /* status= */ "MISMATCH",
+                /* totalTablesValidated= */ 2L,
+                /* totalRowsMatched= */ 2L,
+                /* totalRowsMismatched= */ 2L,
+                /* tablesWithMismatches= */ "AccountRoles")));
+
+    GCSSpannerDVTestAsserts.assertTableValidationStats(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "AccountRoles",
+                /* status= */ "MISMATCH",
+                /* sourceRowCount= */ 2L,
+                /* destinationRowCount= */ 0L,
+                /* matchedRowCount= */ 0L,
+                /* mismatchRowCount= */ 2L),
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "Users",
+                /* status= */ "MATCH",
+                /* sourceRowCount= */ 2L,
+                /* destinationRowCount= */ 2L,
+                /* matchedRowCount= */ 2L,
+                /* mismatchRowCount= */ 0L)));
+
+    GCSSpannerDVTestAsserts.assertMismatchedRecords(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new MismatchedRecordDto(
+                null, null, "AccountRoles", "[role_id:100]", "MISSING_IN_DESTINATION"),
+            new MismatchedRecordDto(
+                null, null, "AccountRoles", "[role_id:100]", "MISSING_IN_DESTINATION")));
   }
 }
