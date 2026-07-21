@@ -51,8 +51,8 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.74.0</beam.version>
-    <beam-python.version>2.74.0</beam-python.version>
+    <beam.version>2.75.0</beam.version>
+    <beam-python.version>2.75.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -110,7 +110,7 @@
     <mssql-jdbc.version>13.4.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>5.28.12</neo4j-driver.version>
     <okio.version>3.16.4</okio.version>
-    <jetty.version>12.1.9</jetty.version>
+    <jetty.version>12.1.11</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>

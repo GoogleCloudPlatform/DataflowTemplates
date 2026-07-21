@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -109,7 +110,7 @@ public class SourceConnectorFactoryTest {
   @Test
   public void testGetSourceConnectorByDialect_sqlDialectMySql() {
     AbstractJdbcSrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.MYSQL);
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.MYSQL);
 
     assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
   }
@@ -117,7 +118,7 @@ public class SourceConnectorFactoryTest {
   @Test
   public void testGetSourceConnectorByDialect_sqlDialectPostgres() {
     AbstractJdbcSrcToSpSourceConnector connector =
-        SourceConnectorFactory.getSourceConnectorByDialect(SQLDialect.POSTGRESQL);
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.POSTGRESQL);
 
     assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
   }
@@ -127,8 +128,44 @@ public class SourceConnectorFactoryTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SourceConnectorFactory.getSourceConnectorByDialect((SQLDialect) null));
+            () -> SourceConnectorFactory.getSourceJdbcConnectorByDialect((SQLDialect) null));
 
     assertThat(thrown).hasMessageThat().contains("Unsupported SQL dialect: null");
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_mysql() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.MYSQL_SOURCE_TYPE);
+    assertThat(connector).isInstanceOf(MySqlSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_postgres() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.POSTGRES_SOURCE_TYPE);
+    assertThat(connector).isInstanceOf(PostgresSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_cassandra() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.CASSANDRA_SOURCE_TYPE);
+    assertThat(connector).isInstanceOf(CassandraSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_unsupported() {
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SourceConnectorFactory.getSourceConnectorBySourceType("unsupported"));
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_null() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SourceConnectorFactory.getSourceConnectorBySourceType(null));
   }
 }

@@ -7,6 +7,8 @@ writes them to another Firestore database.
 
 It does not support using an Enterprise edition database as the source.
 
+The datastore.googleapis.com API must be enabled to use this template.
+
 Data consistency is guaranteed only at the end of the pipeline when all data has
 been written to the destination database.
 

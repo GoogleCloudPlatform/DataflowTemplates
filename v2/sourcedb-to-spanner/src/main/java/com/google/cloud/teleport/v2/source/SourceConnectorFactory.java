@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 
 /** Factory to create {@link ISrcToSpSourceConnector} instances based on pipeline options. */
 public class SourceConnectorFactory {
@@ -39,7 +40,6 @@ public class SourceConnectorFactory {
         || SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT.equals(dialect)) {
       return new CassandraSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT.equals(dialect)) {
-      /* Making jdbc as default case which includes MYSQL and PG. */
       return new MySqlSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
       return new PostgresSrcToSpSourceConnector();
@@ -49,13 +49,37 @@ public class SourceConnectorFactory {
   }
 
   /**
+   * Gets the appropriate {@link ISrcToSpSourceConnector} for the configured source database type.
+   * //TODO - check for ways to deduplicate this with the options method.
+   *
+   * @param sourceType
+   * @return
+   */
+  public static ISrcToSpSourceConnector getSourceConnectorBySourceType(String sourceType) {
+    if (sourceType == null) {
+      throw new IllegalArgumentException("Source type not provided");
+    }
+    switch (sourceType) {
+      case Constants.MYSQL_SOURCE_TYPE:
+        return new MySqlSrcToSpSourceConnector();
+      case Constants.POSTGRES_SOURCE_TYPE:
+        return new PostgresSrcToSpSourceConnector();
+      case Constants.CASSANDRA_SOURCE_TYPE:
+        return new CassandraSrcToSpSourceConnector();
+      default:
+        throw new IllegalArgumentException("Unsupported source type: " + sourceType);
+    }
+  }
+
+  /**
    * Gets the appropriate {@link AbstractJdbcSrcToSpSourceConnector} for the given {@link
    * SQLDialect}.
    *
    * @param dialect The SQL dialect.
    * @return The JDBC source connector.
    */
-  public static AbstractJdbcSrcToSpSourceConnector getSourceConnectorByDialect(SQLDialect dialect) {
+  public static AbstractJdbcSrcToSpSourceConnector getSourceJdbcConnectorByDialect(
+      SQLDialect dialect) {
     if (dialect == SQLDialect.MYSQL) {
       return new MySqlSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.POSTGRESQL) {

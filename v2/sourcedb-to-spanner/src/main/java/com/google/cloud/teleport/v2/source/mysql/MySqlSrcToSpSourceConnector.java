@@ -21,11 +21,16 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrappe
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -36,6 +41,62 @@ public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnec
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlSrcToSpSourceConnector.class);
 
+  // Implementation Detail, ImmutableMap.of(...) supports only upto 10 arguments.
+  private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
+      ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
+          .put("BIGINT", UnifiedMappingProvider.Type.LONG)
+          .put("BIGINT UNSIGNED", UnifiedMappingProvider.Type.NUMBER)
+          .put("BINARY", UnifiedMappingProvider.Type.STRING)
+          .put("BIT", UnifiedMappingProvider.Type.LONG)
+          .put("BLOB", UnifiedMappingProvider.Type.STRING)
+          .put("BOOL", UnifiedMappingProvider.Type.INTEGER)
+          .put("CHAR", UnifiedMappingProvider.Type.STRING)
+          .put("DATE", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("DATETIME", UnifiedMappingProvider.Type.DATETIME)
+          .put("DECIMAL", UnifiedMappingProvider.Type.DECIMAL)
+          .put("DOUBLE", UnifiedMappingProvider.Type.DOUBLE)
+          .put("ENUM", UnifiedMappingProvider.Type.STRING)
+          .put("FLOAT", UnifiedMappingProvider.Type.FLOAT)
+          .put("INTEGER", UnifiedMappingProvider.Type.INTEGER)
+          .put("INTEGER UNSIGNED", UnifiedMappingProvider.Type.LONG)
+          .put("JSON", UnifiedMappingProvider.Type.JSON)
+          .put("LONGBLOB", UnifiedMappingProvider.Type.STRING)
+          .put("LONGTEXT", UnifiedMappingProvider.Type.STRING)
+          .put("MEDIUMBLOB", UnifiedMappingProvider.Type.STRING)
+          .put("MEDIUMINT", UnifiedMappingProvider.Type.INTEGER)
+          .put("MEDIUMTEXT", UnifiedMappingProvider.Type.STRING)
+          .put("SET", UnifiedMappingProvider.Type.STRING)
+          .put("SMALLINT", UnifiedMappingProvider.Type.INTEGER)
+          .put("TEXT", UnifiedMappingProvider.Type.STRING)
+          .put("TIME", UnifiedMappingProvider.Type.TIME_INTERVAL)
+          .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("TINYBLOB", UnifiedMappingProvider.Type.STRING)
+          .put("TINYINT", UnifiedMappingProvider.Type.INTEGER)
+          .put("TINYTEXT", UnifiedMappingProvider.Type.STRING)
+          .put("VARBINARY", UnifiedMappingProvider.Type.STRING)
+          .put("VARCHAR", UnifiedMappingProvider.Type.STRING)
+          .put("YEAR", UnifiedMappingProvider.Type.INTEGER)
+          .put("UNSUPPORTED", UnifiedMappingProvider.Type.UNSUPPORTED)
+          .build()
+          .entrySet()
+          .stream()
+          .map(e -> Map.entry(e.getKey(), UnifiedMappingProvider.getMapping(e.getValue())))
+          .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue));
+
+  /**
+   * Returns the map of Source Schema to {@link UnifiedTypeMapping} for all supported MySQL types.
+   *
+   * @return MySQL mapping.
+   */
+  @Override
+  public ImmutableMap<String, UnifiedTypeMapping> getTypeMapping() {
+    return MAPPING;
+  }
+
+  public String getSourceType() {
+    return Constants.MYSQL_SOURCE_TYPE;
+  }
+
   @Override
   public JdbcValueMappingsProvider getJdbcValueMappingsProvider() {
     return MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER;
@@ -45,7 +106,7 @@ public class MySqlSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnec
   public JdbcIOWrapperConfig.Builder getJdbcIOWrapperConfigBuilder() {
     return JdbcIOWrapperConfig.builder()
         .setSourceDbDialect(SQLDialect.MYSQL)
-        .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
+        .setUnifiedTypeMapper(new UnifiedTypeMapper(getTypeMapping()))
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
         .setValueMappingsProvider(MySqlConfigDefaults.DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER)
         .setMaxConnections(MySqlConfigDefaults.DEFAULT_MYSQL_MAX_CONNECTIONS)

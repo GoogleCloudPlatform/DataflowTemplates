@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.mysql;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -26,6 +27,11 @@ import org.junit.runners.JUnit4;
 public class MySqlSourceConnectorTest {
 
   private final MySqlSrcToSpSourceConnector connector = new MySqlSrcToSpSourceConnector();
+
+  @Test
+  public void testGetSourceType() {
+    assertThat(connector.getSourceType()).isEqualTo(Constants.MYSQL_SOURCE_TYPE);
+  }
 
   @Test
   public void testGetJdbcUrl_constructsUrl() {

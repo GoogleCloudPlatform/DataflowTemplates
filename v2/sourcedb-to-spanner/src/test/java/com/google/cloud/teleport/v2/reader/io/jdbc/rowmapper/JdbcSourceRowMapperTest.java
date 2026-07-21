@@ -30,10 +30,12 @@ import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
+import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.provider.PostgreSQLJdbcValueMappings;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -90,7 +92,8 @@ public class JdbcSourceRowMapperTest {
     String table = "mysql_test_table";
     String shardId = "shard1";
     JdbcValueMappingsProvider valueMappings = new MysqlJdbcValueMappings();
-    MapperType mapperType = MapperType.MYSQL;
+    UnifiedTypeMapper unifiedTypeMapper =
+        new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping());
     ImmutableList<Column> columns = mySQLColumns();
 
     // Create table
@@ -99,7 +102,7 @@ public class JdbcSourceRowMapperTest {
       // Insert column with a non-null value followed by a null value
       populateTable(table, column);
     }
-    SourceTableSchema sourceTableSchema = sourceTableSchemaFrom(table, mapperType, columns);
+    SourceTableSchema sourceTableSchema = sourceTableSchemaFrom(table, unifiedTypeMapper, columns);
     SourceSchemaReference schemaReference =
         SchemaTestUtils.generateSchemaReference(namespace, dbName);
     JdbcSourceRowMapper mapper =
@@ -143,7 +146,8 @@ public class JdbcSourceRowMapperTest {
     String table = "pg_test_table";
     String shardId = "shard1";
     JdbcValueMappingsProvider valueMappings = new PostgreSQLJdbcValueMappings();
-    MapperType mapperType = MapperType.POSTGRESQL;
+    UnifiedTypeMapper unifiedTypeMapper =
+        new UnifiedTypeMapper(new PostgresSrcToSpSourceConnector().getTypeMapping());
     ImmutableList<Column> columns = postgreSQLColumns();
 
     // Create table
@@ -152,7 +156,7 @@ public class JdbcSourceRowMapperTest {
       // Insert column with a non-null value followed by a null value
       populateTable(table, column);
     }
-    SourceTableSchema sourceTableSchema = sourceTableSchemaFrom(table, mapperType, columns);
+    SourceTableSchema sourceTableSchema = sourceTableSchemaFrom(table, unifiedTypeMapper, columns);
     SourceSchemaReference schemaReference =
         SchemaTestUtils.generateSchemaReference(namespace, dbName);
     JdbcSourceRowMapper mapper =
@@ -197,7 +201,9 @@ public class JdbcSourceRowMapperTest {
 
     var testCols = mySQLColumns();
     var sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.MYSQL).setTableName(testTable);
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
+            .setTableName(testTable);
     testCols.forEach(
         column ->
             sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
@@ -253,7 +259,8 @@ public class JdbcSourceRowMapperTest {
                     }));
 
     var sourceTableSchema =
-        SourceTableSchema.builder(MapperType.MYSQL)
+        SourceTableSchema.builder(
+                new UnifiedTypeMapper(new MySqlSrcToSpSourceConnector().getTypeMapping()))
             .setTableName(testTable)
             .addSourceColumnNameToSourceColumnType(
                 "unsupported_col", new SourceColumnType("UNSUPPORTED", new Long[] {}, null))
@@ -1022,8 +1029,9 @@ public class JdbcSourceRowMapperTest {
   }
 
   private SourceTableSchema sourceTableSchemaFrom(
-      String table, MapperType mapperType, ImmutableList<Column> columns) {
-    SourceTableSchema.Builder builder = SourceTableSchema.builder(mapperType).setTableName(table);
+      String table, UnifiedTypeMapper unifiedTypeMapper, ImmutableList<Column> columns) {
+    SourceTableSchema.Builder builder =
+        SourceTableSchema.builder(unifiedTypeMapper).setTableName(table);
     columns.forEach(
         column ->
             builder.addSourceColumnNameToSourceColumnType(column.name, column.sourceColumnType));

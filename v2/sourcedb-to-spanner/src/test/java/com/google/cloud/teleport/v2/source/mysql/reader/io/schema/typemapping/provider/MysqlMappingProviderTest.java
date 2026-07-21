@@ -13,10 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider;
+package com.google.cloud.teleport.v2.source.mysql.reader.io.schema.typemapping.provider;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,7 +25,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
-/** Test class for {@link MysqlMappingProvider}. */
+/** Test class for {@link MySqlSrcToSpSourceConnector} type mapping. */
 @RunWith(MockitoJUnitRunner.class)
 public class MysqlMappingProviderTest {
   @Test
@@ -33,16 +34,17 @@ public class MysqlMappingProviderTest {
     // We don't have a use case for arrays yet.
     Long[] testArrayBounds = {};
     ImmutableMap<String, String> stringifiedMapping =
-        MysqlMappingProvider.getMapping().entrySet().stream()
-            .map(
-                e ->
-                    Map.entry(
-                        e.getKey(),
-                        e.getValue()
-                            .getSchema(testMods, testArrayBounds)
-                            .toString()
-                            .replaceAll("\\s+", "")))
-            .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue));
+        new MySqlSrcToSpSourceConnector()
+            .getTypeMapping().entrySet().stream()
+                .map(
+                    e ->
+                        Map.entry(
+                            e.getKey(),
+                            e.getValue()
+                                .getSchema(testMods, testArrayBounds)
+                                .toString()
+                                .replaceAll("\\s+", "")))
+                .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue));
     assertThat(stringifiedMapping).isEqualTo(expectedMapping());
   }
 

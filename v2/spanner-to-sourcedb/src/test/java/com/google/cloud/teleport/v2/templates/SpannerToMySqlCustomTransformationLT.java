@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.templates.utils.LTMySQLResourceManager;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.text.ParseException;
@@ -32,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.After;
 import org.junit.Before;
@@ -137,10 +137,11 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
   }
 
   private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {
-    if (!(jdbcResourceManagers.get(0) instanceof MySQLResourceManager)) {
+    if (!(jdbcResourceManagers.get(0) instanceof LTMySQLResourceManager)) {
       throw new IllegalArgumentException(jdbcResourceManagers.get(0).getClass().getSimpleName());
     }
-    MySQLResourceManager jdbcResourceManager = (MySQLResourceManager) jdbcResourceManagers.get(0);
+    LTMySQLResourceManager jdbcResourceManager =
+        (LTMySQLResourceManager) jdbcResourceManagers.get(0);
     HashMap<String, String> columns = new HashMap<>();
     columns.put("first_name1", "varchar(500)");
     columns.put("last_name1", "varchar(500)");

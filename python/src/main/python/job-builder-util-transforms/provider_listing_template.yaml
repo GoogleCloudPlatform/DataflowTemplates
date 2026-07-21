@@ -4,3 +4,4 @@
       - https://storage.googleapis.com/<package_path>
   transforms:
     CopyFilesToGCS: "copy_files_to_gcs.CopyFilesToGCS"
+    ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"

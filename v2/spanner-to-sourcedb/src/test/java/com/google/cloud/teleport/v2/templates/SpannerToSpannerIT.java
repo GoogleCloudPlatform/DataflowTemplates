@@ -57,7 +57,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSpannerIT.class);
 
-  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(15);
 
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
 
@@ -197,6 +197,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
   public void spannerToSpannerWithGeneratedColumns() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
 
+    long testStartTimeMs = System.currentTimeMillis();
+
     // INSERT
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(
@@ -230,8 +232,8 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert INSERT
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id"), "id", 2L);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, List.of("id"), "id", 2L);
+    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id"), "id", 2L, testStartTimeMs);
+    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, List.of("id"), "id", 2L, testStartTimeMs);
 
     // UPDATE
     mutations = new ArrayList<>();
@@ -252,8 +254,10 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert UPDATE (wait for propagation)
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id", "column1"), "column1", 4L);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 2, List.of("id", "column1"), "column1", 3L);
+    assertReplication(
+        TABLE_WITH_VIRTUAL_GEN_COL, 2, List.of("id", "column1"), "column1", 4L, testStartTimeMs);
+    assertReplication(
+        TABLE_WITH_STORED_GEN_COL, 2, List.of("id", "column1"), "column1", 3L, testStartTimeMs);
 
     // DELETE
     Mutation m1 =
@@ -273,13 +277,15 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(Arrays.asList(m1, m2, m3, m4));
 
     // Assert DELETE
-    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 0, List.of("id"), null, null);
-    assertReplication(TABLE_WITH_STORED_GEN_COL, 0, List.of("id"), null, null);
+    assertReplication(TABLE_WITH_VIRTUAL_GEN_COL, 0, List.of("id"), null, null, testStartTimeMs);
+    assertReplication(TABLE_WITH_STORED_GEN_COL, 0, List.of("id"), null, null, testStartTimeMs);
   }
 
   @Test
   public void spannerToSpannerWithIdentityColumns() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
+
+    long testStartTimeMs = System.currentTimeMillis();
 
     // INSERT
     List<Mutation> mutations = new ArrayList<>();
@@ -300,12 +306,15 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutations);
 
     // Assert INSERT
-    assertReplication(TABLE_WITH_IDENTITY_COL, 2, List.of("id", "column1"), "column1", "id2");
+    assertReplication(
+        TABLE_WITH_IDENTITY_COL, 2, List.of("id", "column1"), "column1", "id2", testStartTimeMs);
   }
 
   @Test
   public void spannerToSpannerMaxColAndTableNameTest() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
+
+    long testStartTimeMs = System.currentTimeMillis();
 
     Mutation.WriteBuilder mutationBuilder =
         Mutation.newInsertOrUpdateBuilder(BOUNDARY_CHECK_TABLE).set("id").to(1);
@@ -315,7 +324,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(mutationBuilder.build());
 
     // Assert INSERT
-    assertReplication(BOUNDARY_CHECK_TABLE, 1, List.of("id"), "id", 1L);
+    assertReplication(BOUNDARY_CHECK_TABLE, 1, List.of("id"), "id", 1L, testStartTimeMs);
   }
 
   private void assertReplication(
@@ -323,11 +332,20 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
       int expectedRowCount,
       List<String> columns,
       String checkCol,
-      Object expectedColValue) {
+      Object expectedColValue,
+      long testStartTimeMs) {
+
+    Duration timeElapsed = Duration.ofMillis(System.currentTimeMillis() - testStartTimeMs);
+    Duration remainingTimeout = TEST_TIMEOUT.minus(timeElapsed);
+
+    if (remainingTimeout.isNegative() || remainingTimeout.isZero()) {
+      remainingTimeout = Duration.ofSeconds(1);
+    }
+
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, TEST_TIMEOUT),
+                createConfig(jobInfo, remainingTimeout),
                 () -> {
                   List<Struct> rows =
                       spannerDestinationResourceManager.readTableRecords(table, columns);

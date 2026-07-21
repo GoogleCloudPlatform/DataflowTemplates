@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.iowrapper.co
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
-import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.provider.PostgreSQLJdbcValueMappings;
@@ -28,8 +27,6 @@ import org.joda.time.Duration;
 
 /** PostgreSQL Default Configuration for {@link JdbcIoWrapper JdbcIoWrapper}. */
 public class PostgreSQLConfigDefaults {
-  public static final UnifiedTypeMapper.MapperType DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE =
-      UnifiedTypeMapper.MapperType.POSTGRESQL;
   public static final DialectAdapter DEFAULT_POSTGRESQL_DIALECT_ADAPTER =
       new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT);
   public static final JdbcValueMappingsProvider DEFAULT_POSTGRESQL_VALUE_MAPPING_PROVIDER =
