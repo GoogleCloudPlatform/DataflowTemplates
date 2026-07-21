@@ -19,12 +19,17 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -192,5 +197,34 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
+  }
+
+  /**
+   * Serializes a list of GenericRecords into a binary .avro file and uploads it to GCS.
+   *
+   * @param gcsFileName The name of the file to create in GCS (e.g. "users/part-000.avro")
+   * @param schema The Avro schema for the records
+   * @param records The records to serialize
+   */
+  public void uploadAvroFileToGcs(String gcsFileName, Schema schema, List<GenericRecord> records)
+      throws IOException {
+    File tempFile = File.createTempFile("test-avro-", ".avro");
+    tempFile.deleteOnExit();
+
+    GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
+    try {
+      try (DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter)) {
+        dataFileWriter.create(schema, tempFile);
+        for (GenericRecord record : records) {
+          dataFileWriter.append(record);
+        }
+      }
+
+      // Upload the temporary file to GCS
+      gcsClient.uploadArtifact(gcsFileName, tempFile.getAbsolutePath());
+    } finally {
+      // Clean up locally
+      tempFile.delete();
+    }
   }
 }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -78,7 +79,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
-    GCSSpannerDVAvroSetupHelper setupHelper = new GCSSpannerDVAvroSetupHelper();
 
     // 1. Generate and Upload Avro Records (Source)
     LOG.info("Generating and Uploading Avro Records to GCS");
@@ -91,27 +91,73 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     // 1 matched record, 1 record present only in source, 1 record with different value
     List<GenericRecord> usersRecords =
         Arrays.asList(
-            setupHelper.createUsersRecord(
-                1L, "E1", "Alice", 30, t1, null), // Matched in both source and spanner
-            setupHelper.createUsersRecord(
-                2L, "E2", "Bob", 31, t2, null), // Present in source but not in destination
-            setupHelper.createUsersRecord(
-                4L, "E4", "David", 35, t4,
-                null) // Mismatched record: Source age is 35, while spanner has 40
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.USERS,
+                null,
+                Map.of(
+                    "user_id",
+                    1L,
+                    "event_id",
+                    "E1",
+                    "full_name",
+                    "Alice",
+                    "age",
+                    30,
+                    "created_at",
+                    t1)), // Matched in both source and spanner
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.USERS,
+                null,
+                Map.of(
+                    "user_id",
+                    2L,
+                    "event_id",
+                    "E2",
+                    "full_name",
+                    "Bob",
+                    "age",
+                    31,
+                    "created_at",
+                    t2)), // Present in source but not in destination
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.USERS,
+                null,
+                Map.of(
+                    "user_id",
+                    4L,
+                    "event_id",
+                    "E4",
+                    "full_name",
+                    "David",
+                    "age",
+                    35,
+                    "created_at",
+                    t4)) // Mismatched record: Source age is 35, while spanner has 40
             );
 
     // All records are matched in Spanner
     List<GenericRecord> rolesRecords =
         Arrays.asList(
-            setupHelper.createAccountRolesRecord(1, "ADMIN", null),
-            setupHelper.createAccountRolesRecord(2, "USER", null),
-            setupHelper.createAccountRolesRecord(3, "GUEST", null));
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES,
+                null,
+                Map.of("role_id", 1, "role_name", "ADMIN")),
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES,
+                null,
+                Map.of("role_id", 2, "role_name", "USER")),
+            GCSSpannerDVAvroSetupHelper.createRecord(
+                GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES,
+                null,
+                Map.of("role_id", 3, "role_name", "GUEST")));
 
     String gcsInputDirectory = getGcsPath("input");
-    setupHelper.uploadAvroFileToGcs(
-        gcsClient, "input/users.avro", setupHelper.getUsersSchema(), usersRecords);
-    setupHelper.uploadAvroFileToGcs(
-        gcsClient, "input/roles.avro", setupHelper.getAccountRolesSchema(), rolesRecords);
+    uploadAvroFileToGcs(
+        "input/users.avro", GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema, usersRecords);
+    uploadAvroFileToGcs(
+        "input/roles.avro",
+        GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema,
+        rolesRecords);
 
     // 2. Inject Spanner Records (Destination)
     LOG.info("Injecting Spanner records");

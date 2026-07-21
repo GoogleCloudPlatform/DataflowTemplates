@@ -16,17 +16,14 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.common.io.Resources;
-import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.file.DataFileWriter;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.beam.it.gcp.artifacts.ArtifactClient;
 
 /**
  * A centralized helper class for setting up Avro data in GCS for integration tests. This class
@@ -50,98 +47,73 @@ public class GCSSpannerDVAvroSetupHelper {
     }
   }
 
-  private final Schema usersSchema;
-  private final Schema accountRolesSchema;
+  public enum TableDef {
+    USERS(USERS_SCHEMA, "Users", Arrays.asList("user_id", "event_id")),
+    ACCOUNT_ROLES(ACCOUNT_ROLES_SCHEMA, "AccountRoles", Arrays.asList("role_id"));
 
-  public GCSSpannerDVAvroSetupHelper() throws IOException {
-    this.usersSchema = USERS_SCHEMA;
-    this.accountRolesSchema = ACCOUNT_ROLES_SCHEMA;
-  }
+    public final Schema schema;
+    public final String tableName;
+    public final List<String> primaryKeys;
 
-  public Schema getUsersSchema() {
-    return usersSchema;
-  }
-
-  public Schema getAccountRolesSchema() {
-    return accountRolesSchema;
-  }
-
-  /**
-   * Serializes a list of GenericRecords into a binary .avro file and uploads it to GCS.
-   *
-   * @param gcsClient The ArtifactClient from TemplateTestBase
-   * @param gcsFileName The name of the file to create in GCS (e.g. "users/part-000.avro")
-   * @param schema The Avro schema for the records
-   * @param records The records to serialize
-   */
-  public void uploadAvroFileToGcs(
-      ArtifactClient gcsClient, String gcsFileName, Schema schema, List<GenericRecord> records)
-      throws IOException {
-    File tempFile = File.createTempFile("test-avro-", ".avro");
-    tempFile.deleteOnExit();
-
-    GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
-    try {
-      try (DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter)) {
-        dataFileWriter.create(schema, tempFile);
-        for (GenericRecord record : records) {
-          dataFileWriter.append(record);
-        }
-      }
-
-      // Upload the temporary file to GCS
-      gcsClient.uploadArtifact(gcsFileName, tempFile.getAbsolutePath());
-    } finally {
-      // Clean up locally
-      tempFile.delete();
+    TableDef(Schema schema, String tableName, List<String> primaryKeys) {
+      this.schema = schema;
+      this.tableName = tableName;
+      this.primaryKeys = primaryKeys;
     }
   }
 
-  // --- Private Helper Methods ---
-
-  public GenericRecord createUsersRecord(
-      Long userId,
-      String eventId,
-      String fullName,
-      Integer age,
-      Instant timestamp,
-      String shardId) {
-
-    GenericRecordBuilder outerBuilder = new GenericRecordBuilder(usersSchema);
-    outerBuilder.set("tableName", "Users");
+  public static GenericRecord createRecord(
+      TableDef table, String shardId, Map<String, Object> columns) {
+    GenericRecordBuilder outerBuilder = new GenericRecordBuilder(table.schema);
+    outerBuilder.set("tableName", table.tableName);
     outerBuilder.set("shardId", shardId);
-    outerBuilder.set("primaryKeys", Arrays.asList("user_id", "event_id"));
+    outerBuilder.set("primaryKeys", table.primaryKeys);
 
-    Schema payloadSchema = usersSchema.getField("payload").schema();
+    Schema payloadSchema = table.schema.getField("payload").schema();
     GenericRecordBuilder payloadBuilder = new GenericRecordBuilder(payloadSchema);
 
-    payloadBuilder.set("user_id", userId);
-    payloadBuilder.set("event_id", eventId);
-    payloadBuilder.set("full_name", fullName);
-    payloadBuilder.set("age", age);
-    Long micros =
-        timestamp == null
-            ? null
-            : (timestamp.getEpochSecond() * 1_000_000L) + (timestamp.getNano() / 1000L);
-    payloadBuilder.set("created_at", micros);
+    for (Map.Entry<String, Object> entry : columns.entrySet()) {
+      String columnName = entry.getKey();
+      if (payloadSchema.getField(columnName) == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Column '%s' does not exist in the Avro schema for table '%s'. Please check for typos.",
+                columnName, table.tableName));
+      }
+
+      Object value = convertToAvroFormat(entry.getValue());
+      payloadBuilder.set(columnName, value);
+    }
 
     outerBuilder.set("payload", payloadBuilder.build());
     return outerBuilder.build();
   }
 
-  public GenericRecord createAccountRolesRecord(Integer roleId, String roleName, String shardId) {
-    GenericRecordBuilder outerBuilder = new GenericRecordBuilder(accountRolesSchema);
-    outerBuilder.set("tableName", "AccountRoles");
-    outerBuilder.set("shardId", shardId);
-    outerBuilder.set("primaryKeys", Arrays.asList("role_id"));
+  /**
+   * Converts standard Java types into the primitive formats required by Avro logical types.
+   *
+   * <p>Because this helper uses a generic {@code Map<String, Object>} to dynamically build records,
+   * standard Java objects (like {@link Instant}) must be manually translated into Avro's expected
+   * underlying primitives (like {@code Long} for timestamp-micros) before serialization.
+   *
+   * <p><b>IMPORTANT:</b> This method currently only supports {@link Instant}. If new test tables
+   * are introduced that use other complex Avro mappings (e.g., Dates, Decimals, UUIDs, or custom
+   * Datastream composites like Datetime), this method MUST be updated to coerce those types.
+   *
+   * @param value The standard Java object provided in the test map.
+   * @return The Avro-compatible primitive value ready for serialization.
+   */
+  private static Object convertToAvroFormat(Object value) {
+    if (value == null) {
+      return null;
+    }
+    // TIMESTAMP(fsp) -> timestamp-micros (long)
+    if (value instanceof Instant) {
+      Instant t = (Instant) value;
+      return (t.getEpochSecond() * 1_000_000L) + (t.getNano() / 1000L);
+    }
 
-    Schema payloadSchema = accountRolesSchema.getField("payload").schema();
-    GenericRecordBuilder payloadBuilder = new GenericRecordBuilder(payloadSchema);
-
-    payloadBuilder.set("role_id", roleId);
-    payloadBuilder.set("role_name", roleName);
-
-    outerBuilder.set("payload", payloadBuilder.build());
-    return outerBuilder.build();
+    // Default fallback (String, Integer, Long, Double, Float)
+    return value;
   }
 }
