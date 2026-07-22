@@ -64,17 +64,17 @@ public class PostgreSQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpanne
     List<Map<String, Object>> data = new ArrayList<>();
 
     Map<String, Object> row1 = new HashMap<>();
-    row1.put(ID, "\uD83D\uDE00");
+    row1.put(ID, "😀");
     row1.put(DESCRIPTION, "Grinning Face");
     data.add(row1);
 
     Map<String, Object> row2 = new HashMap<>();
-    row2.put(ID, "\uD83D\uDE01");
+    row2.put(ID, "😁");
     row2.put(DESCRIPTION, "Beaming Face with Smiling Eyes");
     data.add(row2);
 
     Map<String, Object> row3 = new HashMap<>();
-    row3.put(ID, "\uD83D\uDE02");
+    row3.put(ID, "😂");
     row3.put(DESCRIPTION, "Face with Tears of Joy");
     data.add(row3);
 
