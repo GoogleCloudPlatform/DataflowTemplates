@@ -73,6 +73,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.util.BackOff;
+import org.apache.beam.sdk.util.BackOffUtils;
+import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
@@ -1777,15 +1781,36 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     @Override
     public void run() throws Throwable {
       LOG.info("Generating system SBOM for {}...", imagePathTag);
-      String output;
-      try {
-        output =
-            runCommandCapturesOutput(
-                new String[] {"gcloud", "artifacts", "sbom", "export", "--uri", imagePathTag},
-                null);
-      } catch (Exception e) {
-        throw new RuntimeException("Error generating SBOM.", e);
+      String output = null;
+
+      BackOff backOff =
+          FluentBackoff.DEFAULT
+              .withInitialBackoff(org.joda.time.Duration.standardSeconds(5))
+              .withMaxBackoff(org.joda.time.Duration.standardSeconds(30))
+              .withMaxRetries(5)
+              .backoff();
+      Sleeper sleeper = Sleeper.DEFAULT;
+      Exception lastException;
+      do {
+        try {
+          output =
+              runCommandCapturesOutput(
+                  new String[] {"gcloud", "artifacts", "sbom", "export", "--uri", imagePathTag},
+                  null);
+          lastException = null;
+          break;
+        } catch (Exception e) {
+          LOG.error(
+              "Error generating SBOM. Retrying after {} seconds...",
+              backOff.nextBackOffMillis() / 1000,
+              e);
+          lastException = e;
+        }
+      } while (BackOffUtils.next(sleeper, backOff));
+      if (lastException != null) {
+        throw new RuntimeException("Error generating SBOM.", lastException);
       }
+
       Matcher matcher = IMAGE_WITH_SBOM_DIGEST.matcher(output);
       if (!matcher.find()) {
         throw new RuntimeException(
