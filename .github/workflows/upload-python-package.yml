@@ -47,6 +47,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # TODO(BEAM-2.76.0): Remove Java setup and background expansion service steps once Beam is upgraded to 2.76.0,
+      # as the official 2.76.0 expansion service shadowJar will natively package the Delta Lake IO classes.
+      # See PR#4038 for further details on code removal.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Java Dependencies
+        run: mvn package -pl yaml -am -DskipTests
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -63,7 +75,16 @@ jobs:
 
       - name: Run Tests
         working-directory: python/src/main/python/job-builder-util-transforms
-        run: poetry run pytest ../../../test/python/job-builder-util-transforms/
+        env:
+          LOCAL_TEST_LOOPBACK: '1'
+          BEAM_SERVICE_OVERRIDES: '{"sdks:java:io:expansion-service:shadowJar": "localhost:8097"}'
+        run: |
+          # Start the expansion service in the background from the shaded jar
+          java -cp "$GITHUB_WORKSPACE/yaml/target/template-yaml-1.0-SNAPSHOT-shaded.jar" org.apache.beam.sdk.expansion.service.ExpansionService 8097 --alsoStartLoopbackWorker=true &
+          # Wait 15 seconds for the service to start up
+          sleep 15
+          # Execute pytest
+          poetry run pytest ../../../test/python/job-builder-util-transforms/
 
       - name: Build Package
         working-directory: python/src/main/python/job-builder-util-transforms
@@ -80,6 +101,7 @@ jobs:
           GCS_PACKAGE_PATH="$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
           if [ "$ONLY_UPLOAD_LISTING" != "true" ]; then
             gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$GCS_PACKAGE_PATH"
+            gcloud storage cp yaml/target/template-yaml-1.0-SNAPSHOT-shaded.jar "$BUCKET_PATH/$DATE/expansion-service-custom-$VERSION.jar"
           fi
           PACKAGE_PATH_NO_GS="${GCS_PACKAGE_PATH#gs://}"
           sed "s|<package_path>|$PACKAGE_PATH_NO_GS|g" python/src/main/python/job-builder-util-transforms/provider_listing_template.yaml > "python/src/main/python/job-builder-util-transforms/yaml_provider_listing_$VERSION.yaml"
