@@ -29,8 +29,8 @@ on:
         description: 'Beam version to build (leave empty to auto-detect from Beam codebase)'
         required: false
         default: ''
-      bucket_path:
-        description: 'GCS bucket path (e.g., gs://my-bucket/path)'
+      destination_path:
+        description: 'Full GCS destination path including filename (e.g., gs://my-bucket/path/custom-jar.jar)'
         required: true
 
 
@@ -117,6 +117,6 @@ jobs:
       - name: Rename JAR and Upload
         working-directory: beam-starter-java-provider/target
         env:
-          BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
+          DESTINATION_PATH: ${{ github.event.inputs.destination_path }}
         run: |
-          gcloud storage cp xlang-transforms-bundled-1.0-SNAPSHOT.jar "$BUCKET_PATH"
+          gcloud storage cp xlang-transforms-bundled-1.0-SNAPSHOT.jar "$DESTINATION_PATH"
