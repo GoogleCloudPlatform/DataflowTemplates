@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
@@ -35,6 +36,7 @@ import com.google.cloud.teleport.v2.transforms.ProcessDml;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +46,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -64,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS. The data is then cleaned and converted from JSON
  * objects into DML statements. The DML is applied to the desired target database, which can be one
  * of MySQL or PostgreSQL. Replication maintains a 1:1 match between source and target by default.
- * No DDL is supported in the current version of this pipeline.
+ * Dynamic DDL is supported to create tables and add columns as they appear in the source.
  *
  * <p>Failures during SQL execution are captured and written to a Dead Letter Queue (DLQ) in GCS.
  * The pipeline also reconsumes failed records from the DLQ for reprocessing.
@@ -82,7 +85,7 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Datastream to SQL template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into any MySQL or PostgreSQL database. "
           + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates this data into SQL replica tables.\n",
-      "The template does not support data definition language (DDL) and expects that all tables already exist in the database. "
+      "The template supports data definition language (DDL) and can create tables and add columns automatically. "
           + "Replication uses Dataflow stateful transforms to filter stale data and ensure consistency in out of order data. "
           + "For example, if a more recent version of a row has already passed through, a late arriving version of that row is ignored. "
           + "The data manipulation language (DML) that executes is a best attempt to perfectly replicate source to target data. The DML statements executed follow the following rules:\n",
@@ -690,6 +693,14 @@ public class DataStreamToSQL {
 
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
+    DataStreamClient datastreamClient = null;
+    try {
+      datastreamClient = new DataStreamClient(options.as(GcpOptions.class).getGcpCredential());
+      datastreamClient.setRootUrl(options.getDataStreamRootUrl());
+    } catch (IOException e) {
+      LOG.error("Failed to initialize DataStreamClient", e);
+    }
+
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
      * a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
@@ -760,7 +771,9 @@ public class DataStreamToSQL {
                 .withColumnCasing(options.getColumnCasing())
                 .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                 .withNumThreads(options.getNumThreads())
-                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes()));
+                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes())
+                .withDataStreamClient(datastreamClient)
+                .withDatabaseType(options.getDatabaseType()));
 
     PCollection<KV<String, DmlInfo>> dmlStatements =
         dmlResults

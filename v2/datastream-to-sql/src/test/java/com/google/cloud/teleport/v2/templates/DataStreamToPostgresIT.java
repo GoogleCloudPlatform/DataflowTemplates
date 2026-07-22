@@ -48,7 +48,6 @@ import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
@@ -142,6 +141,253 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     runTest(tableName);
   }
 
+  @Test
+  public void testDataStreamPostgresToPostgresDynamicDDL() throws IOException {
+    String tableName = "pg_ddl_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    // Create table only in source
+    cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
+
+    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String user = cloudSqlSourceResourceManager.getUsername();
+    String schema = cloudSqlSourceResourceManager.getDatabaseName();
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("ALTER USER %s WITH REPLICATION;", user));
+
+    createReplicationSlotWithRetry(this.replicationSlot);
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format(
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
+
+    JDBCSource jdbcSource =
+        PostgresqlSource.builder(
+                cloudSqlSourceResourceManager.getHost(),
+                cloudSqlSourceResourceManager.getUsername(),
+                cloudSqlSourceResourceManager.getPassword(),
+                cloudSqlSourceResourceManager.getPort(),
+                cloudSqlSourceResourceManager.getDatabaseName(),
+                this.replicationSlot,
+                publication)
+            .setAllowedTables(
+                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
+            .build();
+
+    String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    String gcsPrefixForNotification =
+        getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("postgres-profile", jdbcSource);
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile",
+            artifactBucketName,
+            gcsPrefix,
+            DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT);
+    Stream stream =
+        datastreamResourceManager.createStream("stream-pg-ddl", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+
+    com.google.pubsub.v1.TopicName topic =
+        pubsubResourceManager.createTopic("gcs-notifications-ddl");
+    com.google.pubsub.v1.SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "dataflow-subscription-ddl");
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
+
+    String schemaMap =
+        String.format(
+            "%s:%s",
+            cloudSqlSourceResourceManager.getDatabaseName(),
+            cloudSqlDestinationResourceManager.getDatabaseName());
+    String jobName = PipelineUtils.createJobName(testName);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+            .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
+            .addParameter("gcsPubSubSubscription", subscription.toString())
+            .addParameter("inputFileFormat", "json")
+            .addParameter("streamName", stream.getName())
+            .addParameter("databaseType", "postgres")
+            .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
+            .addParameter("schemaMap", schemaMap)
+            .addParameter("databaseHost", cloudSqlDestinationResourceManager.getHost())
+            .addParameter(
+                "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
+            .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
+            .addParameter("databasePassword", cloudSqlDestinationResourceManager.getPassword());
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    String newColumnName = "new_col_" + RandomStringUtils.randomAlphanumeric(3).toLowerCase();
+
+    ConditionCheck waitForTableCreation =
+        new ConditionCheck() {
+          @Override
+          public @NonNull String getDescription() {
+            return "Wait for dynamic table creation in destination.";
+          }
+
+          @Override
+          public @NonNull CheckResult check() {
+            try {
+              // Use qualified name since template creates it in mapped schema
+              String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+              cloudSqlDestinationResourceManager.runSQLQuery(
+                  String.format("SELECT 1 FROM %s.%s LIMIT 1", destSchema, tableName));
+              return new CheckResult(true, "Table exists in destination.");
+            } catch (Exception e) {
+              return new CheckResult(false, "Table not created yet: " + e.getMessage());
+            }
+          }
+        };
+
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    // 1. Initial write - should trigger table creation
+                    writePostgresData(tableName, cdcEvents),
+                    waitForTableCreation,
+                    new ConditionCheck() {
+                      @Override
+                      public @NonNull String getDescription() {
+                        return "Check if destination has " + NUM_EVENTS + " rows and log them.";
+                      }
+
+                      @Override
+                      public @NonNull CheckResult check() {
+                        List<Map<String, Object>> actualRows =
+                            cloudSqlDestinationResourceManager.readTable(tableName);
+                        List<String> actualIds = new ArrayList<>();
+                        for (Map<String, Object> row : actualRows) {
+                          Object idObj = row.get(ROW_ID.toLowerCase());
+                          if (idObj != null) {
+                            actualIds.add(idObj.toString());
+                          }
+                        }
+                        List<Integer> missingIds = new ArrayList<>();
+                        for (int i = 0; i < NUM_EVENTS; i++) {
+                          if (!actualIds.contains(String.valueOf(i))) {
+                            missingIds.add(i);
+                          }
+                        }
+                        LOG.info(
+                            "Rows in destination table {}: {}. Total: {}. Missing IDs: {}",
+                            tableName,
+                            actualRows,
+                            actualRows.size(),
+                            missingIds);
+                        if (actualRows.size() >= NUM_EVENTS) {
+                          return new CheckResult(true);
+                        }
+                        return new CheckResult(
+                            false,
+                            String.format(
+                                "Expected %d rows but has only %d. Missing IDs: %s",
+                                NUM_EVENTS, actualRows.size(), missingIds));
+                      }
+                    },
+                    // 2. Add column and write more data - should trigger column addition
+                    addColumnToSource(tableName, newColumnName),
+                    writePostgresDataWithNewColumn(tableName, newColumnName, cdcEvents),
+                    checkDestinationColumnExists(tableName, newColumnName),
+                    checkDestinationRows(tableName, cdcEvents)))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
+
+    assertThatResult(result).meetsConditions();
+  }
+
+  private ConditionCheck addColumnToSource(String tableName, String columnName) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Add column to source table.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        String schema = cloudSqlSourceResourceManager.getDatabaseName();
+        cloudSqlSourceResourceManager.runSQLUpdate(
+            String.format(
+                "ALTER TABLE %s.%s ADD COLUMN %s VARCHAR(255);", schema, tableName, columnName));
+        return new CheckResult(true, "Added column to source.");
+      }
+    };
+  }
+
+  private ConditionCheck checkDestinationColumnExists(String tableName, String columnName) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Check if column exists in destination.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        try {
+          String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+          String qualifiedTableName = destSchema + "." + tableName;
+          List<Map<String, Object>> rows =
+              cloudSqlDestinationResourceManager.readTable(qualifiedTableName);
+          if (rows.isEmpty()) {
+            return new CheckResult(false, "Table is empty.");
+          }
+          if (rows.get(0).containsKey(columnName)) {
+            return new CheckResult(true, "Column found in destination.");
+          }
+          return new CheckResult(false, "Column not found in destination.");
+        } catch (Exception e) {
+          return new CheckResult(false, "Error checking column: " + e.getMessage());
+        }
+      }
+    };
+  }
+
+  private ConditionCheck writePostgresDataWithNewColumn(
+      String tableName, String newColumn, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Send PostgreSQL events with new column.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = NUM_EVENTS; i < NUM_EVENTS * 2; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put(COLUMNS.get(0), i);
+          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+          values.put(COLUMNS.get(2), new Random().nextInt(100));
+          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
+          String timestamp = Instant.now().toString();
+          values.put(COLUMNS.get(4), timestamp);
+          values.put(newColumn, "new-val-" + i);
+          rows.add(values);
+          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            // Ignore
+          }
+        }
+        boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
+        cdcEvents.get(tableName).addAll(rows);
+        return new CheckResult(
+            success, String.format("Sent %d rows with new column to %s.", rows.size(), tableName));
+      }
+    };
+  }
+
   private void runTest(String sourceTableName) throws IOException {
     this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
@@ -220,9 +466,42 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         ChainedConditionCheck.builder(
                 List.of(
                     writePostgresData(sourceTableName, cdcEvents),
-                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, sourceTableName)
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
+                    new ConditionCheck() {
+                      @Override
+                      public @NonNull String getDescription() {
+                        return "Check if destination has " + NUM_EVENTS + " rows and log them.";
+                      }
+
+                      @Override
+                      public @NonNull CheckResult check() {
+                        List<Map<String, Object>> actualRows =
+                            cloudSqlDestinationResourceManager.readTable(sourceTableName);
+                        List<Object> actualIds = new ArrayList<>();
+                        for (Map<String, Object> row : actualRows) {
+                          actualIds.add(row.get(ROW_ID.toLowerCase()));
+                        }
+                        List<Integer> missingIds = new ArrayList<>();
+                        for (int i = 0; i < NUM_EVENTS; i++) {
+                          if (!actualIds.contains(i) && !actualIds.contains((long) i)) {
+                            missingIds.add(i);
+                          }
+                        }
+                        LOG.info(
+                            "Rows in destination table {}: {}. Total: {}. Missing IDs: {}",
+                            sourceTableName,
+                            actualRows,
+                            actualRows.size(),
+                            missingIds);
+                        if (actualRows.size() >= NUM_EVENTS) {
+                          return new CheckResult(true);
+                        }
+                        return new CheckResult(
+                            false,
+                            String.format(
+                                "Expected %d rows but has only %d. Missing IDs: %s",
+                                NUM_EVENTS, actualRows.size(), missingIds));
+                      }
+                    },
                     changePostgresData(sourceTableName, cdcEvents),
                     checkDestinationRows(sourceTableName, cdcEvents)))
             .build();
@@ -261,8 +540,16 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
           values.put(COLUMNS.get(2), new Random().nextInt(100));
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
-          values.put(COLUMNS.get(4), Instant.now().toString());
+          String timestamp = Instant.now().toString();
+          values.put(COLUMNS.get(4), timestamp);
+
           rows.add(values);
+          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            // Ignore
+          }
         }
         boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
         cdcEvents.put(tableName, rows);
@@ -342,17 +629,45 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        long totalRows = cloudSqlDestinationResourceManager.getRowCount(tableName);
-        long maxRows = cdcEvents.get(tableName).size();
+        List<Map<String, Object>> expectedRows = cdcEvents.get(tableName);
+        List<Map<String, Object>> actualRows =
+            cloudSqlDestinationResourceManager.readTable(tableName);
+
+        LOG.info(
+            "Checking rows for table {}. Expected: {}, Actual: {}",
+            tableName,
+            expectedRows,
+            actualRows);
+
+        if (actualRows.isEmpty() && !expectedRows.isEmpty()) {
+          return new CheckResult(false, "Table is empty but expected rows.");
+        }
+
+        // Normalize expected rows to include nulls for any columns added dynamically
+        if (!actualRows.isEmpty()) {
+          Map<String, Object> firstActual = actualRows.get(0);
+          for (Map<String, Object> expected : expectedRows) {
+            for (String key : firstActual.keySet()) {
+              if (!expected.containsKey(key)) {
+                expected.put(key, null);
+              }
+            }
+          }
+        }
+
+        long totalRows = actualRows.size();
+        long maxRows = expectedRows.size();
+
         if (totalRows > maxRows) {
           return new CheckResult(
               false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
         }
         try {
-          checkJdbcTable(tableName, cdcEvents);
+          assertThatRecords(actualRows).hasRecordsUnordered(expectedRows);
           return new CheckResult(true, "JDBC table contains expected rows.");
         } catch (AssertionError error) {
-          return new CheckResult(false, "JDBC table does not contain expected rows.");
+          return new CheckResult(
+              false, "JDBC table does not contain expected rows: " + error.getMessage());
         }
       }
     };
@@ -466,7 +781,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Error during inactive replication slot cleanup: {}", e.getMessage());
+      LOG.warn("Error during replication slot cleanup: {}", e.getMessage());
     }
   }
 }
