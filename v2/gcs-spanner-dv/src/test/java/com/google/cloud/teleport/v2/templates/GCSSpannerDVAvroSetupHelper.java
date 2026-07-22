@@ -50,15 +50,17 @@ public class GCSSpannerDVAvroSetupHelper {
    * Defines standard table schemas that are universally used across multiple integration tests.
    * Centralizing these definitions prevents schema drift across tests and minimizes setup code.
    */
-  public enum TableDef {
-    USERS(USERS_SCHEMA, "Users", Arrays.asList("user_id", "event_id")),
-    ACCOUNT_ROLES(ACCOUNT_ROLES_SCHEMA, "AccountRoles", Arrays.asList("role_id"));
+  public static class TableDef {
+    public static final TableDef USERS =
+        new TableDef(USERS_SCHEMA, "Users", Arrays.asList("user_id", "event_id"));
+    public static final TableDef ACCOUNT_ROLES =
+        new TableDef(ACCOUNT_ROLES_SCHEMA, "AccountRoles", Arrays.asList("role_id"));
 
     public final Schema schema;
     public final String tableName;
     public final List<String> primaryKeys;
 
-    TableDef(Schema schema, String tableName, List<String> primaryKeys) {
+    public TableDef(Schema schema, String tableName, List<String> primaryKeys) {
       this.schema = schema;
       this.tableName = tableName;
       this.primaryKeys = primaryKeys;
