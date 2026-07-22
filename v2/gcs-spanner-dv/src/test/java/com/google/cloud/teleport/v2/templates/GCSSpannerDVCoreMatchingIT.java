@@ -36,12 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for GCSSpannerDV pipeline covering the core matching logic.
+ * Integration tests verifying the core data comparison logic of the GCSSpannerDV pipeline.
  *
- * <p>This test validates the core functional accuracy of the gcs-spanner-dv batch pipeline by
- * verifying that it can correctly identify and categorize rows into MATCHED,
- * MISSING_IN_DESTINATION, MISSING_IN_SOURCE, and mismatches. This test also validates the
- * pipeline's behavior when multiple instances of the exact same row exist in the source Avro data.
+ * <p>Ensures the pipeline can accurately compare source records (Avro) against destination records
+ * (Spanner) across multiple tables, and correctly report on matches, missing rows, and data
+ * discrepancies.
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -64,33 +63,10 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
   }
 
   /**
-   * Validates multi-table matching logic across various scenarios:
-   *
-   * <p>1. `Users` table (4 rows for 4 scenarios):
-   *
-   * <ul>
-   *   <li><b>Exactly Matching</b>: Present in both source and destination identically.
-   *   <li><b>Missing in Spanner</b>: Present in source only.
-   *   <li><b>Missing in Source</b>: Present in Spanner only.
-   *   <li><b>Mismatched Values</b>: Present in both, but with different values.
-   * </ul>
-   *
-   * <p>2. `AccountRoles` table (3 rows):
-   *
-   * <ul>
-   *   <li>All 3 rows exactly matching to simulate a healthy table.
-   * </ul>
-   *
-   * <p>Assertions:
-   *
-   * <ul>
-   *   <li><b>ValidationSummary</b>: One global row rolling up metrics correctly across all tables.
-   *   <li><b>TableValidationStats</b>: One row per table with accurate, independent status and
-   *       counts.
-   *   <li><b>MismatchedRecords</b>: Every individual discrepancy is explicitly logged and
-   *       categorized (`MISSING_IN_SOURCE`, `MISSING_IN_DESTINATION`) with the correct primary
-   *       keys.
-   * </ul>
+   * Validates core multi-table matching logic across both healthy and unhealthy tables. Tests all
+   * fundamental validation scenarios (exactly matching, missing in source, missing in destination,
+   * and value mismatches) and asserts that the resulting metrics are correctly rolled up into the
+   * BigQuery tables.
    */
   @Test
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {

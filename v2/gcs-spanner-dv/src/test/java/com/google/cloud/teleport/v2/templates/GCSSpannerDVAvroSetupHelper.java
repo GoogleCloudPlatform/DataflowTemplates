@@ -29,25 +29,22 @@ import org.apache.avro.generic.GenericRecordBuilder;
  */
 public class GCSSpannerDVAvroSetupHelper {
 
-  private static final Schema USERS_SCHEMA;
-  private static final Schema ACCOUNT_ROLES_SCHEMA;
-
-  static {
-    USERS_SCHEMA =
-        GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc");
-    ACCOUNT_ROLES_SCHEMA =
-        GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/account_roles.avsc");
-  }
-
   /**
    * Defines standard table schemas that are universally used across multiple integration tests.
    * Centralizing these definitions prevents schema drift across tests and minimizes setup code.
    */
   public static class TableDef {
     public static final TableDef USERS =
-        new TableDef(USERS_SCHEMA, "Users", Arrays.asList("user_id", "event_id"));
+        new TableDef(
+            GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc"),
+            "Users",
+            Arrays.asList("user_id", "event_id"));
     public static final TableDef ACCOUNT_ROLES =
-        new TableDef(ACCOUNT_ROLES_SCHEMA, "AccountRoles", Arrays.asList("role_id"));
+        new TableDef(
+            GCSSpannerDVITBase.getSchemaFromAvscFile(
+                "GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
+            "AccountRoles",
+            Arrays.asList("role_id"));
 
     public final Schema schema;
     public final String tableName;

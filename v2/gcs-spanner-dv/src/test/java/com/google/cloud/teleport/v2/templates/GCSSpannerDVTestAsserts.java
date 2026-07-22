@@ -42,44 +42,44 @@ public final class GCSSpannerDVTestAsserts {
 
   private GCSSpannerDVTestAsserts() {}
 
+  private static <T> void assertTableRecords(
+      BigQueryResourceManager bigQueryResourceManager,
+      String tableName,
+      Class<T> dtoClass,
+      List<T> expected) {
+    TableResult result = bigQueryResourceManager.readTable(tableName);
+    List<Map<String, Object>> rows = BigQueryAsserts.tableResultToRecords(result);
+
+    List<T> dtos =
+        rows.stream().map(row -> MAPPER.convertValue(row, dtoClass)).collect(Collectors.toList());
+
+    assertThat(dtos).containsExactlyElementsIn(expected);
+  }
+
   public static void assertValidationSummary(
       BigQueryResourceManager bigQueryResourceManager, List<ValidationSummaryDto> expected) {
-    TableResult summaryResult = bigQueryResourceManager.readTable("ValidationSummary");
-    List<Map<String, Object>> summaryRows = BigQueryAsserts.tableResultToRecords(summaryResult);
-    List<ValidationSummaryDto> summaryDtos =
-        summaryRows.stream()
-            .map(row -> MAPPER.convertValue(row, ValidationSummaryDto.class))
-            .collect(Collectors.toList());
-
-    assertThat(summaryDtos).containsExactlyElementsIn(expected);
+    assertTableRecords(
+        bigQueryResourceManager, "ValidationSummary", ValidationSummaryDto.class, expected);
   }
 
   public static void assertTableValidationStats(
       BigQueryResourceManager bigQueryResourceManager, List<TableValidationStatsDto> expected) {
-    TableResult statsResult = bigQueryResourceManager.readTable("TableValidationStats");
-    List<Map<String, Object>> statsRows = BigQueryAsserts.tableResultToRecords(statsResult);
-
-    List<TableValidationStatsDto> statsDtos =
-        statsRows.stream()
-            .map(row -> MAPPER.convertValue(row, TableValidationStatsDto.class))
-            .collect(Collectors.toList());
-
-    assertThat(statsDtos).containsExactlyElementsIn(expected);
+    assertTableRecords(
+        bigQueryResourceManager, "TableValidationStats", TableValidationStatsDto.class, expected);
   }
 
   public static void assertMismatchedRecords(
       BigQueryResourceManager bigQueryResourceManager, List<MismatchedRecordDto> expected) {
-    TableResult mismatchesResult = bigQueryResourceManager.readTable("MismatchedRecords");
-    List<Map<String, Object>> mismatchRows = BigQueryAsserts.tableResultToRecords(mismatchesResult);
-
-    List<MismatchedRecordDto> mismatchDtos =
-        mismatchRows.stream()
-            .map(row -> MAPPER.convertValue(row, MismatchedRecordDto.class))
-            .collect(Collectors.toList());
-
-    assertThat(mismatchDtos).containsExactlyElementsIn(expected);
+    assertTableRecords(
+        bigQueryResourceManager, "MismatchedRecords", MismatchedRecordDto.class, expected);
   }
 
+  /**
+   * These DTOs contain only the core columns necessary to assert the functional correctness of the
+   * validation pipeline. Transient or dynamic fields (such as `run_id`) that are not strictly
+   * required to verify the core logic should be intentionally excluded. This principle should serve
+   * as the decision criteria before adding any new fields to these DTOs.
+   */
   public record ValidationSummaryDto(
       String status,
       Long totalTablesValidated,
