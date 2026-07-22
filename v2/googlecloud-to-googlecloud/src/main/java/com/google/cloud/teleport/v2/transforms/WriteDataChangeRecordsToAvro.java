@@ -210,6 +210,8 @@ public class WriteDataChangeRecordsToAvro {
         return com.google.cloud.teleport.v2.ValueCaptureType.OLD_AND_NEW_VALUES;
       case NEW_ROW:
         return com.google.cloud.teleport.v2.ValueCaptureType.NEW_ROW;
+      case NEW_ROW_AND_OLD_VALUES:
+        return com.google.cloud.teleport.v2.ValueCaptureType.NEW_ROW_AND_OLD_VALUES;
       default:
         return com.google.cloud.teleport.v2.ValueCaptureType.NEW_VALUES;
     }
