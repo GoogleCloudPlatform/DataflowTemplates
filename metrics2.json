@@ -1,0 +1,4239 @@
+[
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-cpu_num_seconds"
+      },
+      "name": "TotalVcpuTime",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2040,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-mem_mb_seconds"
+      },
+      "name": "TotalMemoryUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 7834068,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-pd_gb_seconds"
+      },
+      "name": "TotalPdUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1035361,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-pd_ssd_gb_seconds"
+      },
+      "name": "TotalSsdUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_gb_seconds"
+      },
+      "name": "TotalHyperdiskBalancedUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_iops_seconds"
+      },
+      "name": "TotalHyperdiskBalancedIopsUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_throughput_mibps_seconds"
+      },
+      "name": "TotalHyperdiskBalancedThroughputUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-shuffle_service_actual_gb"
+      },
+      "name": "TotalShuffleDataProcessed",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-shuffle_service_chargeable_gb"
+      },
+      "name": "BillableShuffleDataProcessed",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-streaming_service_gb"
+      },
+      "name": "TotalStreamingDataProcessed",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "ServiceExperiment-micro-dcu-billing-v15"
+      },
+      "name": "TotalDcuUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-gpu_num_seconds"
+      },
+      "name": "TotalGpuTime",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-streaming_engine_compute_unit"
+      },
+      "name": "TotalSeCuUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-cpu_num"
+      },
+      "name": "CurrentVcpuCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-mem_mb"
+      },
+      "name": "CurrentMemoryUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 15360,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-pd_gb"
+      },
+      "name": "CurrentPdUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2030,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-pd_ssd_gb"
+      },
+      "name": "CurrentSsdUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_gb"
+      },
+      "name": "CurrentHyperdiskBalancedCapacityUsage",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_iops"
+      },
+      "name": "CurrentHyperdiskBalancedIops",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-hyperdisk_balanced_throughput_mibps"
+      },
+      "name": "CurrentHyperdiskBalancedThroughput",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Service-gpu_num"
+      },
+      "name": "CurrentGpuCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24",
+        "original_name": "dataflow_backlog_size-F24"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28",
+        "original_name": "dataflow_backlog_size-F28"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26",
+        "original_name": "dataflow_backlog_size-F26"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27",
+        "original_name": "dataflow_backlog_size-F27"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25",
+        "original_name": "dataflow_backlog_size-F25"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29",
+        "original_name": "dataflow_backlog_size-F29"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30",
+        "original_name": "dataflow_backlog_size-F30"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31",
+        "original_name": "dataflow_backlog_size-F31"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32",
+        "original_name": "dataflow_backlog_size-F32"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33",
+        "original_name": "dataflow_backlog_size-F33"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34",
+        "original_name": "dataflow_backlog_size-F34"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35",
+        "original_name": "dataflow_backlog_size-F35"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36",
+        "original_name": "dataflow_backlog_size-F36"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37",
+        "original_name": "dataflow_backlog_size-F37"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38",
+        "original_name": "dataflow_backlog_size-F38"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39",
+        "original_name": "dataflow_backlog_size-F39"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40",
+        "original_name": "dataflow_backlog_size-F40"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41",
+        "original_name": "dataflow_backlog_size-F41"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42",
+        "original_name": "dataflow_backlog_size-F42"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43",
+        "original_name": "dataflow_backlog_size-F43"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44",
+        "original_name": "dataflow_backlog_size-F44"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45",
+        "original_name": "dataflow_backlog_size-F45"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738263000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46",
+        "original_name": "dataflow_backlog_size-F46"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47",
+        "original_name": "dataflow_backlog_size-F47"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 11444,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737857000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F48",
+        "original_name": "dataflow_backlog_size-F48"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F48"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738276000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49",
+        "original_name": "dataflow_backlog_size-F49"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50",
+        "original_name": "dataflow_backlog_size-F50"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51",
+        "original_name": "dataflow_backlog_size-F51"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738263000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52",
+        "original_name": "dataflow_backlog_size-F52"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738264000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53",
+        "original_name": "dataflow_backlog_size-F53"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F55",
+        "original_name": "dataflow_backlog_size-F55"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F55"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738276000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56",
+        "original_name": "dataflow_backlog_size-F56"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1738,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737899000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57",
+        "original_name": "dataflow_backlog_size-F57"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58",
+        "original_name": "dataflow_backlog_size-F58"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738274000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F54",
+        "original_name": "dataflow_backlog_size-F54"
+      },
+      "name": "BacklogBytes",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F54"
+      },
+      "name": "SystemWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738276000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47",
+        "original_name": "dataflow_backlog_elements-F47"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 85,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42",
+        "original_name": "dataflow_backlog_elements-F42"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39",
+        "original_name": "dataflow_backlog_elements-F39"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56",
+        "original_name": "dataflow_backlog_elements-F56"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40",
+        "original_name": "dataflow_backlog_elements-F40"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37",
+        "original_name": "dataflow_backlog_elements-F37"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31",
+        "original_name": "dataflow_backlog_elements-F31"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51",
+        "original_name": "dataflow_backlog_elements-F51"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45",
+        "original_name": "dataflow_backlog_elements-F45"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28",
+        "original_name": "dataflow_backlog_elements-F28"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737855000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 422066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F39"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F40"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737855000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 422066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F48"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738275000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F48"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 422066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F48"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 420066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": -2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738237000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 40066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F54"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": -2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F54"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F54"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F56"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 9.223371950454e+18,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34",
+        "original_name": "dataflow_backlog_elements-F34"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F43",
+        "original_name": "dataflow_backlog_elements-F43"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44",
+        "original_name": "dataflow_backlog_elements-F44"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F38",
+        "original_name": "dataflow_backlog_elements-F38"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53",
+        "original_name": "dataflow_backlog_elements-F53"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F58",
+        "original_name": "dataflow_backlog_elements-F58"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F26",
+        "original_name": "dataflow_backlog_elements-F26"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738237000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 40066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F31"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F34"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F37"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F44"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738237000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F45"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 378066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737855000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 422066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F47"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738237000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 40066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F53"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F28"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F33",
+        "original_name": "dataflow_backlog_elements-F33"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F35",
+        "original_name": "dataflow_backlog_elements-F35"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F41",
+        "original_name": "dataflow_backlog_elements-F41"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F30",
+        "original_name": "dataflow_backlog_elements-F30"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F25",
+        "original_name": "dataflow_backlog_elements-F25"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F46",
+        "original_name": "dataflow_backlog_elements-F46"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F32",
+        "original_name": "dataflow_backlog_elements-F32"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F27",
+        "original_name": "dataflow_backlog_elements-F27"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F36",
+        "original_name": "dataflow_backlog_elements-F36"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F29",
+        "original_name": "dataflow_backlog_elements-F29"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F52",
+        "original_name": "dataflow_backlog_elements-F52"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782737782000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 495066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F42"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": -2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1782738237000000.0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 40066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F51"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F55"
+      },
+      "name": "DataWatermark",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": -2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F55"
+      },
+      "name": "DataLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F55"
+      },
+      "name": "SystemLag",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1066490,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F57",
+        "original_name": "dataflow_backlog_elements-F57"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F50",
+        "original_name": "dataflow_backlog_elements-F50"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F49",
+        "original_name": "dataflow_backlog_elements-F49"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "execution_step": "F24",
+        "original_name": "dataflow_backlog_elements-F24"
+      },
+      "name": "BacklogElements",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 0,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "source",
+        "step": "s18"
+      },
+      "name": "elements_read",
+      "origin": "user"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Match filepatterns-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Match filepatterns-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 135,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Values/Values/Map-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Values/Values/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 355,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Impulse-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Impulse-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Impulse-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Impulse-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 14,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Pair with random key-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Pair with random key-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 85,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 77,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Match filepatterns-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Match filepatterns-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 85,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Pair with random key-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Pair with random key-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 142,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/ExpandIterable-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/ExpandIterable-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 355,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/Window.Into()/Window.Assign-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/Window.Into()/Window.Assign-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 142,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 15,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Values/Values/Map-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Values/Values/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 130,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/MergeBuckets-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/MergeBuckets-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 355,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/ReadStream-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 230,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 14,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/ReadStream-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 355,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/ExpandIterable-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/ExpandIterable-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 138,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/Window.Into()/Window.Assign-out0-ElementCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/Window.Into()/Window.Assign-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 85,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/MergeBuckets-out0-MeanByteCount",
+        "output_user_name": "FileBasedDeadLetterQueueReconsumer/MatchFiles/Reshuffle.ViaRandomKey/Reshuffle/GroupByKey/MergeBuckets-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 142,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s42"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 12811,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s26"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 400,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s27"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 22704,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s26"
+      },
+      "name": "ExecutionTime_StartBundle",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 205,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s27"
+      },
+      "name": "ExecutionTime_StartBundle",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1003,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s18"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 8022843,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s21"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 601,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s24"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 200,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-MeanByteCount",
+        "output_user_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 14,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out1-MeanByteCount",
+        "output_user_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out1"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3073,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2805,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0-MeanByteCount",
+        "output_user_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1652,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out0-ElementCount",
+        "output_user_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3074,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1518,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3073,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0-ElementCount",
+        "output_user_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2804,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-ElementCount",
+        "output_user_name": "Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out1-ElementCount",
+        "output_user_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out1"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out0-MeanByteCount",
+        "output_user_name": "Process Information Schema/Create Shadow tables and return Information Schemas-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2804,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s1"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1001,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s3"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 201,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s12"
+      },
+      "name": "ExecutionTime_StartBundle",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 203,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s5"
+      },
+      "name": "ExecutionTime_StartBundle",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 203,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s48"
+      },
+      "name": "active_partition_read_count",
+      "origin": "user"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s52"
+      },
+      "name": "query_count",
+      "origin": "user"
+    },
+    "scalar": 95,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split restriction-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split restriction-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 412,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s52/GroupByKeyRaw/ReadStream-out0-MeanByteCount",
+        "output_user_name": "s52/GroupByKeyRaw/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 280,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split restriction-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split restriction-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s47/GroupByKeyRaw/ReadStream-out0-MeanByteCount",
+        "output_user_name": "s47/GroupByKeyRaw/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 261,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2804,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair with initial restriction-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair with initial restriction-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair with initial restriction-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair with initial restriction-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 412,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2805,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2804,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Initialize the connector-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Initialize the connector-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 72,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode windows-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode windows-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s47/SplittableProcess-out0-ElementCount",
+        "output_user_name": "s47/SplittableProcess-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3074,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair with initial restriction-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair with initial restriction-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 307,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode windows-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode windows-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 307,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-MeanByteCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2808,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3073,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3077,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign unique key/AddKeys/Map-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign unique key/AddKeys/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Initialize the connector-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Initialize the connector-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair with initial restriction-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair with initial restriction-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode windows-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode windows-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 4,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s47/SplittableProcess-out0-MeanByteCount",
+        "output_user_name": "s47/SplittableProcess-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 177,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split restriction-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split restriction-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s52/GroupByKeyRaw/ReadStream-out0-ElementCount",
+        "output_user_name": "s52/GroupByKeyRaw/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 95,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 14,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode windows-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode windows-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 412,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split restriction-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split restriction-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 307,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign unique key/AddKeys/Map-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign unique key/AddKeys/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign unique key/AddKeys/Map-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign unique key/AddKeys/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 542,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-ElementCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s47/GroupByKeyRaw/ReadStream-out0-ElementCount",
+        "output_user_name": "s47/GroupByKeyRaw/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 391,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-MeanByteCount",
+        "output_user_name": "View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3073,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign unique key/AddKeys/Map-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign unique key/AddKeys/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 437,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 14,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-ElementCount",
+        "output_user_name": "View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s47"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 63443,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s48"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 2200,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s69"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 201,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s52"
+      },
+      "name": "ExecutionTime_ProcessElement",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 1112276,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s52"
+      },
+      "name": "active_partition_read_count",
+      "origin": "user"
+    },
+    "scalar": -1,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s53"
+      },
+      "name": "data_record_count",
+      "origin": "user"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s53"
+      },
+      "name": "data_record_committed_to_emitted_3000ms_to_inf_count",
+      "origin": "user"
+    },
+    "scalar": 7,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Pair with random key-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Pair with random key-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 596,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Gather metrics-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Gather metrics-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/Window.Into()/Window.Assign-out0-ElementCount",
+        "output_user_name": "Reshuffle/Reshuffle/Window.Into()/Window.Assign-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s52/SplittableProcess-out0-MeanByteCount",
+        "output_user_name": "s52/SplittableProcess-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 588,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Gather metrics-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Gather metrics-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 588,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "s52/SplittableProcess-out0-ElementCount",
+        "output_user_name": "s52/SplittableProcess-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/Window.Into()/Window.Assign-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Reshuffle/Window.Into()/Window.Assign-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 596,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Pair with random key-out0-ElementCount",
+        "output_user_name": "Reshuffle/Pair with random key-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn",
+        "step": "s76"
+      },
+      "name": "total_spanner_writes",
+      "origin": "user"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/ExpandIterable-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Reshuffle/ExpandIterable-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 596,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey/ReadStream-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 105,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Values/Values/Map-out0-ElementCount",
+        "output_user_name": "Reshuffle/Values/Values/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/GroupByKey/MergeBuckets-out0-ElementCount",
+        "output_user_name": "Reshuffle/Reshuffle/GroupByKey/MergeBuckets-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/ParDo(CollectWindows)-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/ParDo(CollectWindows)-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/GroupByKey/ReadStream-out0-ElementCount",
+        "output_user_name": "Reshuffle/Reshuffle/GroupByKey/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Filteration-out0-MeanByteCount",
+        "output_user_name": "Filteration-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 588,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Preprocess-out0-MeanByteCount",
+        "output_user_name": "Preprocess-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 136,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/WithKeys/AddKeys/Map-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/WithKeys/AddKeys/Map-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/WithKeys/AddKeys/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey+SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/Combine.GroupedValues/Partial-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey+SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/ExpandIterable-out0-ElementCount",
+        "output_user_name": "Reshuffle/Reshuffle/ExpandIterable-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey+SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/Combine.GroupedValues/Partial-out0-MeanByteCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey+SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/Combine.GroupedValues/Partial-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 17,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/ParDo(CollectWindows)-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/ParDo(CollectWindows)-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey/ReadStream-out0-ElementCount",
+        "output_user_name": "SpannerIO.ReadChangeStream/Wait.OnSignal/To wait view 0/Sample.Any/Combine.globally(SampleAny)/Combine.perKey(SampleAny)/GroupByKey/ReadStream-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 3,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/GroupByKey/MergeBuckets-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Reshuffle/GroupByKey/MergeBuckets-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 600,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Filteration-out0-ElementCount",
+        "output_user_name": "Filteration-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Values/Values/Map-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Values/Values/Map-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 588,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Preprocess-out0-ElementCount",
+        "output_user_name": "Preprocess-out0"
+      },
+      "name": "ElementCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 13,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "original_name": "Reshuffle/Reshuffle/GroupByKey/ReadStream-out0-MeanByteCount",
+        "output_user_name": "Reshuffle/Reshuffle/GroupByKey/ReadStream-out0"
+      },
+      "name": "MeanByteCount",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 685,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s47"
+      },
+      "name": "ExecutionTime_ProcessTimers",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 202,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "step": "s25"
+      },
+      "name": "ExecutionTime_StartBundle",
+      "origin": "dataflow/v1b3"
+    },
+    "scalar": 201,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  },
+  {
+    "name": {
+      "context": {
+        "namespace": "org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics",
+        "step": "s53"
+      },
+      "name": "data_record_committed_to_emitted_0ms_to_1000ms_count",
+      "origin": "user"
+    },
+    "scalar": 6,
+    "updateTime": "2026-06-29T13:04:37.701Z"
+  }
+]
