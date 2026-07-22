@@ -26,7 +26,7 @@ DEFAULT_DEPENDENCIES = [
     'boto3',
     'botocore',
     # When updating this, also update the container dependency in `python/default_base_yaml_requirements.txt`
-    'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-05-02/job_builder_util_transforms-0.1.1.tar.gz',
+    'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz',
 ]
 
 
