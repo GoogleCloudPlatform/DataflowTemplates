@@ -489,7 +489,8 @@ public class ChangeEventTransformerDoFnTest {
             schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
-    verify(processContextMock, times(0)).output(any());
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_EVENT_TAG), any());
   }
 
   @Test
