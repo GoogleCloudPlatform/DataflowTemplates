@@ -28,7 +28,8 @@ public abstract class MismatchedRecord {
   public static final String SCHEMA_NAME = "schema_name";
   public static final String TABLE_NAME_COLUMN_NAME = "table_name";
   public static final String MISMATCH_TYPE_COLUMN_NAME = "mismatch_type";
-  public static final String RECORD_KEY_COLUMN_NAME = "record_key";
+  public static final String SPANNER_RECORD_KEY_COLUMN_NAME = "spanner_record_key";
+  public static final String SOURCE_RECORD_KEY_COLUMN_NAME = "source_record_key";
   public static final String SOURCE_COLUMN_NAME = "source";
   public static final String HASH_COLUMN_NAME = "hash";
   public static final String SHARD_ID_COLUMN_NAME = "shard_id";
@@ -42,7 +43,11 @@ public abstract class MismatchedRecord {
 
   public abstract String getMismatchType();
 
-  public abstract String getRecordKey();
+  @Nullable
+  public abstract String getSpannerRecordKey();
+
+  @Nullable
+  public abstract String getSourceRecordKey();
 
   public abstract String getSource();
 
@@ -65,7 +70,9 @@ public abstract class MismatchedRecord {
 
     public abstract Builder setMismatchType(String mismatchType);
 
-    public abstract Builder setRecordKey(String recordKey);
+    public abstract Builder setSpannerRecordKey(String spannerRecordKey);
+
+    public abstract Builder setSourceRecordKey(String sourceRecordKey);
 
     public abstract Builder setSource(String source);
 
