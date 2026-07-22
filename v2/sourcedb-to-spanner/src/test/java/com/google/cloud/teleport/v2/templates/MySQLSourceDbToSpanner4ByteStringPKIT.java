@@ -27,10 +27,10 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,37 +44,37 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static CloudMySQLResourceManager mySQLResourceManager;
+  public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String TABLE = "table4bytepk";
+  private static final String TABLE_4BYTE = "table4bytepk";
   private static final String ID = "id";
   private static final String DESCRIPTION = "description";
   private static final String SPANNER_DDL_RESOURCE =
       "SourceDbToSpanner4ByteStringPKIT/spanner-schema.sql";
 
-  private JDBCResourceManager.JDBCSchema getMySQLSchema() {
+  private JDBCResourceManager.JDBCSchema getMySQL4ByteSchema() {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ID, "VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL");
     columns.put(DESCRIPTION, "VARCHAR(200)");
     return new JDBCResourceManager.JDBCSchema(columns, ID);
   }
 
-  private List<Map<String, Object>> getMySQLData() {
+  private List<Map<String, Object>> getMySQL4ByteData() {
     List<Map<String, Object>> data = new ArrayList<>();
 
     Map<String, Object> row1 = new HashMap<>();
-    row1.put(ID, "\uD83D\uDE00");
+    row1.put(ID, "😀");
     row1.put(DESCRIPTION, "Grinning Face");
     data.add(row1);
 
     Map<String, Object> row2 = new HashMap<>();
-    row2.put(ID, "\uD83D\uDE01");
+    row2.put(ID, "😁");
     row2.put(DESCRIPTION, "Beaming Face with Smiling Eyes");
     data.add(row2);
 
     Map<String, Object> row3 = new HashMap<>();
-    row3.put(ID, "\uD83D\uDE02");
+    row3.put(ID, "😂");
     row3.put(DESCRIPTION, "Face with Tears of Joy");
     data.add(row3);
 
@@ -83,7 +83,7 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
 
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpCloudMySQLResourceManager();
+    mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -94,11 +94,15 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
 
   @Test
   public void testMySqlToSpanner() throws IOException {
-    List<Map<String, Object>> mySQLData = getMySQLData();
-    mySQLResourceManager.createTable(TABLE, getMySQLSchema());
-    mySQLResourceManager.write(TABLE, mySQLData);
+    List<Map<String, Object>> mySQL4ByteData = getMySQL4ByteData();
+    mySQLResourceManager.createTable(TABLE_4BYTE, getMySQL4ByteSchema());
+    mySQLResourceManager.write(TABLE_4BYTE, mySQL4ByteData);
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put("uniformizationStageCountHint", "-1");
+    jobParameters.put("numPartitions", "5");
 
     jobInfo =
         launchDataflowJob(
@@ -107,13 +111,13 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            jobParameters,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
     SpannerAsserts.assertThatStructs(
-            spannerResourceManager.readTableRecords(TABLE, ID, DESCRIPTION))
-        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+            spannerResourceManager.readTableRecords(TABLE_4BYTE, ID, DESCRIPTION))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQL4ByteData);
   }
 }

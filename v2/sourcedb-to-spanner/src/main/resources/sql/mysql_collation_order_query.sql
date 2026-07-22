@@ -49,7 +49,7 @@ SET @charset_chars = CONCAT(
     'FROM ( ', @all_chars, ' ) AS all_chars ',
     'HAVING utf8_char IS NOT NULL AND hex_val NOT BETWEEN ''EDA080'' AND ''EDBFBF'' ',
   ') AS valid_utf8_chars ',
-  'WHERE charset_char IS NOT NULL AND (charset_char != ''?'' OR utf8_char = ''?'') ',
+  'WHERE charset_char IS NOT NULL AND (HEX(CONVERT(charset_char USING utf8mb4)) != ''3F'' OR hex_val = ''3F'') ',
 ')');
 
 
