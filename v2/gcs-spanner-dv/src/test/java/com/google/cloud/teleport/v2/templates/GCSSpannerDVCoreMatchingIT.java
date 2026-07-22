@@ -50,7 +50,7 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVCoreMatchingIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "GCSSpannerDVCoreMatchingIT/CoreMatchingSchema.sql";
+      "GCSSpannerDVCoreMatchingIT/spanner-schema.sql";
 
   @Before
   public void setUp() throws IOException {
