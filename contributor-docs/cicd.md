@@ -15,7 +15,7 @@ Results from this workflow can be found under the [actions tab](https://github.c
 Splitting one or more templates' tests into a separate workflow can help workflows run significantly more quickly since they don't require building all modules.
 To split a set of templates into their own CI workflow, follow these steps:
 
-1) Add an alias to the templates you would like to build/test together in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/cicd/internal/flags/common-flags.go#L32
+1) Add an alias to the templates you would like to build/test together in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/cicd/internal/flags/common-flags.go#L25
 2) Add a new workflow to the `.github/` folder for your tests. This can be a copy of the main [java-pr workflow](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/java-pr.yml) with a few changes:
 
 - Update the [pull_request trigger paths](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/java-pr.yml#L23) to point to the templates you want to run your tests against.
@@ -43,7 +43,7 @@ There are 3 scripts: [configure-runners.sh](../.github/scripts/configure-runners
 [startup-script.sh](../.github/scripts/startup-script.sh) and 
 [shutdown-script.sh](../.github/scripts/shutdown-script.sh). The first is the main script used to provision the runners 
 themselves. The startup script is what will be invoked by the GCE VM as it is booted up for the first time and will 
-install all necessary packages needed by IT's, unit tests, Release, etc. as well as link the machine as a runner for the 
+install all necessary packages needed by ITs, unit tests, releases, etc. as well as link the machine as a runner for the 
 repo. Likewise, the shutdown script is run when the VM is shutdown.
 
 To provision GitHub actions runners, there are a couple prerequisites
