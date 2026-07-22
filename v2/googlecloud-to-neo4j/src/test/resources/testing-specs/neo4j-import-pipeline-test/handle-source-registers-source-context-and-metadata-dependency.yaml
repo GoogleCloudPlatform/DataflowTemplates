@@ -1,0 +1,22 @@
+version: "1"
+sources:
+  - type: text
+    name: inline-source
+    format: excel
+    header: [id]
+    data:
+      - ["1"]
+targets:
+  nodes:
+    - name: a-node-target
+      source: inline-source
+      write_mode: merge
+      labels: [Entity]
+      properties:
+        - source_field: id
+          target_property: id
+      schema:
+        key_constraints:
+          - name: entity_key
+            label: Entity
+            properties: [id]

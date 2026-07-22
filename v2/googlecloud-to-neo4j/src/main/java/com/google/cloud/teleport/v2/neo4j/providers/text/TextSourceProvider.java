@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
@@ -30,10 +30,10 @@ import org.apache.beam.sdk.values.Row;
 public class TextSourceProvider implements SourceProvider {
 
   private final TextSource source;
-  private final TargetSequence targetSequence;
+  private final StepSequence targetSequence;
   private OverlayTokens overlayTokens;
 
-  public TextSourceProvider(TextSource source, TargetSequence targetSequence) {
+  public TextSourceProvider(TextSource source, StepSequence targetSequence) {
     this.source = source;
     this.targetSequence = targetSequence;
   }

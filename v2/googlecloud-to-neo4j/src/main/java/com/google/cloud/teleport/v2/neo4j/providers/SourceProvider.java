@@ -26,7 +26,7 @@ import org.apache.beam.sdk.values.Row;
 /** Provider interface, implemented for every source. */
 public interface SourceProvider {
 
-  void configure(OverlayTokens optionsParams);
+  void configure(OverlayTokens overlayTokens);
 
   /**
    * Push down capability determine whether groupings and aggregations are executed as SQL queries.

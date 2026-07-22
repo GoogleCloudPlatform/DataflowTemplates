@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
@@ -46,7 +46,7 @@ public class GoogleToNeo4jTest {
                 "a-text-source",
                 List.of(List.of("v1", "v2"), List.of("v3", "v4")),
                 List.of("column1", "column2")),
-            new TargetSequence());
+            new StepSequence());
     overlayTokens = new OverlayTokens(Map.of("limit", "7"));
     sourceProvider.configure(overlayTokens);
   }

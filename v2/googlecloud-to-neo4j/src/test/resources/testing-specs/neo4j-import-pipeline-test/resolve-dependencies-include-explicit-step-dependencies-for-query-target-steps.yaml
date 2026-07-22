@@ -1,0 +1,27 @@
+version: "1"
+sources:
+  - type: text
+    name: inline-source
+    format: excel
+    header: [seller_id]
+    data:
+      - ["s1"]
+targets:
+  nodes:
+    - name: b-node-target
+      source: inline-source
+      write_mode: merge
+      labels: [Seller]
+      properties:
+        - source_field: seller_id
+          target_property: id
+      schema:
+        key_constraints:
+          - name: seller_key
+            label: Seller
+            properties: [id]
+  queries:
+    - name: query-target
+      source: inline-source
+      depends_on: [b-node-target]
+      query: "UNWIND $rows AS row RETURN row"
