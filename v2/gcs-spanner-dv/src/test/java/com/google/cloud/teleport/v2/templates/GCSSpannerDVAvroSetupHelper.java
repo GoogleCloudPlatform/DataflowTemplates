@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.common.io.Resources;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -35,15 +33,10 @@ public class GCSSpannerDVAvroSetupHelper {
   private static final Schema ACCOUNT_ROLES_SCHEMA;
 
   static {
-    try (java.io.InputStream usersIs =
-            Resources.getResource("GCSSpannerDVAvroSetupHelper/users.avsc").openStream();
-        java.io.InputStream rolesIs =
-            Resources.getResource("GCSSpannerDVAvroSetupHelper/account_roles.avsc").openStream()) {
-      USERS_SCHEMA = new Schema.Parser().parse(usersIs);
-      ACCOUNT_ROLES_SCHEMA = new Schema.Parser().parse(rolesIs);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to load Avro schemas", e);
-    }
+    USERS_SCHEMA =
+        GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc");
+    ACCOUNT_ROLES_SCHEMA =
+        GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/account_roles.avsc");
   }
 
   /**

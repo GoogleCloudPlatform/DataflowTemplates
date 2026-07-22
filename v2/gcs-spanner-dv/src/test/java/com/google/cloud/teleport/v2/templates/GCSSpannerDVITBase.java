@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -197,6 +198,20 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
+  }
+
+  /**
+   * Helper function to load an Avro Schema from a resource file.
+   *
+   * @param resourceName The path to the Avro schema file relative to the resources directory
+   * @return The parsed Avro Schema
+   */
+  public static Schema getSchemaFromAvscFile(String resourceName) {
+    try (InputStream is = Resources.getResource(resourceName).openStream()) {
+      return new Schema.Parser().parse(is);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to load Avro schema from resource: " + resourceName, e);
+    }
   }
 
   /**
