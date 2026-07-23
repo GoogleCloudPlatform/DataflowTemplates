@@ -3,5 +3,5 @@ CREATE TABLE Members (
     event_id STRING(MAX) NOT NULL,
     full_name STRING(MAX),
     age INT64,
-    created_at TIMESTAMP,
+    created_at TIMESTAMP
 ) PRIMARY KEY (user_id, event_id);
