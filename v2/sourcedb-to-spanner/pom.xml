@@ -95,6 +95,10 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-neo4j</artifactId>
+        </dependency>
 
         <!-- Test Dependencies -->
         <dependency>

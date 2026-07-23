@@ -25,6 +25,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String ASTRA_DB_SOURCE_DIALECT = "ASTRA_DB";
   String MYSQL_SOURCE_DIALECT = "MYSQL";
   String PG_SOURCE_DIALECT = "POSTGRESQL";
+  String NEO4J_SOURCE_DIALECT = "NEO4J";
 
   @TemplateParameter.Enum(
       order = 1,
@@ -33,10 +34,11 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
         @TemplateParameter.TemplateEnumOption(ASTRA_DB_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(CASSANDRA_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(MYSQL_SOURCE_DIALECT),
-        @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT)
+        @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(NEO4J_SOURCE_DIALECT)
       },
       description = "Dialect of the source database",
-      helpText = "Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`.")
+      helpText = "Possible values are `CASSANDRA`, `MYSQL`, `POSTGRESQL` and `NEO4J`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 
@@ -440,4 +442,41 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getGcsOutputDirectory();
 
   void setGcsOutputDirectory(String value);
+
+  @TemplateParameter.Text(
+      order = 35,
+      optional = true,
+      description = "Neo4j Bolt URI",
+      helpText = "Connection URI for the source Neo4j database (e.g. bolt://10.128.0.15:7687)")
+  String getNeo4jUri();
+
+  void setNeo4jUri(String value);
+
+  @TemplateParameter.Text(
+      order = 36,
+      optional = true,
+      description = "Neo4j User Name",
+      helpText = "Database user name to authenticate against Neo4j")
+  String getNeo4jUser();
+
+  void setNeo4jUser(String value);
+
+  @TemplateParameter.Password(
+      order = 37,
+      optional = true,
+      description = "Neo4j Password",
+      helpText = "Database password to authenticate against Neo4j")
+  String getNeo4jPassword();
+
+  void setNeo4jPassword(String value);
+
+  @TemplateParameter.Integer(
+      order = 38,
+      optional = true,
+      description = "Neo4j read partition chunk size",
+      helpText = "Size of ID ranges queried in parallel (default: 100000)")
+  @Default.Integer(100000)
+  Integer getNeo4jReadChunkSize();
+
+  void setNeo4jReadChunkSize(Integer value);
 }
