@@ -32,8 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests verifying the core data comparison logic of the GCSSpannerDV pipeline.
@@ -47,19 +45,15 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVCoreMatchingIT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "GCSSpannerDVCoreMatchingIT/spanner-schema.sql";
 
   @Before
   public void setUp() throws IOException {
-    LOG.info("Setting up Spanner and BigQuery resources");
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-    LOG.info("BigQuery dataset created");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    LOG.info("Spanner instance created");
   }
 
   /**
@@ -72,7 +66,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
 
     // 1. Generate and Upload Avro Records (Source)
-    LOG.info("Generating and Uploading Avro Records to GCS");
 
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
     Instant t2 = Instant.parse("2024-01-02T10:00:00Z");
@@ -136,7 +129,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
         rolesRecords);
 
     // 2. Inject Spanner Records (Destination)
-    LOG.info("Injecting Spanner records");
 
     spannerResourceManager.write(
         Arrays.asList(
@@ -202,7 +194,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     Thread.sleep(20000);
 
     // 3. Launch Pipeline
-    LOG.info("Launching Dataflow validation job");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
