@@ -68,45 +68,19 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
-      optional = true,
-      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*|^$)"},
       groupName = "Source",
-      description = "Source database connection URL or shard config path.",
+      description = "Source connection config file URL.",
       helpText =
-          "The URL to connect to the source database host. This can be either:"
-              + " 1. A JDBC connection URL for a single source database, which"
-              + " must contain the  host, port and source db name and can"
-              + " optionally contain properties like  autoReconnect,"
-              + " maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`."
-              + " For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
-              + " 2. A Cloud Storage path to a shard config file for sharded"
-              + " migrations. For example, `gs://my-bucket/my-shard-config.yaml`."
-              + " This parameter is required except for ASTRA_DB source.")
+          "The URL of the source connection config file. The file format is dependent on the source type."
+              + " For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json))."
+              + " For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json))."
+              + " For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf))."
+              + " This parameter is required.",
+      example = "gs://your-bucket/source-config.json")
   @Default.String("")
   String getSourceConfigURL();
 
   void setSourceConfigURL(String url);
-
-  @TemplateParameter.Text(
-      order = 5,
-      optional = true,
-      regexes = {"^.+$"},
-      description = "JDBC connection username.",
-      helpText = "The username to be used for the JDBC connection.")
-  @Default.String("")
-  String getUsername(); // Make optional
-
-  void setUsername(String username);
-
-  @TemplateParameter.Password(
-      order = 6,
-      optional = true,
-      description = "JDBC connection password.",
-      helpText = "The password to be used for the JDBC connection.")
-  @Default.String("")
-  String getPassword(); // make optional
-
-  void setPassword(String password);
 
   @TemplateParameter.Text(
       order = 7,
@@ -253,17 +227,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationCustomParameters(String value);
 
   @TemplateParameter.Text(
-      order = 20,
-      optional = true,
-      description = "Namespace",
-      helpText =
-          "Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used")
-  @Default.String("")
-  String getNamespace();
-
-  void setNamespace(String value);
-
-  @TemplateParameter.Text(
       order = 21,
       optional = true,
       description = "Use Inserts instead of Upserts for spanner mutations.",
@@ -364,47 +327,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Long getUniformizationStageCountHint();
 
   void setUniformizationStageCountHint(Long value);
-
-  @TemplateParameter.Text(
-      order = 28,
-      optional = true,
-      description = "Astra DB token",
-      helpText =
-          "AstraDB token, ignored for non-AstraDB dialects. This token is used to automatically download the securebundle by the tempalte.")
-  @Default.String("")
-  String getAstraDBToken();
-
-  void setAstraDBToken(String value);
-
-  @TemplateParameter.Text(
-      order = 29,
-      optional = true,
-      description = "Astra DB databaseID",
-      helpText = "AstraDB databaseID, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBDatabaseId();
-
-  void setAstraDBDatabaseId(String value);
-
-  @TemplateParameter.Text(
-      order = 30,
-      optional = true,
-      description = "Astra DB keySpace",
-      helpText = "AstraDB keySpace, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBKeySpace();
-
-  void setAstraDBKeySpace(String value);
-
-  @TemplateParameter.Text(
-      order = 31,
-      optional = true,
-      description = "Astra DB Region",
-      helpText = "AstraDB region, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBRegion();
-
-  void setAstraDBRegion(String value);
 
   @TemplateParameter.Text(
       order = 32,

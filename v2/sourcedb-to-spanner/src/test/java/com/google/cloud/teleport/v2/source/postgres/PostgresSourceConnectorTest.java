@@ -51,14 +51,13 @@ public class PostgresSourceConnectorTest {
 
   @Test
   public void testGetJdbcUrl_constructsUrl() {
-    String url = connector.getJdbcUrl(null, "localhost", 5432, "test_db", null, null, null);
+    String url = connector.getJdbcUrl("localhost", 5432, "test_db", null, null, null);
     assertThat(url).isEqualTo("jdbc:postgresql://localhost:5432/test_db?currentSchema=public");
   }
 
   @Test
   public void testGetJdbcUrl_withConnectionProperties() {
-    String url =
-        connector.getJdbcUrl(null, "localhost", 5432, "test_db", "ssl=true", "myschema", null);
+    String url = connector.getJdbcUrl("localhost", 5432, "test_db", "ssl=true", "myschema", null);
     assertThat(url)
         .isEqualTo("jdbc:postgresql://localhost:5432/test_db?currentSchema=myschema&ssl=true");
   }

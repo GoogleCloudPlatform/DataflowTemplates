@@ -174,16 +174,13 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
 
   @Override
   public String getJdbcUrl(
-      String jdbcUrl,
       String host,
       int port,
       String dbName,
       String connectionProperties,
       String namespace,
       Integer fetchSize) {
-    if (jdbcUrl == null) {
-      jdbcUrl = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
-    }
+    String jdbcUrl = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
     if (StringUtils.isBlank(namespace)) {
       namespace = "public";
     }

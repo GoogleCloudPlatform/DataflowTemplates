@@ -37,15 +37,12 @@ import static com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.
 import static com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLES;
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
@@ -54,6 +51,7 @@ import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapp
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -62,7 +60,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.cassandra.CassandraIO;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -96,58 +93,43 @@ public class CassandraIOWrapperHelperTest {
   }
 
   @Test
-  public void testBuildDataSource() {
-
+  public void testBuildDataSource() throws Exception {
     String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
     URL testUrl = Resources.getResource("CassandraUT/test-cassandra-config.conf");
 
-    CassandraIO.Read<SourceRow> mockCassandraIORead = mock(CassandraIO.Read.class);
+    OptionsMap optionsMap;
     try (MockedStatic mockFileReader = mockStatic(JarFileReader.class)) {
-
       mockFileReader
           .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
-          .thenReturn(new URL[] {testUrl})
-          .thenReturn(new URL[] {testUrl})
-          /* Empty URL List to test FileNotFoundException handling. */
-          .thenReturn(new URL[] {});
-
-      DataSource dataSource =
-          CassandraIOWrapperHelper.buildDataSource(
-              testGcsPath,
-              null,
-              CassandraDialect.OSS,
-              GuardedStringValueProvider.create(""),
-              "",
-              "",
-              "");
-      assertThat(dataSource.cassandra().oss().loggedKeySpace()).isEqualTo("test-keyspace");
-      assertThat(dataSource.cassandra().oss().localDataCenter()).isEqualTo("datacenter1");
-      assertThat(dataSource.cassandra().oss().numPartitions()).isEqualTo(null);
-      assertThat(
-              CassandraIOWrapperHelper.buildDataSource(
-                      testGcsPath,
-                      42,
-                      CassandraDialect.OSS,
-                      GuardedStringValueProvider.create(""),
-                      "",
-                      "",
-                      "")
-                  .cassandra()
-                  .oss()
-                  .numPartitions())
-          .isEqualTo(42);
-      assertThrows(
-          SchemaDiscoveryException.class,
-          () ->
-              CassandraIOWrapperHelper.buildDataSource(
-                  testGcsPath,
-                  null,
-                  CassandraDialect.OSS,
-                  GuardedStringValueProvider.create(""),
-                  "",
-                  "",
-                  ""));
+          .thenReturn(new URL[] {testUrl});
+      optionsMap = CassandraDriverConfigLoader.getOptionsMapFromFile(testGcsPath);
     }
+
+    DataSource dataSource =
+        CassandraIOWrapperHelper.buildDataSource(
+            optionsMap,
+            null,
+            CassandraDialect.OSS,
+            GuardedStringValueProvider.create(""),
+            "",
+            "",
+            "");
+    assertThat(dataSource.cassandra().oss().loggedKeySpace()).isEqualTo("test-keyspace");
+    assertThat(dataSource.cassandra().oss().localDataCenter()).isEqualTo("datacenter1");
+    assertThat(dataSource.cassandra().oss().numPartitions()).isEqualTo(null);
+    assertThat(
+            CassandraIOWrapperHelper.buildDataSource(
+                    optionsMap,
+                    42,
+                    CassandraDialect.OSS,
+                    GuardedStringValueProvider.create(""),
+                    "",
+                    "",
+                    "")
+                .cassandra()
+                .oss()
+                .numPartitions())
+        .isEqualTo(42);
   }
 
   @Test
@@ -275,7 +257,7 @@ public class CassandraIOWrapperHelperTest {
 
     DataSource dataSource =
         CassandraIOWrapperHelper.buildDataSource(
-            "",
+            null,
             null,
             CassandraDialect.ASTRA,
             testAstraDbToken,

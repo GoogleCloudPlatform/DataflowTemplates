@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -57,16 +58,8 @@ public final class OptionsToConfigBuilder {
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
-      SourceDbToSpannerOptions options,
-      List<String> tables,
-      String shardId,
-      Wait.OnSignal<?> waitOn) {
+      SourceDbToSpannerOptions options, Shard shard, List<String> tables, Wait.OnSignal<?> waitOn) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-    String sourceDbURL = options.getSourceConfigURL();
-    String dbName = extractDbFromURL(sourceDbURL);
-    String username = options.getUsername();
-    String password = options.getPassword();
-    String namespace = options.getNamespace();
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
     String jdbcDriverJars = options.getJdbcDriverJars();
@@ -83,15 +76,7 @@ public final class OptionsToConfigBuilder {
     return getJdbcIOWrapperConfig(
         sqlDialect,
         tables,
-        sourceDbURL,
-        null,
-        null,
-        0,
-        username,
-        password,
-        dbName,
-        namespace,
-        shardId,
+        shard,
         jdbcDriverClassName,
         jdbcDriverJars,
         maxConnections,
@@ -107,15 +92,7 @@ public final class OptionsToConfigBuilder {
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
       SQLDialect sqlDialect,
       List<String> tables,
-      String sourceDbURL,
-      String host,
-      String connectionProperties,
-      int port,
-      String username,
-      String password,
-      String dbName,
-      String namespace,
-      String shardId,
+      Shard shard,
       String jdbcDriverClassName,
       String jdbcDriverJars,
       long maxConnections,
@@ -130,15 +107,16 @@ public final class OptionsToConfigBuilder {
         SourceConnectorFactory.getSourceJdbcConnectorByDialect(sqlDialect);
     JdbcIOWrapperConfig.Builder builder = connector.getJdbcIOWrapperConfigBuilder();
     SourceSchemaReference sourceSchemaReference =
-        connector.getSourceSchemaReference(dbName, namespace);
+        connector.getSourceSchemaReference(shard.getDbName(), shard.getNamespace());
     builder =
         builder
             .setSourceSchemaReference(sourceSchemaReference)
             .setDbAuth(
                 LocalCredentialsProvider.builder()
                     .setUserName(
-                        username) // TODO - support taking username and password from url as well
-                    .setPassword(password)
+                        shard.getUserName()) // TODO - support taking username and password from url
+                    // as well
+                    .setPassword(shard.getPassword())
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
             .setJdbcDriverJars(jdbcDriverJars);
@@ -154,13 +132,18 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    sourceDbURL =
+    String sourceDbURL =
         connector.getJdbcUrl(
-            sourceDbURL, host, port, dbName, connectionProperties, namespace, fetchSize);
+            shard.getHost(),
+            Integer.parseInt(shard.getPort()),
+            shard.getDbName(),
+            shard.getConnectionProperties(),
+            shard.getNamespace(),
+            fetchSize);
 
     builder.setSourceDbURL(sourceDbURL);
-    if (!StringUtils.isEmpty(shardId)) {
-      builder.setShardID(shardId);
+    if (!StringUtils.isEmpty(shard.getLogicalShardId())) {
+      builder.setShardID(shard.getLogicalShardId());
     }
 
     if (waitOn != null) {

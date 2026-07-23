@@ -62,7 +62,7 @@ mvn test
 ### Executing Template
 
 #### Required Parameters
-* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf). Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
+* **sourceConfigURL** (Source connection config file URL): The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
 * **username** (username of the source database): The username which can be used to connect to the source database.
 * **password** (username of the source database): The username which can be used to connect to the source database.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
@@ -86,7 +86,7 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
+        --parameters sourceConfigURL="gs://<bucket-name>/source-config.json",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
         --additional-experiments=disable_runner_v2
 ```
 #### Replaying DLQ entries.

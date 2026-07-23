@@ -23,8 +23,8 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.templates.DbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController;
 import com.google.common.collect.ImmutableMap;
@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.parquet.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +45,16 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSour
 
   @Override
   public PipelineResult executeMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+      SourceDbToSpannerOptions options,
+      SourceConnectionConfig sourceConnectionConfig,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig) {
+    Preconditions.checkArgument(
+        (sourceConnectionConfig instanceof JdbcShardConfig),
+        "Source config is not type of JdbcShardConfig.");
     DbConfigContainer dbConfigContainer;
-    if (options.getSourceConfigURL().startsWith("gs://")) {
+    List<Shard> shards = ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+    if (shards.size() > 1) {
       // TODO
       // Merge logical shards into 1 physical shard
       // Populate completion per shard
@@ -54,16 +62,13 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSour
       // Write to common DLQ ?
       SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
-      List<Shard> shards =
-          new ShardFileReader(new SecretManagerAccessorImpl())
-              .readForwardMigrationShardingConfig(options.getSourceConfigURL());
       LOG.info(
           "running migration for {} shards: {}",
           shards.stream().count(),
           shards.stream().map(Shard::getHost).collect(Collectors.toList()));
       dbConfigContainer = new ShardedJdbcDbConfigContainer(shards, sqlDialect, options);
     } else {
-      dbConfigContainer = new SingleInstanceJdbcDbConfigContainer(options);
+      dbConfigContainer = new SingleInstanceJdbcDbConfigContainer(options, shards.get(0));
     }
     return PipelineController.executeMigrationForDbConfigContainer(
         options, pipeline, spannerConfig, dbConfigContainer);
@@ -81,7 +86,6 @@ public abstract class AbstractJdbcSrcToSpSourceConnector implements ISrcToSpSour
 
   /** Gets the JDBC URL with source-specific properties added. */
   public abstract String getJdbcUrl(
-      String jdbcUrl,
       String host,
       int port,
       String dbName,

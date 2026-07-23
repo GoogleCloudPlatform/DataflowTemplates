@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper;
 
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
@@ -41,7 +42,7 @@ public final class CassandraIoWrapper implements IoWrapper {
       tableReaders;
 
   public CassandraIoWrapper(
-      String gcsPath,
+      OptionsMap optionsMap,
       List<String> sourceTables,
       @Nullable Integer numPartitions,
       CassandraDialect cassandraDialect,
@@ -51,7 +52,7 @@ public final class CassandraIoWrapper implements IoWrapper {
       String astraDBRegion) {
     DataSource dataSource =
         CassandraIOWrapperHelper.buildDataSource(
-            gcsPath,
+            optionsMap,
             numPartitions,
             cassandraDialect,
             astraDBToken,

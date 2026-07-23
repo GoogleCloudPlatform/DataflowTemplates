@@ -15,23 +15,27 @@
  */
 package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper;
 
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.common.base.Preconditions;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
-import org.apache.commons.lang3.StringUtils;
 
 @AutoValue
 public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
 
-  /** GCS Path for Cassandra Driver Config. */
-  public abstract String gcsConfigPath();
+  /** Options Map for Cassandra Driver Config. */
+  @Nullable
+  public abstract OptionsMap optionsMap();
 
   /**
    * Number of partitions to read from. Defaults to Null.
@@ -44,7 +48,6 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   /** Cassandra Dialect. */
   public abstract CassandraDataSource.CassandraDialect cassandraDialect();
 
-  /** Astra DB options. Empty for OSS dialect. */
   /** Astra DB Token. * */
   public abstract GuardedStringValueProvider astraDBToken();
 
@@ -54,25 +57,44 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   /** Astra DB Keyspace. * */
   public abstract String astraDBKeyspace();
 
-  /** Astra DB Keyspace. * */
+  /** Astra DB Region. * */
   public abstract String astraDBRegion();
 
-  private static CassandraIOWrapperFactory create(
-      String gcsConfigPath,
-      Integer numPartions,
-      String sourceDialect,
-      GuardedStringValueProvider astraDBToken,
-      String astraDBDatabaseId,
-      String astraDBKeyspace,
-      String astraDBRegion) {
+  public static CassandraIOWrapperFactory fromConfig(
+      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
+    Preconditions.checkArgument(
+        options.getSourceDbDialect().equals(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT)
+            || options
+                .getSourceDbDialect()
+                .equals(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT),
+        "Unexpected Dialect " + options.getSourceDbDialect() + " for Cassandra Source");
+
+    GuardedStringValueProvider astraDBToken = GuardedStringValueProvider.create("");
+    String astraDBDatabaseId = "";
+    String astraDBKeyspace = "";
+    String astraDBRegion = "";
+    OptionsMap optionsMap = null;
+
+    if (sourceConnectionConfig instanceof AstraConnectionConfig) {
+      AstraConnectionConfig astraConfig = (AstraConnectionConfig) sourceConnectionConfig;
+      astraDBToken = GuardedStringValueProvider.create(astraConfig.getAstraToken());
+      astraDBDatabaseId = astraConfig.getDatabaseId();
+      astraDBKeyspace = astraConfig.getKeySpace();
+      astraDBRegion = astraConfig.getAstraDbRegion();
+    } else if (sourceConnectionConfig instanceof CassandraConnectionConfig) {
+      optionsMap = ((CassandraConnectionConfig) sourceConnectionConfig).getOptionsMap();
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported source connection config type: " + sourceConnectionConfig);
+    }
     CassandraDataSource.CassandraDialect cassandraDialect =
-        switch (sourceDialect) {
+        switch (options.getSourceDbDialect()) {
           case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT -> CassandraDialect.ASTRA;
           default -> CassandraDialect.OSS;
         };
     return new AutoValue_CassandraIOWrapperFactory(
-        gcsConfigPath,
-        numPartions,
+        optionsMap,
+        options.getNumPartitions(),
         cassandraDialect,
         astraDBToken,
         astraDBDatabaseId,
@@ -80,35 +102,12 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
         astraDBRegion);
   }
 
-  public static CassandraIOWrapperFactory fromPipelineOptions(SourceDbToSpannerOptions options) {
-    String gcsPath = options.getSourceConfigURL();
-    // Implementation Details. the pipeline options are strings.
-    Preconditions.checkArgument(
-        options.getSourceDbDialect().equals(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT)
-            || options
-                .getSourceDbDialect()
-                .equals(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT),
-        "Unexpected Dialect " + options.getSourceDbDialect() + " for Cassandra Source");
-    Preconditions.checkArgument(
-        options.getSourceDbDialect().equals(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT)
-            || StringUtils.startsWith(gcsPath, "gs://"),
-        "GCS path Expected in place of `" + gcsPath + "`.");
-    return CassandraIOWrapperFactory.create(
-        options.getSourceConfigURL(),
-        options.getNumPartitions(),
-        options.getSourceDbDialect(),
-        GuardedStringValueProvider.create(options.getAstraDBToken()),
-        options.getAstraDBDatabaseId(),
-        options.getAstraDBKeySpace(),
-        options.getAstraDBRegion());
-  }
-
   /** Create an {@link IoWrapper} instance for a list of SourceTables. */
   @Override
   public IoWrapper getIOWrapper(List<String> sourceTables, OnSignal<?> waitOnSignal) {
     /** TODO(vardhanvthigle@) incorporate waitOnSignal */
     return new CassandraIoWrapper(
-        gcsConfigPath(),
+        optionsMap(),
         sourceTables,
         numPartitions(),
         cassandraDialect(),

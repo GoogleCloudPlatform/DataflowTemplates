@@ -19,7 +19,10 @@ import static java.util.Arrays.stream;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.gson.Gson;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.BufferedReader;
@@ -45,8 +48,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +117,21 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       CloudSqlResourceManager cloudSqlResourceManager,
       CustomTransformation customTransformation)
       throws IOException {
+
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setHost(cloudSqlResourceManager.getHost());
+    shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
+    shard.setDbName(cloudSqlResourceManager.getDatabaseName());
+    shard.setUser(cloudSqlResourceManager.getUsername());
+    shard.setPassword(cloudSqlResourceManager.getPassword());
+
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(List.of(shard));
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+
     // launch dataflow template
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
@@ -125,9 +141,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
             .addParameter("outputDirectory", getGcsPath("output", gcsResourceManager))
-            .addParameter("sourceConfigURL", cloudSqlResourceManager.getUri())
-            .addParameter("username", cloudSqlResourceManager.getUsername())
-            .addParameter("password", cloudSqlResourceManager.getPassword())
+            .addParameter("sourceConfigURL", getGcsPath("input/shard.json", gcsResourceManager))
             .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
             .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
@@ -189,51 +203,29 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
 
   protected void createAndUploadBulkShardConfigToGcs(
       ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
-    JSONObject bulkConfig = new JSONObject();
-    bulkConfig.put("configType", "dataflow");
-
-    JSONObject shardConfigBulk = new JSONObject();
-
-    JSONObject schemaSourceJson = new JSONObject();
-    schemaSourceJson.put("dataShardId", "");
-    schemaSourceJson.put("host", "");
-    schemaSourceJson.put("user", "");
-    schemaSourceJson.put("password", "");
-    schemaSourceJson.put("port", "");
-    schemaSourceJson.put("dbName", "");
-    shardConfigBulk.put("schemaSource", schemaSourceJson);
-
-    JSONArray dataShardsArray = new JSONArray();
+    List<Shard> shards = new ArrayList<>();
     if (dataShardsList != null) {
       for (DataShard shardData : dataShardsList) {
-        JSONObject shardJson = new JSONObject();
-
-        shardJson.put("dataShardId", shardData.dataShardId);
-        shardJson.put("host", shardData.host);
-        shardJson.put("user", shardData.user);
-        shardJson.put("password", shardData.password);
-        shardJson.put("port", shardData.port);
-        shardJson.put("dbName", shardData.dbName);
-        shardJson.put("namespace", shardData.namespace);
-        shardJson.put("connectionProperties", shardData.connectionProperties);
-
-        JSONArray databasesArray = new JSONArray();
-
-        for (Database dbData : shardData.databases) {
-          JSONObject dbJson = new JSONObject();
-          dbJson.put("dbName", dbData.dbName);
-          dbJson.put("databaseId", dbData.databaseId);
-          dbJson.put("refDataShardId", dbData.refDataShardId);
-          databasesArray.put(dbJson);
+        Shard shard = new Shard();
+        shard.setLogicalShardId(shardData.dataShardId);
+        shard.setHost(shardData.host);
+        shard.setUser(shardData.user);
+        shard.setPassword(shardData.password);
+        shard.setPort(shardData.port);
+        shard.setDbName(shardData.dbName);
+        if (shardData.namespace != null) {
+          shard.setNamespace(shardData.namespace);
         }
-        shardJson.put("databases", databasesArray);
-        dataShardsArray.put(shardJson);
+        if (shardData.connectionProperties != null) {
+          shard.setConnectionProperties(shardData.connectionProperties);
+        }
+        shards.add(shard);
       }
     }
-    shardConfigBulk.put("dataShards", dataShardsArray);
 
-    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
-    String shardFileContents = bulkConfig.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
   }
