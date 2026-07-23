@@ -20,13 +20,22 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -36,6 +45,20 @@ import org.slf4j.LoggerFactory;
 public class BoundaryExtractorFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(BoundaryExtractorFactory.class);
+
+  private static final Pattern TIME_PATTERN = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
+
+  private static final Pattern TIMETZ_PATTERN =
+      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}(:\\d{2}(:\\d{2})?)?)$");
+
+  private static final DateTimeFormatter TIMETZ_FORMAT =
+      new DateTimeFormatterBuilder()
+          .appendPattern("HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+          .optionalEnd()
+          .appendOffset("+HH:mm:ss", "+00")
+          .toFormatter();
 
   @FunctionalInterface
   public interface BoundaryDurationExtractor extends Serializable {
@@ -58,6 +81,12 @@ public class BoundaryExtractorFactory {
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
+          .put(
+              LocalTime.class,
+              (BoundaryExtractor<LocalTime>) BoundaryExtractorFactory::fromLocalTimes)
+          .put(
+              OffsetTime.class,
+              (BoundaryExtractor<OffsetTime>) BoundaryExtractorFactory::fromOffsetTimes)
           .put(
               Duration.class,
               (BoundaryExtractor<Duration>)
@@ -213,16 +242,24 @@ public class BoundaryExtractorFactory {
       TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
-    Preconditions.checkArgument(
-        boundaryTypeMapper != null,
-        "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+    boolean isBit = "bit".equalsIgnoreCase(partitionColumn.columnTypeName());
+
+    if (!isBit) {
+      Preconditions.checkArgument(
+          boundaryTypeMapper != null,
+          "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+    }
+
     resultSet.next();
     return Boundary.<String>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
-        .setBoundarySplitter(BoundarySplitterFactory.create(String.class))
+        .setBoundarySplitter(
+            isBit
+                ? BoundarySplitterFactory.createBitSplitter()
+                : BoundarySplitterFactory.create(String.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }
@@ -299,6 +336,112 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  private static Boundary<LocalTime> fromLocalTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(LocalTime.class));
+    resultSet.next();
+    return Boundary.<LocalTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(parsePostgresTimeBytes(resultSet.getBytes(1)))
+        .setEnd(parsePostgresTimeBytes(resultSet.getBytes(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static LocalTime parsePostgresTimeBytes(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+
+    // Binary format
+    // A PostgreSQL binary time payload represents microseconds since midnight.
+    // Max value is 86,400,000,000, which takes at most 5 bytes.
+    // Thus, the first byte of a valid 8-byte binary time payload will always be 0x00.
+    // Text payloads (like "08:00:00") will start with an ASCII digit byte ('0'-'9'), never 0x00.
+    // This allows us to safely distinguish binary format without string allocation.
+    if (bytes.length == 8 && bytes[0] == 0) {
+      long microseconds = ByteBuffer.wrap(bytes).getLong();
+      if (microseconds == 86400000000L) {
+        return LocalTime.MAX;
+      }
+      return LocalTime.ofNanoOfDay(microseconds * 1000L);
+    }
+
+    // Text format
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+    if (TIME_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        return LocalTime.MAX;
+      }
+      return LocalTime.parse(textFormat);
+    }
+
+    throw new IllegalArgumentException("Unknown time format received for boundaries");
+  }
+
+  private static Boundary<OffsetTime> fromOffsetTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(OffsetTime.class));
+    resultSet.next();
+
+    return Boundary.<OffsetTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(parsePostgresOffsetTimeBytes(resultSet.getBytes(1)))
+        .setEnd(parsePostgresOffsetTimeBytes(resultSet.getBytes(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(OffsetTime.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static OffsetTime parsePostgresOffsetTimeBytes(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+
+    // Binary format
+    // The first 8 bytes of a 12-byte PostgreSQL binary timetz payload represent
+    // microseconds since midnight (max 86,400,000,000), meaning the first byte is always 0x00.
+    // A text payload (like "08:00:00+00") starts with an ASCII digit ('0'-'9').
+    // This allows us to safely distinguish binary format without string allocation.
+    if (bytes.length == 12 && bytes[0] == 0) {
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+      long microseconds = buffer.getLong();
+      int offsetSeconds = buffer.getInt();
+
+      // PostgreSQL stores timezone offset inverted (West of UTC is positive).
+      ZoneOffset offset = ZoneOffset.ofTotalSeconds(-offsetSeconds);
+
+      if (microseconds == 86400000000L) {
+        return OffsetTime.of(LocalTime.MAX, offset);
+      }
+      return OffsetTime.of(LocalTime.ofNanoOfDay(microseconds * 1000L), offset);
+    }
+
+    // Text format
+    String textFormat = new String(bytes, StandardCharsets.UTF_8);
+    if (TIMETZ_PATTERN.matcher(textFormat).matches()) {
+      if (textFormat.startsWith("24:00:00")) {
+        String replacedStr = "00" + textFormat.substring(2);
+        OffsetTime parsed = OffsetTime.parse(replacedStr, TIMETZ_FORMAT);
+        return OffsetTime.of(LocalTime.MAX, parsed.getOffset());
+      }
+      return OffsetTime.parse(textFormat, TIMETZ_FORMAT);
+    }
+
+    throw new IllegalArgumentException("Unknown TIMETZ format received for boundaries");
   }
 
   private static Boundary<Duration> fromDurations(
