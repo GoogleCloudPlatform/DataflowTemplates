@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.common.annotations.VisibleForTesting;
@@ -58,7 +59,27 @@ public final class DataGeneratorUtils {
    * <p>The returned Java type matches what {@link #mapToBeamFieldType(LogicalType)} declares for
    * the same logical type, so the value can be added directly to a {@code Row.Builder}.
    */
-  public static Object generateValue(DataGeneratorColumn column, Faker faker) {
+  public static Object generateValue(
+      String tableName,
+      DataGeneratorColumn column,
+      Faker faker,
+      CustomDataGenerator customGenerator) {
+    if (customGenerator != null) {
+      try {
+        Object customValue = customGenerator.generate(tableName, column.name());
+        if (customValue != null) {
+          return customValue;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "CustomDataGenerator failed for table '"
+                + tableName
+                + "' column '"
+                + column.name()
+                + "'",
+            e);
+      }
+    }
     LogicalType type = column.logicalType();
     Long size = column.size();
     if (column.fakerExpression() != null) {

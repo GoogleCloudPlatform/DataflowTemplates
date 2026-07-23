@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.templates.dofn;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
@@ -109,7 +111,7 @@ public class RowAssemblerTest {
             .build();
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 99L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, /* originalRow= */ null, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, /* originalRow= */ null, faker, null);
     assertThat((Long) update.getValue("id")).isEqualTo(99L);
     assertThat(update.getString("name")).isNotEmpty();
   }
@@ -133,7 +135,7 @@ public class RowAssemblerTest {
             .build();
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 1L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, null, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, null, faker, null);
     assertThat(update.getSchema().hasField("ghost")).isFalse();
     assertThat(update.getSchema().hasField("id")).isTrue();
   }
@@ -153,7 +155,7 @@ public class RowAssemblerTest {
 
     LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
     pk.put("id", 1L);
-    Row update = RowAssembler.generateUpdateRow(pk, table, original, faker);
+    Row update = RowAssembler.generateUpdateRow(pk, table, original, faker, null);
     assertThat(update.getString("email")).isEqualTo("alice@example.com");
   }
 
@@ -265,7 +267,7 @@ public class RowAssemblerTest {
             .build();
     Schema schema = Schema.builder().addInt64Field("id").addStringField("name").build();
     Row complete = Row.withSchema(schema).addValues(1L, "Alice").build();
-    Row result = RowAssembler.completeRow(table, complete, faker);
+    Row result = RowAssembler.completeRow(table, complete, faker, null);
     assertThat((Long) result.getValue("id")).isEqualTo(1L);
     assertThat(result.getString("name")).isEqualTo("Alice");
   }
@@ -278,7 +280,7 @@ public class RowAssemblerTest {
             .build();
     Schema partialSchema = Schema.builder().addInt64Field("id").build();
     Row partial = Row.withSchema(partialSchema).addValue(7L).build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat((Long) full.getValue("id")).isEqualTo(7L);
     assertThat(full.getString("name")).isNotNull();
   }
@@ -292,7 +294,7 @@ public class RowAssemblerTest {
     Schema partialSchema =
         Schema.builder().addInt64Field("id").addStringField(Constants.SHARD_ID_COLUMN_NAME).build();
     Row partial = Row.withSchema(partialSchema).addValues(1L, "shardX").build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat(full.getSchema().hasField(Constants.SHARD_ID_COLUMN_NAME)).isTrue();
     assertThat(full.getString(Constants.SHARD_ID_COLUMN_NAME)).isEqualTo("shardX");
   }
@@ -316,8 +318,37 @@ public class RowAssemblerTest {
             .build();
     Schema partialSchema = Schema.builder().addInt64Field("id").build();
     Row partial = Row.withSchema(partialSchema).addValue(1L).build();
-    Row full = RowAssembler.completeRow(table, partial, faker);
+    Row full = RowAssembler.completeRow(table, partial, faker, null);
     assertThat(full.getSchema().hasField("ghost")).isFalse();
+  }
+
+  @Test
+  public void testCustomGeneratorTypeMismatchThrowsRuntimeException() {
+    DataGeneratorTable table =
+        baseTable("Users", ImmutableList.of("id"))
+            .columns(ImmutableList.of(intColumn("id"), stringColumn("name", false)))
+            .build();
+
+    CustomDataGenerator badGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            if (columnName.equals("id")) {
+              return "NotAnInt";
+            }
+            return null;
+          }
+        };
+
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                RowAssembler.completeRow(
+                    table, Row.withSchema(Schema.builder().build()).build(), faker, badGenerator));
+    assertThat(ex.getMessage()).contains("Failed to assemble INSERT event for table 'Users'");
+    assertThat(ex.getMessage())
+        .contains("(If using a CustomDataGenerator, check its return types)");
   }
 
   // ===========================================================================
@@ -362,5 +393,189 @@ public class RowAssemblerTest {
         .precision(null)
         .scale(null)
         .build();
+  }
+
+  @Test
+  public void generateUpdateRow_withCustomGenerator_overridesValues() {
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build(),
+                    DataGeneratorColumn.builder()
+                        .name("name")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build()))
+            .build();
+
+    LinkedHashMap<String, Object> pkValues = new LinkedHashMap<>();
+    pkValues.put("id", "pk123");
+
+    CustomDataGenerator goodGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            if ("Users".equals(tableName) && "name".equals(columnName)) {
+              return "CustomName";
+            }
+            return null;
+          }
+        };
+
+    Row row = RowAssembler.generateUpdateRow(pkValues, table, null, faker, goodGenerator);
+    assertThat(row.getString("id")).isEqualTo("pk123");
+    assertThat(row.getString("name")).isEqualTo("CustomName");
+  }
+
+  @Test
+  public void completeRow_withCustomGenerator_overridesValues() {
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build(),
+                    DataGeneratorColumn.builder()
+                        .name("age")
+                        .logicalType(LogicalType.INT64)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build()))
+            .build();
+
+    Schema partialSchema = Schema.builder().addStringField("id").build();
+    Row partialRow = Row.withSchema(partialSchema).addValue("pk123").build();
+
+    CustomDataGenerator goodGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            if ("age".equals(columnName)) {
+              return 99L; // LogicalType.INT64 maps to INT64 -> Long
+            }
+            return null;
+          }
+        };
+
+    Row row = RowAssembler.completeRow(table, partialRow, faker, goodGenerator);
+    assertThat(row.getString("id")).isEqualTo("pk123");
+    assertThat(row.getInt64("age")).isEqualTo(99L);
+  }
+
+  @Test
+  public void generateDeleteRow_typeMismatch_throwsException() {
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build()))
+            .build();
+
+    LinkedHashMap<String, Object> badPkValues = new LinkedHashMap<>();
+    // Supplying an Integer where a String is expected
+    badPkValues.put("id", 12345);
+
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class, () -> RowAssembler.generateDeleteRow(badPkValues, table));
+    assertThat(ex.getMessage()).contains("Failed to assemble DELETE event for table 'Users'");
+  }
+
+  @Test
+  public void createReducedRow_typeMismatch_throwsException() {
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build()))
+            .build();
+
+    // Create a row where "id" is an integer, but table schema expects string
+    Schema badSchema = Schema.builder().addInt32Field("id").build();
+    Row badRow = Row.withSchema(badSchema).addValue(123).build();
+
+    RuntimeException ex =
+        assertThrows(RuntimeException.class, () -> RowAssembler.createReducedRow(badRow, table));
+    assertThat(ex.getMessage()).contains("Failed to assemble cached state for table 'Users'");
+  }
+
+  @Test
+  public void completeRow_typeMismatch_throwsException() {
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.STRING)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build(),
+                    DataGeneratorColumn.builder()
+                        .name("age")
+                        .logicalType(LogicalType.INT64)
+                        .isGenerated(false)
+                        .isNullable(true)
+                        .build()))
+            .build();
+
+    Schema partialSchema = Schema.builder().addStringField("id").build();
+    Row partialRow = Row.withSchema(partialSchema).addValue("pk123").build();
+
+    CustomDataGenerator badGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            // Provide a String for an INTEGER field
+            return "not-an-integer";
+          }
+        };
+
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class,
+            () -> RowAssembler.completeRow(table, partialRow, faker, badGenerator));
+    assertThat(ex.getMessage()).contains("Failed to assemble INSERT event for table 'Users'");
   }
 }

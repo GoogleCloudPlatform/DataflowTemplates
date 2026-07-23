@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.v2.templates.dofn;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
+import com.google.cloud.teleport.v2.templates.utils.CustomDataGeneratorFetcher;
 import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -61,18 +63,26 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
   private final String sinkType;
 
   private transient Faker faker;
+  private transient CustomDataGenerator customGenerator;
   private transient List<String> logicalShardIds;
+  private final String customJarPath;
+  private final String customClassName;
 
   /** Per-table PK schema cache. Schemas are static per pipeline run so this is write-once. */
   private transient Map<String, Schema> schemaCache;
 
-  public GeneratePrimaryKeyFn(SinkConfig sinkConfig, String sinkType) {
+  public GeneratePrimaryKeyFn(
+      SinkConfig sinkConfig, String sinkType, String customJarPath, String customClassName) {
     this.sinkConfig = sinkConfig;
     this.sinkType = sinkType;
+    this.customJarPath = customJarPath;
+    this.customClassName = customClassName;
   }
 
   @Setup
   public void setup() {
+    customGenerator =
+        CustomDataGeneratorFetcher.getCustomDataGenerator(customJarPath, customClassName);
     faker = new Faker();
     schemaCache = new HashMap<>();
 
@@ -96,11 +106,21 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     Row.Builder rowBuilder = Row.withSchema(schema);
 
     for (DataGeneratorColumn column : pkColumns) {
-      rowBuilder.addValue(DataGeneratorUtils.generateValue(column, faker));
+      rowBuilder.addValue(
+          DataGeneratorUtils.generateValue(table.name(), column, faker, customGenerator));
     }
     rowBuilder.addValue(pickShardId());
 
-    out.output(KV.of(table.name(), rowBuilder.build()));
+    try {
+      out.output(KV.of(table.name(), rowBuilder.build()));
+    } catch (IllegalArgumentException | ClassCastException e) {
+      throw new RuntimeException(
+          "Failed to assemble root primary key for table '"
+              + table.name()
+              + "'. (If using a CustomDataGenerator, check its return types). Expected schema: "
+              + schema,
+          e);
+    }
   }
 
   /** Resolve the PK column list for a table. */

@@ -228,6 +228,8 @@ schemaConfig=gs://my-bucket/configs/overrides.conf
 | **`schemaConfig`** | No | — | GCS path to a HOCON or JSON overrides configuration file used to customize data rules. |
 | **`dlqDirectory`** | No | — | GCS folder path where failed write records are stored in JSON format. If not specified, failures are logged but not persisted to storage. |
 | **`maxParallelism`** | No | *Auto-tuned* | The number of internal parallel partitions used to distribute writes. If not specified, the pipeline automatically sets this value based on the sink type. |
+| **`customJarPath`** | No | — | GCS path to a custom JAR file containing a custom data generator implementation. |
+| **`customClassName`** | No | — | The fully qualified class name of the custom data generator implementation within the custom JAR. |
 
 ### Auto-Tuned Key Parallelism
 
@@ -429,13 +431,14 @@ tables {
 
 ### Custom Value Generators
 
-You can override data generation using two main formats:
+You can override data generation using three main formats:
 1. **Faker Expressions**: Strings starting with `#{` and ending with `}` are processed by the [DataFaker](https://github.com/datafaker-net/datafaker) library. Any DataFaker provider functions are supported, including:
     * `#{name.firstName}` / `#{name.lastName}` / `#{name.fullName}`
     * `#{address.city}` / `#{address.zipCode}` / `#{address.country}`
     * `#{number.numberBetween '1','100'}`
     * `#{number.randomDouble '4','10','500'}`
 2. **Literal Constants**: Plain values (such as `"US"`, `100`, or `false`) are parsed directly into the column's target database type and remain static across all rows.
+3. **Custom Java Implementation**: You can provide an external JAR with a custom Java class implementing the [`CustomDataGenerator`](../spanner-migrations-sdk/src/main/java/com/google/cloud/teleport/v2/spanner/utils/CustomDataGenerator.java) interface. Pass the `customJarPath` and `customClassName` pipeline parameters to dynamically load it at runtime. This is useful for complex, stateful, or deterministic data generation scenarios that cannot be expressed via static configuration.
 
 * **Note**: If a Faker expression evaluates to a value that cannot be parsed into the target column's database data type, the pipeline will crash on startup, pointing out the invalid column mapping.
 
