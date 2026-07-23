@@ -215,7 +215,8 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     Map<String, JSONObject> mongoMap = new HashMap<>();
     mongoDocuments.forEach(
         mongoDocument -> {
-          JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
+          JSONObject mongoDbJson =
+              new JSONObject(mongoDocument.toJson(MongoDbUtils.EXTENDED_JSON_WRITER_SETTINGS));
           String mongoId = mongoDbJson.getJSONObject(MONGO_DB_FLATTEN_ID).getString("$oid");
           if (applyUdf) {
             mongoDbJson.put("udf", "out");
