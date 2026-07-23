@@ -793,7 +793,7 @@ public class RangeClassifierDoFnTest {
             .setInitialSplitHeight(1L)
             .setSplitStagesCount(8L)
             .setApproxRowCount(100L)
-            .setMaxPartitionsHint(10L)
+            .setMaxPartitionsHint(3L)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -835,7 +835,7 @@ public class RangeClassifierDoFnTest {
             .setInitialSplitHeight(2L)
             .setSplitStagesCount(8L)
             .setApproxRowCount(50L)
-            .setMaxPartitionsHint(5L)
+            .setMaxPartitionsHint(3L)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -855,7 +855,7 @@ public class RangeClassifierDoFnTest {
             .setStart(0)
             .setEnd(100)
             .setSplitIndex("1-0")
-            .setCount(50L) // Should be retained (mean for table1 is 100/10 = 10, 50 > 2*10)
+            .setCount(25L) // Should be split (mean for table1 is 100/10 = 10, 25 > 1.25*10)
             .build();
     Range range2Table1 =
         Range.builder()
@@ -948,5 +948,178 @@ public class RangeClassifierDoFnTest {
             range1Table3.split(mockProcessContext).getLeft(),
             range1Table3.split(mockProcessContext).getRight());
     assertThat(taggedOutputCaptor.toAddColumnAccumulator.build()).isEmpty();
+  }
+
+  @Test
+  public void testMultiRoundAdaptiveHalving() {
+    TaggedOutputCaptor taggedOutputCaptor = new TaggedOutputCaptor();
+    Mockito.doAnswer(
+            invocationOnMock ->
+                taggedOutputCaptor.out(
+                    invocationOnMock.getArgument(0), invocationOnMock.getArgument(1)))
+        .when(mockProcessContext)
+        .output(any(), any());
+
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("denseTable")
+            .build();
+
+    TableSplitSpecification spec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(table)
+            .setInitialSplitHeight(1L)
+            .setSplitStagesCount(8L)
+            .setApproxRowCount(1000L)
+            .setMaxPartitionsHint(10L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .build();
+
+    Range denseRange =
+        Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(table)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(160)
+            .setCount(Range.INDETERMINATE_COUNT)
+            .setApproxCount(1700L)
+            .build();
+
+    RangeClassifierDoFn doFn =
+        RangeClassifierDoFn.builder()
+            .setTableSplitSpecification(spec)
+            .setStageIdx(1L)
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+
+    doFn.processElement(KV.of(0, ImmutableList.of(denseRange)), mockProcessContext);
+
+    assertThat(taggedOutputCaptor.toCountAccumulator.build()).hasSize(16);
+  }
+
+  @Test
+  public void testMustSplitOnTimeoutHotspot() {
+    TaggedOutputCaptor taggedOutputCaptor = new TaggedOutputCaptor();
+    Mockito.doAnswer(
+            invocationOnMock ->
+                taggedOutputCaptor.out(
+                    invocationOnMock.getArgument(0), invocationOnMock.getArgument(1)))
+        .when(mockProcessContext)
+        .output(any(), any());
+
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("hotspotTable")
+            .build();
+
+    TableSplitSpecification spec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(table)
+            .setInitialSplitHeight(1L)
+            .setSplitStagesCount(4L)
+            .setApproxRowCount(100L)
+            .setMaxPartitionsHint(10L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .build();
+
+    Range hotspotRange =
+        Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(table)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .setCount(Range.INDETERMINATE_COUNT)
+            .setApproxCount(Range.INDETERMINATE_COUNT)
+            .build();
+
+    RangeClassifierDoFn doFn =
+        RangeClassifierDoFn.builder()
+            .setTableSplitSpecification(spec)
+            .setStageIdx(1L)
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+
+    doFn.processElement(KV.of(0, ImmutableList.of(hotspotRange)), mockProcessContext);
+
+    assertThat(taggedOutputCaptor.toCountAccumulator.build()).hasSize(2);
+  }
+
+  @Test
+  public void testRatioGreaterEqualFour() {
+    TaggedOutputCaptor taggedOutputCaptor = new TaggedOutputCaptor();
+    Mockito.doAnswer(
+            invocationOnMock ->
+                taggedOutputCaptor.out(
+                    invocationOnMock.getArgument(0), invocationOnMock.getArgument(1)))
+        .when(mockProcessContext)
+        .output(any(), any());
+
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("ratioTable")
+            .build();
+
+    TableSplitSpecification spec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(table)
+            .setInitialSplitHeight(1L)
+            .setSplitStagesCount(8L)
+            .setApproxRowCount(100L) // mean = 100 / 10 = 10
+            .setMaxPartitionsHint(10L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .build();
+
+    // Ratio = 50 / 10 = 5.0 ( >= 4.0 and < 8.0) -> splitRounds = 2
+    Range range =
+        Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(table)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .setCount(Range.INDETERMINATE_COUNT)
+            .setApproxCount(50L)
+            .build();
+
+    RangeClassifierDoFn doFn =
+        RangeClassifierDoFn.builder()
+            .setTableSplitSpecification(spec)
+            .setStageIdx(1L)
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+
+    doFn.processElement(KV.of(0, ImmutableList.of(range)), mockProcessContext);
+
+    // splitRounds = 2 results in 2^2 = 4 output ranges
+    assertThat(taggedOutputCaptor.toCountAccumulator.build()).hasSize(4);
   }
 }

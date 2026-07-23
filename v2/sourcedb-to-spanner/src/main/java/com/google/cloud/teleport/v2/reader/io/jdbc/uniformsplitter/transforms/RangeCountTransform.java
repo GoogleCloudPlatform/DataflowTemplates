@@ -35,6 +35,14 @@ import org.apache.beam.sdk.values.PCollection;
 public abstract class RangeCountTransform extends PTransform<PCollection<Range>, PCollection<Range>>
     implements Serializable {
 
+  /** Defines the execution operational mode for counting a range. */
+  public enum CountMode {
+    /** Execute only approximate EXPLAIN counts. Leave factual count INDETERMINATE. */
+    APPROX,
+    /** Attempt hard COUNT(*). If timeout, fallback to approximate EXPLAIN counts. */
+    TRY_EXACT
+  }
+
   /** Provider for {@link DataSource}. */
   abstract DataSourceProvider dataSourceProvider();
 
@@ -54,12 +62,23 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   @Nullable
   abstract BoundaryTypeMapper boundaryTypeMapper();
 
+  /**
+   * Execution mode for this counter transform.
+   *
+   * @return count mode.
+   */
+  abstract CountMode countMode();
+
   @Override
   public PCollection<Range> expand(PCollection<Range> input) {
     SingleOutput<Range, Range> parDo =
         ParDo.of(
             new RangeCountDoFn(
-                dataSourceProvider(), timeoutMillis(), dbAdapter(), tableSplitSpecifications()));
+                dataSourceProvider(),
+                timeoutMillis(),
+                dbAdapter(),
+                tableSplitSpecifications(),
+                countMode()));
 
     if (boundaryTypeMapper() != null) {
       parDo = parDo.withSideInputs(boundaryTypeMapper().getCollationMapperView());
@@ -68,7 +87,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   }
 
   public static Builder builder() {
-    return new AutoValue_RangeCountTransform.Builder();
+    return new AutoValue_RangeCountTransform.Builder().setCountMode(CountMode.TRY_EXACT);
   }
 
   @AutoValue.Builder
@@ -84,6 +103,8 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
         ImmutableList<TableSplitSpecification> value);
 
     public abstract Builder setBoundaryTypeMapper(BoundaryTypeMapper value);
+
+    public abstract Builder setCountMode(CountMode value);
 
     public abstract RangeCountTransform build();
   }

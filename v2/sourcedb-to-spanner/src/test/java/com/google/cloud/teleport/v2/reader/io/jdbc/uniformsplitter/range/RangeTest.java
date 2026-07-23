@@ -427,9 +427,6 @@ public class RangeTest {
   }
 
   @Test
-  public void testRangeWithChildPrecondition() {}
-
-  @Test
   public void testByteRangeMerge() {
     TableIdentifier tableId =
         TableIdentifier.builder().setDataSourceId("test_ds").setTableName("test_table").build();
@@ -477,5 +474,192 @@ public class RangeTest {
     assertThat(java.util.Arrays.equals((byte[]) merged.end(), endB)).isTrue();
     assertThat(merged.isFirst()).isTrue();
     assertThat(merged.isLast()).isTrue();
+  }
+
+  @Test
+  public void testApproxCountDefaultsToCount() {
+    Range range =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("long_col_1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(42L)
+            .setCount(500L)
+            .build();
+
+    assertThat(range.count()).isEqualTo(500L);
+    assertThat(range.approxCount()).isEqualTo(500L);
+  }
+
+  @Test
+  public void testApproxCountExplicitlySet() {
+    Range range =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("long_col_1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(42L)
+            .setCount(Range.INDETERMINATE_COUNT)
+            .setApproxCount(1500L)
+            .build();
+
+    assertThat(range.count()).isEqualTo(Range.INDETERMINATE_COUNT);
+    assertThat(range.approxCount()).isEqualTo(1500L);
+  }
+
+  @Test
+  public void testWithCounts() {
+    Range base =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("long_col_1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(42L)
+            .build();
+
+    Range updated = base.withCounts(100L, 200L, null);
+    assertThat(updated.count()).isEqualTo(100L);
+    assertThat(updated.approxCount()).isEqualTo(200L);
+  }
+
+  @Test
+  public void testWithCountsWithChildRange() {
+    Range child =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("child_col")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .build();
+
+    Range parent =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("parent_col")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(0L)
+            .setChildRange(child)
+            .build();
+
+    Range updated = parent.withCounts(500L, 1000L, null);
+
+    assertThat(updated.count()).isEqualTo(500L);
+    assertThat(updated.approxCount()).isEqualTo(1000L);
+    assertThat(updated.childRange().count()).isEqualTo(500L);
+    assertThat(updated.childRange().approxCount()).isEqualTo(1000L);
+  }
+
+  @Test
+  public void testCompareToCheckState() {
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
+
+    // Two ranges with same table, colName, splitIndex but different start/end
+    // will have boundary.equals() = false but boundary.compareTo() = 0.
+    Range range1 =
+        Range.builder()
+            .setTableIdentifier(table)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("col1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setSplitIndex("1")
+            .setCount(50L)
+            .build();
+
+    Range range2 =
+        Range.builder()
+            .setTableIdentifier(table)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("col1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(10L) // Different start
+            .setEnd(110L) // Different end
+            .setSplitIndex("1")
+            .setCount(50L)
+            .build();
+
+    assertThat(range1.equals(range2)).isFalse();
+    assertThrows(IllegalStateException.class, () -> range1.compareTo(range2));
+  }
+
+  @Test
+  public void testCompareToApproxCount() {
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
+
+    Range range1 =
+        Range.builder()
+            .setTableIdentifier(table)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("col1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setCount(100L)
+            .setApproxCount(100L)
+            .build();
+
+    Range range2 =
+        Range.builder()
+            .setTableIdentifier(table)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .setColName("col1")
+            .setColumnTypeName("INTEGER")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setCount(100L)
+            .setApproxCount(200L)
+            .build();
+
+    assertThat(range1.equals(range2)).isFalse();
+    assertThat(range1.compareTo(range2)).isLessThan(0);
+    assertThat(range2.compareTo(range1)).isGreaterThan(0);
   }
 }
