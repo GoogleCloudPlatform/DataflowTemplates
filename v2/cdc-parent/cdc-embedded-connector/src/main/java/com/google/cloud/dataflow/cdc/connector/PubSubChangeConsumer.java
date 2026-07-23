@@ -16,8 +16,8 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.datacatalog.v1beta1.Entry;
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
+import com.google.cloud.dataplex.v1.Entry;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -129,7 +129,9 @@ public class PubSubChangeConsumer
           Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
           if (result == null) {
             throw new InterruptedException(
-                "A problem occurred when communicating with Cloud Data Catalog");
+                "A problem occurred when communicating with Knowledge Catalog");
+          } else {
+            LOG.info("New entry {}", result);
           }
           observedTables.add(tableName);
         }

@@ -52,7 +52,8 @@
   <dependencies>
     <dependency>
       <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-datacatalog</artifactId>
+      <artifactId>google-cloud-dataplex</artifactId>
+      <version>1.90.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
