@@ -33,6 +33,10 @@
 
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+  </properties>
 
   <dependencies>
 
@@ -50,6 +54,12 @@
     </dependency>
 
     <!-- Test Resources -->
+    <dependency>
+      <groupId>com.google.cloud.teleport.it</groupId>
+      <artifactId>integration-testing-lib</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
@@ -74,9 +84,21 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-test-utils</artifactId>
+      <version>${beam.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>${ojdbc8.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
