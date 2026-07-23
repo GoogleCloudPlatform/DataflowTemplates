@@ -39,10 +39,8 @@ import org.slf4j.LoggerFactory;
  * Integration test for GCSSpannerDV pipeline covering schema-related boundary conditions.
  *
  * <p>This test validates:
- * <ul>
- *   <li>Empty tables (both source and destination have 0 rows).
- *   <li>Reserved SQL Keywords (tables and columns that share names with SQL keywords).
- * </ul>
+ * <li>Empty tables (both source and destination have 0 rows).
+ * <li>Reserved SQL Keywords (tables and columns that share names with SQL keywords).
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -64,8 +62,8 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
   }
 
   /**
-   * Validates that the pipeline does not fail when processing tables with 0 rows.
-   * We expect 0 rows matched and 0 mismatched.
+   * Validates that the pipeline does not fail when processing tables with 0 rows. No BigQuery
+   * Tables get created as there was nothing to validate
    */
   @Test
   public void validationTestWithEmptyTables() throws Exception {
@@ -99,20 +97,20 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
 
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    // Assert BigQuery Validation Results
     // Since 0 records are processed, Dataflow BigQueryIO never creates the output tables.
     // The successful completion of the pipeline without crashing is the validation.
   }
 
   /**
-   * Validates that tables and columns using Spanner reserved keywords do not break query generation.
-   * Tested using a table named 'ORDER' and columns 'SELECT', 'GROUP', and 'TABLE'.
+   * Validates that tables and columns using Spanner reserved keywords do not break query
+   * generation. Tested using a table named 'ORDER' and columns 'SELECT', 'GROUP', and 'TABLE'.
    */
   @Test
   public void validationTestWithReservedKeywords() throws Exception {
     LOG.info("Generating Avro Records for Reserved Keywords");
 
-    Schema reservedKeywordsSchema = getSchemaFromAvscFile("GCSSpannerDVSchemaIT/reserved_keywords.avsc");
+    Schema reservedKeywordsSchema =
+        getSchemaFromAvscFile("GCSSpannerDVSchemaIT/reserved_keywords.avsc");
     GCSSpannerDVAvroSetupHelper.TableDef reservedTableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
             reservedKeywordsSchema, "ORDER", Arrays.asList("SELECT"));

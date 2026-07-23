@@ -39,7 +39,9 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
           // We encode the tableName in the query itself to push table information dynamically
           // and avoid table level stages.
           String query =
-              String.format("SELECT *, '%s' as __tableName__ FROM %s%s%s", tableName, quote, tableName, quote);
+              String.format(
+                  "SELECT *, '%s' as __tableName__ FROM %s%s%s",
+                  tableName, quote, tableName, quote);
           c.output(ReadOperation.create().withQuery(query));
         });
   }
