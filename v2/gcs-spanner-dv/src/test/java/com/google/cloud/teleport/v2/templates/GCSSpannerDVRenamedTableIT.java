@@ -32,8 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for GCSSpannerDV pipeline covering table renaming scenarios.
@@ -47,7 +45,6 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVRenamedTableIT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "GCSSpannerDVRenamedTableIT/spanner-schema.sql";
   private static final String OVERRIDES_FILE_RESOURCE =
@@ -56,17 +53,13 @@ public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
 
   @Before
   public void setUp() throws IOException {
-    LOG.info("Setting up Spanner and BigQuery resources");
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-    LOG.info("BigQuery dataset created");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    LOG.info("Spanner instance created");
   }
 
   private void generateAndUploadData(String gcsSubDir) throws IOException {
-    LOG.info("Generating and Uploading Avro Records to GCS under {}", gcsSubDir);
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
 
     List<GenericRecord> usersRecords =
@@ -83,7 +76,6 @@ public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
     uploadAvroFileToGcs(
         gcsSubDir + "/users.avro", GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema, usersRecords);
 
-    LOG.info("Injecting Spanner records into renamed table 'Members'");
     spannerResourceManager.write(
         Arrays.asList(
             Mutation.newInsertOrUpdateBuilder("Members")
@@ -108,7 +100,6 @@ public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
     // Wait for Spanner's exact staleness read bound in SpannerReaderTransform
     Thread.sleep(20000);
 
-    LOG.info("Launching Dataflow validation job with Schema Overrides");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
@@ -158,7 +149,6 @@ public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
     // Wait for Spanner's exact staleness read bound in SpannerReaderTransform
     Thread.sleep(20000);
 
-    LOG.info("Launching Dataflow validation job with Session File");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
@@ -209,7 +199,6 @@ public class GCSSpannerDVRenamedTableIT extends GCSSpannerDVITBase {
     // Wait for Spanner's exact staleness read bound in SpannerReaderTransform
     Thread.sleep(20000);
 
-    LOG.info("Launching Dataflow validation job with No Mapping");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
