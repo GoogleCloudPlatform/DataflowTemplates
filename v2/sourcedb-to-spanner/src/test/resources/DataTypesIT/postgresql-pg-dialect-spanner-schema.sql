@@ -138,6 +138,40 @@ CREATE TABLE IF NOT EXISTS t_varbit_to_string (id INT8, col VARCHAR, PRIMARY KEY
 CREATE TABLE IF NOT EXISTS t_varchar (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_xml (id INT8, col VARCHAR, PRIMARY KEY (id));
 
+CREATE TABLE IF NOT EXISTS t_int_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_integer_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_int4_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_bigint_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_int8_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_smallint_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_int2_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_serial_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_serial4_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_bigserial_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_serial8_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_smallserial_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_serial2_pk (id INT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_bytea_pk (id BYTEA, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_varchar_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_character_varying_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_text_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_timestamp_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_timestamp_without_time_zone_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_timestamptz_pk (id TIMESTAMPTZ, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_timestamp_with_time_zone_pk (id TIMESTAMPTZ, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_date_pk (id DATE, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_numeric_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_decimal_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_real_pk (id FLOAT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_float4_pk (id FLOAT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_double_precision_pk (id FLOAT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_float8_pk (id FLOAT8, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_time_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_time_without_time_zone_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_timetz_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_time_with_time_zone_pk (id VARCHAR, col bigint, PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS t_bit_pk (id BYTEA, col bigint, PRIMARY KEY (id));
+
 CREATE TABLE IF NOT EXISTS t_uuid_pk (
     id UUID NOT NULL,
     col bigint

@@ -30,11 +30,15 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -380,6 +384,36 @@ public class BoundaryExtractorFactoryTest {
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
                     .setTableName("testTable")
                     .build()));
+  }
+
+  @Test
+  public void testFromBitStrings() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("bit")
+            .setColumnName("col1")
+            .setColumnClass(String.class)
+            .build();
+    BoundaryExtractor<String> extractor = BoundaryExtractorFactory.create(String.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn("0000");
+    when(mockResultSet.getString(2)).thenReturn("1010");
+
+    // Passing null for boundaryTypeMapper should succeed for BIT columns
+    Boundary<String> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
+    assertThat(boundary.start()).isEqualTo("0000");
+    assertThat(boundary.end()).isEqualTo("1010");
+    assertThat(boundary.isSplittable(null)).isTrue();
   }
 
   @Test
@@ -901,6 +935,142 @@ public class BoundaryExtractorFactoryTest {
         .isEqualTo(Duration.parse("PT30H15M22.984353S"));
     assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15:22.984353"))
         .isEqualTo(Duration.parse("-PT30H15M22.984353S"));
+  }
+
+  @Test
+  public void testFromLocalTime() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(LocalTime.class)
+            .build();
+    BoundaryExtractor<LocalTime> extractor = BoundaryExtractorFactory.create(LocalTime.class);
+    String startStr = "08:00:00";
+    String endStr = "24:00:00";
+    LocalTime start = LocalTime.parse("08:00:00");
+    LocalTime end = LocalTime.MAX;
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBytes(eq(1))).thenReturn(startStr.getBytes(StandardCharsets.UTF_8));
+    when(mockResultSet.getBytes(eq(2))).thenReturn(endStr.getBytes(StandardCharsets.UTF_8));
+    Boundary<LocalTime> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<LocalTime>, Boundary<LocalTime>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(LocalTime.parse("15:59:59.999999999"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+
+    // Test null bounds
+    when(mockResultSet.getBytes(eq(1))).thenReturn(null);
+    when(mockResultSet.getBytes(eq(2))).thenReturn(null);
+    Boundary<LocalTime> boundaryNull =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+    assertThat(boundaryNull.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
+                mockResultSet,
+                null,
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build()));
+  }
+
+  @Test
+  public void testFromOffsetTime() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(OffsetTime.class)
+            .build();
+    BoundaryExtractor<OffsetTime> extractor = BoundaryExtractorFactory.create(OffsetTime.class);
+    String startStr = "08:00:00+05:00";
+    String endStr = "24:00:00+05:00";
+    OffsetTime start = OffsetTime.parse("08:00:00+05:00");
+    OffsetTime end = OffsetTime.of(LocalTime.MAX, ZoneOffset.ofHours(5));
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBytes(eq(1))).thenReturn(startStr.getBytes(StandardCharsets.UTF_8));
+    when(mockResultSet.getBytes(eq(2))).thenReturn(endStr.getBytes(StandardCharsets.UTF_8));
+    Boundary<OffsetTime> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<OffsetTime>, Boundary<OffsetTime>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+
+    // Test null bounds
+    when(mockResultSet.getBytes(eq(1))).thenReturn(null);
+    when(mockResultSet.getBytes(eq(2))).thenReturn(null);
+    Boundary<OffsetTime> boundaryNull =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName("testTable")
+                .build());
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+    assertThat(boundaryNull.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
+                mockResultSet,
+                null,
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build()));
   }
 
   @Test

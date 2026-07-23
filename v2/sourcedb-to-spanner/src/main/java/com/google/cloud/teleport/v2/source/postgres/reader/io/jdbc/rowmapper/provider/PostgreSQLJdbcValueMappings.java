@@ -21,11 +21,15 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsPr
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -33,6 +37,7 @@ import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +58,20 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .optionalEnd()
           .appendOffset("+HH:mm", "+00")
           .toFormatter();
+
+  private static final DateTimeFormatter TIMETZ_FORMAT =
+      new DateTimeFormatterBuilder()
+          .appendPattern("HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+          .optionalEnd()
+          .appendOffset("+HH:mm", "+00")
+          .toFormatter();
+
+  private static final Pattern TIME_PATTERN = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$");
+
+  private static final Pattern TIMETZ_PATTERN =
+      Pattern.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}(:\\d{2}(:\\d{2})?)?)?$");
 
   private static long toMicros(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
@@ -103,6 +122,82 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeStampTz.OFFSET_FIELD_NAME,
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
+
+  private static final ResultSetValueMapper<ByteBuffer> timetzToAvro =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+
+        byte[] bytes = value.array();
+        String textFormat = new String(bytes, StandardCharsets.UTF_8);
+
+        // Text format
+        if (TIMETZ_PATTERN.matcher(textFormat).matches()) {
+          long timeMicros;
+          int offsetMillis;
+
+          String parseableValue = textFormat;
+          boolean is24 = false;
+          if (textFormat.startsWith("24:00:00")) {
+            parseableValue = "00" + textFormat.substring(2);
+            is24 = true;
+          }
+
+          OffsetTime parsedTime = OffsetTime.parse(parseableValue, TIMETZ_FORMAT);
+
+          if (is24) {
+            timeMicros = 86400000000L;
+          } else {
+            timeMicros = TimeUnit.NANOSECONDS.toMicros(parsedTime.toLocalTime().toNanoOfDay());
+          }
+
+          offsetMillis = (int) TimeUnit.SECONDS.toMillis(parsedTime.getOffset().getTotalSeconds());
+
+          return new GenericRecordBuilder(TimeTz.SCHEMA)
+              .set(TimeTz.TIME_FIELD_NAME, timeMicros)
+              .set(TimeTz.OFFSET_FIELD_NAME, offsetMillis)
+              .build();
+        } else if (bytes.length == 12) {
+          // Binary format: 8 bytes (time micros) + 4 bytes (offset seconds)
+          ByteBuffer buffer = ByteBuffer.wrap(bytes);
+          long timeMicros = buffer.getLong();
+          int offsetSeconds = buffer.getInt();
+
+          // PostgreSQL stores timezone offset inverted (West of UTC is positive).
+          // Avro expects offset in milliseconds East of UTC. So we multiply by -1000.
+          int offsetMillis = offsetSeconds * -1000;
+
+          return new GenericRecordBuilder(TimeTz.SCHEMA)
+              .set(TimeTz.TIME_FIELD_NAME, timeMicros)
+              .set(TimeTz.OFFSET_FIELD_NAME, offsetMillis)
+              .build();
+        }
+
+        throw new IllegalArgumentException("Unknown TIMETZ format received from PostgreSQL");
+      };
+
+  private static final ResultSetValueMapper<ByteBuffer> postgresTimeBytesToAvroTimeMicros =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+
+        byte[] bytes = value.array();
+        String textFormat = new String(bytes, StandardCharsets.UTF_8);
+
+        if (TIME_PATTERN.matcher(textFormat).matches()) {
+          if (textFormat.startsWith("24:00:00")) {
+            return 86400000000L;
+          }
+          LocalTime time = LocalTime.parse(textFormat);
+          return TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
+        } else if (bytes.length == 8) {
+          return ByteBuffer.wrap(bytes).getLong();
+        }
+
+        throw new IllegalArgumentException("Unknown time format received from PostgreSQL");
+      };
 
   private static final JdbcMappings JDBC_MAPPINGS =
       /*
@@ -234,6 +329,10 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
+          .put("TIME", bytesExtractor, postgresTimeBytesToAvroTimeMicros, 8)
+          .put("TIME WITHOUT TIME ZONE", bytesExtractor, postgresTimeBytesToAvroTimeMicros, 8)
+          .put("TIMETZ", bytesExtractor, timetzToAvro, 8)
+          .put("TIME WITH TIME ZONE", bytesExtractor, timetzToAvro, 8)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
           .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)
@@ -265,7 +364,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
     LOG.info(
-        "Unknown column type: {}. Defaulting to size: 65,535. If easily possible let's add logs to indicate that we have used a max value for fetch-size estimation.",
+        "Unknown column type: {}. Defaulting to size: 65,535. If easily possible let's add logs to"
+            + " indicate that we have used a max value for fetch-size estimation.",
         sourceColumnType);
     return 65_535;
   }

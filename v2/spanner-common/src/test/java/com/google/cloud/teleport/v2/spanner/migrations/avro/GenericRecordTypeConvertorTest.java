@@ -223,6 +223,16 @@ public class GenericRecordTypeConvertorTest {
             getTestCassandraAnnotationNone());
     assertEquals("Test time_micros_col conversion: ", "13:20:35", result);
 
+    // Test special 24:00:00 value for time_micros
+    genericRecord.put("time_micros_col", 86400000000L);
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test time_micros_col special conversion: ", "24:00:00", result);
+
     col = "time_millis_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
@@ -231,6 +241,16 @@ public class GenericRecordTypeConvertorTest {
             genericRecord.getSchema().getField(col).schema(),
             getTestCassandraAnnotationNone());
     assertEquals("Test time_millis_col conversion: ", "13:20:35", result);
+
+    // Test special 24:00:00 value for time_millis
+    genericRecord.put("time_millis_col", 86400000);
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test time_millis_col special conversion: ", "24:00:00", result);
 
     col = "timestamp_micros_col";
     result =
@@ -403,6 +423,22 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000),
             AvroTestingHelper.TIMESTAMPTZ_SCHEMA);
     assertEquals("Test timestampTz conversion: ", "2020-10-13T14:30:00.056483Z", result);
+
+    // Tests for timeTz type.
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "time_with_time_zone_column",
+            AvroTestingHelper.createTimeTzRecord(52200056483L, 19800000),
+            AvroTestingHelper.TIMETZ_SCHEMA);
+    assertEquals("Test timeTz conversion: ", "14:30:00.056483+05:30", result);
+
+    // Test for timeTz special 24:00:00 value with an offset.
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "time_with_time_zone_column",
+            AvroTestingHelper.createTimeTzRecord(86400000000L, 19800000),
+            AvroTestingHelper.TIMETZ_SCHEMA);
+    assertEquals("Test timeTz special conversion: ", "24:00:00+05:30", result);
 
     // Tests for datetime type.
     result =
