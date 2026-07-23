@@ -39,9 +39,8 @@ import org.slf4j.LoggerFactory;
  * Integration test for GCSSpannerDV pipeline covering column renaming scenarios.
  *
  * <p>This test validates that the pipeline correctly maps source columns to Spanner columns when
- * they have been renamed during the migration, given the proper configuration files (Overrides or
- * Session files). It also validates that mismatches are correctly identified if the configuration
- * file is omitted.
+ * they have been renamed during the migration, for both: overrides file and session file flow. It
+ * also validates that mismatches are correctly identified if the configuration file is omitted.
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -53,8 +52,7 @@ public class GCSSpannerDVRenamedColumnsIT extends GCSSpannerDVITBase {
       "GCSSpannerDVRenamedColumnsIT/spanner-schema.sql";
   private static final String OVERRIDES_FILE_RESOURCE =
       "GCSSpannerDVRenamedColumnsIT/schema_overrides.json";
-  private static final String SESSION_FILE_RESOURCE =
-      "GCSSpannerDVRenamedColumnsIT/session.json";
+  private static final String SESSION_FILE_RESOURCE = "GCSSpannerDVRenamedColumnsIT/session.json";
 
   @Before
   public void setUp() throws IOException {
@@ -236,7 +234,7 @@ public class GCSSpannerDVRenamedColumnsIT extends GCSSpannerDVITBase {
                 /* status= */ "MISMATCH",
                 /* totalTablesValidated= */ 1L,
                 /* totalRowsMatched= */ 0L,
-                /* totalRowsMismatched= */ 2L, 
+                /* totalRowsMismatched= */ 2L,
                 /* tablesWithMismatches= */ "Users")));
 
     GCSSpannerDVTestAsserts.assertTableValidationStats(
