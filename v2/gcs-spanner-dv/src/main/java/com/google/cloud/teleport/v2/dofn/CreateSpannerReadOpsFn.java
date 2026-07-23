@@ -35,10 +35,13 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     List<String> tableNames = ddl.getTablesOrderedByReference();
     tableNames.forEach(
         tableName -> {
+          String quote = ddl.dialect() == com.google.cloud.spanner.Dialect.POSTGRESQL ? "\"" : "`";
           // We encode the tableName in the query itself to push table information dynamically
           // and avoid table level stages.
           String query =
-              String.format("SELECT *, '%s' as __tableName__ FROM %s", tableName, tableName);
+              String.format(
+                  "SELECT *, '%s' as __tableName__ FROM %s%s%s",
+                  tableName, quote, tableName, quote);
           c.output(ReadOperation.create().withQuery(query));
         });
   }
