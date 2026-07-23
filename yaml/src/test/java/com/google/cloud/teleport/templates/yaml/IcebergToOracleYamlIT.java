@@ -165,9 +165,6 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", oracleResourceManager.getUri())
             .addParameter("username", oracleResourceManager.getUsername())
             .addParameter("password", oracleResourceManager.getPassword())
-            .addParameter("driverClassName", "oracle.jdbc.driver.OracleDriver")
-            .addParameter("driverJars", "gs://" + artifactBucket + "/" + ORACLE_DRIVER_GCS_PATH)
-            .addParameter("jdbcType", "oracle")
             .addParameter("location", ORACLE_TABLE_NAME);
 
     // Act

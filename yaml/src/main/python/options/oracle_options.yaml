@@ -23,42 +23,12 @@ options:
         required: false
         type: password
       - order: 4
-        name: "driverClassName"
-        description: "The fully-qualified class name of the JDBC driver. Default: oracle.jdbc.driver.OracleDriver"
-        help: "The fully-qualified class name of the JDBC driver to use."
-        example: "oracle.jdbc.driver.OracleDriver"
-        required: false
-        default: "oracle.jdbc.driver.OracleDriver"
-        type: text
-      - order: 5
-        name: "driverJars"
-        description: "Comma-separated GCS paths of the JDBC driver jars."
-        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
-        example: "gs://your-bucket/ojdbc17.jar"
-        required: false
-        type: text
-      - order: 6
         name: "connectionProperties"
         description: "JDBC connection properties."
         help: "A semicolon-separated list of key-value pairs for the JDBC connection."
         example: "key1=value1;key2=value2"
         required: false
         type: text
-      - order: 7
-        name: "connectionInitSql"
-        description: "A list of SQL statements to execute upon connection initialization."
-        help: "A list of SQL statements to execute when a new connection is established."
-        example: '["SET TIME ZONE UTC"]'
-        required: false
-        type: text
-      - order: 8
-        name: "jdbcType"
-        description: "Type of JDBC source. Default: oracle."
-        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
-        example: "oracle"
-        required: false
-        type: text
-        default: "oracle"
 
   - name: "oracle_read_options"
     parameters:
@@ -122,7 +92,7 @@ options:
         required: true
         type: text
       - order: 2
-        name: "writeStatement"
+        name: "query"
         description: "The SQL statement to use for inserting records."
         help: "The SQL query for inserting records, with placeholders for values."
         example: "INSERT INTO my_table (col1, col2) VALUES(?, ?)"
