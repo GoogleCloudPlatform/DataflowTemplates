@@ -20,10 +20,44 @@ import static org.junit.Assert.assertEquals;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.Rule;
 import org.junit.Test;
 
 /** Tests for BuildReadFromTableOperations class. */
 public class BuildReadFromTableOperationsTest {
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @Test
+  public void testExpandNullTables() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(ValueProvider.StaticValueProvider.of(null));
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("table")
+            .column("colName")
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    PCollection<ReadOperation> readOperations =
+        pipeline.apply(Create.of(ddl)).apply(buildReadFromTableOperations);
+    PAssert.that(readOperations)
+        .containsInAnyOrder(
+            ReadOperation.create()
+                .withQuery("SELECT \"table\" AS _spanner_table, t.`colName` FROM `table` AS t")
+                .withPartitionOptions(
+                    com.google.cloud.spanner.PartitionOptions.newBuilder()
+                        .setMaxPartitions(1000)
+                        .build()));
+    pipeline.run();
+  }
 
   @Test
   public void testColumnExpressionNumeric() {
