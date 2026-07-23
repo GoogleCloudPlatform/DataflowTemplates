@@ -41,6 +41,7 @@ public class CreateSpannerReadOpsFnTest {
     Ddl ddl = mock(Ddl.class);
 
     // Prepare DDL behavior
+    when(ddl.dialect()).thenReturn(com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("Table1", "Table2"));
 
     // Define context behavior
@@ -59,9 +60,9 @@ public class CreateSpannerReadOpsFnTest {
     // Validate captured arguments
     verify(context)
         .output(
-            ReadOperation.create().withQuery("SELECT *, 'Table1' as __tableName__ FROM Table1"));
+            ReadOperation.create().withQuery("SELECT *, 'Table1' as __tableName__ FROM `Table1`"));
     verify(context)
         .output(
-            ReadOperation.create().withQuery("SELECT *, 'Table2' as __tableName__ FROM Table2"));
+            ReadOperation.create().withQuery("SELECT *, 'Table2' as __tableName__ FROM `Table2`"));
   }
 }
