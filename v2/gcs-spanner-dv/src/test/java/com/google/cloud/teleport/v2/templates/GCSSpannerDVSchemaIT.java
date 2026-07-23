@@ -32,8 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for GCSSpannerDV pipeline covering schema-related boundary conditions.
@@ -47,18 +45,14 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVSchemaIT.class);
   private static final String SPANNER_DDL_RESOURCE = "GCSSpannerDVSchemaIT/spanner-schema.sql";
 
   @Before
   public void setUp() throws IOException {
-    LOG.info("Setting up Spanner and BigQuery resources");
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-    LOG.info("BigQuery dataset created");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    LOG.info("Spanner instance created");
   }
 
   /**
@@ -67,7 +61,6 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
    */
   @Test
   public void validationTestWithEmptyTables() throws Exception {
-    LOG.info("Uploading an empty Avro file to GCS");
 
     String gcsInputDirectory = getGcsPath("input");
     uploadAvroFileToGcs(
@@ -75,10 +68,7 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
         GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema,
         Collections.emptyList());
 
-    LOG.info("No Spanner records to inject for empty table test.");
-
     // Launch Pipeline
-    LOG.info("Launching Dataflow validation job");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
@@ -107,7 +97,6 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
    */
   @Test
   public void validationTestWithReservedKeywords() throws Exception {
-    LOG.info("Generating Avro Records for Reserved Keywords");
 
     Schema reservedKeywordsSchema =
         getSchemaFromAvscFile("GCSSpannerDVSchemaIT/reserved_keywords.avsc");
@@ -126,8 +115,6 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
     String gcsInputDirectory = getGcsPath("input");
     uploadAvroFileToGcs("input/reserved.avro", reservedKeywordsSchema, records);
 
-    LOG.info("Injecting Spanner records for ORDER table");
-
     spannerResourceManager.write(
         Arrays.asList(
             Mutation.newInsertOrUpdateBuilder("ORDER")
@@ -142,7 +129,6 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
     Thread.sleep(20000);
 
     // Launch Pipeline
-    LOG.info("Launching Dataflow validation job");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
