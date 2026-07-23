@@ -65,4 +65,39 @@ public class CreateSpannerReadOpsFnTest {
         .output(
             ReadOperation.create().withQuery("SELECT *, 'Table2' as __tableName__ FROM `Table2`"));
   }
+
+  @Test
+  public void testProcessElementPostgres() {
+    // Mock dependencies
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    DoFn<Void, ReadOperation>.ProcessContext context = mock(DoFn.ProcessContext.class);
+    Ddl ddl = mock(Ddl.class);
+
+    // Prepare DDL behavior for Postgres
+    when(ddl.dialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
+    when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("Table1", "Table2"));
+
+    // Define context behavior
+    when(context.sideInput(ddlView)).thenReturn(ddl);
+
+    // Create DoFn
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView);
+
+    // Execute
+    doFn.processElement(context);
+
+    // Verify output
+    ArgumentCaptor<ReadOperation> argument = ArgumentCaptor.forClass(ReadOperation.class);
+    verify(context, times(2)).output(argument.capture());
+
+    // Validate captured arguments (expecting double quotes for Postgres)
+    verify(context)
+        .output(
+            ReadOperation.create()
+                .withQuery("SELECT *, 'Table1' as __tableName__ FROM \"Table1\""));
+    verify(context)
+        .output(
+            ReadOperation.create()
+                .withQuery("SELECT *, 'Table2' as __tableName__ FROM \"Table2\""));
+  }
 }
