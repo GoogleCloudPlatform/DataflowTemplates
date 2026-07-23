@@ -47,7 +47,7 @@
         <dataplex.api.version>v1-rev20251113-2.0.0</dataplex.api.version>
         <!-- ActiveMQ version 5.19.2 uses JMS 2.0 but retains javax.jms compatibility. -->
         <!-- Upgrade to 6.x requires Beam/templates to transition to the Jakarta Messaging API (jakarta.jms). -->
-        <activemq.version>5.19.2</activemq.version>
+        <activemq.version>6.2.7</activemq.version>
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
 
