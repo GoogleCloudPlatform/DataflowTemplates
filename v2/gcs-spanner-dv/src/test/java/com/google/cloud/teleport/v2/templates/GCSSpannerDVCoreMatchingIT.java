@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -63,6 +64,7 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
    * BigQuery tables.
    */
   @Test
+  @Category(DirectRunnerTest.class)
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
 
     // 1. Generate and Upload Avro Records (Source)
