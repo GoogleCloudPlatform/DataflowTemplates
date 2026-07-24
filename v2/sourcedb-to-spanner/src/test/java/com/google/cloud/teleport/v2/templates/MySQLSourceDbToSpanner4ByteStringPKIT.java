@@ -42,10 +42,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MySQLResourceManager mySQLResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  private MySQLResourceManager mySQLResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   private static final String TABLE_4BYTE = "table4bytepk";
   private static final String ID = "id";
@@ -104,7 +102,7 @@ public class MySQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBa
     jobParameters.put("uniformizationStageCountHint", "-1");
     jobParameters.put("numPartitions", "5");
 
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,

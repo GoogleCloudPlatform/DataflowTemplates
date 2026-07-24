@@ -42,10 +42,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class PostgreSQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static PostgresResourceManager postgreSQLResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  private PostgresResourceManager postgreSQLResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   private static final String TABLE = "table4bytepk";
   private static final String ID = "id";
@@ -100,7 +98,7 @@ public class PostgreSQLSourceDbToSpanner4ByteStringPKIT extends SourceDbToSpanne
 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,

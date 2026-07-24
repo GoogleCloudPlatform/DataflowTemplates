@@ -130,6 +130,14 @@ public abstract class CollationMapper implements Serializable {
     if (element == null) {
       return BigInteger.valueOf(-1);
     }
+    // 'ret' stores the mapped value using a variable-base encoding.
+    // The base (charset size) can change depending on whether it's the trailing position
+    // in a pad-space collation.
+    // Example: For string "abcd" with lengthToPad = 6, let non-trailing base = 100 and trailing
+    // base = 90.
+    // If ordinals are a=1, b=2, c=3, d=4, the mapping evaluates to:
+    // ret = ((((1 * 100 + 2) * 100) + 3) * 90 + 4) * (100 ^ 2)
+    // unMapString reverses this by extracting modulo the trailing base first.
     BigInteger ret = BigInteger.ZERO;
 
     // MySQL ignores empty character in string comparisons.
@@ -149,20 +157,21 @@ public abstract class CollationMapper implements Serializable {
     }
 
     // Convert the string to BigInteger.
-    java.util.List<String> codePoints = new java.util.ArrayList<>();
-    for (int i = 0; i < element.length(); ) {
-      int cp = element.codePointAt(i);
-      codePoints.add(new String(Character.toChars(cp)));
-      i += Character.charCount(cp);
-    }
+    java.util.List<String> codePoints =
+        element
+            .codePoints()
+            .mapToObj(cp -> new String(Character.toChars(cp)))
+            .collect(Collectors.toList());
     for (int index = 0; index < codePoints.size(); index++) {
       String c = codePoints.get(index);
       ret =
           ret.multiply(BigInteger.valueOf(getCharsetSize(index == (codePoints.size() - 1))))
               .add(BigInteger.valueOf(getOrdinalPosition(c, index == (codePoints.size() - 1))));
     }
-    for (int index = codePoints.size(); index < lengthToPad; index++) {
-      ret = ret.multiply(BigInteger.valueOf(getCharsetSize(index == (codePoints.size() - 1))));
+    if (lengthToPad > codePoints.size()) {
+      ret =
+          ret.multiply(
+              BigInteger.valueOf(getCharsetSize(false)).pow(lengthToPad - codePoints.size()));
     }
     return ret;
   }
@@ -193,22 +202,22 @@ public abstract class CollationMapper implements Serializable {
     }
 
     // Base Case that the string just represents single character
-    if (element == BigInteger.ZERO) {
+    if (element.equals(BigInteger.ZERO)) {
       String c = getCharacterFromPosition(element.longValue(), true);
       return c;
     }
 
-    while (element != BigInteger.ZERO) {
+    while (!element.equals(BigInteger.ZERO)) {
       long charsetSize = getCharsetSize(index == 0);
 
       BigInteger reminder = element.mod(BigInteger.valueOf(charsetSize));
       String c = getCharacterFromPosition(reminder.longValue(), (index == 0));
-      word.insert(0, c);
+      word.append(c);
 
       element = element.divide(BigInteger.valueOf(charsetSize));
       index++;
     }
-    String ret = word.toString();
+    String ret = word.reverse().toString();
     return ret;
   }
 
