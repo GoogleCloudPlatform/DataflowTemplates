@@ -5,7 +5,7 @@
 CREATE OR REPLACE FUNCTION pg_temp.safe_convert_from(codepoint int8, charset text) RETURNS return_type_replacement_tag AS
 '
   BEGIN
-    RETURN convert_from(decode(to_hex(codepoint), ''hex''), charset);
+    RETURN convert_from(convert_to(chr(codepoint::integer), charset), charset);
   EXCEPTION
     WHEN OTHERS THEN RETURN NULL;
   END;
