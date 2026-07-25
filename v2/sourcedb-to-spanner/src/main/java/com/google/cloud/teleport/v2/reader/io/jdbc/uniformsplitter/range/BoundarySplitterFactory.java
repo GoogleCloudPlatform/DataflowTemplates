@@ -245,26 +245,42 @@ public class BoundarySplitterFactory {
       end = OffsetTime.of(LocalTime.MAX, start.getOffset());
     }
 
-    long startNanos = start.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
-    long endNanos = end.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime().toNanoOfDay();
-
     long nanosPerDay = 86_400_000_000_000L;
-    if (endNanos < startNanos) {
-      endNanos += nanosPerDay;
-    }
+
+    // Java cannot represent 24:00:00, so the pipeline uses LocalTime.MAX as a proxy.
+    long startClockNanos =
+        start.toLocalTime().equals(LocalTime.MAX) ? nanosPerDay : start.toLocalTime().toNanoOfDay();
+    long endClockNanos =
+        end.toLocalTime().equals(LocalTime.MAX) ? nanosPerDay : end.toLocalTime().toNanoOfDay();
+
+    // Calculate the raw UTC nanoseconds without wrapping to a 24-hour clock.
+    // This allows the time to go negative (previous day) or exceed 24 hours (next day)
+    long startOffsetNanos = start.getOffset().getTotalSeconds() * 1_000_000_000L;
+    long startNanos = startClockNanos - startOffsetNanos;
+
+    long endOffsetNanos = end.getOffset().getTotalSeconds() * 1_000_000_000L;
+    long endNanos = endClockNanos - endOffsetNanos;
 
     Long midNanos = splitLongs(startNanos, endNanos);
     if (midNanos == null) {
       return null;
     }
 
-    midNanos = midNanos % nanosPerDay;
-
-    OffsetTime currentEnd =
-        OffsetTime.of(LocalTime.ofNanoOfDay(midNanos), ZoneOffset.UTC)
-            .withOffsetSameInstant(start.getOffset());
-
-    return currentEnd;
+    if (midNanos < 0) {
+      // For negative underflow, use the offset of the start value.
+      long localMidNanos = midNanos + (start.getOffset().getTotalSeconds() * 1_000_000_000L);
+      return OffsetTime.of(LocalTime.ofNanoOfDay(localMidNanos), start.getOffset());
+    } else if (midNanos >= nanosPerDay) {
+      // For positive overflow, use the offset of the end value.
+      long localMidNanos = midNanos + (end.getOffset().getTotalSeconds() * 1_000_000_000L);
+      if (localMidNanos >= nanosPerDay) {
+        return OffsetTime.of(LocalTime.MAX, end.getOffset());
+      }
+      return OffsetTime.of(LocalTime.ofNanoOfDay(localMidNanos), end.getOffset());
+    } else {
+      // Normal range, use 0 offset.
+      return OffsetTime.of(LocalTime.ofNanoOfDay(midNanos), ZoneOffset.UTC);
+    }
   }
 
   @VisibleForTesting

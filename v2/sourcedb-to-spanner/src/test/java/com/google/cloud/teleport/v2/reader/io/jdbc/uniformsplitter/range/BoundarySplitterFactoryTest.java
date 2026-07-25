@@ -476,7 +476,7 @@ public class BoundarySplitterFactoryTest {
 
     OffsetTime start = OffsetTime.parse("08:00:00+05:00");
     OffsetTime end = OffsetTime.parse("16:00:00+05:00");
-    OffsetTime mid = OffsetTime.parse("12:00:00+05:00");
+    OffsetTime mid = OffsetTime.parse("07:00:00Z");
 
     // 1. Standard Split
     // Verifies that valid OffsetTime start and end bounds successfully calculate the correct
@@ -489,17 +489,17 @@ public class BoundarySplitterFactoryTest {
 
     // 3. Open Lower Bound
     // Verifies that a null start boundary implies a minimum value default (LocalTime.MIN) for
-    // calculating the
-    // midpoint.
+    // calculating the midpoint.
     assertThat(splitter.getSplitPoint(null, end, null, null, null))
-        .isEqualTo(OffsetTime.parse("08:00:00+05:00"));
+        .isEqualTo(OffsetTime.parse("03:00:00Z"));
 
     // 4. Open Upper Bound
     // Verifies that a null end boundary implies a maximum value default (LocalTime.MAX) for
-    // calculating the
-    // midpoint.
+    // calculating the midpoint. The new logic intercepts LocalTime.MAX and uses exactly 24 hours,
+    // so the midpoint between 08:00:00+05:00 and 24:00:00+05:00 is exactly 16:00:00+05:00, which is
+    // 11:00:00Z.
     assertThat(splitter.getSplitPoint(start, null, null, null, null))
-        .isEqualTo(OffsetTime.parse("15:59:59.999999999+05:00"));
+        .isEqualTo(OffsetTime.parse("11:00:00Z"));
 
     // 5. Crossing UTC Midnight Boundary
     // Verifies robust midpoint calculation when the time bounds cross the UTC midnight boundary.

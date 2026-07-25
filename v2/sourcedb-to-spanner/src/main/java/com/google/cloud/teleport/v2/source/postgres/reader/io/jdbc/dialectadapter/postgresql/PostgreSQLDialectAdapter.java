@@ -47,6 +47,8 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -78,12 +80,24 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    */
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          // Integer Types
+          .put("INT2", SourceColumnIndexInfo.IndexType.NUMERIC)
+          .put("INT4", SourceColumnIndexInfo.IndexType.NUMERIC)
+          .put("INT8", SourceColumnIndexInfo.IndexType.NUMERIC)
+          // Floating Point / Decimal Types
           .put("NUMERIC", SourceColumnIndexInfo.IndexType.DECIMAL)
           .put("FLOAT4", SourceColumnIndexInfo.IndexType.FLOAT)
           .put("FLOAT8", SourceColumnIndexInfo.IndexType.DOUBLE)
+          // String Types
+          .put("VARCHAR", SourceColumnIndexInfo.IndexType.STRING)
+          .put("TEXT", SourceColumnIndexInfo.IndexType.STRING)
+          // Date/Time Types
+          .put("TIMESTAMP", SourceColumnIndexInfo.IndexType.TIME_STAMP)
+          .put("TIMESTAMPTZ", SourceColumnIndexInfo.IndexType.TIME_STAMP)
           .put("DATE", SourceColumnIndexInfo.IndexType.DATE)
           .put("TIME", SourceColumnIndexInfo.IndexType.LOCAL_TIME)
           .put("TIMETZ", SourceColumnIndexInfo.IndexType.OFFSET_TIME)
+          // Other
           .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
           .put(BIT_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BIT)
           .build();
@@ -384,7 +398,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  a.attnum AS ordinal_position,"
             + "  t.typname AS type_name,"
             + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
-            + "  t.typcategory AS type_category,"
             + "  ico.collation_name AS collation,"
             + "  ico.pad_attribute AS pad,"
             + "  pg_encoding_to_char(d.encoding) AS charset,"
@@ -417,14 +430,15 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       try (ResultSet resultSet = statement.executeQuery()) {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
-          final String typeCategory = resultSet.getString("type_category");
           final String typeName =
               Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
           final String columnName = resultSet.getString("column_name");
           if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(typeName.toUpperCase())) {
             customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
-          SourceColumnIndexInfo.IndexType indexType = indexTypeFrom(typeCategory, typeName);
+          SourceColumnIndexInfo.IndexType indexType =
+              INDEX_TYPE_MAPPING.getOrDefault(
+                  typeName.toUpperCase(), SourceColumnIndexInfo.IndexType.OTHER);
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(columnName)
@@ -667,6 +681,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
+  @Override
+  public LocalTime extractBoundaryLocalTime(ResultSet rs, int index) throws SQLException {
+    return PostgreSQLTimeConverter.toLocalTime(rs.getBytes(index));
+  }
+
+  @Override
+  public OffsetTime extractBoundaryOffsetTime(ResultSet rs, int index) throws SQLException {
+    return PostgreSQLTimeConverter.toOffsetTime(rs.getBytes(index));
+  }
+
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
     StringBuilder queryBuilder = new StringBuilder();
     queryBuilder.append(query);
@@ -685,31 +709,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
               .collect(Collectors.joining(" AND ")));
     }
     return queryBuilder.toString();
-  }
-
-  /**
-   * Maps a PostgreSQL column type to a Dataflow {@link SourceColumnIndexInfo.IndexType}.<br>
-   * First checks {@link #INDEX_TYPE_MAPPING} for specific type overrides. If no override exists, it
-   * falls back to inferring the type from the PostgreSQL {@code typcategory}.<br>
-   * Ref <a
-   * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
-   */
-  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
-    String upperTypeName = typeName.toUpperCase();
-    if (INDEX_TYPE_MAPPING.containsKey(upperTypeName)) {
-      return INDEX_TYPE_MAPPING.get(upperTypeName);
-    }
-
-    switch (typeCategory) {
-      case "N":
-        return SourceColumnIndexInfo.IndexType.NUMERIC;
-      case "D":
-        return SourceColumnIndexInfo.IndexType.TIME_STAMP;
-      case "S":
-        return SourceColumnIndexInfo.IndexType.STRING;
-      default:
-        return SourceColumnIndexInfo.IndexType.OTHER;
-    }
   }
 
   /** Ref <a href="https://www.postgresql.org/docs/current/datatype-character.html"></a>. */

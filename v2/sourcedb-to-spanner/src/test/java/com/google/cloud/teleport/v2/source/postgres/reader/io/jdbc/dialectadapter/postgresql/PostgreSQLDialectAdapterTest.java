@@ -30,13 +30,12 @@ import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
-import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -44,6 +43,8 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Before;
@@ -269,115 +270,105 @@ public class PostgreSQLDialectAdapterTest {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSet.next())
+        .thenReturn(
+            true, true, true, true, true, true, true, true, true, true, true, true, true, false);
     when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
-    when(mockResultSet.getString("column_name")).thenReturn("id", "col1", "col2", "col3");
+    when(mockResultSet.getString("column_name"))
+        .thenReturn(
+            "col_int2",
+            "col_int4",
+            "col_int8",
+            "col_numeric",
+            "col_float4",
+            "col_float8",
+            "col_varchar",
+            "col_text",
+            "col_timestamp",
+            "col_timestamptz",
+            "col_date",
+            "col_time",
+            "col_timetz");
     when(mockResultSet.getString("index_name"))
-        .thenReturn("table_pkey", "table_uniq", "table_index", "table_index");
-    when(mockResultSet.getBoolean("is_unique")).thenReturn(true, true, false, false);
-    when(mockResultSet.getBoolean("is_primary")).thenReturn(true, false, false, false);
-    when(mockResultSet.getLong("cardinality")).thenReturn(1L, 1L, 2L, 2L);
-    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L, 1L, 2L);
-    when(mockResultSet.getString("type_category")).thenReturn("N", "S", "S", "D");
-    when(mockResultSet.getString("collation")).thenReturn(null, "en_US", "en_US", null);
-    when(mockResultSet.getInt("type_length")).thenReturn(100, 0);
-    when(mockResultSet.wasNull()).thenReturn(false, true);
-    when(mockResultSet.getString("type_name")).thenReturn("bigint", "char", "text", "timestamp");
-    when(mockResultSet.getString("charset")).thenReturn("UTF8", "UTF8");
+        .thenReturn(
+            "idx_int2",
+            "idx_int4",
+            "idx_int8",
+            "idx_numeric",
+            "idx_float4",
+            "idx_float8",
+            "idx_varchar",
+            "idx_text",
+            "idx_timestamp",
+            "idx_timestamptz",
+            "idx_date",
+            "idx_time",
+            "idx_timetz");
+    when(mockResultSet.getBoolean("is_unique"))
+        .thenReturn(true, true, true, true, true, true, true, true, true, true, true, true, true);
+    when(mockResultSet.getBoolean("is_primary"))
+        .thenReturn(true, true, true, true, true, true, true, true, true, true, true, true, true);
+    when(mockResultSet.getLong("cardinality"))
+        .thenReturn(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L);
+    when(mockResultSet.getLong("ordinal_position"))
+        .thenReturn(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L);
+    when(mockResultSet.getString("collation"))
+        .thenReturn(null, null, null, null, null, null, null, null, null, null, null, null, null);
+    when(mockResultSet.getInt("type_length")).thenReturn(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    when(mockResultSet.wasNull())
+        .thenReturn(true, true, true, true, true, true, true, true, true, true, true, true, true);
+    when(mockResultSet.getString("type_name"))
+        .thenReturn(
+            "int2",
+            "int4",
+            "int8",
+            "numeric",
+            "float4",
+            "float8",
+            "varchar",
+            "text",
+            "timestamp",
+            "timestamptz",
+            "date",
+            "time",
+            "timetz");
+    when(mockResultSet.getString("charset"))
+        .thenReturn(null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
         .containsExactly(
             "my_schema.table1",
             ImmutableList.of(
                 SourceColumnIndexInfo.builder()
-                    .setColumnName("id")
-                    .setIndexName("table_pkey")
+                    .setColumnName("col_int2")
+                    .setIndexName("idx_int2")
                     .setIsUnique(true)
                     .setIsPrimary(true)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
-                    .setColumnTypeName("bigint")
+                    .setColumnTypeName("int2")
                     .build(),
                 SourceColumnIndexInfo.builder()
-                    .setColumnName("col1")
-                    .setIndexName("table_uniq")
+                    .setColumnName("col_int4")
+                    .setIndexName("idx_int4")
                     .setIsUnique(true)
-                    .setIsPrimary(false)
+                    .setIsPrimary(true)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(IndexType.STRING)
-                    .setCollationReference(
-                        CollationReference.builder()
-                            .setDbCharacterSet("UTF8")
-                            .setDbCollation("en_US")
-                            .setPadSpace(true)
-                            .build())
-                    .setStringMaxLength(100)
-                    .setColumnTypeName("char")
+                    .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
+                    .setColumnTypeName("int4")
                     .build(),
                 SourceColumnIndexInfo.builder()
-                    .setColumnName("col2")
-                    .setIndexName("table_index")
-                    .setIsUnique(false)
-                    .setIsPrimary(false)
-                    .setCardinality(2L)
+                    .setColumnName("col_int8")
+                    .setIndexName("idx_int8")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(IndexType.STRING)
-                    .setCollationReference(
-                        CollationReference.builder()
-                            .setDbCharacterSet("UTF8")
-                            .setDbCollation("en_US")
-                            .setPadSpace(false)
-                            .build())
-                    .setStringMaxLength(65535)
-                    .setColumnTypeName("text")
+                    .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
+                    .setColumnTypeName("int8")
                     .build(),
-                SourceColumnIndexInfo.builder()
-                    .setColumnName("col3")
-                    .setIndexName("table_index")
-                    .setIsUnique(false)
-                    .setIsPrimary(false)
-                    .setCardinality(2L)
-                    .setOrdinalPosition(2L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
-                    .setColumnTypeName("timestamp")
-                    .setDatetimePrecision(6)
-                    .build()));
-  }
-
-  @Test
-  public void testDiscoverTableIndexesWithExplicitTypeMappings()
-      throws SQLException, RetriableSchemaDiscoveryException {
-    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
-
-    when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
-    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, false);
-
-    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
-    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
-    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
-    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
-    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
-    when(mockResultSet.getString("column_name"))
-        .thenReturn(
-            "col_numeric", "col_float4", "col_float8", "col_date", "col_time", "col_timetz");
-    when(mockResultSet.getString("index_name"))
-        .thenReturn(
-            "idx_numeric", "idx_float4", "idx_float8", "idx_date", "idx_time", "idx_timetz");
-    when(mockResultSet.getString("type_category")).thenReturn("N", "N", "N", "D", "D", "D");
-    when(mockResultSet.getString("type_name"))
-        .thenReturn("numeric", "float4", "float8", "date", "time", "timetz");
-
-    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
-        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
-
-    assertThat(indexes)
-        .containsExactly(
-            "my_schema.table1",
-            ImmutableList.of(
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col_numeric")
                     .setIndexName("idx_numeric")
@@ -412,6 +403,48 @@ public class PostgreSQLDialectAdapterTest {
                     .setDecimalStepSize(new java.math.BigDecimal("0.0000000001"))
                     .build(),
                 SourceColumnIndexInfo.builder()
+                    .setColumnName("col_varchar")
+                    .setIndexName("idx_varchar")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setColumnTypeName("varchar")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_text")
+                    .setIndexName("idx_text")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setColumnTypeName("text")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_timestamp")
+                    .setIndexName("idx_timestamp")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
+                    .setColumnTypeName("timestamp")
+                    .setDatetimePrecision(6)
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_timestamptz")
+                    .setIndexName("idx_timestamptz")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
+                    .setColumnTypeName("timestamptz")
+                    .setDatetimePrecision(6)
+                    .build(),
+                SourceColumnIndexInfo.builder()
                     .setColumnName("col_date")
                     .setIndexName("idx_date")
                     .setIsUnique(true)
@@ -430,7 +463,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(1L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.LOCAL_TIME)
                     .setColumnTypeName("time")
-                    .setDatetimePrecision(0)
+                    .setDatetimePrecision(6)
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col_timetz")
@@ -441,7 +474,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(1L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.OFFSET_TIME)
                     .setColumnTypeName("timetz")
-                    .setDatetimePrecision(0)
+                    .setDatetimePrecision(6)
                     .build()));
   }
 
@@ -461,7 +494,6 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
     when(mockResultSet.getLong("cardinality")).thenReturn(1L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
-    when(mockResultSet.getString("type_category")).thenReturn("U");
     when(mockResultSet.getString("type_name")).thenReturn("uuid");
     when(mockResultSet.getInt("type_length")).thenReturn(0);
     when(mockResultSet.wasNull()).thenReturn(true);
@@ -545,7 +577,6 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
     when(mockResultSet.getLong("cardinality")).thenReturn(1L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
-    when(mockResultSet.getString("type_category")).thenReturn("V");
     when(mockResultSet.getString("type_name")).thenReturn("bit");
     when(mockResultSet.getInt("type_length")).thenReturn(0);
     when(mockResultSet.wasNull()).thenReturn(true);
@@ -628,8 +659,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true, true);
     when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
-    when(mockResultSet.getString("type_category")).thenReturn("N", "N");
-    when(mockResultSet.getString("type_name")).thenReturn("bigint", "bigint");
+    when(mockResultSet.getString("type_name")).thenReturn("int8", "int8");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
@@ -964,8 +994,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getBoolean("is_primary")).thenReturn(true, true);
     when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
-    when(mockResultSet.getString("type_category")).thenReturn("N", "N");
-    when(mockResultSet.getString("type_name")).thenReturn("bigint", "bigint");
+    when(mockResultSet.getString("type_name")).thenReturn("int8", "int8");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
@@ -1001,5 +1030,25 @@ public class PostgreSQLDialectAdapterTest {
     verify(mockBasicDataSource).setMaxWaitMillis(timeoutMs);
     verify(mockBasicDataSource, never()).addConnectionProperty(eq("connectTimeout"), anyString());
     verify(mockBasicDataSource, never()).addConnectionProperty(eq("socketTimeout"), anyString());
+  }
+
+  @Test
+  public void testExtractBoundaryLocalTime() throws SQLException {
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.getBytes(1)).thenReturn("12:34:56.123456".getBytes(StandardCharsets.UTF_8));
+
+    LocalTime localTime = adapter.extractBoundaryLocalTime(mockRs, 1);
+
+    assertThat(localTime).isEqualTo(LocalTime.parse("12:34:56.123456"));
+  }
+
+  @Test
+  public void testExtractBoundaryOffsetTime() throws SQLException {
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.getBytes(1)).thenReturn("12:34:56.123456+05:30".getBytes(StandardCharsets.UTF_8));
+
+    OffsetTime offsetTime = adapter.extractBoundaryOffsetTime(mockRs, 1);
+
+    assertThat(offsetTime).isEqualTo(OffsetTime.parse("12:34:56.123456+05:30"));
   }
 }
