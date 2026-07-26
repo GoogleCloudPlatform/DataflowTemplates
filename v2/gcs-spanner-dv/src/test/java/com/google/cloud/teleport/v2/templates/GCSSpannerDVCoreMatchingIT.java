@@ -41,7 +41,7 @@ import org.junit.runners.JUnit4;
  * (Spanner) across multiple tables, and correctly report on matches, missing rows, and data
  * discrepancies.
  */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
@@ -64,7 +64,6 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
    * BigQuery tables.
    */
   @Test
-  @Category(DirectRunnerTest.class)
   public void validationTestWithMatchingAndMismatchedRecords() throws Exception {
 
     // 1. Generate and Upload Avro Records (Source)
