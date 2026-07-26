@@ -48,12 +48,13 @@ import java.nio.channels.ReadableByteChannel;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -187,18 +188,32 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
+
+    Set<Class<?>> categories = new HashSet<>();
+
+    Category classCategory = getClass().getAnnotation(Category.class);
+    if (classCategory != null) {
+      Collections.addAll(categories, classCategory.value());
+    }
+
     try {
       Method testMethod = getClass().getMethod(testName);
       annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-      Category category = testMethod.getAnnotation(Category.class);
-      if (category != null) {
-        usingDirectRunner =
-            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
-        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
+      Category methodCategory = testMethod.getAnnotation(Category.class);
+      if (methodCategory != null) {
+        Collections.addAll(categories, methodCategory.value());
       }
     } catch (NoSuchMethodException e) {
       // ignore error
     }
+
+    if (categories.contains(DirectRunnerTest.class)) {
+      usingDirectRunner = true;
+    }
+    if (categories.contains(SkipRunnerV2Test.class)) {
+      skipRunnerV2 = true;
+    }
+
     if (annotation == null) {
       annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
     }
