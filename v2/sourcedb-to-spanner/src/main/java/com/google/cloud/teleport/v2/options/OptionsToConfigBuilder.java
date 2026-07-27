@@ -27,8 +27,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -113,9 +111,7 @@ public final class OptionsToConfigBuilder {
             .setSourceSchemaReference(sourceSchemaReference)
             .setDbAuth(
                 LocalCredentialsProvider.builder()
-                    .setUserName(
-                        shard.getUserName()) // TODO - support taking username and password from url
-                    // as well
+                    .setUserName(shard.getUserName())
                     .setPassword(shard.getPassword())
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
@@ -221,18 +217,6 @@ public final class OptionsToConfigBuilder {
 
       return baseUrl + "?" + newQuery;
     }
-  }
-
-  private static String extractDbFromURL(String sourceDbUrl) {
-    URI uri;
-    try {
-      // Strip off the prefix 'jdbc:' which the library cannot handle.
-      uri = new URI(sourceDbUrl.substring(5));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(String.format("Unable to parse url: %s", sourceDbUrl), e);
-    }
-    // Remove '/' before returning.
-    return uri.getPath().substring(1);
   }
 
   private OptionsToConfigBuilder() {}

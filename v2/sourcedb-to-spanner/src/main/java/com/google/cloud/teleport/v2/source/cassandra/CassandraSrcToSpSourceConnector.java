@@ -49,6 +49,7 @@ public class CassandraSrcToSpSourceConnector implements ISrcToSpSourceConnector 
         pipeline,
         spannerConfig,
         new DbConfigContainerDefaultImpl(
-            CassandraIOWrapperFactory.fromConfig(options, sourceConnectionConfig)));
+            CassandraIOWrapperFactory.fromConfig(
+                sourceConnectionConfig, options.getNumPartitions())));
   }
 }

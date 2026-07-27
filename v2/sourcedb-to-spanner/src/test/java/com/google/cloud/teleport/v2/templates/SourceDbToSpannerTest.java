@@ -28,9 +28,11 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import java.util.Arrays;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.joda.time.Duration;
@@ -131,5 +133,41 @@ public class SourceDbToSpannerTest {
           .thenReturn(mock(JdbcShardConfig.class));
       assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
     }
+  }
+
+  @Test
+  public void testValidateOptions() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.PG_SOURCE_DIALECT);
+
+    AstraConnectionConfig astraConfig = new AstraConnectionConfig();
+    IllegalArgumentException exception1 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SourceDbToSpanner.validateOptions(mockOptions, astraConfig));
+    assertEquals("Postgresql dialect should have JDBC source config.", exception1.getMessage());
+
+    JdbcShardConfig jdbcConfig = new JdbcShardConfig();
+    Shard shard1 = new Shard();
+    shard1.setNamespace("public");
+    Shard shard2 = new Shard();
+    shard2.setNamespace("custom");
+    jdbcConfig.setShardConfigs(Arrays.asList(shard1, shard2));
+
+    IllegalArgumentException exception2 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SourceDbToSpanner.validateOptions(mockOptions, jdbcConfig));
+    assertEquals(
+        "Non-public namespaces are currently unsupported for PostgreSQL migrations.",
+        exception2.getMessage());
+
+    jdbcConfig.setShardConfigs(Arrays.asList(shard1));
+    SourceDbToSpanner.validateOptions(mockOptions, jdbcConfig);
+
+    mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.MYSQL_SOURCE_DIALECT);
+    jdbcConfig.setShardConfigs(Arrays.asList(shard1, shard2));
+    SourceDbToSpanner.validateOptions(mockOptions, jdbcConfig);
   }
 }

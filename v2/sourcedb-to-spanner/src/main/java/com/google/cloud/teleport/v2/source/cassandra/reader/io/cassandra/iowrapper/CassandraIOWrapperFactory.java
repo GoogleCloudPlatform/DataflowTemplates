@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrap
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
@@ -25,7 +24,6 @@ import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapp
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
-import com.google.common.base.Preconditions;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
@@ -61,13 +59,7 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   public abstract String astraDBRegion();
 
   public static CassandraIOWrapperFactory fromConfig(
-      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
-    Preconditions.checkArgument(
-        options.getSourceDbDialect().equals(SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT)
-            || options
-                .getSourceDbDialect()
-                .equals(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT),
-        "Unexpected Dialect " + options.getSourceDbDialect() + " for Cassandra Source");
+      SourceConnectionConfig sourceConnectionConfig, Integer numPartitions) {
 
     GuardedStringValueProvider astraDBToken = GuardedStringValueProvider.create("");
     String astraDBDatabaseId = "";
@@ -75,26 +67,23 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
     String astraDBRegion = "";
     OptionsMap optionsMap = null;
 
+    CassandraDataSource.CassandraDialect cassandraDialect = CassandraDialect.OSS;
     if (sourceConnectionConfig instanceof AstraConnectionConfig) {
       AstraConnectionConfig astraConfig = (AstraConnectionConfig) sourceConnectionConfig;
       astraDBToken = GuardedStringValueProvider.create(astraConfig.getAstraToken());
       astraDBDatabaseId = astraConfig.getDatabaseId();
       astraDBKeyspace = astraConfig.getKeySpace();
       astraDBRegion = astraConfig.getAstraDbRegion();
+      cassandraDialect = CassandraDialect.ASTRA;
     } else if (sourceConnectionConfig instanceof CassandraConnectionConfig) {
       optionsMap = ((CassandraConnectionConfig) sourceConnectionConfig).getOptionsMap();
     } else {
       throw new IllegalArgumentException(
           "Unsupported source connection config type: " + sourceConnectionConfig);
     }
-    CassandraDataSource.CassandraDialect cassandraDialect =
-        switch (options.getSourceDbDialect()) {
-          case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT -> CassandraDialect.ASTRA;
-          default -> CassandraDialect.OSS;
-        };
     return new AutoValue_CassandraIOWrapperFactory(
         optionsMap,
-        options.getNumPartitions(),
+        numPartitions,
         cassandraDialect,
         astraDBToken,
         astraDBDatabaseId,
