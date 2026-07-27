@@ -29,6 +29,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     this.ddlView = ddlView;
   }
 
+  // TODO: @aasthabharill to check if there's a better way to generalize dialect specific changes
   @ProcessElement
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
