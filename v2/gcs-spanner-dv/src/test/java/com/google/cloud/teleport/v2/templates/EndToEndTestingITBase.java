@@ -50,9 +50,9 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
-            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName)
-            .addEnvironmentVariable("workerMachineType", "n2-standard-4")
+            .addParameter("outputDirectory", "gs://" + artifactBucketName + "/" + testName)
+            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName + "/" + testName)
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"));
 
