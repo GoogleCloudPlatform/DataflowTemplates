@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -148,13 +149,8 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
     // 3. Assert on spanner rows to verify the bulk job was actually successful
     long usersCount = spannerResourceManager.getRowCount("Users");
     long rolesCount = spannerResourceManager.getRowCount("AccountRoles");
-    if (usersCount != 3 || rolesCount != 3) {
-      throw new RuntimeException(
-          "Bulk job failed to migrate all records. Users: "
-              + usersCount
-              + ", Roles: "
-              + rolesCount);
-    }
+    assertThat(usersCount).isEqualTo(3L);
+    assertThat(rolesCount).isEqualTo(3L);
 
     // 4. Manipulate Spanner data to create mismatches for the validation pipeline
     // Delete User 2 (MISSING_IN_DESTINATION)

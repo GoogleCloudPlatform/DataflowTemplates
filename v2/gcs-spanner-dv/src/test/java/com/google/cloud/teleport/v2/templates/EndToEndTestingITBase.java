@@ -37,7 +37,7 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager,
       String sessionFilePath,
-      Boolean multiSharded)
+      boolean multiSharded)
       throws IOException {
     // launch dataflow template
     FlexTemplateDataflowJobResourceManager.Builder builder =
@@ -66,7 +66,7 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
           cloudSqlResourceManager.getUri() + "?useSSL=false&allowPublicKeyRetrieval=true");
       builder.addParameter("username", cloudSqlResourceManager.getUsername());
       builder.addParameter("password", cloudSqlResourceManager.getPassword());
-      builder.addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver");
+      builder.addParameter("jdbcDriverClassName", "com.mysql.cj.jdbc.Driver");
     }
 
     flexTemplateDataflowJobResourceManager = builder.build();
