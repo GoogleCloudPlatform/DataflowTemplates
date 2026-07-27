@@ -197,13 +197,26 @@ public abstract class TemplateTestBase {
     }
 
     try {
-      Method testMethod = getClass().getMethod(testName);
-      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-      Category methodCategory = testMethod.getAnnotation(Category.class);
-      if (methodCategory != null) {
-        Collections.addAll(categories, methodCategory.value());
+      Method testMethod = null;
+      try {
+        testMethod = getClass().getMethod(testName);
+      } catch (NoSuchMethodException e) {
+        for (Method method : getClass().getMethods()) {
+          if (testName.startsWith(method.getName())) {
+            if (testMethod == null || method.getName().length() > testMethod.getName().length()) {
+              testMethod = method;
+            }
+          }
+        }
       }
-    } catch (NoSuchMethodException e) {
+      if (testMethod != null) {
+        annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+        Category methodCategory = testMethod.getAnnotation(Category.class);
+        if (methodCategory != null) {
+          Collections.addAll(categories, methodCategory.value());
+        }
+      }
+    } catch (Exception e) {
       // ignore error
     }
 
