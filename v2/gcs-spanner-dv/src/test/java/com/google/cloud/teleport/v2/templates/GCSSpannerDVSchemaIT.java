@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
@@ -40,7 +41,7 @@ import org.junit.runners.JUnit4;
  * <li>Empty tables (both source and destination have 0 rows).
  * <li>Reserved SQL Keywords (tables and columns that share names with SQL keywords).
  */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
