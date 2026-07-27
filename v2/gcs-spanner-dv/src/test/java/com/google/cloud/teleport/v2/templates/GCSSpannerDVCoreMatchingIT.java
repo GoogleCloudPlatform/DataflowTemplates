@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -40,7 +41,7 @@ import org.junit.runners.JUnit4;
  * (Spanner) across multiple tables, and correctly report on matches, missing rows, and data
  * discrepancies.
  */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
