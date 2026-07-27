@@ -527,6 +527,52 @@ public class DataGeneratorUtilsTest {
   }
 
   @Test
+  public void testCustomGeneratorReturnsNullFallback() {
+    DataGeneratorColumn col =
+        DataGeneratorColumn.builder()
+            .name("c1")
+            .logicalType(LogicalType.STRING)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression("fallback_value")
+            .build();
+
+    CustomDataGenerator mockGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            return null;
+          }
+        };
+
+    Object val = DataGeneratorUtils.generateValue("default_table", col, faker, mockGenerator);
+    assertEquals("fallback_value", val);
+  }
+
+  @Test
+  public void testCustomGeneratorReturnsExplicitNull() {
+    DataGeneratorColumn col =
+        DataGeneratorColumn.builder()
+            .name("c1")
+            .logicalType(LogicalType.STRING)
+            .isNullable(true)
+            .isGenerated(false)
+            .fakerExpression("fallback_value")
+            .build();
+
+    CustomDataGenerator mockGenerator =
+        new CustomDataGenerator() {
+          @Override
+          public Object generate(String tableName, String columnName) {
+            return CustomDataGenerator.EXPLICIT_NULL;
+          }
+        };
+
+    Object val = DataGeneratorUtils.generateValue("default_table", col, faker, mockGenerator);
+    Assert.assertNull(val);
+  }
+
+  @Test
   public void testCustomGeneratorThrowsExceptionIsWrapped() {
     DataGeneratorColumn col =
         DataGeneratorColumn.builder()

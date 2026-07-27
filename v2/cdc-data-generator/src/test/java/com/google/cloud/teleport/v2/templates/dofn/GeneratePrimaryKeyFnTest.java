@@ -16,14 +16,21 @@
 package com.google.cloud.teleport.v2.templates.dofn;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.common.collect.ImmutableList;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 /** Unit tests for {@link GeneratePrimaryKeyFn}. */
 @RunWith(JUnit4.class)
@@ -63,5 +70,50 @@ public class GeneratePrimaryKeyFnTest {
 
     assertEquals(1, GeneratePrimaryKeyFn.primaryKeyColumns(table).size());
     assertEquals("id", GeneratePrimaryKeyFn.primaryKeyColumns(table).get(0).name());
+  }
+
+  @Test
+  public void testCustomGeneratorExceptionCatching() {
+    DataGeneratorColumn col1 =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isGenerated(false)
+            .build();
+
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .columns(ImmutableList.of(col1))
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(1)
+            .updateQps(0)
+            .deleteQps(0)
+            .isRoot(true)
+            .recordsPerTick(1.0)
+            .build();
+
+    GeneratePrimaryKeyFn fn =
+        new GeneratePrimaryKeyFn(null, "SPANNER", "dummy.jar", BadCustomGenerator.class.getName());
+    fn.setup();
+
+    @SuppressWarnings("unchecked")
+    DoFn.OutputReceiver<KV<String, Row>> receiver =
+        (DoFn.OutputReceiver<KV<String, Row>>) Mockito.mock(DoFn.OutputReceiver.class);
+
+    RuntimeException exception =
+        assertThrows(RuntimeException.class, () -> fn.processElement(table, receiver));
+
+    assertTrue(exception.getMessage().contains("Failed to assemble root primary key for table"));
+  }
+
+  public static class BadCustomGenerator implements CustomDataGenerator {
+    @Override
+    public Object generate(String tableName, String columnName) {
+      return "not a long";
+    }
   }
 }

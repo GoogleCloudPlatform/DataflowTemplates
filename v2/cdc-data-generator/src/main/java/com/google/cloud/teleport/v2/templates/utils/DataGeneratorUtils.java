@@ -68,6 +68,9 @@ public final class DataGeneratorUtils {
       try {
         Object customValue = customGenerator.generate(tableName, column.name());
         if (customValue != null) {
+          if (CustomDataGenerator.EXPLICIT_NULL.equals(customValue)) {
+            return null;
+          }
           return customValue;
         }
       } catch (Exception e) {

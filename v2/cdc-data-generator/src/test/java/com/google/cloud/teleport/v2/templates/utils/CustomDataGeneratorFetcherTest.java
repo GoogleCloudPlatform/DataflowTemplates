@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
+import java.io.File;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -43,6 +44,20 @@ public class CustomDataGeneratorFetcherTest {
             () ->
                 CustomDataGeneratorFetcher.getCustomDataGenerator(
                     "gs://fake/jar.jar", "com.fake.Class"));
+    assertTrue(exception.getMessage().contains("Failed to load CustomDataGenerator"));
+  }
+
+  @Test
+  public void testLoadFailsWithClassNotFound() throws Exception {
+    File dummyJar = File.createTempFile("dummy", ".jar");
+    dummyJar.deleteOnExit();
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                CustomDataGeneratorFetcher.getCustomDataGenerator(
+                    dummyJar.getAbsolutePath(), "com.fake.MissingClass"));
     assertTrue(exception.getMessage().contains("Failed to load CustomDataGenerator"));
   }
 

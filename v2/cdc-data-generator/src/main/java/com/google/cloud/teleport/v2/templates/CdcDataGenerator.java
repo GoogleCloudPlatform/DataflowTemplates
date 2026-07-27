@@ -82,6 +82,12 @@ public class CdcDataGenerator {
   }
 
   public static PipelineResult run(CdcDataGeneratorOptions options) {
+    if ((options.getCustomJarPath() == null || options.getCustomJarPath().isEmpty())
+        != (options.getCustomClassName() == null || options.getCustomClassName().isEmpty())) {
+      throw new IllegalArgumentException(
+          "Both customJarPath and customClassName must be provided together, or neither should be provided.");
+    }
+
     Pipeline pipeline = Pipeline.create(options);
 
     SinkConfig sinkConfig;

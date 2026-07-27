@@ -169,7 +169,8 @@ public interface CdcDataGeneratorOptions
       order = 14,
       optional = true,
       description = "Custom Class Name",
-      helpText = "The fully qualified class name of the custom data generator implementation.",
+      helpText =
+          "The fully qualified class name of the custom data generator implementation. This is required if customJarPath is provided.",
       example = "com.mycompany.MyCustomGenerator")
   String getCustomClassName();
 

@@ -43,7 +43,8 @@ public class CustomDataGeneratorFetcher {
         key -> {
           try {
             URL[] urls = JarFileReader.saveFilesLocally(customJarPath);
-            URLClassLoader classLoader = URLClassLoader.newInstance(urls);
+            URLClassLoader classLoader =
+                URLClassLoader.newInstance(urls, CustomDataGeneratorFetcher.class.getClassLoader());
             Class<?> clazz = classLoader.loadClass(customClassName);
             return (CustomDataGenerator) clazz.getDeclaredConstructor().newInstance();
           } catch (Exception e) {

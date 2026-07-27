@@ -57,6 +57,7 @@ public class GeneratePrimaryKey
     this.customClassName = customClassName;
   }
 
+  @Override
   public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
     return input
         .apply(
