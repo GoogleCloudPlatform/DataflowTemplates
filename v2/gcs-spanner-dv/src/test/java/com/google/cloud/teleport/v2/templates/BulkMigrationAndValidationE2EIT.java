@@ -184,9 +184,6 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
                 .to(40L)
                 .build()));
 
-    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
-    Thread.sleep(20000);
-
     // 5. Launch Validation Pipeline (GCSSpannerDV)
     LaunchConfig.Builder dvOptions = LaunchConfig.builder(testName, specPath);
     LaunchInfo dvJobInfo =

@@ -26,12 +26,9 @@ import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
   protected FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -86,7 +83,7 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
         Resources.toString(Resources.getResource(ddlResource), StandardCharsets.UTF_8);
     // Since the DDL file contains multiple CREATE statements, we split them by semicolon and
     // execute one single SQL statement at a time.
-    for (String stmt : mysqlSql.split(";")) {
+    for (String stmt : mysqlSql.split("(?m);\\s*$")) {
       if (!stmt.trim().isEmpty()) {
         cloudSqlResourceManager.runSQLUpdate(stmt);
       }
