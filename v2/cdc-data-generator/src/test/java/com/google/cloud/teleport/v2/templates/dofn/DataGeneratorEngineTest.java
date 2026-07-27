@@ -57,13 +57,13 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testEngine_initializesCorrectly() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
     assertNotNull("Engine instance should be successfully initialized", engine);
   }
 
   @Test
   public void testProcessRecord_throwsExceptionWhenFkColumnCasingMismatches() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorTable parentTable =
         DataGeneratorTable.builder()
@@ -150,7 +150,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessRecord_tableNotFound() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
     DataGeneratorSchema schema = DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
 
     Row mockRow = mock(Row.class);
@@ -178,7 +178,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessRecord_endToEndLifecycle() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn pkCol =
         DataGeneratorColumn.builder()
@@ -317,7 +317,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessRecord_success_compositeKeysWithDifferentNames() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn parentCol1 =
         DataGeneratorColumn.builder()
@@ -450,7 +450,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessRecord_invalidFkConfigurationsRouteToDlq() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn pkCol =
         DataGeneratorColumn.builder()
@@ -594,7 +594,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessScheduledEvents_catchesErrorAndRoutesToDlq() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     MapState<Long, List<LifecycleEvent>> eventQueueState = mock(MapState.class);
     ReadableState<List<LifecycleEvent>> readableEvents = mock(ReadableState.class);
@@ -640,7 +640,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessScheduledEvents_success() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn pkCol =
         DataGeneratorColumn.builder()
@@ -739,7 +739,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessRecord_missingInterleavedParentRoutesToDlq() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn pkCol =
         DataGeneratorColumn.builder()
@@ -827,7 +827,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessScheduledEvents_emptyActiveTimestamps() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     ValueState<List<Long>> activeTimestamps = mock(ValueState.class);
     when(activeTimestamps.read()).thenReturn(Collections.emptyList());
@@ -850,7 +850,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testProcessScheduledEvents_futureTimestampBreaksLoop() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     ValueState<List<Long>> activeTimestamps = mock(ValueState.class);
     when(activeTimestamps.read())
@@ -874,7 +874,7 @@ public class DataGeneratorEngineTest {
 
   @Test
   public void testGenerateChildRow_missingInterleavedPkColumnOnParent() {
-    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker());
+    DataGeneratorEngine engine = new DataGeneratorEngine(5000, 5000, new Faker(), null);
 
     DataGeneratorColumn pkCol =
         DataGeneratorColumn.builder()
