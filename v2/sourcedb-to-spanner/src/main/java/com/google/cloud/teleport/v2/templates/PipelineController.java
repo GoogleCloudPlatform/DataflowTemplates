@@ -224,7 +224,6 @@ public class PipelineController {
       String sourceType, String sourceShardsFilePath) {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
-    SourceConnectionConfig sourceConnectionConfig;
     try {
       // Parse the source shards configuration file to respective
       // SourceConnectionConfig.

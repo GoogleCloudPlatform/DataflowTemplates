@@ -22,15 +22,19 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -107,6 +111,8 @@ public class SourceDbToSpanner {
         PipelineController.getSourceConnectionConfig(
             options.getSourceDbDialect(), options.getSourceConfigURL());
 
+    validateOptions(options, sourceConnectionConfig);
+
     // Decide type and source of migration
     ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
     return connector.executeMigration(options, sourceConnectionConfig, pipeline, spannerConfig);
@@ -125,5 +131,28 @@ public class SourceDbToSpanner {
       spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
     }
     return spannerConfig;
+  }
+
+  /**
+   * Validates the provided pipeline options.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
+   */
+  @VisibleForTesting
+  static void validateOptions(
+      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
+    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(options.getSourceDbDialect())) {
+      Preconditions.checkArgument(
+          (sourceConnectionConfig instanceof JdbcShardConfig),
+          "Postgresql dialect should have JDBC source config.");
+      for (Shard shard : ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs()) {
+        if (StringUtils.isNotBlank(shard.getNamespace())
+            && !shard.getNamespace().equals("public")) {
+          throw new IllegalArgumentException(
+              "Non-public namespaces are currently unsupported for PostgreSQL migrations.");
+        }
+      }
+    }
   }
 }
