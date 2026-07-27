@@ -44,6 +44,7 @@ public interface ISrcToSpSourceConnector {
    * Executes the migration pipeline for the source database.
    *
    * @param options Pipeline options.
+   * @param sourceConnectionConfig Parsed source connection config.
    * @param pipeline The Beam pipeline.
    * @param spannerConfig Spanner configuration.
    * @return The pipeline result.

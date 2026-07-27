@@ -52,15 +52,6 @@ variable "source_config_url" {
   description = "Source connection config file URL. The file format is dependent on the source type."
 }
 
-variable "username" {
-  type        = string
-  description = "Username to log in to the specified source database"
-}
-
-variable "password" {
-  type        = string
-  description = "Password to log in to the specified source database"
-}
 
 variable "num_partitions" {
   type        = number

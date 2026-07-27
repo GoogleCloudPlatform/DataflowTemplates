@@ -137,6 +137,7 @@ public class SourceDbToSpanner {
    * Validates the provided pipeline options.
    *
    * @param options The execution parameters to the pipeline.
+   * @param sourceConnectionConfig Parsed source connection config.
    * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
    */
   @VisibleForTesting

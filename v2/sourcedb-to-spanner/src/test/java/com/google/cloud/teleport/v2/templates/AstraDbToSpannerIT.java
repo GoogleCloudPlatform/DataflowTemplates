@@ -97,7 +97,7 @@ public class AstraDbToSpannerIT extends SourceDbToSpannerITBase implements Seria
             "CREATE TABLE %s ("
                 + " person_department STRING(MAX),"
                 + " person_id INT64,"
-                + " person_name STRING(MAX),"
+                + " person_name STRING(MAX)"
                 + ") PRIMARY KEY(person_department, person_id)",
             astraTable);
     spannerResourceManager.executeDdlStatement(spannerDdl);
