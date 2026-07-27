@@ -129,7 +129,6 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
     jdbcShardConfig.setShardConfigs(List.of(shard));
     String shardFileContents = new Gson().toJson(jdbcShardConfig);
-    LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
 
     // launch dataflow template
