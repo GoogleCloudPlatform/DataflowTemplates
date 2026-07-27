@@ -20,10 +20,18 @@ import java.io.Serializable;
 /** Interface for custom user-provided data generation logic. */
 public interface CustomDataGenerator extends Serializable {
   /**
+   * Sentinel object to be returned by {@link #generate} to indicate that an explicit null value
+   * should be set instead of using default generator.
+   */
+  Object EXPLICIT_NULL = "CUSTOM_DATA_GENERATOR_EXPLICIT_NULL_SENTINEL";
+
+  /**
    * Generates a custom value for the given column.
    *
+   * @param tableName The table name.
    * @param columnName The column name.
-   * @return The generated value, or null to fall back to the default generator.
+   * @return The generated value. Return {@link #EXPLICIT_NULL} to emit an actual null value, or
+   *     return null to fall back to the default generator.
    */
   Object generate(String tableName, String columnName);
 }
