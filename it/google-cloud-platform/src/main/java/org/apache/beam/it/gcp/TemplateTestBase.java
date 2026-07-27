@@ -106,11 +106,13 @@ public abstract class TemplateTestBase {
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
   public String testName;
+  protected Description testDescription;
 
   @Rule
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
+          testDescription = description;
           testName = description.getMethodName();
           // In case of parameterization the testName can contain subscript like testName[paramName]
           // Converting testName from testName[paramName] to testNameParamName since it is used to
@@ -196,28 +198,12 @@ public abstract class TemplateTestBase {
       Collections.addAll(categories, classCategory.value());
     }
 
-    try {
-      Method testMethod = null;
-      try {
-        testMethod = getClass().getMethod(testName);
-      } catch (NoSuchMethodException e) {
-        for (Method method : getClass().getMethods()) {
-          if (testName.startsWith(method.getName())) {
-            if (testMethod == null || method.getName().length() > testMethod.getName().length()) {
-              testMethod = method;
-            }
-          }
-        }
+    if (testDescription != null) {
+      annotation = testDescription.getAnnotation(TemplateIntegrationTest.class);
+      Category methodCategory = testDescription.getAnnotation(Category.class);
+      if (methodCategory != null) {
+        Collections.addAll(categories, methodCategory.value());
       }
-      if (testMethod != null) {
-        annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-        Category methodCategory = testMethod.getAnnotation(Category.class);
-        if (methodCategory != null) {
-          Collections.addAll(categories, methodCategory.value());
-        }
-      }
-    } catch (Exception e) {
-      // ignore error
     }
 
     if (categories.contains(DirectRunnerTest.class)) {
