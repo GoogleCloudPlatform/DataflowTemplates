@@ -149,10 +149,13 @@ public abstract class TableSplitSpecification implements Serializable {
       }
 
       if (!splitStagesCount().isPresent()) {
-        setSplitStagesCount(
+        long baseStages =
             logToBaseTwo(maxPartitionsHint)
                 + partitionColumns().size()
-                + 1 /* For initial counts */);
+                + 1 /* For initial counts */;
+        // We add 1/4th more stages to the total count to accommodate for the initial phase
+        // of the pipeline where only approximate counts are performed.
+        setSplitStagesCount(baseStages + baseStages / 4);
       }
 
       if (initialRange() != null) {

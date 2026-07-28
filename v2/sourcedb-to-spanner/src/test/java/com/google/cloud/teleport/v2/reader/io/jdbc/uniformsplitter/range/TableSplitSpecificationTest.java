@@ -58,8 +58,9 @@ public class TableSplitSpecificationTest {
     // 2^6)
     assertThat(spec.initialSplitHeight()).isEqualTo(6L);
 
-    // Derived splitStagesCount: logToBaseTwo(50) + partitionColumns.size() + 1 = 6 + 1 + 1 = 8
-    assertThat(spec.splitStagesCount()).isEqualTo(8L);
+    // Derived splitStagesCount: (logToBaseTwo(50) + partitionColumns.size() + 1) * 1.25 = (6 + 1 +
+    // 1) * 1.25 = 10
+    assertThat(spec.splitStagesCount()).isEqualTo(10L);
   }
 
   @Test

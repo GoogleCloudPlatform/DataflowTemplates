@@ -260,4 +260,40 @@ public class RangeCountTransformTest {
 
     testPipeline.run().waitUntilFinish();
   }
+
+  @Test
+  public void testRangeCountTransformCountMode() {
+    RangeCountTransform transform =
+        RangeCountTransform.builder()
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setTableSplitSpecifications(
+                ImmutableList.of(
+                    TableSplitSpecification.builder()
+                        .setTableIdentifier(
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName(tableName)
+                                .build())
+                        .setPartitionColumns(
+                            ImmutableList.of(
+                                PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
+                                    .setColumnName("col1")
+                                    .setColumnClass(Integer.class)
+                                    .build()))
+                        .setApproxRowCount(100L)
+                        .setMaxPartitionsHint(10L)
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build()))
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build())
+            .setTimeoutMillis(42L)
+            .setCountMode(RangeCountTransform.CountMode.APPROX)
+            .build();
+
+    org.junit.Assert.assertEquals(RangeCountTransform.CountMode.APPROX, transform.countMode());
+  }
 }

@@ -30,12 +30,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** DoFn to count a Range with timeout. */
+/** DoFn to count a Range with timeout and execution plan estimation fallback. */
 final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
 
   /**
@@ -54,7 +55,12 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
 
   private final UniformSplitterDBAdapter dbAdapter;
 
+  private final RangeCountTransform.CountMode countMode;
+
   private final ImmutableMap<TableIdentifier, String> countQueries;
+  private final ImmutableMap<TableIdentifier, String> approxCountQueries;
+
+  private static final AtomicBoolean loggedApproxCountError = new AtomicBoolean(false);
 
   private final RangePreparedStatementSetter rangePreparedStatementSetter;
 
@@ -65,21 +71,48 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       long timeoutMillis,
       UniformSplitterDBAdapter dbAdapter,
       ImmutableList<TableSplitSpecification> tableSplitSpecifications) {
+    this(
+        dataSourceProvider,
+        timeoutMillis,
+        dbAdapter,
+        tableSplitSpecifications,
+        RangeCountTransform.CountMode.TRY_EXACT);
+  }
+
+  RangeCountDoFn(
+      DataSourceProvider dataSourceProvider,
+      long timeoutMillis,
+      UniformSplitterDBAdapter dbAdapter,
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications,
+      RangeCountTransform.CountMode countMode) {
     this.dataSourceProvider = dataSourceProvider;
     this.timeoutMillis = timeoutMillis;
     this.dbAdapter = dbAdapter;
+    this.countMode = countMode;
+
     ImmutableMap.Builder<TableIdentifier, String> countQueriesBuilder = ImmutableMap.builder();
+    ImmutableMap.Builder<TableIdentifier, String> approxCountQueriesBuilder =
+        ImmutableMap.builder();
+
     for (TableSplitSpecification tableSplitSpecification : tableSplitSpecifications) {
+      TableIdentifier tableIdentifier = tableSplitSpecification.tableIdentifier();
+      ImmutableList<String> colNames =
+          tableSplitSpecification.partitionColumns().stream()
+              .map(pc -> pc.columnName())
+              .collect(ImmutableList.toImmutableList());
+
       countQueriesBuilder.put(
-          tableSplitSpecification.tableIdentifier(),
-          dbAdapter.getCountQuery(
-              tableSplitSpecification.tableIdentifier().tableName(),
-              tableSplitSpecification.partitionColumns().stream()
-                  .map(pc -> pc.columnName())
-                  .collect(ImmutableList.toImmutableList()),
-              timeoutMillis));
+          tableIdentifier,
+          dbAdapter.getCountQuery(tableIdentifier.tableName(), colNames, timeoutMillis));
+
+      if (dbAdapter.supportsApproximateCounts()) {
+        approxCountQueriesBuilder.put(
+            tableIdentifier,
+            dbAdapter.getApproximateCountQuery(tableIdentifier.tableName(), colNames));
+      }
     }
     this.countQueries = countQueriesBuilder.build();
+    this.approxCountQueries = approxCountQueriesBuilder.build();
     this.rangePreparedStatementSetter = new RangePreparedStatementSetter(tableSplitSpecifications);
     this.dataSourceManager =
         DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
@@ -92,19 +125,18 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   }
 
   /**
-   * Count a Range with timeout. In case of timeout, the count of range is set as {@link
-   * Range#INDETERMINATE_COUNT}.
+   * Count a Range using two-tier operational fallback based on {@link
+   * RangeCountTransform.CountMode}.
    *
    * @param input range.
    * @param out output receiver to get counted range.
    * @param c process context.
-   * @throws SQLException
+   * @throws SQLException if a fatal non-timeout database error occurs.
    */
   @ProcessElement
   public void processElement(@Element Range input, OutputReceiver<Range> out, ProcessContext c)
       throws SQLException {
 
-    long count = Range.INDETERMINATE_COUNT;
     if (isInvalidValidRange(input, countQueries)) {
       logger.error(
           "Got Range {} for unknown tableIdentifier. Known Identifiers are {} and {}",
@@ -114,12 +146,43 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
     }
 
     DataSource dataSource = dataSourceManager.getDatasource(input.tableIdentifier().dataSourceId());
+
+    long count = Range.INDETERMINATE_COUNT;
+    long approxCount = Range.INDETERMINATE_COUNT;
+
+    if (this.countMode == RangeCountTransform.CountMode.APPROX) {
+      approxCount = executeApproxCount(input, dataSource);
+    } else {
+      try {
+        count = executeExactCount(input, dataSource);
+        approxCount = count;
+      } catch (SQLException e) {
+        if (checkTimeout(e)) {
+          logger.warn("Hard count timed out for Range = {}; falling back to EXPLAIN...", input);
+          approxCount = executeApproxCount(input, dataSource);
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    Range output = input.withCounts(count, approxCount, c);
+    logger.debug(
+        "Counting Range = {}, Query = {}, DataSource = {}",
+        output,
+        countQueries.get(input.tableIdentifier()),
+        dataSource);
+    out.output(output);
+  }
+
+  private long executeExactCount(Range input, DataSource dataSource) throws SQLException {
+    long count = Range.INDETERMINATE_COUNT;
     String countQuery = countQueries.get(input.tableIdentifier());
     try (Connection conn = dataSource.getConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
               countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-      stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
+      stmt.setQueryTimeout(Math.max(1, (int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000)));
       rangePreparedStatementSetter.setParameters(input, stmt);
       ResultSet rs = stmt.executeQuery();
       if (rs.next()) {
@@ -160,14 +223,9 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
             e,
             e.getSQLState(),
             e.getErrorCode());
-        throw e;
       }
+      throw e;
     } catch (Exception e) {
-      // This exception is triggered from nullness checks of checker framework for the input to
-      // statement preparator and hence should
-      // indicate a programming error. Any other exception in the code flow returns a SQL Exception.
-      // It's hard to trigger this exception for UT as the checks are not running by default in the
-      // UT.
       logger.error(
           "Exception = {}, Range = {}, Query = {}, DataSource = {}",
           e,
@@ -176,10 +234,36 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
           dataSource);
       throw new RuntimeException(e);
     }
-    Range output = input.withCount(count, c);
-    logger.debug(
-        "Counting Range = {}, Query = {}, DataSource = {}", output, countQuery, dataSource);
-    out.output(output); // Output the counted Range.
+    return count;
+  }
+
+  private long executeApproxCount(Range input, DataSource dataSource) {
+    if (!dbAdapter.supportsApproximateCounts()) {
+      return Range.INDETERMINATE_COUNT;
+    }
+    String query = approxCountQueries.get(input.tableIdentifier());
+    if (query == null) {
+      return Range.INDETERMINATE_COUNT;
+    }
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(query)) {
+      stmt.setQueryTimeout(Math.max(1, (int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000)));
+      rangePreparedStatementSetter.setParameters(input, stmt);
+      try (ResultSet rs = stmt.executeQuery()) {
+        long approxCount = dbAdapter.parseApproximateCount(rs);
+        return approxCount == -1L ? Range.INDETERMINATE_COUNT : approxCount;
+      }
+    } catch (SQLException e) {
+      if (loggedApproxCountError.compareAndSet(false, true)) {
+        logger.error("EXPLAIN approximate count query failed on worker: {}", e.getMessage(), e);
+      }
+      return Range.INDETERMINATE_COUNT;
+    } catch (Exception e) {
+      if (loggedApproxCountError.compareAndSet(false, true)) {
+        logger.error("Unexpected error in approximate count on worker: {}", e.getMessage(), e);
+      }
+      return Range.INDETERMINATE_COUNT;
+    }
   }
 
   @VisibleForTesting
@@ -216,5 +300,10 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       this.dataSourceManager.closeAll();
       this.dataSourceManager = null;
     }
+  }
+
+  @VisibleForTesting
+  static void resetLoggedApproxCountError() {
+    loggedApproxCountError.set(false);
   }
 }

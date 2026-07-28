@@ -46,7 +46,6 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadAll;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -176,7 +175,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   abstract String transformPrefix();
 
   /**
-   * Orchestrates the multi-table partitioning and reading process.
+   * Orchestrates the multi-table partitioning and reading process using phased CountModes.
    *
    * @param input the starting point for the pipeline.
    * @return a {@link PCollection} containing the data read from all configured tables.
@@ -213,6 +212,13 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
               .setStageIdx(i)
               .build();
 
+      // In the first 20% of split stages (which corresponds to 25% of the original base stages),
+      // we only perform approximate counts to quickly partition large ranges.
+      RangeCountTransform.CountMode mode =
+          i < maxSplitStages() / 5
+              ? RangeCountTransform.CountMode.APPROX
+              : RangeCountTransform.CountMode.TRY_EXACT;
+
       RangeCountTransform rangeCountTransform =
           RangeCountTransform.builder()
               .setDataSourceProvider(dataSourceProvider())
@@ -220,6 +226,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
               .setTableSplitSpecifications(tableSplitSpecifications())
               .setBoundaryTypeMapper(typeMapper)
               .setTimeoutMillis(countQueryTimeoutMillis())
+              .setCountMode(mode)
               .build();
 
       RangeBoundaryTransform rangeBoundaryTransform =

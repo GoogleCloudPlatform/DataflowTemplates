@@ -83,4 +83,36 @@ public interface UniformSplitterDBAdapter extends Serializable {
   default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
   }
+
+  /**
+   * Get query for the prepared statement to estimate count (e.g., via EXPLAIN) of a given range.
+   *
+   * @param tableName name of the table to read.
+   * @param partitionColumns partition columns.
+   * @return Query Statement for execution plan estimation.
+   */
+  default String getApproximateCountQuery(
+      String tableName, ImmutableList<String> partitionColumns) {
+    throw new UnsupportedOperationException("Approximate counts not supported by this dialect.");
+  }
+
+  /**
+   * Parse the estimated row count from the execution plan (EXPLAIN) result set.
+   *
+   * @param rs result set from executing {@link #getApproximateCountQuery}.
+   * @return estimated row count, or -1L if parsing fails or format is unrecognized.
+   * @throws SQLException if a database error occurs.
+   */
+  default long parseApproximateCount(ResultSet rs) throws SQLException {
+    throw new UnsupportedOperationException("Approximate count parsing not implemented.");
+  }
+
+  /**
+   * Check if this database dialect supports approximate execution plan counting (EXPLAIN).
+   *
+   * @return true if approximate counts are supported.
+   */
+  default boolean supportsApproximateCounts() {
+    return false;
+  }
 }
