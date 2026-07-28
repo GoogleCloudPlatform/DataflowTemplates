@@ -22,6 +22,8 @@ import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -82,5 +84,13 @@ public interface UniformSplitterDBAdapter extends Serializable {
 
   default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  }
+
+  default LocalTime extractBoundaryLocalTime(ResultSet rs, int index) throws SQLException {
+    return BoundaryExtractorFactory.parseTimeStringToLocalTime(rs.getString(index));
+  }
+
+  default OffsetTime extractBoundaryOffsetTime(ResultSet rs, int index) throws SQLException {
+    return BoundaryExtractorFactory.parseTimeStringToOffsetTime(rs.getString(index));
   }
 }

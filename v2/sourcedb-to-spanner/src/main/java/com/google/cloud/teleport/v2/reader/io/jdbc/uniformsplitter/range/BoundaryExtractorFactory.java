@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
+
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -25,6 +27,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -40,6 +44,16 @@ public class BoundaryExtractorFactory {
   @FunctionalInterface
   public interface BoundaryDurationExtractor extends Serializable {
     Duration extract(ResultSet rs, int index) throws SQLException;
+  }
+
+  @FunctionalInterface
+  public interface BoundaryLocalTimeExtractor extends Serializable {
+    LocalTime extract(ResultSet rs, int index) throws SQLException;
+  }
+
+  @FunctionalInterface
+  public interface BoundaryOffsetTimeExtractor extends Serializable {
+    OffsetTime extract(ResultSet rs, int index) throws SQLException;
   }
 
   public static final Class BYTE_ARRAY_CLASS = (new byte[] {}).getClass();
@@ -58,6 +72,30 @@ public class BoundaryExtractorFactory {
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
+          .put(
+              LocalTime.class,
+              (BoundaryExtractor<LocalTime>)
+                  (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) -> {
+                    // Fallback when adapter is not provided: use the default string parsing logic
+                    return fromLocalTimes(
+                        partitionColumn,
+                        resultSet,
+                        boundaryTypeMapper,
+                        tableIdentifier,
+                        (rs, index) -> parseTimeStringToLocalTime(rs.getString(index)));
+                  })
+          .put(
+              OffsetTime.class,
+              (BoundaryExtractor<OffsetTime>)
+                  (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) -> {
+                    // Fallback when adapter is not provided: use the default string parsing logic
+                    return fromOffsetTimes(
+                        partitionColumn,
+                        resultSet,
+                        boundaryTypeMapper,
+                        tableIdentifier,
+                        (rs, index) -> parseTimeStringToOffsetTime(rs.getString(index)));
+                  })
           .put(
               Duration.class,
               (BoundaryExtractor<Duration>)
@@ -107,6 +145,28 @@ public class BoundaryExtractorFactory {
                   boundaryTypeMapper,
                   tableIdentifier,
                   dbAdapter::extractBoundaryDuration);
+      return (BoundaryExtractor<T>) extractor;
+    }
+    if (c.equals(LocalTime.class) && dbAdapter != null) {
+      BoundaryExtractor<LocalTime> extractor =
+          (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) ->
+              fromLocalTimes(
+                  partitionColumn,
+                  resultSet,
+                  boundaryTypeMapper,
+                  tableIdentifier,
+                  dbAdapter::extractBoundaryLocalTime);
+      return (BoundaryExtractor<T>) extractor;
+    }
+    if (c.equals(OffsetTime.class) && dbAdapter != null) {
+      BoundaryExtractor<OffsetTime> extractor =
+          (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) ->
+              fromOffsetTimes(
+                  partitionColumn,
+                  resultSet,
+                  boundaryTypeMapper,
+                  tableIdentifier,
+                  dbAdapter::extractBoundaryOffsetTime);
       return (BoundaryExtractor<T>) extractor;
     }
     return create(c);
@@ -213,16 +273,27 @@ public class BoundaryExtractorFactory {
       TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
-    Preconditions.checkArgument(
-        boundaryTypeMapper != null,
-        "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+
+    // PostgreSQL BIT types are processed as Strings, but they are purely
+    // base-2 numbers and do not require complex Collation mapping.
+    boolean isBit = BIT_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
+
+    if (!isBit) {
+      Preconditions.checkArgument(
+          boundaryTypeMapper != null,
+          "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
+    }
+
     resultSet.next();
     return Boundary.<String>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
-        .setBoundarySplitter(BoundarySplitterFactory.create(String.class))
+        .setBoundarySplitter(
+            isBit
+                ? BoundarySplitterFactory.createBitSplitter()
+                : BoundarySplitterFactory.create(String.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }
@@ -301,6 +372,45 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
+  private static Boundary<LocalTime> fromLocalTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier,
+      BoundaryLocalTimeExtractor localTimeExtractor)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(LocalTime.class));
+    resultSet.next();
+    return Boundary.<LocalTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(localTimeExtractor.extract(resultSet, 1))
+        .setEnd(localTimeExtractor.extract(resultSet, 2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<OffsetTime> fromOffsetTimes(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier,
+      BoundaryOffsetTimeExtractor offsetTimeExtractor)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(OffsetTime.class));
+    resultSet.next();
+
+    return Boundary.<OffsetTime>builder()
+        .setTableIdentifier(tableIdentifier)
+        .setPartitionColumn(partitionColumn)
+        .setStart(offsetTimeExtractor.extract(resultSet, 1))
+        .setEnd(offsetTimeExtractor.extract(resultSet, 2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(OffsetTime.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
   private static Boundary<Duration> fromDurations(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
@@ -346,6 +456,24 @@ public class BoundaryExtractorFactory {
       durationStrBuilder.append(parts[2]).append("S");
     }
     return Duration.parse(durationStrBuilder.toString());
+  }
+
+  /** Converts a database time string into a LocalTime. */
+  @VisibleForTesting
+  public static LocalTime parseTimeStringToLocalTime(String timeString) {
+    if (timeString == null || timeString.isBlank()) {
+      return null;
+    }
+    return LocalTime.parse(timeString);
+  }
+
+  /** Converts a database timetz string into an OffsetTime. */
+  @VisibleForTesting
+  public static OffsetTime parseTimeStringToOffsetTime(String timeString) {
+    if (timeString == null || timeString.isBlank()) {
+      return null;
+    }
+    return OffsetTime.parse(timeString);
   }
 
   private BoundaryExtractorFactory() {}

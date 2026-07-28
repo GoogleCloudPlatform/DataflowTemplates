@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
@@ -35,8 +36,10 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -44,6 +47,8 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -69,6 +74,37 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   private static final int VARCHAR_MAX_LENGTH = 65535;
 
+  /**
+   * Overrides for PostgreSQL types that cannot be safely inferred from their {@code pg_type}
+   * category.
+   */
+  private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
+      ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          // Integer Types
+          .put("INT2", SourceColumnIndexInfo.IndexType.NUMERIC)
+          .put("INT4", SourceColumnIndexInfo.IndexType.NUMERIC)
+          .put("INT8", SourceColumnIndexInfo.IndexType.NUMERIC)
+          // Floating Point / Decimal Types
+          .put("NUMERIC", SourceColumnIndexInfo.IndexType.DECIMAL)
+          .put("FLOAT4", SourceColumnIndexInfo.IndexType.FLOAT)
+          .put("FLOAT8", SourceColumnIndexInfo.IndexType.DOUBLE)
+          // String Types
+          .put("VARCHAR", SourceColumnIndexInfo.IndexType.STRING)
+          .put("TEXT", SourceColumnIndexInfo.IndexType.STRING)
+          // Date/Time Types
+          .put("TIMESTAMP", SourceColumnIndexInfo.IndexType.TIME_STAMP)
+          .put("TIMESTAMPTZ", SourceColumnIndexInfo.IndexType.TIME_STAMP)
+          .put("DATE", SourceColumnIndexInfo.IndexType.DATE)
+          .put("TIME", SourceColumnIndexInfo.IndexType.LOCAL_TIME)
+          .put("TIMETZ", SourceColumnIndexInfo.IndexType.OFFSET_TIME)
+          // Other
+          .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
+          .put(BIT_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BIT)
+          .build();
+
+  private static final ImmutableSet<String> CUSTOM_BOUNDARY_QUERY_TYPES =
+      ImmutableSet.of(UUID_TYPE.toUpperCase(), BIT_TYPE.toUpperCase());
+
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>
   private static final String SQL_STATE_ER_QUERY_CANCELLED = "57014";
@@ -88,7 +124,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
   private final PostgreSQLVersion version;
-  private final Set<ColumnKey> uuidColumnKeys = ConcurrentHashMap.newKeySet();
+  private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
   // Stores parent tables so we can append 'ONLY' to their extraction queries and avoid duplicates.
   private final Set<String> parentTables = ConcurrentHashMap.newKeySet();
@@ -242,12 +278,13 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
-          if (UUID_TYPE.equalsIgnoreCase(columnType)) {
+          if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(columnType.toUpperCase())) {
             logger.info(
-                "Discovered UUID column '{}' in table '{}'; enabling text casting for boundary queries",
+                "Discovered {} column '{}' in table '{}'; bypassing MIN()/MAX() with optimized subqueries for boundaries",
+                columnType,
                 columnName,
                 tableName);
-            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+            customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           final long characterMaximumLength = resultSet.getLong("character_maximum_length");
           boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
@@ -361,10 +398,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  a.attnum AS ordinal_position,"
             + "  t.typname AS type_name,"
             + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
-            + "  t.typcategory AS type_category,"
             + "  ico.collation_name AS collation,"
             + "  ico.pad_attribute AS pad,"
-            + "  pg_encoding_to_char(d.encoding) AS charset"
+            + "  pg_encoding_to_char(d.encoding) AS charset,"
+            + "  isc.numeric_scale AS numeric_scale,"
+            + "  isc.datetime_precision AS datetime_precision"
             + " FROM pg_catalog.pg_indexes ixs"
             + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
             + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
@@ -373,6 +411,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
             + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
             + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
+            + "  LEFT OUTER JOIN information_schema.columns isc ON isc.table_schema = ixs.schemaname AND isc.table_name = ixs.tablename AND isc.column_name = a.attname"
             + " WHERE ixs.schemaname = ?"
             + "  AND ixs.tablename IN "
             + DialectAdapter.generateInClause(tables.size())
@@ -391,13 +430,15 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       try (ResultSet resultSet = statement.executeQuery()) {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
-          final String typeCategory = resultSet.getString("type_category");
           final String typeName =
               Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
           final String columnName = resultSet.getString("column_name");
-          if (UUID_TYPE.equalsIgnoreCase(typeName)) {
-            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+          if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(typeName.toUpperCase())) {
+            customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
+          SourceColumnIndexInfo.IndexType indexType =
+              INDEX_TYPE_MAPPING.getOrDefault(
+                  typeName.toUpperCase(), SourceColumnIndexInfo.IndexType.OTHER);
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(columnName)
@@ -407,7 +448,22 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
                   .setColumnTypeName(typeName)
-                  .setIndexType(indexTypeFrom(typeCategory, typeName));
+                  .setIndexType(indexType);
+
+          switch (indexType) {
+            case FLOAT -> indexBuilder.setDecimalStepSize(new BigDecimal("0.00001"));
+            case DOUBLE -> indexBuilder.setDecimalStepSize(new BigDecimal("0.0000000001"));
+            case DECIMAL -> {
+              long numericScale = resultSet.getLong("numeric_scale");
+              indexBuilder.setNumericScale(resultSet.wasNull() ? 0 : (int) numericScale);
+            }
+            case DURATION, TIME_STAMP, LOCAL_TIME, OFFSET_TIME -> {
+              long datetimePrecision = resultSet.getLong("datetime_precision");
+              // Postgres default precision for time is microseconds (6)
+              indexBuilder.setDatetimePrecision(resultSet.wasNull() ? 6 : (int) datetimePrecision);
+            }
+            default -> {}
+          }
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
@@ -551,8 +607,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     String extractionTableName = getExtractionTableName(tableName);
-    if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
-      return getUuidBoundaryQuery(extractionTableName, partitionColumns, colName);
+    if (customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      return getCustomBoundaryQuery(extractionTableName, partitionColumns, colName);
     }
 
     return addWhereClause(
@@ -561,17 +617,17 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Constructs an optimized boundary query for PostgreSQL UUID columns.
+   * Constructs an optimized boundary query for PostgreSQL columns like UUID or BIT.
    *
-   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID types. Instead, we use
-   * subqueries with ORDER BY and LIMIT 1.
+   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID or BIT types. Instead, we
+   * use subqueries with ORDER BY and LIMIT 1.
    *
    * <p>For compound/partitioned keys, we wrap the query in a CTE to specify the WHERE clause once,
    * keeping prepared statement parameter indexes aligned with the generic binder. The 'NOT
    * MATERIALIZED' hint prevents PostgreSQL from loading the partition into memory, forcing standard
    * index push-down.
    */
-  private String getUuidBoundaryQuery(
+  private String getCustomBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     String queryTemplate =
         "SELECT (SELECT %1$s FROM %2$s ORDER BY %1$s ASC NULLS LAST LIMIT 1), "
@@ -625,6 +681,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
+  @Override
+  public LocalTime extractBoundaryLocalTime(ResultSet rs, int index) throws SQLException {
+    return PostgreSQLTimeConverter.toLocalTime(rs.getBytes(index));
+  }
+
+  @Override
+  public OffsetTime extractBoundaryOffsetTime(ResultSet rs, int index) throws SQLException {
+    return PostgreSQLTimeConverter.toOffsetTime(rs.getBytes(index));
+  }
+
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
     StringBuilder queryBuilder = new StringBuilder();
     queryBuilder.append(query);
@@ -643,26 +709,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
               .collect(Collectors.joining(" AND ")));
     }
     return queryBuilder.toString();
-  }
-
-  /**
-   * Ref <a
-   * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
-   */
-  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
-    if (UUID_TYPE.equalsIgnoreCase(typeName)) {
-      return SourceColumnIndexInfo.IndexType.BINARY;
-    }
-    switch (typeCategory) {
-      case "N":
-        return SourceColumnIndexInfo.IndexType.NUMERIC;
-      case "D":
-        return SourceColumnIndexInfo.IndexType.TIME_STAMP;
-      case "S":
-        return SourceColumnIndexInfo.IndexType.STRING;
-      default:
-        return SourceColumnIndexInfo.IndexType.OTHER;
-    }
   }
 
   /** Ref <a href="https://www.postgresql.org/docs/current/datatype-character.html"></a>. */
