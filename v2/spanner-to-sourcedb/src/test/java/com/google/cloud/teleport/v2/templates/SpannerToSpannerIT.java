@@ -421,15 +421,13 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
 
     long testStartTimeMs = System.currentTimeMillis();
 
-    // Because the Spanner Source Database enforces integrity (INTERLEAVE), we cannot
-    // write a Child before a Parent to simulate an out-of-order replication event directly.
-    // Instead, this test simulates out-of-order delivery by:
-    // 1. Replicating both rows normally.
-    // 2. Deleting the Parent directly in the Destination database.
-    // 3. Updating the Child in the Source. The pipeline will attempt to write it to the
-    //    Destination, which will throw a NOT_FOUND error because the Parent is missing.
-    // 4. The pipeline will retry the Child write. We then restore the Parent,
-    //    allowing the retrying Child to finally succeed.
+    // Out-of-order delivery and DLQ trigger process:
+    // 1. Write Parent to Source and let it replicate.
+    // 2. Delete Parent from the Destination database.
+    // 3. Write Child to Source. The pipeline attempts to write it to Destination,
+    //    fails (Parent is missing), and sends it to DLQ.
+    // 4. Write Parent to Source again.
+    // 5. DLQ retries the Child and finally succeeds.
     spannerResourceManager.write(
         Mutation.newInsertOrUpdateBuilder("Parent")
             .set("id")
@@ -437,23 +435,9 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
             .set("description")
             .to("Parent row")
             .build());
-    spannerResourceManager.write(
-        Mutation.newInsertOrUpdateBuilder("Child")
-            .set("id")
-            .to(1L)
-            .set("child_id")
-            .to(1L)
-            .set("description")
-            .to("Child row")
-            .build());
 
     assertReplication(
-        "Child",
-        1,
-        List.of("id", "child_id", "description"),
-        "description",
-        "Child row",
-        testStartTimeMs);
+        "Parent", 1, List.of("id", "description"), "description", "Parent row", testStartTimeMs);
 
     spannerDestinationResourceManager.write(
         Mutation.delete("Parent", com.google.cloud.spanner.Key.of(1L)));
@@ -465,7 +449,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
             .set("child_id")
             .to(1L)
             .set("description")
-            .to("Updated Child")
+            .to("Child row")
             .build());
 
     Thread.sleep(5000);
@@ -483,7 +467,7 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
         1,
         List.of("id", "child_id", "description"),
         "description",
-        "Updated Child",
+        "Child row",
         testStartTimeMs);
   }
 }
