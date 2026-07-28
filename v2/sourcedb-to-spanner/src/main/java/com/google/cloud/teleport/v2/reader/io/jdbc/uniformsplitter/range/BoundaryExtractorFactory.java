@@ -273,6 +273,9 @@ public class BoundaryExtractorFactory {
       TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
+
+    // PostgreSQL BIT types are processed as Strings, but they are purely
+    // base-2 numbers and do not require complex Collation mapping.
     boolean isBit = BIT_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
 
     if (!isBit) {
