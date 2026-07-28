@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -42,7 +42,7 @@ import org.junit.runners.JUnit4;
  * <p>Ensures the pipeline can apply custom user transformations for dropping rows, explicitly type
  * casting columns, handling complex avro datatypes, and adding dynamically computed columns.
  */
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
