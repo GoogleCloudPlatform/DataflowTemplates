@@ -5,4 +5,4 @@ CREATE TABLE Users (
   age INT64,
   created_at TIMESTAMP,
   migration_shard_id STRING(MAX)
-) PRIMARY KEY (migration_shard_id, user_id);
+) PRIMARY KEY (migration_shard_id, user_id, event_id);

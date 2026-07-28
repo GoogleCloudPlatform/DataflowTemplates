@@ -48,7 +48,7 @@ public class CustomTransformationForDVIT implements ISpannerMigrationTransformer
     Map<String, Object> row = request.getRequestRow();
     Map<String, Object> responseRow = new HashMap<>(row);
 
-    if (request.getTableName().equals("Users")) {
+    if ("Users".equals(request.getTableName())) {
       // Filter out records where age is 99
       if (row.get("age") != null && ((Number) row.get("age")).intValue() == 99) {
         return new MigrationTransformationResponse(new HashMap<>(), true);
