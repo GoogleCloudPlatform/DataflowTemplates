@@ -69,6 +69,9 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
         GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema,
         Collections.emptyList());
 
+    // Wait for the 15-second Spanner staleness bound so that tables created in setUp are visible
+    Thread.sleep(20000);
+
     // Launch Pipeline
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
