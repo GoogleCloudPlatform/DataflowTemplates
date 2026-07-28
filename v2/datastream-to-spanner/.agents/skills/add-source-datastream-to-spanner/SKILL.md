@@ -44,7 +44,7 @@ All implementation for a new source connector MUST be strictly confined to:
 ---
 
 ## Datatype Mapping Matrix Requirements
-Consult the Datatype Mapping Matrix provided in the prerequisites to verify correct datatype conversion to Spanner GoogleSQL and PostgreSQL dialects. Ensure proper alignment for character, numeric, temporal, binary, boolean, and JSON datatypes as specified in the mapping file.
+Consult the Datatype Mapping Matrix provided in the prerequisites to verify correct datatype conversion to Spanner GoogleSQL and PostgreSQL dialects. Ensure proper alignment for character, numeric, temporal, binary, boolean, JSON and any other datatypes as specified in the mapping file.
 
 ---
 
@@ -77,10 +77,16 @@ mvn test -pl v2/datastream-to-spanner \
 ```
 All unit tests must pass with `BUILD SUCCESS`.
 
----
+### Step 5: Mandatory Live Smoke Testing & Verification
 
-## Smoke Testing & Verification Workflow
-After completing code implementation and unit tests, perform end-to-end smoke testing using the test setup provided in the prerequisites:
+> [!CRITICAL]
+> **MANDATORY EXECUTION REQUIREMENT**:
+> Immediately after unit tests pass, you **MUST AUTOMATICALLY PROCEED** to execute live end-to-end smoke testing using the test environment details provided in the prerequisites.
+> Do NOT stop, pause, or declare completion after unit testing without running the live smoke tests.
+
+> [!IMPORTANT]
+> **WORKER MACHINE TYPE DIRECTIVE**:
+> When submitting the Dataflow job for live smoke testing, you **MUST** explicitly specify a worker machine type of the correct size with at least 4 vCPUs (e.g., `--worker-machine-type=n2-standard-4`). Omitting this parameter will cause Dataflow job launch validation to fail with a machine specification policy violation.
 
 1. **Environment Setup**:
    * Connect to the live source database instance and target Spanner instance configured in the test setup.
