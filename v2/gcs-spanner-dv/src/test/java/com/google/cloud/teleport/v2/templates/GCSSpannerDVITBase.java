@@ -203,7 +203,9 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
 
   public void createAndUploadJarToGcs(String gcsPathPrefix)
       throws IOException, InterruptedException {
-    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard && mvn clean package -DskipTests"};
+    String[] shellCommand = {
+      "/bin/bash", "-c", "cd ../spanner-custom-shard && mvn clean package -DskipTests"
+    };
 
     Process exec = Runtime.getRuntime().exec(shellCommand);
 

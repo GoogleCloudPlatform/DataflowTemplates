@@ -1,6 +1,22 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.ByteArray;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -19,45 +35,48 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests verifying the custom transformation logic of the GCSSpannerDV pipeline.
  *
- * <p>Ensures the pipeline can apply custom user transformations for dropping rows,
- * explicitly type casting columns, handling complex avro datatypes, and adding dynamically computed columns.
+ * <p>Ensures the pipeline can apply custom user transformations for dropping rows, explicitly type
+ * casting columns, handling complex avro datatypes, and adding dynamically computed columns.
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(GCSSpannerDVCustomTransformationIT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "GCSSpannerDVCustomTransformationIT/spanner-schema.sql";
 
   @Before
   public void setUp() throws IOException, InterruptedException {
-    LOG.info("Setting up Spanner and BigQuery resources");
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-    LOG.info("BigQuery dataset created");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    LOG.info("Spanner instance created");
 
     // Create and upload jar for custom transformations
     createAndUploadJarToGcs("custom");
   }
 
+  /**
+   * Tests custom transformation scenarios:
+   *
+   * <ol>
+   *   <li>Basic non-PK data transformation (inherently tested by points 2 and 3).
+   *   <li>Explicit type handling (String full_name -> BYTES).
+   *   <li>Complex Avro datatype transformation (modifying TIMESTAMP created_at by +1 hour).
+   *   <li>Row filtering via isEventFiltered() (dropping Users record where age = 99).
+   *   <li>Passing transformationCustomParameters ("InWonderland" parameter appended to full_name).
+   *   <li>Sharded topology (preserving migration_shard_id column without explicit transformations).
+   * </ol>
+   */
   @Test
   public void testCustomTransformations() throws Exception {
-    LOG.info("Generating and Uploading Avro Records to GCS");
 
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
-    Instant t2 = Instant.parse("2024-01-02T10:00:00Z");
 
     // 1 matched record, 1 record to be filtered out (age = 99)
     List<GenericRecord> usersRecords =
@@ -76,7 +95,7 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
                 .set("event_id", "E2")
                 .set("full_name", "Bob")
                 .set("age", 99) // Will be filtered out
-                .set("created_at", t2)
+                .set("created_at", t1)
                 .build()); // Dropped record
 
     String gcsInputDirectory = getGcsPath("input");
@@ -84,8 +103,6 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
         "input/users.avro", GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema, usersRecords);
 
     // 2. Inject Spanner Records (Destination)
-    LOG.info("Injecting Spanner records");
-
     spannerResourceManager.write(
         Arrays.asList(
             Mutation.newInsertOrUpdateBuilder("Users")
@@ -98,7 +115,9 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
                 .set("age")
                 .to(30L)
                 .set("created_at")
-                .to("Time_1704106800000000") // "2024-01-01T10:00:00Z" + 1 hour in microseconds
+                .to(
+                    Timestamp.parseTimestamp(
+                        "2024-01-01T11:00:00Z")) // "2024-01-01T10:00:00Z" + 1 hour
                 .set("migration_shard_id")
                 .to("shard1")
                 .build())); // Dropped record (user_id=2) is NOT written to Spanner.
@@ -107,11 +126,11 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
     Thread.sleep(20000);
 
     // 3. Launch Pipeline
-    LOG.info("Launching Dataflow validation job");
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
-    
+
     CustomTransformation customTransformation =
-        CustomTransformation.builder("custom/customTransformation.jar", "com.custom.CustomTransformationForDVIT")
+        CustomTransformation.builder(
+                "custom/customTransformation.jar", "com.custom.CustomTransformationForDVIT")
             .setCustomParameters("InWonderland")
             .build();
 
@@ -155,7 +174,9 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
                 /* matchedRowCount= */ 1L,
                 /* mismatchRowCount= */ 0L)));
 
-    GCSSpannerDVTestAsserts.assertMismatchedRecords(
-        bigQueryResourceManager, Arrays.asList());
+    GCSSpannerDVTestAsserts.assertMismatchedRecords(bigQueryResourceManager, Arrays.asList());
   }
+
+  // TODO: @aasthabharill Add test for scenario where Exception is thrown by Custom transformation
+  // once bug is fixed. (Currently, it crashes the validation pipeline)
 }
