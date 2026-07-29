@@ -58,7 +58,7 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     // Create and upload jar for custom transformations
-    createAndUploadJarToGcs("custom");
+    createAndUploadCustomShardJarToGcs("custom");
   }
 
   /**
@@ -134,6 +134,9 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
             .setCustomParameters("InWonderland")
             .build();
 
+    // Passing the session file is required because we're defining a shardIdColumn
+    // The session file supplies this mapping to the pipeline; the schema overrides flow for this is
+    // currently broken.
     LaunchInfo jobInfo =
         launchDataflowJob(
             options,

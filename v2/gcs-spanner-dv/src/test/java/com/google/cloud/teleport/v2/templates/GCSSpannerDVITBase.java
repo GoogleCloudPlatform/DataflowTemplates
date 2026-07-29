@@ -201,10 +201,10 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     return jobInfo;
   }
 
-  public void createAndUploadJarToGcs(String gcsPathPrefix)
+  public void createAndUploadCustomShardJarToGcs(String gcsPathPrefix)
       throws IOException, InterruptedException {
     ProcessBuilder processBuilder =
-        new ProcessBuilder("/bin/bash", "-c", "mvn clean package -DskipTests")
+        new ProcessBuilder("mvn", "clean", "package", "-DskipTests")
             .directory(new File("../spanner-custom-shard"));
 
     Process exec = processBuilder.start();
