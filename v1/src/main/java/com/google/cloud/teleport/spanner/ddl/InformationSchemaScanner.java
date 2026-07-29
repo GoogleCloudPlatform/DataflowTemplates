@@ -602,13 +602,10 @@ public class InformationSchemaScanner {
         boolean isStoring = resultSet.isNull(7);
         if (isStoring) {
           indexColumnsBuilder.storing();
-        } else if (spannerType != null
-            && (spannerType.equals(tokenlistType)
-                || spannerType.startsWith("ARRAY")
-                || spannerType.contains("vector length"))) {
-          // Tokenlist columns do not have ordering.
+        } else if (ordering == null) {
+          // Unordered keys (like Vector ARRAYs and Search TOKENLISTs) have no column ordering
           indexColumnsBuilder.none();
-        } else if (ordering != null) {
+        } else {
           ordering = ordering.toUpperCase();
           if (ordering.startsWith("ASC")) {
             indexColumnsBuilder.asc();

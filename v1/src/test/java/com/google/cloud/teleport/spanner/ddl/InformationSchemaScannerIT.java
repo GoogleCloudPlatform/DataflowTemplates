@@ -1915,25 +1915,25 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
-  private SharedTestCase arrayStoringIndexBug() {
+  private SharedTestCase testStoringArrayColumn() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `t_arrayStoringIndexBug_VectorTable` ("
+            "CREATE TABLE `t_testStoringArrayColumn_VectorTable` ("
                 + " `Id` INT64 NOT NULL,"
                 + " `MyEmbedding` ARRAY<FLOAT64>"
                 + ") PRIMARY KEY (`Id` ASC)",
-            "CREATE INDEX `i_arrayStoringIndexBug_VectorIndex` ON `t_arrayStoringIndexBug_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)");
+            "CREATE INDEX `i_testStoringArrayColumn_VectorIndex` ON `t_testStoringArrayColumn_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)");
 
     return new SharedTestCase(
         statements,
         ddl -> {
-          Table table = ddl.table("t_arrayStoringIndexBug_VectorTable");
+          Table table = ddl.table("t_testStoringArrayColumn_VectorTable");
           assertThat(table, notNullValue());
           assertThat(table.indexes().size(), is(1));
           assertThat(
               table.indexes().get(0),
               equalTo(
-                  "CREATE INDEX `i_arrayStoringIndexBug_VectorIndex` ON `t_arrayStoringIndexBug_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)"));
+                  "CREATE INDEX `i_testStoringArrayColumn_VectorIndex` ON `t_testStoringArrayColumn_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)"));
         });
   }
 
@@ -1967,7 +1967,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             propertyGraphOnViewMixedOrder(),
             propertyGraphOnViewTablesFirst(),
             propertyGraphOnViewWithNamedSchema(),
-            arrayStoringIndexBug());
+            testStoringArrayColumn());
 
     List<String> allStatements = new ArrayList<>();
     for (SharedTestCase testCase : testCases) {
