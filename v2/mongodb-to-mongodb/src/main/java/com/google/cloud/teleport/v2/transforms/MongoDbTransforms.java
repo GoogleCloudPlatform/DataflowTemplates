@@ -40,24 +40,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
-import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.BackOffUtils;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.util.Sleeper;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
@@ -138,30 +132,20 @@ public class MongoDbTransforms {
       TupleTag<DocumentWithMetadata> failureTag = new TupleTag<DocumentWithMetadata>() {};
 
       PCollectionTuple writeResults =
-          input
-              .apply(
-                  "AddRandomKey",
-                  WithKeys.of(
-                      doc ->
-                          String.valueOf(
-                              java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
-              .setCoder(
-                  KvCoder.of(
-                      StringUtf8Coder.of(), SerializableCoder.of(DocumentWithMetadata.class)))
-              .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
-              .apply(
-                  "WriteBatches",
-                  ParDo.of(
-                          WriteFn.builder()
-                              .withUri(uri)
-                              .withDatabase(database)
-                              .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
-                              .withMaxWriteRetries(maxWriteRetries)
-                              .withDlqMaxRetries(dlqMaxRetries)
-                              .withClientFactory(clientFactory)
-                              .withFailureTag(failureTag)
-                              .build())
-                      .withOutputTags(successTag, TupleTagList.of(failureTag)));
+          input.apply(
+              "WriteBatches",
+              ParDo.of(
+                      WriteFn.builder()
+                          .withUri(uri)
+                          .withDatabase(database)
+                          .withBatchSize(batchSize)
+                          .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
+                          .withMaxWriteRetries(maxWriteRetries)
+                          .withDlqMaxRetries(dlqMaxRetries)
+                          .withClientFactory(clientFactory)
+                          .withFailureTag(failureTag)
+                          .build())
+                  .withOutputTags(successTag, TupleTagList.of(failureTag)));
 
       return writeResults.get(failureTag);
     }
@@ -236,7 +220,7 @@ public class MongoDbTransforms {
 
   /** A {@link DoFn} that writes documents to MongoDB in bulk. */
   public static class WriteFn
-      extends DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata> {
+      extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
 
     private static final int ERR_DOCUMENT_VALIDATION_FAILURE = 121;
     private static final int ERR_KEY_TOO_LONG = 17280;
@@ -246,6 +230,7 @@ public class MongoDbTransforms {
 
     private final String uri;
     private final String database;
+    private final Integer batchSize;
     private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
@@ -273,6 +258,7 @@ public class MongoDbTransforms {
     private transient AtomicLong severeFailedWritesCount;
     private transient AtomicLong dlqRetriesCount;
     private transient AtomicLong permanentFailuresCount;
+    private transient List<DocumentWithMetadata> currentBatch;
 
     private void incDynamicCounter(String prefix, String exceptionName, int code, long count) {
       String counterName = prefix + "_" + exceptionName + "_" + code;
@@ -284,6 +270,7 @@ public class MongoDbTransforms {
     public WriteFn(
         String uri,
         String database,
+        Integer batchSize,
         Integer maxConcurrentAsyncWrites,
         Integer maxWriteRetries,
         Integer dlqMaxRetries,
@@ -291,6 +278,7 @@ public class MongoDbTransforms {
         TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
       this.database = database;
+      this.batchSize = batchSize;
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
@@ -305,6 +293,7 @@ public class MongoDbTransforms {
     public static class Builder {
       private String uri;
       private String database;
+      private Integer batchSize = 5000;
       private Integer maxConcurrentAsyncWrites;
       private Integer maxWriteRetries;
       private Integer dlqMaxRetries = 3;
@@ -318,6 +307,13 @@ public class MongoDbTransforms {
 
       public Builder withDatabase(String database) {
         this.database = database;
+        return this;
+      }
+
+      public Builder withBatchSize(Integer batchSize) {
+        if (batchSize != null) {
+          this.batchSize = batchSize;
+        }
         return this;
       }
 
@@ -350,6 +346,7 @@ public class MongoDbTransforms {
         return new WriteFn(
             uri,
             database,
+            batchSize,
             maxConcurrentAsyncWrites,
             maxWriteRetries,
             dlqMaxRetries,
@@ -388,11 +385,23 @@ public class MongoDbTransforms {
       severeFailedWritesCount = new AtomicLong(0);
       dlqRetriesCount = new AtomicLong(0);
       permanentFailuresCount = new AtomicLong(0);
+      currentBatch = new ArrayList<>();
     }
 
     @ProcessElement
     public void processElement(ProcessContext c) throws InterruptedException {
-      Iterable<DocumentWithMetadata> items = c.element().getValue();
+      currentBatch.add(c.element());
+      if (currentBatch.size() >= batchSize) {
+        flushBatch();
+      }
+    }
+
+    private void flushBatch() throws InterruptedException {
+      if (currentBatch.isEmpty()) {
+        return;
+      }
+      List<DocumentWithMetadata> items = currentBatch;
+      currentBatch = new ArrayList<>();
 
       Map<String, List<WriteModel<Document>>> updatesByCollection = new HashMap<>();
       Map<String, List<DocumentWithMetadata>> itemsByCollection = new HashMap<>();
@@ -598,6 +607,13 @@ public class MongoDbTransforms {
 
     @FinishBundle
     public void finishBundle(FinishBundleContext c) {
+      try {
+        flushBatch();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException("Interrupted while flushing batch", e);
+      }
+
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
       if (mongoClient != null) {

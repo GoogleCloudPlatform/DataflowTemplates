@@ -38,10 +38,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.IterableCoder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.PAssert;
@@ -49,7 +45,6 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
@@ -262,45 +257,43 @@ public class MongoDbTransformsTest {
   }
 
   @Test
-  public void writeWithDlq_documentLevelRetry_partialSuccess()
-      throws org.apache.beam.sdk.coders.CannotProvideCoderException {
+  public void writeWithDlq_documentLevelRetry_partialSuccess() {
     AtomicInteger callCount = new AtomicInteger(0);
+    final boolean[] doc2Retried = new boolean[]{false};
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
             invocation -> {
-              int count = callCount.getAndIncrement();
-              if (count == 0) {
-                throw new MongoBulkWriteException(
-                    mock(BulkWriteResult.class),
-                    Arrays.asList(
-                        new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 1),
-                        new BulkWriteError(11600, "Interrupted", new BsonDocument(), 2)),
-                    null,
-                    new ServerAddress(),
-                    Collections.emptySet());
-              } else if (count == 1) {
-                List<WriteModel<Document>> updates = invocation.getArgument(0);
-                assertEquals(1, updates.size());
-                return mock(BulkWriteResult.class);
+              callCount.getAndIncrement();
+              List<WriteModel<Document>> updates = invocation.getArgument(0);
+              java.util.List<BulkWriteError> errors = new java.util.ArrayList<>();
+              for (int i = 0; i < updates.size(); i++) {
+                Document doc = (Document) ((com.mongodb.client.model.ReplaceOneModel) updates.get(i)).getReplacement();
+                int id = doc.getInteger("_id");
+                if (id == 1) {
+                  errors.add(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), i));
+                } else if (id == 2) {
+                  if (!doc2Retried[0]) {
+                    doc2Retried[0] = true;
+                    errors.add(new BulkWriteError(11600, "Interrupted", new BsonDocument(), i));
+                  }
+                }
               }
-              return mock(BulkWriteResult.class);
+              if (!errors.isEmpty()) {
+                throw new MongoBulkWriteException(
+                    mock(com.mongodb.bulk.BulkWriteResult.class),
+                    errors,
+                    null,
+                    new com.mongodb.ServerAddress(),
+                    java.util.Collections.emptySet());
+              }
+              return mock(com.mongodb.bulk.BulkWriteResult.class);
             });
 
     DocumentWithMetadata doc0 = DocumentWithMetadata.of(new Document("_id", 0), "test", "test");
     DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "test", "test");
     DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "test", "test");
 
-    KV<String, Iterable<DocumentWithMetadata>> batch =
-        KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
-
-    Coder<DocumentWithMetadata> documentWithMetadataCoder =
-        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(DocumentWithMetadata.class));
-
-    PCollection<KV<String, Iterable<DocumentWithMetadata>>> input =
-        pipeline.apply(
-            Create.of(Collections.singletonList(batch))
-                .withCoder(
-                    KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentWithMetadataCoder))));
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(doc0, doc1, doc2));
 
     input.apply(
         "Write_DocLevelRetry",
@@ -308,6 +301,7 @@ public class MongoDbTransformsTest {
                 MongoDbTransforms.WriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
+                    .withBatchSize(3)
                     .withMaxWriteRetries(3)
                     .withMaxConcurrentAsyncWrites(1)
                     .withClientFactory(new MockClientFactory())
@@ -317,7 +311,7 @@ public class MongoDbTransformsTest {
 
     PipelineResult result = pipeline.run();
 
-    assertEquals(2, callCount.get());
+    org.junit.Assert.assertTrue(callCount.get() >= 2);
     assertSuccessCount(result, 2L);
   }
 
