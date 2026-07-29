@@ -1915,6 +1915,28 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
+  private SharedTestCase arrayStoringIndexBug() {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `t_arrayStoringIndexBug_VectorTable` ("
+                + " `Id` INT64 NOT NULL,"
+                + " `MyEmbedding` ARRAY<FLOAT64>"
+                + ") PRIMARY KEY (`Id` ASC)",
+            "CREATE INDEX `i_arrayStoringIndexBug_VectorIndex` ON `t_arrayStoringIndexBug_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)");
+
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_arrayStoringIndexBug_VectorTable");
+          assertThat(table, notNullValue());
+          assertThat(table.indexes().size(), is(1));
+          assertThat(
+              table.indexes().get(0),
+              equalTo(
+                  "CREATE INDEX `i_arrayStoringIndexBug_VectorIndex` ON `t_arrayStoringIndexBug_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)"));
+        });
+  }
+
   @Test
   public void sharedInformationSchemaScannerTestGsql() throws Exception {
     List<SharedTestCase> testCases =
@@ -1944,7 +1966,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             propertyGraphOnViewSimple(),
             propertyGraphOnViewMixedOrder(),
             propertyGraphOnViewTablesFirst(),
-            propertyGraphOnViewWithNamedSchema());
+            propertyGraphOnViewWithNamedSchema(),
+            arrayStoringIndexBug());
 
     List<String> allStatements = new ArrayList<>();
     for (SharedTestCase testCase : testCases) {
