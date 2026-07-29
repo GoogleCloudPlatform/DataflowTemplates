@@ -61,6 +61,7 @@
                         <!-- Excluding auto-generated classes. -->
                         <exclude>**/*AutoValue_*</exclude>
                         <exclude>**/CustomTransformationForCassandraAllDataTypesIT.*</exclude>
+                        <exclude>**/CustomTransformationForDVIT.*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

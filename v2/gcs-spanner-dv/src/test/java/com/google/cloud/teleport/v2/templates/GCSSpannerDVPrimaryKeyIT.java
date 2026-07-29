@@ -37,13 +37,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Integration tests verifying complex primary key handling in the GCSSpannerDV pipeline.
- *
- * <p>This test suite validates the data validation pipeline's ability to accurately match records
- * between source (Avro files in GCS) and destination (Spanner databases) when complex primary key
- * scenarios are involved. It covers cases where primary key values are transformed, where primary
- * key columns differ between the source schema and the destination database, and where complex Avro
- * datatypes (like timestamp-micros) are used as primary keys.
+ * Integration tests verifying complex primary key handling in the GCSSpannerDV pipeline. This test
+ * suite validates the data validation pipeline's ability to accurately match records between source
+ * (Avro files in GCS) and destination (Spanner databases) when complex primary key scenarios are
+ * involved. It covers cases where primary key values are transformed, where primary key columns
+ * differ between the source schema and the destination database, and where complex Avro datatypes
+ * (like timestamp-micros) are used as primary keys.
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -103,9 +102,6 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
                     Timestamp.parseTimestamp(
                         "2024-01-01T11:00:00Z")) // CustomTransformation adds 1 hour
                 .build()));
-
-    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
-    Thread.sleep(20000);
 
     // 3. Build Transformation and Launch Job
     createAndUploadCustomShardJarToGcs("input");
@@ -168,7 +164,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
     List<GenericRecord> rolesRecords =
         Arrays.asList(
             new RecordBuilder(originalTableDef, null)
-                .set("role_id", 1)
+                .set("role_id", 1L)
                 .set("role_name", "ADMIN")
                 .build());
 
