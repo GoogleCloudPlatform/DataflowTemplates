@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -469,5 +471,51 @@ public class MongoDbTransformsTest {
 
     org.mockito.Mockito.verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
     org.mockito.Mockito.verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+  }
+
+  @Test
+  public void testWriteFn_rateLimitingDisabled() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(0)
+            .build();
+    fn.setup();
+    assertNull(fn.getRateLimiter());
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_linearRampUpRateCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(100)
+            .withMaxWriteRatePerWorker(500)
+            .withWriteRateRampUpMinutes(5)
+            .withWriteRateRampUpSteps(5)
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(100.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 1 minute elapsed (step 1/5 => 100 + 1 * 80 = 180)
+    fn.setStartTimeMs(System.currentTimeMillis() - 1 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(180.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 2 minutes elapsed (step 2/5 => 100 + 2 * 80 = 260)
+    fn.setStartTimeMs(System.currentTimeMillis() - 2 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(260.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 100 + 5 * 80 = 500)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(500.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
   }
 }

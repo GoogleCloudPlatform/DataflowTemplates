@@ -240,6 +240,54 @@ public class MongoDbToMongoDb {
     Boolean getReadFromDlq();
 
     void setReadFromDlq(Boolean value);
+
+    @TemplateParameter.Integer(
+        order = 18,
+        groupName = "Target",
+        optional = true,
+        description = "Initial Write Rate Per Worker",
+        helpText =
+            "Initial maximum documents/second written per worker thread during Firestore 5/5/5"
+                + " ramp-up. Set to <= 0 to disable throttling.")
+    @Default.Integer(100)
+    Integer getInitialWriteRatePerWorker();
+
+    void setInitialWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 19,
+        groupName = "Target",
+        optional = true,
+        description = "Write Rate Ramp Up Minutes",
+        helpText =
+            "Number of minutes between 50% rate limit increases during Firestore 5/5/5 ramp-up.")
+    @Default.Integer(5)
+    Integer getWriteRateRampUpMinutes();
+
+    void setWriteRateRampUpMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 20,
+        groupName = "Target",
+        optional = true,
+        description = "Max Write Rate Per Worker",
+        helpText =
+            "Maximum target documents/second per worker after completing ramp-up. Default is 500.")
+    @Default.Integer(500)
+    Integer getMaxWriteRatePerWorker();
+
+    void setMaxWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 21,
+        groupName = "Target",
+        optional = true,
+        description = "Write Rate Ramp Up Steps",
+        helpText = "Number of discrete linear step increases over the ramp-up period.")
+    @Default.Integer(5)
+    Integer getWriteRateRampUpSteps();
+
+    void setWriteRateRampUpSteps(Integer value);
   }
 
   public static void main(String[] args) {
@@ -311,6 +359,13 @@ public class MongoDbToMongoDb {
         options.getMaxConcurrentAsyncWrites(),
         options.getMaxWriteRetries(),
         options.getDlqMaxRetries());
+    LOG.info(
+        "  Write Rate Limiting:     linear ramp-up from {} to {} docs/s/worker over {} mins in"
+            + " {} steps",
+        options.getInitialWriteRatePerWorker(),
+        options.getMaxWriteRatePerWorker(),
+        options.getWriteRateRampUpMinutes(),
+        options.getWriteRateRampUpSteps());
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
 
     if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
@@ -456,7 +511,23 @@ public class MongoDbToMongoDb {
                   .withBatchSize(options.getBatchSize())
                   .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
                   .withMaxWriteRetries(options.getMaxWriteRetries())
-                  .withDlqMaxRetries(options.getDlqMaxRetries()));
+                  .withDlqMaxRetries(options.getDlqMaxRetries())
+                  .withInitialWriteRatePerWorker(
+                      options.getInitialWriteRatePerWorker() != null
+                          ? options.getInitialWriteRatePerWorker()
+                          : 100)
+                  .withMaxWriteRatePerWorker(
+                      options.getMaxWriteRatePerWorker() != null
+                          ? options.getMaxWriteRatePerWorker()
+                          : 500)
+                  .withWriteRateRampUpMinutes(
+                      options.getWriteRateRampUpMinutes() != null
+                          ? options.getWriteRateRampUpMinutes()
+                          : 5)
+                  .withWriteRateRampUpSteps(
+                      options.getWriteRateRampUpSteps() != null
+                          ? options.getWriteRateRampUpSteps()
+                          : 5));
 
       writeFailures.apply(
           "WriteToDlq_Write",

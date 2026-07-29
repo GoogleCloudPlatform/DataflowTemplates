@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.PERMANENT;
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.RateLimiter;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
@@ -39,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -79,6 +82,10 @@ public class MongoDbTransforms {
     private Integer maxConcurrentAsyncWrites = 10;
     private Integer maxWriteRetries = 3;
     private Integer dlqMaxRetries = 3;
+    private Integer initialWriteRatePerWorker = 100;
+    private Integer writeRateRampUpMinutes = 5;
+    private Integer writeRateRampUpSteps = 5;
+    private Integer maxWriteRatePerWorker = 500;
     private SerializableFunction<String, MongoClient> clientFactory = MongoClients::create;
 
     public WriteWithDlq withUri(String uri) {
@@ -119,6 +126,34 @@ public class MongoDbTransforms {
       return this;
     }
 
+    public WriteWithDlq withInitialWriteRatePerWorker(Integer initialWriteRatePerWorker) {
+      if (initialWriteRatePerWorker != null) {
+        this.initialWriteRatePerWorker = initialWriteRatePerWorker;
+      }
+      return this;
+    }
+
+    public WriteWithDlq withWriteRateRampUpMinutes(Integer writeRateRampUpMinutes) {
+      if (writeRateRampUpMinutes != null) {
+        this.writeRateRampUpMinutes = writeRateRampUpMinutes;
+      }
+      return this;
+    }
+
+    public WriteWithDlq withWriteRateRampUpSteps(Integer writeRateRampUpSteps) {
+      if (writeRateRampUpSteps != null) {
+        this.writeRateRampUpSteps = writeRateRampUpSteps;
+      }
+      return this;
+    }
+
+    public WriteWithDlq withMaxWriteRatePerWorker(Integer maxWriteRatePerWorker) {
+      if (maxWriteRatePerWorker != null) {
+        this.maxWriteRatePerWorker = maxWriteRatePerWorker;
+      }
+      return this;
+    }
+
     public WriteWithDlq withClientFactory(SerializableFunction<String, MongoClient> clientFactory) {
       if (clientFactory != null) {
         this.clientFactory = clientFactory;
@@ -142,6 +177,10 @@ public class MongoDbTransforms {
                           .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
                           .withMaxWriteRetries(maxWriteRetries)
                           .withDlqMaxRetries(dlqMaxRetries)
+                          .withInitialWriteRatePerWorker(initialWriteRatePerWorker)
+                          .withWriteRateRampUpMinutes(writeRateRampUpMinutes)
+                          .withWriteRateRampUpSteps(writeRateRampUpSteps)
+                          .withMaxWriteRatePerWorker(maxWriteRatePerWorker)
                           .withClientFactory(clientFactory)
                           .withFailureTag(failureTag)
                           .build())
@@ -233,9 +272,16 @@ public class MongoDbTransforms {
     private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
+    private final Integer initialWriteRatePerWorker;
+    private final Integer writeRateRampUpMinutes;
+    private final Integer writeRateRampUpSteps;
+    private final Integer maxWriteRatePerWorker;
     private final SerializableFunction<String, MongoClient> clientFactory;
     private final TupleTag<DocumentWithMetadata> failureTag;
     private transient FluentBackoff backoffSpec;
+    private transient RateLimiter rateLimiter;
+    private transient long startTimeMs;
+    private transient long lastComputedStep;
 
     private final Counter successfulWrites =
         Metrics.counter(WriteWithDlq.class, "successfulWrites");
@@ -273,6 +319,10 @@ public class MongoDbTransforms {
         Integer maxConcurrentAsyncWrites,
         Integer maxWriteRetries,
         Integer dlqMaxRetries,
+        Integer initialWriteRatePerWorker,
+        Integer writeRateRampUpMinutes,
+        Integer writeRateRampUpSteps,
+        Integer maxWriteRatePerWorker,
         SerializableFunction<String, MongoClient> clientFactory,
         TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
@@ -281,6 +331,10 @@ public class MongoDbTransforms {
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
+      this.initialWriteRatePerWorker = initialWriteRatePerWorker;
+      this.writeRateRampUpMinutes = writeRateRampUpMinutes;
+      this.writeRateRampUpSteps = writeRateRampUpSteps;
+      this.maxWriteRatePerWorker = maxWriteRatePerWorker;
       this.clientFactory = clientFactory;
       this.failureTag = failureTag;
     }
@@ -293,9 +347,13 @@ public class MongoDbTransforms {
       private String uri;
       private String database;
       private Integer batchSize = 5000;
-      private Integer maxConcurrentAsyncWrites;
-      private Integer maxWriteRetries;
+      private Integer maxConcurrentAsyncWrites = 10;
+      private Integer maxWriteRetries = 3;
       private Integer dlqMaxRetries = 3;
+      private Integer initialWriteRatePerWorker = 100;
+      private Integer writeRateRampUpMinutes = 5;
+      private Integer writeRateRampUpSteps = 5;
+      private Integer maxWriteRatePerWorker = 500;
       private SerializableFunction<String, MongoClient> clientFactory;
       private TupleTag<DocumentWithMetadata> failureTag;
 
@@ -317,17 +375,49 @@ public class MongoDbTransforms {
       }
 
       public Builder withMaxConcurrentAsyncWrites(Integer maxConcurrentAsyncWrites) {
-        this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
+        if (maxConcurrentAsyncWrites != null) {
+          this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
+        }
         return this;
       }
 
       public Builder withMaxWriteRetries(Integer maxWriteRetries) {
-        this.maxWriteRetries = maxWriteRetries;
+        if (maxWriteRetries != null) {
+          this.maxWriteRetries = maxWriteRetries;
+        }
         return this;
       }
 
       public Builder withDlqMaxRetries(Integer dlqMaxRetries) {
         this.dlqMaxRetries = dlqMaxRetries;
+        return this;
+      }
+
+      public Builder withInitialWriteRatePerWorker(Integer initialWriteRatePerWorker) {
+        if (initialWriteRatePerWorker != null) {
+          this.initialWriteRatePerWorker = initialWriteRatePerWorker;
+        }
+        return this;
+      }
+
+      public Builder withWriteRateRampUpMinutes(Integer writeRateRampUpMinutes) {
+        if (writeRateRampUpMinutes != null) {
+          this.writeRateRampUpMinutes = writeRateRampUpMinutes;
+        }
+        return this;
+      }
+
+      public Builder withWriteRateRampUpSteps(Integer writeRateRampUpSteps) {
+        if (writeRateRampUpSteps != null) {
+          this.writeRateRampUpSteps = writeRateRampUpSteps;
+        }
+        return this;
+      }
+
+      public Builder withMaxWriteRatePerWorker(Integer maxWriteRatePerWorker) {
+        if (maxWriteRatePerWorker != null) {
+          this.maxWriteRatePerWorker = maxWriteRatePerWorker;
+        }
         return this;
       }
 
@@ -349,9 +439,28 @@ public class MongoDbTransforms {
             maxConcurrentAsyncWrites,
             maxWriteRetries,
             dlqMaxRetries,
+            initialWriteRatePerWorker,
+            writeRateRampUpMinutes,
+            writeRateRampUpSteps,
+            maxWriteRatePerWorker,
             clientFactory,
             failureTag);
       }
+    }
+
+    @VisibleForTesting
+    RateLimiter getRateLimiter() {
+      return rateLimiter;
+    }
+
+    @VisibleForTesting
+    void setStartTimeMs(long startTimeMs) {
+      this.startTimeMs = startTimeMs;
+    }
+
+    @VisibleForTesting
+    void updateRateLimiterForTest() {
+      updateRateLimiterIfNeeded();
     }
 
     @Setup
@@ -363,6 +472,21 @@ public class MongoDbTransforms {
               .withMaxRetries(maxWriteRetries)
               .withInitialBackoff(Duration.standardSeconds(2))
               .withExponent(2.0);
+      if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
+        rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
+        startTimeMs = System.currentTimeMillis();
+        lastComputedStep = 0;
+        LOG.info(
+            "Enabled linear write rate ramp-up: initialRate={} docs/s/worker, targetMax={}"
+                + " docs/s/worker, duration={} mins, steps={}",
+            initialWriteRatePerWorker,
+            maxWriteRatePerWorker,
+            writeRateRampUpMinutes,
+            writeRateRampUpSteps);
+      } else {
+        rateLimiter = null;
+        LOG.info("Write rate limiting is disabled (initialWriteRatePerWorker <= 0)");
+      }
       LOG.info(
           "Initialized MongoDB WriteFn worker thread for database '{}' (batchSize={},"
               + " maxConcurrentAsyncWrites={}, maxWriteRetries={})",
@@ -370,6 +494,44 @@ public class MongoDbTransforms {
           batchSize,
           maxConcurrentAsyncWrites,
           maxWriteRetries);
+    }
+
+    private void updateRateLimiterIfNeeded() {
+      if (rateLimiter == null
+          || writeRateRampUpMinutes == null
+          || writeRateRampUpMinutes <= 0
+          || writeRateRampUpSteps == null
+          || writeRateRampUpSteps <= 0
+          || maxWriteRatePerWorker == null
+          || maxWriteRatePerWorker <= initialWriteRatePerWorker) {
+        return;
+      }
+      long stepDurationMs = (writeRateRampUpMinutes * 60L * 1000L) / writeRateRampUpSteps;
+      if (stepDurationMs <= 0) {
+        stepDurationMs = 1;
+      }
+      long elapsedMs = System.currentTimeMillis() - startTimeMs;
+      long currentStep = Math.min(writeRateRampUpSteps, elapsedMs / stepDurationMs);
+
+      if (currentStep > lastComputedStep) {
+        lastComputedStep = currentStep;
+        double rateRange = maxWriteRatePerWorker - initialWriteRatePerWorker;
+        double newRate =
+            initialWriteRatePerWorker + (rateRange * currentStep) / (double) writeRateRampUpSteps;
+
+        double oldRate = rateLimiter.getRate();
+        if (newRate != oldRate) {
+          rateLimiter.setRate(newRate);
+          LOG.info(
+              "Linear write rate ramp-up: increased write rate from {} to {} docs/s/worker"
+                  + " (step {}/{}, elapsedMinutes={})",
+              String.format("%.1f", oldRate),
+              String.format("%.1f", newRate),
+              currentStep,
+              writeRateRampUpSteps,
+              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
+        }
+      }
     }
 
     @Teardown
@@ -429,6 +591,10 @@ public class MongoDbTransforms {
       }
 
       if (!updatesByCollection.isEmpty()) {
+        updateRateLimiterIfNeeded();
+        if (rateLimiter != null && !items.isEmpty()) {
+          rateLimiter.acquire(items.size());
+        }
         LOG.info(
             "Flushing batch of {} documents across {} target collection(s) to MongoDB (active"
                 + " async write futures in queue: {})",
