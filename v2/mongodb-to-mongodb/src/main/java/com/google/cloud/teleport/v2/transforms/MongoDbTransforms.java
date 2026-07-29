@@ -364,6 +364,13 @@ public class MongoDbTransforms {
               .withMaxRetries(maxWriteRetries)
               .withInitialBackoff(Duration.standardSeconds(2))
               .withExponent(2.0);
+      LOG.info(
+          "Initialized MongoDB WriteFn worker thread for database '{}' (batchSize={},"
+              + " maxConcurrentAsyncWrites={}, maxWriteRetries={})",
+          database,
+          batchSize,
+          maxConcurrentAsyncWrites,
+          maxWriteRetries);
     }
 
     @Teardown
@@ -386,6 +393,7 @@ public class MongoDbTransforms {
       dlqRetriesCount = new AtomicLong(0);
       permanentFailuresCount = new AtomicLong(0);
       currentBatch = new ArrayList<>();
+      LOG.debug("Starting new write bundle session (URI: {})", UriSanitizer.sanitize(uri));
     }
 
     @ProcessElement
@@ -422,6 +430,12 @@ public class MongoDbTransforms {
       }
 
       if (!updatesByCollection.isEmpty()) {
+        LOG.info(
+            "Flushing batch of {} documents across {} target collection(s) to MongoDB (active"
+                + " async write futures in queue: {})",
+            items.size(),
+            updatesByCollection.size(),
+            futures.size());
         semaphore.acquire();
         CompletableFuture<Void> future =
             CompletableFuture.runAsync(
@@ -436,7 +450,7 @@ public class MongoDbTransforms {
                       MongoCollection<Document> col =
                           mongoClient.getDatabase(database).getCollection(colName);
 
-                      writeBatchWithRetry(col, currentUpdates, currentItemList);
+                      writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
                     }
                   } finally {
                     semaphore.release();
@@ -448,6 +462,7 @@ public class MongoDbTransforms {
     }
 
     private void writeBatchWithRetry(
+        String colName,
         MongoCollection<Document> col,
         List<WriteModel<Document>> currentUpdates,
         List<DocumentWithMetadata> currentItemList) {
@@ -458,10 +473,20 @@ public class MongoDbTransforms {
         try {
           col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
           successfulCount.addAndGet(currentItemList.size());
+          LOG.debug(
+              "Successfully bulk-wrote {} documents to collection '{}'",
+              currentItemList.size(),
+              colName);
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();
           successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+          LOG.warn(
+              "Transient MongoBulkWriteException on collection '{}' (errors={}). Retrying {}"
+                  + " documents after backoff",
+              colName,
+              writeErrors.size(),
+              currentItemList.size() - writeErrors.size());
 
           List<WriteModel<Document>> nextUpdates = new ArrayList<>();
           List<DocumentWithMetadata> nextItemList = new ArrayList<>();
@@ -489,6 +514,11 @@ public class MongoDbTransforms {
             if (severeFailedWritesCount != null) {
               severeFailedWritesCount.addAndGet(currentItemList.size());
             }
+            LOG.error(
+                "Permanent write failure on collection '{}' (code={}): {}",
+                colName,
+                code,
+                e.getMessage());
             writePermanentDlqMessage(
                 currentItemList, "Failed to write documents: " + e.getMessage());
             break;
@@ -499,6 +529,12 @@ public class MongoDbTransforms {
           if (inMemoryRetriesCount != null) {
             inMemoryRetriesCount.addAndGet(currentItemList.size());
           }
+          LOG.warn(
+              "Transient write exception on collection '{}': {}. Retrying {} documents after"
+                  + " backoff",
+              colName,
+              e.getMessage(),
+              currentItemList.size());
           if (handleBackoff(sleeper, backoff, currentItemList)) {
             break;
           }
@@ -641,6 +677,20 @@ public class MongoDbTransforms {
       DocumentWithMetadata failure;
       while ((failure = failures.poll()) != null) {
         c.output(failureTag, failure, Instant.now(), GlobalWindow.INSTANCE);
+      }
+
+      long succ = successfulCount.get();
+      long memRetries = inMemoryRetriesCount != null ? inMemoryRetriesCount.get() : 0;
+      long dlqRet = dlqRetriesCount != null ? dlqRetriesCount.get() : 0;
+      long permFail = permanentFailuresCount != null ? permanentFailuresCount.get() : 0;
+      if (succ > 0 || memRetries > 0 || dlqRet > 0 || permFail > 0) {
+        LOG.info(
+            "Finished write bundle: {} successful writes, {} in-memory retries, {} DLQ retries, {}"
+                + " permanent failures",
+            succ,
+            memRetries,
+            dlqRet,
+            permFail);
       }
     }
   }

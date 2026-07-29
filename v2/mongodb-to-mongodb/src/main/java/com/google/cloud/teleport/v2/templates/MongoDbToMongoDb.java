@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.google.cloud.teleport.v2.transforms.ReadSplitGenerator;
+import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -285,6 +286,32 @@ public class MongoDbToMongoDb {
     String retryableDlqPath = baseDlqPath + timestampPath + "/retryable";
     String permanentDlqPath = baseDlqPath + timestampPath + "/permanent";
 
+    LOG.info("Starting MongoDB-to-MongoDB Pipeline");
+    LOG.info("  Source URI:              {}", UriSanitizer.sanitize(options.getSourceUri()));
+    LOG.info("  Target URI:              {}", UriSanitizer.sanitize(options.getTargetUri()));
+    LOG.info("  Source Database:         {}", options.getSourceDatabase());
+    LOG.info("  Target Database:         {}", options.getTargetDatabase());
+    LOG.info("  Source Collections:      {}", sourceCollections);
+    LOG.info(
+        "  Read Strategy:           {}",
+        (options.getNumReadPrefixSplits() != null && options.getNumReadPrefixSplits() > 1)
+            ? "Parallel Index-Slice Reading (numReadPrefixSplits="
+                + options.getNumReadPrefixSplits()
+                + ")"
+            : "Standard MongoDbIO.read() (bucketAuto="
+                + options.getUseBucketAuto()
+                + ", numSplits="
+                + options.getNumSplits()
+                + ")");
+    LOG.info(
+        "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
+            + " dlqMaxRetries={}",
+        options.getBatchSize(),
+        options.getMaxConcurrentAsyncWrites(),
+        options.getMaxWriteRetries(),
+        options.getDlqMaxRetries());
+    LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
+
     if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
       String reconsumePath = options.getReconsumeDlqPath();
       if (reconsumePath == null || reconsumePath.isEmpty()) {
@@ -475,8 +502,14 @@ public class MongoDbToMongoDb {
           ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
       List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
 
+      LOG.info(
+          "Generating {} parallel index-slice read branches for collection '{}'",
+          filters.size(),
+          sourceCollection);
+
       for (int i = 0; i < filters.size(); i++) {
         final String filterJson = filters.get(i).toJson();
+        LOG.info("  Read Branch [{}/{}] Query Filter: {}", i, filters.size() - 1, filterJson);
         MongoDbIO.Read read =
             MongoDbIO.read()
                 .withUri(options.getSourceUri())
@@ -511,6 +544,13 @@ public class MongoDbToMongoDb {
       return PCollectionList.of(readBranches)
           .apply("MergeReadSplits_" + sourceCollection, Flatten.pCollections());
     }
+
+    LOG.info(
+        "Using standard unpartitioned MongoDbIO.read() for collection '{}' (bucketAuto={},"
+            + " numSplits={})",
+        sourceCollection,
+        options.getUseBucketAuto(),
+        options.getNumSplits());
 
     MongoDbIO.Read read =
         MongoDbIO.read()
