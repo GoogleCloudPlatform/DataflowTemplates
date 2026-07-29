@@ -68,19 +68,14 @@ public class ReadSplitGenerator {
    * @param databaseName Database name.
    * @param collectionName Collection name.
    * @param numSplits Number of target parallel read splits.
-   * @param useDataDrivenReadSplits Whether to attempt $sample quantile split discovery.
    * @return List of BsonDocument filters.
    */
   public static List<BsonDocument> generateIndexSliceFilters(
-      MongoClient client,
-      String databaseName,
-      String collectionName,
-      int numSplits,
-      boolean useDataDrivenReadSplits) {
+      MongoClient client, String databaseName, String collectionName, int numSplits) {
     if (numSplits <= 1) {
       return Collections.singletonList(new BsonDocument());
     }
-    if (useDataDrivenReadSplits && client != null) {
+    if (client != null) {
       try {
         List<BsonDocument> dataDrivenSplits =
             discoverDataDrivenSplits(client, databaseName, collectionName, numSplits);
@@ -169,6 +164,24 @@ public class ReadSplitGenerator {
     return filters;
   }
 
+  private static final BsonArray NUMBER_BSON_TYPES =
+      new BsonArray(
+          Arrays.asList(
+              new BsonString("int"),
+              new BsonString("long"),
+              new BsonString("double"),
+              new BsonString("decimal")));
+
+  private static final BsonArray KNOWN_BSON_TYPES =
+      new BsonArray(
+          Arrays.asList(
+              new BsonString("string"),
+              new BsonString("objectId"),
+              new BsonString("int"),
+              new BsonString("long"),
+              new BsonString("double"),
+              new BsonString("decimal")));
+
   /**
    * Detects which _id BSON types are present in a MongoDB collection using lightweight limit(1)
    * probes.
@@ -191,17 +204,7 @@ public class ReadSplitGenerator {
         != null) {
       activeTypes.add(IdType.OBJECT_ID);
     }
-    if (col.find(
-                new BsonDocument(
-                    "_id",
-                    new BsonDocument(
-                        "$type",
-                        new BsonArray(
-                            Arrays.asList(
-                                new BsonString("int"),
-                                new BsonString("long"),
-                                new BsonString("double"),
-                                new BsonString("decimal"))))))
+    if (col.find(new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)))
             .limit(1)
             .first()
         != null) {
@@ -209,19 +212,7 @@ public class ReadSplitGenerator {
     }
     if (col.find(
                 new BsonDocument(
-                    "_id",
-                    new BsonDocument(
-                        "$not",
-                        new BsonDocument(
-                            "$type",
-                            new BsonArray(
-                                Arrays.asList(
-                                    new BsonString("string"),
-                                    new BsonString("objectId"),
-                                    new BsonString("int"),
-                                    new BsonString("long"),
-                                    new BsonString("double"),
-                                    new BsonString("decimal")))))))
+                    "_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))))
             .limit(1)
             .first()
         != null) {
