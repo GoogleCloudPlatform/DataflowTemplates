@@ -75,36 +75,114 @@ public class ReadSplitGenerator {
     if (numSplits <= 1) {
       return Collections.singletonList(new BsonDocument());
     }
-    if (client != null) {
+
+    Set<IdType> activeTypes =
+        client != null
+            ? detectIdTypes(client, databaseName, collectionName)
+            : EnumSet.allOf(IdType.class);
+
+    if (client == null) {
+      return generateIndexSliceFilters(numSplits, activeTypes);
+    }
+
+    MongoCollection<BsonDocument> col =
+        client.getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
+
+    List<BsonDocument> numberFilters = Collections.emptyList();
+    if (activeTypes.contains(IdType.NUMBER)) {
       try {
-        List<BsonDocument> dataDrivenSplits =
-            discoverDataDrivenSplits(client, databaseName, collectionName, numSplits);
-        LOG.info(
-            "Generated {} data-driven quantile split filters for '{}.{}'",
-            dataDrivenSplits.size(),
-            databaseName,
-            collectionName);
-        return dataDrivenSplits;
+        numberFilters =
+            discoverSplitsForType(
+                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
       } catch (Exception e) {
         LOG.warn(
-            "Data-driven $sample split discovery failed for '{}.{}' ({}). Falling back to automatic"
-                + " key-type detection and uniform splits.",
+            "Data-driven splits failed for NUMBER type in '{}.{}' ({}). Falling back to uniform splits.",
+            databaseName,
+            collectionName,
+            e.getMessage());
+        numberFilters = generateNumberFilters(numSplits);
+      }
+    }
+
+    List<BsonDocument> stringFilters = Collections.emptyList();
+    if (activeTypes.contains(IdType.STRING)) {
+      try {
+        stringFilters =
+            discoverSplitsForType(
+                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", new BsonString("string"))));
+      } catch (Exception e) {
+        LOG.warn(
+            "Data-driven splits failed for STRING type in '{}.{}' ({}). Falling back to uniform splits.",
+            databaseName,
+            collectionName,
+            e.getMessage());
+        stringFilters = generateStringFilters(numSplits);
+      }
+    }
+
+    List<BsonDocument> objectIdFilters = Collections.emptyList();
+    if (activeTypes.contains(IdType.OBJECT_ID)) {
+      try {
+        objectIdFilters =
+            discoverSplitsForType(
+                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+      } catch (Exception e) {
+        LOG.warn(
+            "Data-driven splits failed for OBJECT_ID type in '{}.{}' ({}). Falling back to uniform splits.",
+            databaseName,
+            collectionName,
+            e.getMessage());
+        objectIdFilters = generateObjectIdFilters(numSplits);
+      }
+    }
+
+    List<BsonDocument> otherFilters = Collections.emptyList();
+    if (activeTypes.contains(IdType.OTHER)) {
+      try {
+        otherFilters =
+            discoverSplitsForType(
+                col,
+                numSplits,
+                new BsonDocument("_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))));
+      } catch (Exception e) {
+        LOG.warn(
+            "Data-driven splits failed for OTHER type in '{}.{}' ({}).",
             databaseName,
             collectionName,
             e.getMessage());
       }
     }
 
-    Set<IdType> activeTypes =
-        client != null
-            ? detectIdTypes(client, databaseName, collectionName)
-            : EnumSet.allOf(IdType.class);
-    LOG.info(
-        "Generating uniform split filters for active _id BSON types in '{}.{}': {}",
-        databaseName,
-        collectionName,
-        activeTypes);
-    return generateIndexSliceFilters(numSplits, activeTypes);
+    List<BsonDocument> filters = new ArrayList<>();
+    for (int i = 0; i < numSplits; i++) {
+      List<BsonDocument> branchFilters = new ArrayList<>();
+      if (!numberFilters.isEmpty() && i < numberFilters.size()) {
+        branchFilters.add(numberFilters.get(i));
+      }
+      if (!stringFilters.isEmpty() && i < stringFilters.size()) {
+        branchFilters.add(stringFilters.get(i));
+      }
+      if (!objectIdFilters.isEmpty() && i < objectIdFilters.size()) {
+        branchFilters.add(objectIdFilters.get(i));
+      }
+      if (!otherFilters.isEmpty() && i < otherFilters.size()) {
+        branchFilters.add(otherFilters.get(i));
+      } else if (i == 0 && activeTypes.contains(IdType.OTHER)) {
+        branchFilters.add(
+            BsonDocument.parse(
+                "{\"_id\": {\"$not\": {\"$type\": [\"int\", \"long\", \"double\", \"decimal\","
+                    + " \"string\", \"objectId\"]}}}"));
+      }
+
+      if (branchFilters.isEmpty()) {
+        filters.add(new BsonDocument());
+      } else if (branchFilters.size() == 1) {
+        filters.add(branchFilters.get(0));
+      } else {
+        filters.add(new BsonDocument("$or", new BsonArray(branchFilters)));
+      }
+    }
+    return filters;
   }
 
   /**
@@ -225,23 +303,19 @@ public class ReadSplitGenerator {
     return activeTypes;
   }
 
-  /**
-   * Discovers empirical quantile boundary points for _id by sampling the collection with $sample.
-   */
-  public static List<BsonDocument> discoverDataDrivenSplits(
-      MongoClient client, String databaseName, String collectionName, int numSplits) {
+  private static List<BsonDocument> discoverSplitsForType(
+      MongoCollection<BsonDocument> col, int numSplits, BsonDocument typeMatch) {
     if (numSplits <= 1) {
-      return Collections.singletonList(new BsonDocument());
+      return Collections.singletonList(typeMatch);
     }
+    
     int sampleSize = Math.max(1000, numSplits * 64);
     List<BsonDocument> pipeline =
         Arrays.asList(
+            new BsonDocument("$match", typeMatch),
             new BsonDocument("$sample", new BsonDocument("size", new BsonInt32(sampleSize))),
             new BsonDocument("$project", new BsonDocument("_id", new BsonInt32(1))),
             new BsonDocument("$sort", new BsonDocument("_id", new BsonInt32(1))));
-
-    MongoDatabase db = client.getDatabase(databaseName);
-    MongoCollection<BsonDocument> col = db.getCollection(collectionName, BsonDocument.class);
 
     List<BsonValue> sampledKeys = new ArrayList<>();
     for (BsonDocument doc : col.aggregate(pipeline)) {
@@ -270,18 +344,20 @@ public class ReadSplitGenerator {
 
     List<BsonDocument> slices = new ArrayList<>();
     for (int i = 0; i < numSplits; i++) {
-      if (i == 0) {
-        slices.add(new BsonDocument("_id", new BsonDocument("$lt", boundaries.get(0))));
-      } else if (i == numSplits - 1) {
-        slices.add(
-            new BsonDocument(
-                "_id", new BsonDocument("$gte", boundaries.get(boundaries.size() - 1))));
-      } else {
-        slices.add(
-            new BsonDocument(
-                "_id",
-                new BsonDocument("$gte", boundaries.get(i - 1)).append("$lt", boundaries.get(i))));
+      BsonDocument idDoc = new BsonDocument();
+      BsonDocument typeMatchId = typeMatch.getDocument("_id");
+      for (String key : typeMatchId.keySet()) {
+        idDoc.append(key, typeMatchId.get(key));
       }
+
+      if (i == 0) {
+        idDoc.append("$lt", boundaries.get(0));
+      } else if (i == numSplits - 1) {
+        idDoc.append("$gte", boundaries.get(boundaries.size() - 1));
+      } else {
+        idDoc.append("$gte", boundaries.get(i - 1)).append("$lt", boundaries.get(i));
+      }
+      slices.add(new BsonDocument("_id", idDoc));
     }
     return slices;
   }
