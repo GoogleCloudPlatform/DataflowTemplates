@@ -33,6 +33,7 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
@@ -198,6 +199,25 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
+  }
+
+  public void createAndUploadCustomShardJarToGcs(String gcsPathPrefix)
+      throws IOException, InterruptedException {
+    ProcessBuilder processBuilder =
+        new ProcessBuilder("mvn", "clean", "package", "-DskipTests")
+            .directory(new File("../spanner-custom-shard"));
+
+    Process exec = processBuilder.start();
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsClient.uploadArtifact(
+        gcsPathPrefix + "/customTransformation.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 
   /**
