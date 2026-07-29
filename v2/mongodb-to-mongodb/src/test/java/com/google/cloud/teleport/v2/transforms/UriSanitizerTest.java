@@ -35,8 +35,7 @@ public class UriSanitizerTest {
 
   @Test
   public void testSanitize_srvUriWithPassword() {
-    String uri =
-        "mongodb+srv://admin:pass123!@cluster0.example.com/test?retryWrites=true&tls=true";
+    String uri = "mongodb+srv://admin:pass123!@cluster0.example.com/test?retryWrites=true&tls=true";
     String sanitized = UriSanitizer.sanitize(uri);
     assertEquals(
         "mongodb+srv://admin:****@cluster0.example.com/test?retryWrites=true&tls=true", sanitized);

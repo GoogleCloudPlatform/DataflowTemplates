@@ -499,8 +499,7 @@ public class MongoDbToMongoDb {
       Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
     Integer numReadSplits = options.getNumReadPrefixSplits();
     if (numReadSplits != null && numReadSplits > 1) {
-      List<BsonDocument> filters =
-          ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
+      List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
       List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
 
       LOG.info(

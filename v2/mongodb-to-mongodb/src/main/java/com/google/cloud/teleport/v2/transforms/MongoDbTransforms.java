@@ -219,8 +219,7 @@ public class MongoDbTransforms {
   }
 
   /** A {@link DoFn} that writes documents to MongoDB in bulk. */
-  public static class WriteFn
-      extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
+  public static class WriteFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
 
     private static final int ERR_DOCUMENT_VALIDATION_FAILURE = 121;
     private static final int ERR_KEY_TOO_LONG = 17280;

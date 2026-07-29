@@ -21,8 +21,8 @@ import java.util.List;
 import org.bson.BsonDocument;
 
 /**
- * Utility class to generate orthogonal BSON filter queries for parallel index-slice reading
- * without requiring MongoDB splitVector or bucketAuto commands.
+ * Utility class to generate orthogonal BSON filter queries for parallel index-slice reading without
+ * requiring MongoDB splitVector or bucketAuto commands.
  */
 public class ReadSplitGenerator {
 

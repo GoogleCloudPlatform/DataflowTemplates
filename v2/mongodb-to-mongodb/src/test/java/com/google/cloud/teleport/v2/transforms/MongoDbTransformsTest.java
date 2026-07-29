@@ -259,7 +259,7 @@ public class MongoDbTransformsTest {
   @Test
   public void writeWithDlq_documentLevelRetry_partialSuccess() {
     AtomicInteger callCount = new AtomicInteger(0);
-    final boolean[] doc2Retried = new boolean[]{false};
+    final boolean[] doc2Retried = new boolean[] {false};
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
             invocation -> {
@@ -267,7 +267,10 @@ public class MongoDbTransformsTest {
               List<WriteModel<Document>> updates = invocation.getArgument(0);
               java.util.List<BulkWriteError> errors = new java.util.ArrayList<>();
               for (int i = 0; i < updates.size(); i++) {
-                Document doc = (Document) ((com.mongodb.client.model.ReplaceOneModel) updates.get(i)).getReplacement();
+                Document doc =
+                    (Document)
+                        ((com.mongodb.client.model.ReplaceOneModel) updates.get(i))
+                            .getReplacement();
                 int id = doc.getInteger("_id");
                 if (id == 1) {
                   errors.add(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), i));

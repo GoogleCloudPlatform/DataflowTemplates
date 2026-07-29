@@ -47,7 +47,8 @@ public class ReadSplitGeneratorTest {
   @Test
   public void testGenerateIndexSliceFilters_multipleSplits() {
     List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(16);
-    // 4 Integer/Long mod slices + 1 Double/Decimal + 4 String slices + 8 ObjectId slices + 1 BinData + 1 Catch-All = 19 slices
+    // 4 Integer/Long mod slices + 1 Double/Decimal + 4 String slices + 8 ObjectId slices + 1
+    // BinData + 1 Catch-All = 19 slices
     assertNotNull(filters);
     assertFalse(filters.isEmpty());
     assertEquals(19, filters.size());
