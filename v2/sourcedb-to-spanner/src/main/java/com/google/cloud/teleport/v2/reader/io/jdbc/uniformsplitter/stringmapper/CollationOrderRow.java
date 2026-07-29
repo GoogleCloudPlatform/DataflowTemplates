@@ -111,15 +111,17 @@ public abstract class CollationOrderRow {
         isSpace);
 
     Preconditions.checkArgument(
-        charSetChar.codePointCount(0, charSetChar.length()) == 1,
+        charSetChar.codePointCount(0, charSetChar.length()) <= 1,
         "Found a multi-codepoint character in collation output: " + charSetChar);
     Preconditions.checkArgument(
-        equivalentCharsetChar.codePointCount(0, equivalentCharsetChar.length()) == 1,
+        equivalentCharsetChar.codePointCount(0, equivalentCharsetChar.length()) <= 1,
         "Found a multi-codepoint equivalent character in collation output: "
             + equivalentCharsetChar);
     Preconditions.checkArgument(
-        equivalentCharsetCharPadSpace.codePointCount(0, equivalentCharsetCharPadSpace.length())
-            == 1,
+        equivalentCharsetCharPadSpace == null
+            || equivalentCharsetCharPadSpace.codePointCount(
+                    0, equivalentCharsetCharPadSpace.length())
+                <= 1,
         "Found a multi-codepoint equivalent character for pad space in collation output: "
             + equivalentCharsetCharPadSpace);
 
