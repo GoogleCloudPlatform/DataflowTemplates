@@ -62,6 +62,9 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
   /** Transformed primary keys (value change using custom transformation). */
   @Test
   public void testTransformedPrimaryKey() throws Exception {
+    // We run this test using DataflowRunner to avoid custom transformation resource leakage that
+    // happens in DirectRunner.
+
     // 1. Setup Source Avro Data
     TableDef transformedTableDef =
         new TableDef(
@@ -164,7 +167,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
     List<GenericRecord> rolesRecords =
         Arrays.asList(
             new RecordBuilder(originalTableDef, null)
-                .set("role_id", 1L)
+                .set("role_id", 1)
                 .set("role_name", "ADMIN")
                 .build());
 
