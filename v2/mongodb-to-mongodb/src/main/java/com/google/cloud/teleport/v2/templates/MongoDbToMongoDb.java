@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
+import com.google.cloud.teleport.v2.transforms.ReadSplitGenerator;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -39,13 +40,16 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.bson.BsonDocument;
 import org.bson.Document;
 
 /** Dataflow template which copies data from one MongoDB database to another. */
@@ -157,6 +161,19 @@ public class MongoDbToMongoDb {
     Integer getBatchSize();
 
     void setBatchSize(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 10,
+        groupName = "Source",
+        optional = true,
+        description = "Number of Read Prefix Splits",
+        helpText =
+            "Number of parallel index-slice queries to generate for high-throughput reads (e.g., 16"
+                + " or 32). Recommended when splitVector is unsupported.")
+    @Default.Integer(0)
+    Integer getNumReadPrefixSplits();
+
+    void setNumReadPrefixSplits(Integer value);
 
     @TemplateParameter.Text(
         order = 11,
@@ -452,6 +469,49 @@ public class MongoDbToMongoDb {
 
   private static PCollection<DocumentWithMetadata> readFromMongo(
       Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
+    Integer numReadSplits = options.getNumReadPrefixSplits();
+    if (numReadSplits != null && numReadSplits > 1) {
+      List<BsonDocument> filters =
+          ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
+      List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
+
+      for (int i = 0; i < filters.size(); i++) {
+        final String filterJson = filters.get(i).toJson();
+        MongoDbIO.Read read =
+            MongoDbIO.read()
+                .withUri(options.getSourceUri())
+                .withDatabase(options.getSourceDatabase())
+                .withCollection(sourceCollection)
+                .withQueryFn(col -> col.find(BsonDocument.parse(filterJson)).iterator());
+
+        if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
+          read = read.withBucketAuto(true);
+        }
+        if (options.getNumSplits() != null) {
+          read = read.withNumSplits(options.getNumSplits());
+        }
+
+        PCollection<DocumentWithMetadata> branch =
+            pipeline
+                .apply("Read_" + sourceCollection + "_Slice_" + i, read)
+                .apply(
+                    "MapToMetadata_" + sourceCollection + "_Slice_" + i,
+                    ParDo.of(
+                        new DoFn<Document, DocumentWithMetadata>() {
+                          @ProcessElement
+                          public void processElement(ProcessContext c) {
+                            c.output(
+                                DocumentWithMetadata.of(
+                                    c.element(), sourceCollection, targetCollection));
+                          }
+                        }));
+        readBranches.add(branch);
+      }
+
+      return PCollectionList.of(readBranches)
+          .apply("MergeReadSplits_" + sourceCollection, Flatten.pCollections());
+    }
+
     MongoDbIO.Read read =
         MongoDbIO.read()
             .withUri(options.getSourceUri())
