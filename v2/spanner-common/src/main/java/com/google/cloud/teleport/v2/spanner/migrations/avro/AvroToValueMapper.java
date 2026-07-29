@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -394,6 +395,17 @@ public class AvroToValueMapper {
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
+
+        // If the string is a standard UUID (36 chars with hyphens), strictly validate it
+        // and efficiently parse it into a 16-byte array for Spanner.
+        if (s.length() == 36 && s.contains("-")) {
+          UUID uuid = UUID.fromString(s);
+          ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[16]);
+          byteBuffer.putLong(uuid.getMostSignificantBits());
+          byteBuffer.putLong(uuid.getLeastSignificantBits());
+          return ByteArray.copyFrom(byteBuffer.array());
+        }
+
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }

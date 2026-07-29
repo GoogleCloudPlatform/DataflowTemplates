@@ -43,6 +43,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.codec.binary.Hex;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -421,6 +422,25 @@ public class AvroToValueMapperTest {
     ByteArray result =
         AvroToValueMapper.avroFieldToByteArray(null, SchemaBuilder.builder().bytesType());
     assertNull(result);
+  }
+
+  @Test
+  public void testAvroFieldToByteArray_UUIDInput() throws Exception {
+    String inputValue = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+
+    String expectedHex = "a0eebc999c0b4ef8bb6d6bb9bd380a11";
+    ByteArray expectedResult = ByteArray.copyFrom(Hex.decodeHex(expectedHex));
+
+    ByteArray result =
+        AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().stringType());
+
+    assertEquals("Test UUID input with hyphens stripped", expectedResult, result);
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToByteArray_InvalidUUIDInput() {
+    String inputValue = "Z-this-is-an-invalid-uuid-string-X!!";
+    AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().stringType());
   }
 
   @Test(expected = AvroTypeConvertorException.class)

@@ -104,6 +104,15 @@ public class GenericRecordTypeConvertorTest {
         .name("time_micros_col")
         .type(timeMicrosType)
         .noDefault()
+        .name("time_micros_max_col")
+        .type(timeMicrosType)
+        .noDefault()
+        .name("time_tz_col")
+        .type(AvroTestingHelper.TIMETZ_SCHEMA)
+        .noDefault()
+        .name("time_tz_max_col")
+        .type(AvroTestingHelper.TIMETZ_SCHEMA)
+        .noDefault()
         .name("time_millis_col")
         .type(timeMillisType)
         .noDefault()
@@ -187,6 +196,13 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put(
         "decimal_col", ByteBuffer.wrap(new BigDecimal("12.34").unscaledValue().toByteArray()));
     genericRecord.put("time_micros_col", 48035000000L);
+    genericRecord.put("time_micros_max_col", 86400000000L);
+
+    genericRecord.put("time_tz_col", AvroTestingHelper.createTimeTzRecord(86399000000L, 36000000));
+
+    genericRecord.put(
+        "time_tz_max_col", AvroTestingHelper.createTimeTzRecord(86400000000L, -19800000));
+
     genericRecord.put("time_millis_col", 48035000);
     genericRecord.put("timestamp_micros_col", 1602599400056483L);
     genericRecord.put("timestamp_millis_col", 1602599400056L);
@@ -221,7 +237,32 @@ public class GenericRecordTypeConvertorTest {
             genericRecord.get(col),
             genericRecord.getSchema().getField(col).schema(),
             getTestCassandraAnnotationNone());
-    assertEquals("Test time_micros_col conversion: ", "13:20:35", result);
+    assertEquals("Test time_micros_col conversion: ", "PT13H20M35S", result);
+
+    col = "time_micros_max_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test time_micros_max_col conversion: ", "PT24H", result);
+
+    col = "time_tz_col";
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            col,
+            (org.apache.avro.generic.GenericRecord) genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test time_tz_col conversion: ", "23:59:59+10:00", result);
+
+    col = "time_tz_max_col";
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            col,
+            (org.apache.avro.generic.GenericRecord) genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema());
+    assertEquals("Test time_tz_max_col conversion: ", "24:00:00-05:30", result);
 
     col = "time_millis_col";
     result =
@@ -418,23 +459,21 @@ public class GenericRecordTypeConvertorTest {
             "interval_column",
             AvroTestingHelper.createIntervalRecord(0, 12, 3590123456L),
             AvroTestingHelper.INTERVAL_SCHEMA);
-    assertEquals("Test #1 interval conversion:", "12:59:50.123456", result);
+    assertEquals("Test #1 interval conversion:", "PT12H59M50.123456S", result);
 
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
             "interval_column",
-            AvroTestingHelper.createIntervalRecord(0, -12, 3590000000L),
+            AvroTestingHelper.createIntervalRecord(0, -12, -3590000000L),
             AvroTestingHelper.INTERVAL_SCHEMA);
-    assertEquals("Test #2 interval conversion:", "-12:59:50", result);
-    // Test for interval type with micros greater than permitted limit.
-    assertThrows(
-        "Test #3 interval conversion:",
-        IllegalArgumentException.class,
-        () ->
-            GenericRecordTypeConvertor.handleRecordFieldType(
-                "interval_column",
-                AvroTestingHelper.createIntervalRecord(0, 12, 3600000000L),
-                AvroTestingHelper.INTERVAL_SCHEMA));
+    assertEquals("Test #2 interval conversion:", "PT-12H-59M-50S", result);
+
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_column",
+            AvroTestingHelper.createIntervalRecord(14, 36, 1500000000L),
+            AvroTestingHelper.INTERVAL_SCHEMA);
+    assertEquals("Test #3 interval conversion:", "P1Y2M1DT12H25M", result);
 
     // Test for unsupported type.
     assertThrows(

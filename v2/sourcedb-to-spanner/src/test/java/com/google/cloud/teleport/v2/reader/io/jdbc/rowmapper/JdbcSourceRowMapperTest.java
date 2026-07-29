@@ -32,7 +32,9 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
@@ -516,14 +518,18 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("CHAR(8) FOR BIT DATA")
+                .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("BIT")
+                .inputValue("0000000000000000000000000000000000000000000000000000000001111111")
                 .mappedValue(ByteBuffer.allocate(8).putLong(Byte.MAX_VALUE).array())
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("CHAR(16) FOR BIT DATA")
+                .derbyColumnType("VARCHAR(256)")
                 .sourceColumnType("BIT VARYING")
+                .inputValue(
+                    "00000000000000000000000000000000000000000000000001111111111111110000000000000000"
+                        + "000000000000000000000000000000000000000000000000")
                 .mappedValue(ByteBuffer.allocate(16).putLong(Short.MAX_VALUE).array())
                 .build())
         .add(
@@ -572,7 +578,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("CIDR")
-                .mappedValue(null) // Unsupported
+                .mappedValue("192.168.100.128/25")
                 .build())
         .add(
             Column.builder()
@@ -643,7 +649,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("INET")
-                .mappedValue(null) // Unsupported
+                .mappedValue("192.168.1.0/24")
                 .build())
         .add(
             Column.builder()
@@ -661,8 +667,13 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("INTERVAL")
-                .inputValue("1 hour")
-                .mappedValue(null) // Unsupported
+                .inputValue("1 year 2 mons 3 days 04:05:06.789")
+                .mappedValue(
+                    new GenericRecordBuilder(Interval.SCHEMA)
+                        .set("months", 14)
+                        .set("hours", 76)
+                        .set("micros", 306789000L)
+                        .build())
                 .build())
         .add(
             Column.builder()
@@ -751,8 +762,8 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("MONEY")
-                .inputValue("1.23")
-                .mappedValue(1.23D)
+                .inputValue("$1,234.56")
+                .mappedValue("1234.56")
                 .build())
         .add(
             Column.builder()
@@ -864,24 +875,39 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .mappedValue(0L)
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME WITHOUT TIME ZONE")
-                .inputValue("01:02:03")
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIMETZ")
-                .inputValue("01:02:03-05")
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03-05".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
+                .sourceColumnType("TIME WITH TIME ZONE")
+                .inputValue("01:02:03-05".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000)
+                        .build())
                 .build())
         .add(
             Column.builder()
@@ -986,8 +1012,13 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("CHAR(32) FOR BIT DATA")
+                .derbyColumnType("VARCHAR(256)")
                 .sourceColumnType("VARBIT")
+                .inputValue(
+                    "00000000000000000000000000000000011111111111111111111111111111110000000000000000"
+                        + "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                        + "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                        + "0000000000000000")
                 .mappedValue(ByteBuffer.allocate(32).putLong(Integer.MAX_VALUE).array())
                 .build())
         .add(
