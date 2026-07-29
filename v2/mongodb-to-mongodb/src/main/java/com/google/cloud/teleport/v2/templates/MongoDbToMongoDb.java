@@ -34,6 +34,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.mongodb.FindQuery;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -515,7 +516,7 @@ public class MongoDbToMongoDb {
                 .withUri(options.getSourceUri())
                 .withDatabase(options.getSourceDatabase())
                 .withCollection(sourceCollection)
-                .withQueryFn(col -> col.find(BsonDocument.parse(filterJson)).iterator());
+                .withQueryFn(FindQuery.create().withFilters(filters.get(i)));
 
         if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
           read = read.withBucketAuto(true);
