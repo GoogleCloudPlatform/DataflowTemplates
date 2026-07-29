@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.EnumSet;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.junit.Test;
@@ -47,18 +48,13 @@ public class ReadSplitGeneratorTest {
   @Test
   public void testGenerateIndexSliceFilters_multipleSplits() {
     List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(16);
-    // 4 Integer/Long mod slices + 1 Double/Decimal + 4 String slices + 8 ObjectId slices + 1
-    // BinData + 1 Catch-All = 19 slices
     assertNotNull(filters);
     assertFalse(filters.isEmpty());
-    assertEquals(19, filters.size());
+    assertEquals(16, filters.size());
 
-    // Verify all generated filters parse cleanly and contain expected BSON type selectors
     int numberModCount = 0;
-    int numberFloatCount = 0;
     int stringCount = 0;
     int objectIdCount = 0;
-    int binDataCount = 0;
     int catchAllCount = 0;
 
     for (BsonDocument filter : filters) {
@@ -66,24 +62,84 @@ public class ReadSplitGeneratorTest {
       String json = filter.toJson();
       if (json.contains("\"$not\"")) {
         catchAllCount++;
-      } else if (json.contains("\"$mod\"")) {
+      }
+      if (json.contains("\"$mod\"")) {
         numberModCount++;
-      } else if (json.contains("\"double\"") && json.contains("\"decimal\"")) {
-        numberFloatCount++;
-      } else if (json.contains("\"$type\": \"string\"")) {
+      }
+      if (json.contains("\"$type\": \"string\"")) {
         stringCount++;
-      } else if (json.contains("\"$oid\"")) {
+      }
+      if (json.contains("\"$oid\"")) {
         objectIdCount++;
-      } else if (json.contains("\"binData\"")) {
-        binDataCount++;
       }
     }
 
-    assertEquals(4, numberModCount);
-    assertEquals(1, numberFloatCount);
-    assertEquals(4, stringCount);
-    assertEquals(8, objectIdCount);
-    assertEquals(1, binDataCount);
+    assertEquals(16, numberModCount);
+    assertEquals(16, stringCount);
+    assertEquals(16, objectIdCount);
     assertEquals(1, catchAllCount);
+  }
+
+  @Test
+  public void testGenerateIndexSliceFilters_stringOnly_noOrWrapper() {
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(
+            4, EnumSet.of(ReadSplitGenerator.IdType.STRING));
+    assertEquals(4, filters.size());
+    for (BsonDocument filter : filters) {
+      String json = filter.toJson();
+      assertFalse("Single type filter should not contain $or", json.contains("\"$or\""));
+      assertTrue("Should contain string type check", json.contains("\"$type\": \"string\""));
+    }
+  }
+
+  @Test
+  public void testGenerateIndexSliceFilters_objectIdOnly_noOrWrapper() {
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(
+            4, EnumSet.of(ReadSplitGenerator.IdType.OBJECT_ID));
+    assertEquals(4, filters.size());
+    for (BsonDocument filter : filters) {
+      String json = filter.toJson();
+      assertFalse("Single type filter should not contain $or", json.contains("\"$or\""));
+      assertTrue("Should contain $oid check", json.contains("\"$oid\""));
+    }
+  }
+
+  @Test
+  public void testGenerateIndexSliceFilters_numberOnly_noOrWrapper() {
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(
+            4, EnumSet.of(ReadSplitGenerator.IdType.NUMBER));
+    assertEquals(4, filters.size());
+    for (BsonDocument filter : filters) {
+      String json = filter.toJson();
+      assertFalse("Single type filter should not contain $or", json.contains("\"$or\""));
+      assertTrue("Should contain $mod check", json.contains("\"$mod\""));
+    }
+  }
+
+  @Test
+  public void testGenerateIndexSliceFilters_multipleTypes_usesOrWrapper() {
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(
+            4, EnumSet.of(ReadSplitGenerator.IdType.STRING, ReadSplitGenerator.IdType.OBJECT_ID));
+    assertEquals(4, filters.size());
+    for (BsonDocument filter : filters) {
+      String json = filter.toJson();
+      assertTrue("Multiple type filter should contain $or", json.contains("\"$or\""));
+    }
+  }
+
+  @Test
+  public void testGenerateIndexSliceFilters_otherType_includedInSliceZeroOnly() {
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(
+            4, EnumSet.of(ReadSplitGenerator.IdType.STRING, ReadSplitGenerator.IdType.OTHER));
+    assertEquals(4, filters.size());
+    assertTrue(filters.get(0).toJson().contains("\"$not\""));
+    assertFalse(filters.get(1).toJson().contains("\"$not\""));
+    assertFalse(filters.get(2).toJson().contains("\"$not\""));
+    assertFalse(filters.get(3).toJson().contains("\"$not\""));
   }
 }

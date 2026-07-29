@@ -288,6 +288,21 @@ public class MongoDbToMongoDb {
     Integer getWriteRateRampUpSteps();
 
     void setWriteRateRampUpSteps(Integer value);
+
+    @TemplateParameter.Boolean(
+        order = 22,
+        groupName = "Source",
+        optional = true,
+        description = "Use Data-Driven Read Splits",
+        helpText =
+            "If true, the template uses MongoDB index sampling ($sample quantiles) to discover"
+                + " empirical split boundary keys and automatically detects active _id key types to"
+                + " eliminate $or overhead. If false, or if sampling is unsupported by the server,"
+                + " it falls back to uniform type-specific prefix splits.")
+    @Default.Boolean(true)
+    Boolean getUseDataDrivenReadSplits();
+
+    void setUseDataDrivenReadSplits(Boolean value);
   }
 
   public static void main(String[] args) {
@@ -570,7 +585,25 @@ public class MongoDbToMongoDb {
       Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
     Integer numReadSplits = options.getNumReadPrefixSplits();
     if (numReadSplits != null && numReadSplits > 1) {
-      List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
+      List<BsonDocument> filters;
+      boolean useDataDriven =
+          options.getUseDataDrivenReadSplits() == null || options.getUseDataDrivenReadSplits();
+      try (MongoClient client = MongoClients.create(options.getSourceUri())) {
+        filters =
+            ReadSplitGenerator.generateIndexSliceFilters(
+                client,
+                options.getSourceDatabase(),
+                sourceCollection,
+                numReadSplits,
+                useDataDriven);
+      } catch (Exception e) {
+        LOG.warn(
+            "Could not connect to MongoDB during setup to generate data-driven read splits ({})."
+                + " Using offline uniform split generation.",
+            e.getMessage());
+        filters = ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
+      }
+
       List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
 
       LOG.info(
