@@ -507,6 +507,7 @@ public class MongoDbToMongoDb {
           filters.size(),
           sourceCollection);
 
+      String readGroup = "ReadSlices(" + sourceCollection + ")";
       for (int i = 0; i < filters.size(); i++) {
         final String filterJson = filters.get(i).toJson();
         LOG.info("  Read Branch [{}/{}] Query Filter: {}", i, filters.size() - 1, filterJson);
@@ -526,9 +527,9 @@ public class MongoDbToMongoDb {
 
         PCollection<DocumentWithMetadata> branch =
             pipeline
-                .apply("Read_" + sourceCollection + "_Slice_" + i, read)
+                .apply(readGroup + "/Slice_" + i + "/Read", read)
                 .apply(
-                    "MapToMetadata_" + sourceCollection + "_Slice_" + i,
+                    readGroup + "/Slice_" + i + "/MapToMetadata",
                     ParDo.of(
                         new DoFn<Document, DocumentWithMetadata>() {
                           @ProcessElement
@@ -541,8 +542,7 @@ public class MongoDbToMongoDb {
         readBranches.add(branch);
       }
 
-      return PCollectionList.of(readBranches)
-          .apply("MergeReadSplits_" + sourceCollection, Flatten.pCollections());
+      return PCollectionList.of(readBranches).apply(readGroup + "/Merge", Flatten.pCollections());
     }
 
     LOG.info(
@@ -566,10 +566,11 @@ public class MongoDbToMongoDb {
       read = read.withNumSplits(options.getNumSplits());
     }
 
+    String readGroup = "Read(" + sourceCollection + ")";
     return pipeline
-        .apply("Read_" + sourceCollection, read)
+        .apply(readGroup + "/Read", read)
         .apply(
-            "MapToMetadata_" + sourceCollection,
+            readGroup + "/MapToMetadata",
             ParDo.of(
                 new DoFn<Document, DocumentWithMetadata>() {
                   @ProcessElement
