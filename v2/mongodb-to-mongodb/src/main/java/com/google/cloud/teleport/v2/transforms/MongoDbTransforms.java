@@ -595,7 +595,7 @@ public class MongoDbTransforms {
         if (rateLimiter != null && !items.isEmpty()) {
           rateLimiter.acquire(items.size());
         }
-        LOG.info(
+        LOG.debug(
             "Flushing batch of {} documents across {} target collection(s) to MongoDB (active"
                 + " async write futures in queue: {})",
             items.size(),
