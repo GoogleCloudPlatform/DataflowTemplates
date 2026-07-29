@@ -1,4 +1,4 @@
-CREATE TABLE Users (
+CREATE TABLE Users_PKTransformed (
     user_id INT64,
     event_id STRING(MAX),
     full_name STRING(MAX),

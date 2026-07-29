@@ -62,17 +62,14 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
   /** Transformed primary keys (value change using custom transformation). */
   @Test
   public void testTransformedPrimaryKey() throws Exception {
-    // We run this test using DataflowRunner to avoid custom transformation resource leakage that
-    // happens in DirectRunner.
-
     // 1. Setup Source Avro Data
     TableDef transformedTableDef =
         new TableDef(
             TableDef.USERS.schema,
-            "Users",
+            "Users_PKTransformed",
             Arrays.asList(
-                "user_id", "full_name")); // full_name as PK as this will be transformed by
-    // CustomTransformation
+                "user_id",
+                "full_name")); // user_id as PK as this will be transformed by CustomTransformation
 
     List<GenericRecord> usersRecords =
         Arrays.asList(
@@ -88,22 +85,19 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
     uploadAvroFileToGcs("input/users.avro", transformedTableDef.schema, usersRecords);
 
     // 2. Insert Destination Spanner Data
-    // full_name is changed to hex string by the custom transformation
     spannerResourceManager.write(
         Arrays.asList(
-            Mutation.newInsertOrUpdateBuilder("Users")
+            Mutation.newInsertOrUpdateBuilder("Users_Transformed")
                 .set("user_id")
-                .to(1L)
+                .to(11L) // Transformed
                 .set("event_id")
                 .to("E1")
                 .set("full_name")
-                .to("416c696365") // Hex for "Alice"
+                .to("Alice")
                 .set("age")
                 .to(30L)
                 .set("created_at")
-                .to(
-                    Timestamp.parseTimestamp(
-                        "2024-01-01T11:00:00Z")) // CustomTransformation adds 1 hour
+                .to(Timestamp.parseTimestamp("2024-01-01T10:00:00Z"))
                 .build()));
 
     // 3. Build Transformation and Launch Job
@@ -147,7 +141,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
         Arrays.asList(
             new TableValidationStatsDto(
                 /* schemaName= */ null,
-                /* tableName= */ "Users",
+                /* tableName= */ "Users_Transformed",
                 /* status= */ "MATCH",
                 /* sourceRowCount= */ 1L,
                 /* destinationRowCount= */ 1L,
