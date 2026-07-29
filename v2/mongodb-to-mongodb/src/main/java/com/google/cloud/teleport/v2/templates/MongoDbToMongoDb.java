@@ -132,27 +132,6 @@ public class MongoDbToMongoDb {
 
     void setTargetCollection(String value);
 
-    @TemplateParameter.Boolean(
-        order = 7,
-        groupName = "Source",
-        optional = true,
-        description = "Use BucketAuto",
-        helpText = "Enable withBucketAuto for Atlas compatibility.")
-    @Default.Boolean(false)
-    Boolean getUseBucketAuto();
-
-    void setUseBucketAuto(Boolean value);
-
-    @TemplateParameter.Integer(
-        order = 8,
-        groupName = "Source",
-        optional = true,
-        description = "Number of Splits",
-        helpText = "Suggest a specific number of partitions for reading.")
-    Integer getNumSplits();
-
-    void setNumSplits(Integer value);
-
     @TemplateParameter.Integer(
         order = 9,
         groupName = "Target",
@@ -168,14 +147,14 @@ public class MongoDbToMongoDb {
         order = 10,
         groupName = "Source",
         optional = true,
-        description = "Number of Read Prefix Splits",
+        description = "Number of Read Splits",
         helpText =
             "Number of parallel index-slice queries to generate for high-throughput reads (e.g., 16"
                 + " or 32). Recommended when splitVector is unsupported.")
     @Default.Integer(0)
-    Integer getNumReadPrefixSplits();
+    Integer getNumReadSplits();
 
-    void setNumReadPrefixSplits(Integer value);
+    void setNumReadSplits(Integer value);
 
     @TemplateParameter.Text(
         order = 11,
@@ -343,15 +322,9 @@ public class MongoDbToMongoDb {
     LOG.info("  Source Collections:      {}", sourceCollections);
     LOG.info(
         "  Read Strategy:           {}",
-        (options.getNumReadPrefixSplits() != null && options.getNumReadPrefixSplits() > 1)
-            ? "Parallel Index-Slice Reading (numReadPrefixSplits="
-                + options.getNumReadPrefixSplits()
-                + ")"
-            : "Standard MongoDbIO.read() (bucketAuto="
-                + options.getUseBucketAuto()
-                + ", numSplits="
-                + options.getNumSplits()
-                + ")");
+        (options.getNumReadSplits() != null && options.getNumReadSplits() > 1)
+            ? "Parallel Index-Slice Reading (numReadSplits=" + options.getNumReadSplits() + ")"
+            : "Standard unpartitioned MongoDbIO.read()");
     LOG.info(
         "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
             + " dlqMaxRetries={}",
@@ -568,7 +541,7 @@ public class MongoDbToMongoDb {
 
   private static PCollection<DocumentWithMetadata> readFromMongo(
       Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
-    Integer numReadSplits = options.getNumReadPrefixSplits();
+    Integer numReadSplits = options.getNumReadSplits();
     if (numReadSplits != null && numReadSplits > 1) {
       List<BsonDocument> filters;
       try (MongoClient client = MongoClients.create(options.getSourceUri())) {
@@ -601,13 +574,6 @@ public class MongoDbToMongoDb {
                 .withCollection(sourceCollection)
                 .withQueryFn(FindQuery.create().withFilters(filters.get(i)));
 
-        if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
-          read = read.withBucketAuto(true);
-        }
-        if (options.getNumSplits() != null) {
-          read = read.withNumSplits(options.getNumSplits());
-        }
-
         PCollection<DocumentWithMetadata> branch =
             pipeline
                 .apply(readGroup + "/Slice_" + i + "/Read", read)
@@ -628,26 +594,13 @@ public class MongoDbToMongoDb {
       return PCollectionList.of(readBranches).apply(readGroup + "/Merge", Flatten.pCollections());
     }
 
-    LOG.info(
-        "Using standard unpartitioned MongoDbIO.read() for collection '{}' (bucketAuto={},"
-            + " numSplits={})",
-        sourceCollection,
-        options.getUseBucketAuto(),
-        options.getNumSplits());
+    LOG.info("Using standard unpartitioned MongoDbIO.read() for collection '{}'", sourceCollection);
 
     MongoDbIO.Read read =
         MongoDbIO.read()
             .withUri(options.getSourceUri())
             .withDatabase(options.getSourceDatabase())
             .withCollection(sourceCollection);
-
-    if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
-      read = read.withBucketAuto(true);
-    }
-
-    if (options.getNumSplits() != null) {
-      read = read.withNumSplits(options.getNumSplits());
-    }
 
     String readGroup = "Read(" + sourceCollection + ")";
     return pipeline
