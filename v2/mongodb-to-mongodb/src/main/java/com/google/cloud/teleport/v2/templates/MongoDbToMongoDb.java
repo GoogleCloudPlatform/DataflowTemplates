@@ -133,7 +133,21 @@ public class MongoDbToMongoDb {
     void setTargetCollection(String value);
 
     @TemplateParameter.Integer(
-        order = 9,
+        order = 7,
+        groupName = "Source",
+        optional = true,
+        description = "Number of Read Splits",
+        helpText =
+            "Number of parallel queries to generate for high-throughput reads (e.g., 16 or 32)."
+                + " Uses MongoDB's $sample aggregation to discover data-driven boundaries across"
+                + " active BSON types.")
+    @Default.Integer(0)
+    Integer getNumReadSplits();
+
+    void setNumReadSplits(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 8,
         groupName = "Target",
         optional = true,
         description = "Batch Size",
@@ -144,31 +158,8 @@ public class MongoDbToMongoDb {
     void setBatchSize(Integer value);
 
     @TemplateParameter.Integer(
-        order = 10,
-        groupName = "Source",
-        optional = true,
-        description = "Number of Read Splits",
-        helpText =
-            "Number of parallel index-slice queries to generate for high-throughput reads (e.g., 16"
-                + " or 32). Recommended when splitVector is unsupported.")
-    @Default.Integer(0)
-    Integer getNumReadSplits();
-
-    void setNumReadSplits(Integer value);
-
-    @TemplateParameter.Text(
-        order = 11,
-        optional = true,
-        description = "DLQ Directory",
-        helpText =
-            "Base path to store failed events. Events will be grouped by date and time, and"
-                + " separated into 'retryable' and 'permanent' subdirectories.")
-    String getDlqDirectory();
-
-    void setDlqDirectory(String value);
-
-    @TemplateParameter.Integer(
-        order = 13,
+        order = 9,
+        groupName = "Target",
         optional = true,
         description = "Max Concurrent Async Writes",
         helpText = "Maximum number of concurrent asynchronous batch writes per worker.")
@@ -178,7 +169,8 @@ public class MongoDbToMongoDb {
     void setMaxConcurrentAsyncWrites(Integer value);
 
     @TemplateParameter.Integer(
-        order = 14,
+        order = 10,
+        groupName = "Target",
         optional = true,
         description = "Max Write Retries",
         helpText = "Maximum number of retry attempts for transient failures during write.")
@@ -188,45 +180,12 @@ public class MongoDbToMongoDb {
     void setMaxWriteRetries(Integer value);
 
     @TemplateParameter.Integer(
-        order = 15,
-        optional = true,
-        description = "DLQ Max Retries",
-        helpText = "Maximum number of times to retry events from DLQ.")
-    @Default.Integer(3)
-    Integer getDlqMaxRetries();
-
-    void setDlqMaxRetries(Integer value);
-
-    @TemplateParameter.Text(
-        order = 16,
-        groupName = "Source",
-        optional = true,
-        description = "Reconsume DLQ Path",
-        helpText =
-            "Path to read files from DLQ for reprocessing. If not provided, write DLQ path will be"
-                + " used.")
-    String getReconsumeDlqPath();
-
-    void setReconsumeDlqPath(String value);
-
-    @TemplateParameter.Boolean(
-        order = 17,
-        groupName = "Source",
-        optional = true,
-        description = "Read from DLQ",
-        helpText = "If true, reads only from DLQ for retry. If false, reads from MongoDB.")
-    @Default.Boolean(false)
-    Boolean getReadFromDlq();
-
-    void setReadFromDlq(Boolean value);
-
-    @TemplateParameter.Integer(
-        order = 18,
+        order = 11,
         groupName = "Target",
         optional = true,
         description = "Initial Write Rate Per Worker",
         helpText =
-            "Initial maximum documents/second written per worker thread during Firestore 5/5/5"
+            "Initial maximum documents/second written per worker thread during linear write rate"
                 + " ramp-up. Set to <= 0 to disable throttling.")
     @Default.Integer(100)
     Integer getInitialWriteRatePerWorker();
@@ -234,19 +193,19 @@ public class MongoDbToMongoDb {
     void setInitialWriteRatePerWorker(Integer value);
 
     @TemplateParameter.Integer(
-        order = 19,
+        order = 12,
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Minutes",
         helpText =
-            "Number of minutes between 50% rate limit increases during Firestore 5/5/5 ramp-up.")
+            "Number of minutes between linear rate limit increases during write rate ramp-up.")
     @Default.Integer(5)
     Integer getWriteRateRampUpMinutes();
 
     void setWriteRateRampUpMinutes(Integer value);
 
     @TemplateParameter.Integer(
-        order = 20,
+        order = 13,
         groupName = "Target",
         optional = true,
         description = "Max Write Rate Per Worker",
@@ -258,7 +217,7 @@ public class MongoDbToMongoDb {
     void setMaxWriteRatePerWorker(Integer value);
 
     @TemplateParameter.Integer(
-        order = 21,
+        order = 14,
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Steps",
@@ -267,6 +226,50 @@ public class MongoDbToMongoDb {
     Integer getWriteRateRampUpSteps();
 
     void setWriteRateRampUpSteps(Integer value);
+
+    @TemplateParameter.Text(
+        order = 15,
+        optional = true,
+        description = "DLQ Directory",
+        helpText =
+            "Base path to store failed events. Events will be grouped by date and time, and"
+                + " separated into 'retryable' and 'permanent' subdirectories.")
+    String getDlqDirectory();
+
+    void setDlqDirectory(String value);
+
+    @TemplateParameter.Integer(
+        order = 16,
+        optional = true,
+        description = "DLQ Max Retries",
+        helpText = "Maximum number of times to retry events from DLQ.")
+    @Default.Integer(3)
+    Integer getDlqMaxRetries();
+
+    void setDlqMaxRetries(Integer value);
+
+    @TemplateParameter.Text(
+        order = 17,
+        groupName = "Source",
+        optional = true,
+        description = "Reconsume DLQ Path",
+        helpText =
+            "Path to read files from DLQ for reprocessing. If not provided, write DLQ path will be"
+                + " used.")
+    String getReconsumeDlqPath();
+
+    void setReconsumeDlqPath(String value);
+
+    @TemplateParameter.Boolean(
+        order = 18,
+        groupName = "Source",
+        optional = true,
+        description = "Read from DLQ",
+        helpText = "If true, reads only from DLQ for retry. If false, reads from MongoDB.")
+    @Default.Boolean(false)
+    Boolean getReadFromDlq();
+
+    void setReadFromDlq(Boolean value);
   }
 
   public static void main(String[] args) {
