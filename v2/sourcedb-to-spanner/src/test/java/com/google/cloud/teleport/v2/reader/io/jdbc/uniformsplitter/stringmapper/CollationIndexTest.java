@@ -60,6 +60,32 @@ public class CollationIndexTest {
             .setPadSpace(true)
             .build();
 
+    // Null arguments
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter(null, "A", 0L)
+                .build());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter("a", null, 0L)
+                .build());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter("a", "A", null)
+                .build());
+
     // Duplicate Characters
     assertThrows(
         IllegalStateException.class,

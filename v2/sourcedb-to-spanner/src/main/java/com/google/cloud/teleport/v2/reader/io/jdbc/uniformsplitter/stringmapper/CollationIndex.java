@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
@@ -89,6 +90,10 @@ public abstract class CollationIndex implements Serializable {
     abstract Builder setCharacterToIndex(ImmutableMap<String, Long> value);
 
     public Builder addCharacter(String charsetChar, String equivalentChar, Long index) {
+      Preconditions.checkNotNull(charsetChar, "charsetChar cannot be null");
+      Preconditions.checkNotNull(equivalentChar, "equivalentChar cannot be null");
+      Preconditions.checkNotNull(index, "index cannot be null");
+
       logger.debug(
           "Registering character order for {}, index-type = {}, character = {}, equivalentCharacter = {}, index = {}, isBlank = {}",
           collationReference(),

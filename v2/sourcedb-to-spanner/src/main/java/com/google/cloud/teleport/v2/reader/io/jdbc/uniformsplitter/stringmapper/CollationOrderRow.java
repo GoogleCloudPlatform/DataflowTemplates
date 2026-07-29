@@ -24,6 +24,7 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.string
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.base.Preconditions;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.slf4j.Logger;
@@ -108,6 +109,19 @@ public abstract class CollationOrderRow {
         codePointRank,
         isEmpty,
         isSpace);
+
+    Preconditions.checkArgument(
+        charSetChar.codePointCount(0, charSetChar.length()) == 1,
+        "Found a multi-codepoint character in collation output: " + charSetChar);
+    Preconditions.checkArgument(
+        equivalentCharsetChar.codePointCount(0, equivalentCharsetChar.length()) == 1,
+        "Found a multi-codepoint equivalent character in collation output: "
+            + equivalentCharsetChar);
+    Preconditions.checkArgument(
+        equivalentCharsetCharPadSpace.codePointCount(0, equivalentCharsetCharPadSpace.length())
+            == 1,
+        "Found a multi-codepoint equivalent character for pad space in collation output: "
+            + equivalentCharsetCharPadSpace);
 
     return CollationOrderRow.builder()
         .setCharsetChar(charSetChar)
