@@ -140,13 +140,16 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
   public static void cleanUp() throws IOException {
     LOG.info("Cleaning up resources...");
     for (PostgreSQLDatastreamToSpannerPartitionedIT instance : testInstances) {
-      instance.tearDownBase();
+      try {
+        instance.tearDownBase();
+      } catch (Exception e) {
+        LOG.error("Failed to tear down base for instance: {}", instance, e);
+      }
     }
 
     // It is important to clean up Datastream before trying to drop the replication slot.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
     ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
         postgresResourceManager,
         spannerResourceManager,
         pgDialectSpannerResourceManager,
