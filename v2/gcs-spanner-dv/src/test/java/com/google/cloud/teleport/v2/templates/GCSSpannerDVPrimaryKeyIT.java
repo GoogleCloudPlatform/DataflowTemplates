@@ -87,7 +87,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
     // 2. Insert Destination Spanner Data
     spannerResourceManager.write(
         Arrays.asList(
-            Mutation.newInsertOrUpdateBuilder("Users_Transformed")
+            Mutation.newInsertOrUpdateBuilder("Users_PKTransformed")
                 .set("user_id")
                 .to(11L) // Transformed
                 .set("event_id")
@@ -141,7 +141,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
         Arrays.asList(
             new TableValidationStatsDto(
                 /* schemaName= */ null,
-                /* tableName= */ "Users_Transformed",
+                /* tableName= */ "Users_PKTransformed",
                 /* status= */ "MATCH",
                 /* sourceRowCount= */ 1L,
                 /* destinationRowCount= */ 1L,
