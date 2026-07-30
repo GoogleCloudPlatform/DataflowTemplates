@@ -147,7 +147,9 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
     ddl.append("col_1 INT64, ");
     for (int i = 2; i <= 1024; i++) {
       ddl.append("col_").append(i).append(" STRING(20)");
-      if (i < 1024) ddl.append(", ");
+      if (i < 1024) {
+        ddl.append(", ");
+      }
     }
     ddl.append(") PRIMARY KEY(col_1)");
     return ddl.toString();
