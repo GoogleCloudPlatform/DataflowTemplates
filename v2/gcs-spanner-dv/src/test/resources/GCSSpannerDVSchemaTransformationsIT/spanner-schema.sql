@@ -1,4 +1,4 @@
--- Test Case 1: Data type change (INT -> STRING) and size limit (STRING(10))
+-- Test Case 1: Data type change (STRING -> INT64) automatically handled by the pipeline
 CREATE TABLE AccountRoles (
     role_id INT64,
     role_name INT64
