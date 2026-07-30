@@ -85,8 +85,10 @@ All unit tests must pass with `BUILD SUCCESS`.
 > Do NOT stop, pause, or declare completion after unit testing without running the live smoke tests.
 
 > [!IMPORTANT]
-> **WORKER MACHINE TYPE DIRECTIVE**:
-> When submitting the Dataflow job for live smoke testing, you **MUST** explicitly specify a worker machine type of the correct size with at least 4 vCPUs (e.g., `--worker-machine-type=n2-standard-4`). Omitting this parameter will cause Dataflow job launch validation to fail with a machine specification policy violation.
+> **WORKER MACHINE TYPE DIRECTIVE & FALLBACK RULE**:
+> When submitting the Dataflow job for live smoke testing, you **MUST** explicitly specify a worker machine type of the correct size with at least 4 vCPUs.
+> If `--worker-machine-type` (or `WORKER_MACHINE_TYPE`) is not explicitly specified by the user or `.env.testing`, **you MUST ALWAYS default to `--worker-machine-type=n2-standard-4`**.
+> Omitting this parameter or submitting `null`/blank will cause Dataflow job launch validation to fail with a machine specification policy violation.
 
 1. **Environment Setup**:
    * Connect to the live source database instance and target Spanner instance configured in the test setup.
