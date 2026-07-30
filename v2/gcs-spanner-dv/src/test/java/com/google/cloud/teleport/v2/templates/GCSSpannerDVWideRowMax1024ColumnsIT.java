@@ -18,9 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -64,9 +67,7 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
 
     GCSSpannerDVAvroSetupHelper.TableDef tableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            getSchemaFromAvscFile("GCSSpannerDVWideRowMax1024ColumnsIT/1024_columns_table.avsc"),
-            "Max1024ColumnsTable",
-            Arrays.asList("col_1"));
+            generate1024ColumnsSchema(), "Max1024ColumnsTable", List.of("col_1"));
 
     GCSSpannerDVAvroSetupHelper.RecordBuilder matchedAvro =
         new GCSSpannerDVAvroSetupHelper.RecordBuilder(tableDef, null);
@@ -96,9 +97,9 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
       mismatchedSpanner.set(columnName).to(isLastColumn ? "spanner_data" : "data");
     }
 
-    List<GenericRecord> records = Arrays.asList(matchedAvro.build(), mismatchedAvro.build());
+    List<GenericRecord> records = List.of(matchedAvro.build(), mismatchedAvro.build());
     uploadAvroFileToGcs("input/1024_columns.avro", tableDef.schema, records);
-    spannerResourceManager.write(Arrays.asList(matchedSpanner.build(), mismatchedSpanner.build()));
+    spannerResourceManager.write(List.of(matchedSpanner.build(), mismatchedSpanner.build()));
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
@@ -121,7 +122,7 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         List.of(
-            new GCSSpannerDVTestAsserts.TableValidationStatsDto(
+            new TableValidationStatsDto(
                 /* schemaName= */ null,
                 /* tableName= */ "Max1024ColumnsTable",
                 /* status= */ "MISMATCH",
@@ -136,17 +137,64 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         List.of(
-            new GCSSpannerDVTestAsserts.MismatchedRecordDto(
+            new MismatchedRecordDto(
                 /* shardId= */ null,
                 /* schemaName= */ null,
                 /* tableName= */ "Max1024ColumnsTable",
                 /* recordKey= */ "[col_1:2]",
                 /* mismatchType= */ "MISSING_IN_SOURCE"),
-            new GCSSpannerDVTestAsserts.MismatchedRecordDto(
+            new MismatchedRecordDto(
                 /* shardId= */ null,
                 /* schemaName= */ null,
                 /* tableName= */ "Max1024ColumnsTable",
                 /* recordKey= */ "[col_1:2]",
                 /* mismatchType= */ "MISSING_IN_DESTINATION")));
+  }
+
+  private Schema generate1024ColumnsSchema() {
+    Schema nullableString =
+        Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING));
+
+    SchemaBuilder.FieldAssembler<Schema> assembler =
+        SchemaBuilder.record("payload")
+            .fields()
+            .name("col_1")
+            .type()
+            .unionOf()
+            .nullType()
+            .and()
+            .longType()
+            .endUnion()
+            .nullDefault();
+
+    for (int i = 2; i <= 1024; i++) {
+      assembler = assembler.name("col_" + i).type(nullableString).withDefault(null);
+    }
+    Schema payloadSchema = assembler.endRecord();
+
+    return SchemaBuilder.record("SourceRowWithMetadata")
+        .fields()
+        .name("tableName")
+        .type()
+        .stringType()
+        .noDefault()
+        .name("shardId")
+        .type()
+        .unionOf()
+        .stringType()
+        .and()
+        .nullType()
+        .endUnion()
+        .noDefault()
+        .name("primaryKeys")
+        .type()
+        .array()
+        .items()
+        .stringType()
+        .noDefault()
+        .name("payload")
+        .type(payloadSchema)
+        .noDefault()
+        .endRecord();
   }
 }
