@@ -93,7 +93,9 @@ public class ReadSplitGenerator {
       try {
         numberFilters =
             discoverSplitsForType(
-                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+                col,
+                numSplits,
+                new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
       } catch (Exception e) {
         LOG.warn(
             "Data-driven splits failed for NUMBER type in '{}.{}' ({}). Falling back to uniform splits.",
@@ -109,7 +111,9 @@ public class ReadSplitGenerator {
       try {
         stringFilters =
             discoverSplitsForType(
-                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", new BsonString("string"))));
+                col,
+                numSplits,
+                new BsonDocument("_id", new BsonDocument("$type", new BsonString("string"))));
       } catch (Exception e) {
         LOG.warn(
             "Data-driven splits failed for STRING type in '{}.{}' ({}). Falling back to uniform splits.",
@@ -125,7 +129,9 @@ public class ReadSplitGenerator {
       try {
         objectIdFilters =
             discoverSplitsForType(
-                col, numSplits, new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+                col,
+                numSplits,
+                new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
       } catch (Exception e) {
         LOG.warn(
             "Data-driven splits failed for OBJECT_ID type in '{}.{}' ({}). Falling back to uniform splits.",
@@ -143,7 +149,8 @@ public class ReadSplitGenerator {
             discoverSplitsForType(
                 col,
                 numSplits,
-                new BsonDocument("_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))));
+                new BsonDocument(
+                    "_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))));
       } catch (Exception e) {
         LOG.warn(
             "Data-driven splits failed for OTHER type in '{}.{}' ({}).",
@@ -308,7 +315,7 @@ public class ReadSplitGenerator {
     if (numSplits <= 1) {
       return Collections.singletonList(typeMatch);
     }
-    
+
     int sampleSize = Math.max(1000, numSplits * 64);
     List<BsonDocument> pipeline =
         Arrays.asList(

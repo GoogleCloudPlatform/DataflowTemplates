@@ -158,7 +158,10 @@ public class ReadSplitGeneratorTest {
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
 
     when(mockClient.getDatabase(org.mockito.ArgumentMatchers.anyString())).thenReturn(mockDb);
-    when(mockDb.getCollection(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(BsonDocument.class))).thenReturn(mockCol);
+    when(mockDb.getCollection(
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.eq(BsonDocument.class)))
+        .thenReturn(mockCol);
 
     // Mock detectIdTypes to return multiple types
     @SuppressWarnings("unchecked")
@@ -169,37 +172,66 @@ public class ReadSplitGeneratorTest {
 
     // Mock $sample aggregation
     @SuppressWarnings("unchecked")
-    com.mongodb.client.AggregateIterable<BsonDocument> mockAgg = (com.mongodb.client.AggregateIterable<BsonDocument>)
-        java.lang.reflect.Proxy.newProxyInstance(
-            getClass().getClassLoader(),
-            new Class<?>[] { com.mongodb.client.AggregateIterable.class },
-            (proxy, method, args) -> {
-                if (method.getName().equals("iterator")) {
+    com.mongodb.client.AggregateIterable<BsonDocument> mockAgg =
+        (com.mongodb.client.AggregateIterable<BsonDocument>)
+            java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {com.mongodb.client.AggregateIterable.class},
+                (proxy, method, args) -> {
+                  if (method.getName().equals("iterator")) {
                     return new com.mongodb.client.MongoCursor<BsonDocument>() {
-                        java.util.Iterator<BsonDocument> iter = java.util.Arrays.asList(
-                            new BsonDocument("_id", new org.bson.BsonString("min")),
-                            new BsonDocument("_id", new org.bson.BsonString("mid")),
-                            new BsonDocument("_id", new org.bson.BsonString("max"))).iterator();
-                        @Override public void close() {}
-                        @Override public boolean hasNext() { return iter.hasNext(); }
-                        @Override public BsonDocument next() { return iter.next(); }
-                        @Override public BsonDocument tryNext() { return null; }
-                        @Override public com.mongodb.ServerCursor getServerCursor() { return null; }
-                        @Override public com.mongodb.ServerAddress getServerAddress() { return null; }
-                        @Override public int available() { return 0; }
+                      java.util.Iterator<BsonDocument> iter =
+                          java.util.Arrays.asList(
+                                  new BsonDocument("_id", new org.bson.BsonString("min")),
+                                  new BsonDocument("_id", new org.bson.BsonString("mid")),
+                                  new BsonDocument("_id", new org.bson.BsonString("max")))
+                              .iterator();
+
+                      @Override
+                      public void close() {}
+
+                      @Override
+                      public boolean hasNext() {
+                        return iter.hasNext();
+                      }
+
+                      @Override
+                      public BsonDocument next() {
+                        return iter.next();
+                      }
+
+                      @Override
+                      public BsonDocument tryNext() {
+                        return null;
+                      }
+
+                      @Override
+                      public com.mongodb.ServerCursor getServerCursor() {
+                        return null;
+                      }
+
+                      @Override
+                      public com.mongodb.ServerAddress getServerAddress() {
+                        return null;
+                      }
+
+                      @Override
+                      public int available() {
+                        return 0;
+                      }
                     };
-                }
-                return null;
-            }
-        );
+                  }
+                  return null;
+                });
     when(mockCol.aggregate(any())).thenReturn(mockAgg);
 
-    List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 2);
-    
+    List<BsonDocument> filters =
+        ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 2);
+
     assertEquals(2, filters.size());
     String slice0 = filters.get(0).toJson();
     String slice1 = filters.get(1).toJson();
-    
+
     // Validate we use the $or wrapper
     assertTrue(slice0.contains("\"$or\""));
 
