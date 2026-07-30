@@ -20,8 +20,8 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
@@ -36,54 +36,21 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
 
   protected FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
-  public static class DataShard {
-    String dataShardId;
-    String host;
-    String user;
-    String password;
-    String port;
-    String dbName;
-    String namespace;
-    String connectionProperties;
-    ArrayList<Database> databases;
+  public record DataShard(
+      String dataShardId,
+      String host,
+      String user,
+      String password,
+      String port,
+      String dbName,
+      String namespace,
+      String connectionProperties,
+      List<Database> databases) {}
 
-    public DataShard(
-        String dataShardId,
-        String host,
-        String user,
-        String password,
-        String port,
-        String dbName,
-        String namespace,
-        String connectionProperties,
-        ArrayList<Database> databases) {
-
-      this.dataShardId = dataShardId;
-      this.host = host;
-      this.user = user;
-      this.password = password;
-      this.port = port;
-      this.dbName = dbName;
-      this.namespace = namespace;
-      this.connectionProperties = connectionProperties;
-      this.databases = databases;
-    }
-  }
-
-  public static class Database {
-    String dbName;
-    String databaseId;
-    String refDataShardId;
-
-    public Database(String dbName, String databaseId, String refDataShardId) {
-      this.dbName = dbName;
-      this.databaseId = databaseId;
-      this.refDataShardId = refDataShardId;
-    }
-  }
+  public record Database(String dbName, String databaseId, String refDataShardId) {}
 
   protected void createAndUploadBulkShardConfigToGcs(
-      ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
+      List<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
     JSONObject bulkConfig = new JSONObject();
     bulkConfig.put("configType", "dataflow");
 
@@ -103,22 +70,22 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       for (DataShard shardData : dataShardsList) {
         JSONObject shardJson = new JSONObject();
 
-        shardJson.put("dataShardId", shardData.dataShardId);
-        shardJson.put("host", shardData.host);
-        shardJson.put("user", shardData.user);
-        shardJson.put("password", shardData.password);
-        shardJson.put("port", shardData.port);
-        shardJson.put("dbName", shardData.dbName);
-        shardJson.put("namespace", shardData.namespace);
-        shardJson.put("connectionProperties", shardData.connectionProperties);
+        shardJson.put("dataShardId", shardData.dataShardId());
+        shardJson.put("host", shardData.host());
+        shardJson.put("user", shardData.user());
+        shardJson.put("password", shardData.password());
+        shardJson.put("port", shardData.port());
+        shardJson.put("dbName", shardData.dbName());
+        shardJson.put("namespace", shardData.namespace());
+        shardJson.put("connectionProperties", shardData.connectionProperties());
 
         JSONArray databasesArray = new JSONArray();
 
-        for (Database dbData : shardData.databases) {
+        for (Database dbData : shardData.databases()) {
           JSONObject dbJson = new JSONObject();
-          dbJson.put("dbName", dbData.dbName);
-          dbJson.put("databaseId", dbData.databaseId);
-          dbJson.put("refDataShardId", dbData.refDataShardId);
+          dbJson.put("dbName", dbData.dbName());
+          dbJson.put("databaseId", dbData.databaseId());
+          dbJson.put("refDataShardId", dbData.refDataShardId());
           databasesArray.put(dbJson);
         }
         shardJson.put("databases", databasesArray);

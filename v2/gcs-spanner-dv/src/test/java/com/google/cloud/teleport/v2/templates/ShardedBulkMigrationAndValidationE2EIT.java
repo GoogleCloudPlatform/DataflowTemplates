@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.Mismatched
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -101,92 +100,88 @@ public class ShardedBulkMigrationAndValidationE2EIT extends EndToEndTestingITBas
 
     // Shard Configuration: 2 physical shards with 1 logical shard each = 2 total logical shards
     // Shard 1 Data
-    List<Map<String, Object>> shard1Users = new ArrayList<>();
-    shard1Users.add(
-        Map.of(
-            "user_id",
-            1L,
-            "event_id",
-            "E1",
-            "full_name",
-            "Alice",
-            "age",
-            30,
-            "created_at",
-            "2024-01-01 10:00:00"));
-    shard1Users.add(
-        Map.of(
-            "user_id",
-            2L,
-            "event_id",
-            "E2",
-            "full_name",
-            "Bob",
-            "age",
-            31,
-            "created_at",
-            "2024-01-02 10:00:00"));
+    List<Map<String, Object>> shard1Users =
+        List.of(
+            Map.of(
+                "user_id",
+                1L,
+                "event_id",
+                "E1",
+                "full_name",
+                "Alice",
+                "age",
+                30,
+                "created_at",
+                "2024-01-01 10:00:00"),
+            Map.of(
+                "user_id",
+                2L,
+                "event_id",
+                "E2",
+                "full_name",
+                "Bob",
+                "age",
+                31,
+                "created_at",
+                "2024-01-02 10:00:00"));
     mySQLResourceManager1.write(USERS_TABLE, shard1Users);
 
-    List<Map<String, Object>> shard1Roles = new ArrayList<>();
-    shard1Roles.add(Map.of("role_id", 1L, "role_name", "ADMIN"));
-    shard1Roles.add(Map.of("role_id", 2L, "role_name", "USER"));
+    List<Map<String, Object>> shard1Roles =
+        List.of(
+            Map.of("role_id", 1L, "role_name", "ADMIN"),
+            Map.of("role_id", 2L, "role_name", "USER"));
     mySQLResourceManager1.write(ACCOUNT_ROLES_TABLE, shard1Roles);
 
     // Shard 2 Data
-    List<Map<String, Object>> shard2Users = new ArrayList<>();
-    shard2Users.add(
-        Map.of(
-            "user_id",
-            4L,
-            "event_id",
-            "E4",
-            "full_name",
-            "David",
-            "age",
-            35,
-            "created_at",
-            "2024-01-04 10:00:00"));
+    List<Map<String, Object>> shard2Users =
+        List.of(
+            Map.of(
+                "user_id",
+                4L,
+                "event_id",
+                "E4",
+                "full_name",
+                "David",
+                "age",
+                35,
+                "created_at",
+                "2024-01-04 10:00:00"));
     mySQLResourceManager2.write(USERS_TABLE, shard2Users);
 
-    List<Map<String, Object>> shard2Roles = new ArrayList<>();
-    shard2Roles.add(Map.of("role_id", 3L, "role_name", "GUEST"));
+    List<Map<String, Object>> shard2Roles = List.of(Map.of("role_id", 3L, "role_name", "GUEST"));
     mySQLResourceManager2.write(ACCOUNT_ROLES_TABLE, shard2Roles);
 
     // 2. Generate and upload shard-bulk.json to GCS
-    ArrayList<DataShard> dataShards = new ArrayList<>();
-    dataShards.add(
-        new DataShard(
-            LOGICAL_SHARD_1,
-            mySQLResourceManager1.getHost(),
-            mySQLResourceManager1.getUsername(),
-            mySQLResourceManager1.getPassword(),
-            String.valueOf(mySQLResourceManager1.getPort()),
-            mySQLResourceManager1.getDatabaseName(),
-            "",
-            "",
-            new ArrayList<>(
-                Arrays.asList(
+    List<DataShard> dataShards =
+        List.of(
+            new DataShard(
+                LOGICAL_SHARD_1,
+                mySQLResourceManager1.getHost(),
+                mySQLResourceManager1.getUsername(),
+                mySQLResourceManager1.getPassword(),
+                String.valueOf(mySQLResourceManager1.getPort()),
+                mySQLResourceManager1.getDatabaseName(),
+                "",
+                "",
+                List.of(
                     new Database(
                         mySQLResourceManager1.getDatabaseName(),
                         LOGICAL_SHARD_1,
-                        LOGICAL_SHARD_1)))));
-    dataShards.add(
-        new DataShard(
-            LOGICAL_SHARD_2,
-            mySQLResourceManager2.getHost(),
-            mySQLResourceManager2.getUsername(),
-            mySQLResourceManager2.getPassword(),
-            String.valueOf(mySQLResourceManager2.getPort()),
-            mySQLResourceManager2.getDatabaseName(),
-            "",
-            "",
-            new ArrayList<>(
-                Arrays.asList(
+                        LOGICAL_SHARD_1))),
+            new DataShard(
+                LOGICAL_SHARD_2,
+                mySQLResourceManager2.getHost(),
+                mySQLResourceManager2.getUsername(),
+                mySQLResourceManager2.getPassword(),
+                String.valueOf(mySQLResourceManager2.getPort()),
+                mySQLResourceManager2.getDatabaseName(),
+                "",
+                "",
+                List.of(
                     new Database(
                         mySQLResourceManager2.getDatabaseName(),
                         LOGICAL_SHARD_2,
-                        LOGICAL_SHARD_2)))));
+                        LOGICAL_SHARD_2))));
     createAndUploadBulkShardConfigToGcs(dataShards, gcsClient);
 
     // 3. Launch Bulk Pipeline (SourceDbToSpanner) with multiSharded=true
