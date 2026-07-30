@@ -50,16 +50,7 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-
-    StringBuilder ddl = new StringBuilder("CREATE TABLE Max1024ColumnsTable (");
-    ddl.append("col_1 INT64, ");
-    for (int i = 2; i <= 1024; i++) {
-      ddl.append("col_").append(i).append(" STRING(20)");
-      if (i < 1024) ddl.append(", ");
-    }
-    ddl.append(") PRIMARY KEY(col_1)");
-
-    spannerResourceManager.executeDdlStatement(ddl.toString());
+    spannerResourceManager.executeDdlStatement(generate1024ColumnsDdl());
   }
 
   @Test
@@ -149,6 +140,17 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
                 /* tableName= */ "Max1024ColumnsTable",
                 /* recordKey= */ "[col_1:2]",
                 /* mismatchType= */ "MISSING_IN_DESTINATION")));
+  }
+
+  private String generate1024ColumnsDdl() {
+    StringBuilder ddl = new StringBuilder("CREATE TABLE Max1024ColumnsTable (");
+    ddl.append("col_1 INT64, ");
+    for (int i = 2; i <= 1024; i++) {
+      ddl.append("col_").append(i).append(" STRING(20)");
+      if (i < 1024) ddl.append(", ");
+    }
+    ddl.append(") PRIMARY KEY(col_1)");
+    return ddl.toString();
   }
 
   private Schema generate1024ColumnsSchema() {
