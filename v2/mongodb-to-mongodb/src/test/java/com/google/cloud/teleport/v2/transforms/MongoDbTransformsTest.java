@@ -18,10 +18,12 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoBulkWriteException;
@@ -32,9 +34,11 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -267,12 +271,9 @@ public class MongoDbTransformsTest {
             invocation -> {
               callCount.getAndIncrement();
               List<WriteModel<Document>> updates = invocation.getArgument(0);
-              java.util.List<BulkWriteError> errors = new java.util.ArrayList<>();
+              List<BulkWriteError> errors = new ArrayList<>();
               for (int i = 0; i < updates.size(); i++) {
-                Document doc =
-                    (Document)
-                        ((com.mongodb.client.model.ReplaceOneModel) updates.get(i))
-                            .getReplacement();
+                Document doc = (Document) ((ReplaceOneModel) updates.get(i)).getReplacement();
                 int id = doc.getInteger("_id");
                 if (id == 1) {
                   errors.add(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), i));
@@ -285,13 +286,13 @@ public class MongoDbTransformsTest {
               }
               if (!errors.isEmpty()) {
                 throw new MongoBulkWriteException(
-                    mock(com.mongodb.bulk.BulkWriteResult.class),
+                    mock(BulkWriteResult.class),
                     errors,
                     null,
-                    new com.mongodb.ServerAddress(),
-                    java.util.Collections.emptySet());
+                    new ServerAddress(),
+                    Collections.emptySet());
               }
-              return mock(com.mongodb.bulk.BulkWriteResult.class);
+              return mock(BulkWriteResult.class);
             });
 
     DocumentWithMetadata doc0 = DocumentWithMetadata.of(new Document("_id", 0), "test", "test");
@@ -316,7 +317,7 @@ public class MongoDbTransformsTest {
 
     PipelineResult result = pipeline.run();
 
-    org.junit.Assert.assertTrue(callCount.get() >= 2);
+    assertTrue(callCount.get() >= 2);
     assertSuccessCount(result, 2L);
   }
 
@@ -393,8 +394,7 @@ public class MongoDbTransformsTest {
         .satisfies(
             collection -> {
               DocumentWithMetadata result = collection.iterator().next();
-              org.junit.Assert.assertTrue(
-                  result.getErrorMessage().contains("UDF failed intentionally"));
+              assertTrue(result.getErrorMessage().contains("UDF failed intentionally"));
               return null;
             });
 
@@ -469,8 +469,8 @@ public class MongoDbTransformsTest {
 
     pipeline.run();
 
-    org.mockito.Mockito.verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
-    org.mockito.Mockito.verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
   }
 
   @Test

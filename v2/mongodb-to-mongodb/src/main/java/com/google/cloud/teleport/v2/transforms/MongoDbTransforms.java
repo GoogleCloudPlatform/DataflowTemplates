@@ -32,6 +32,7 @@ import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -739,7 +740,7 @@ public class MongoDbTransforms {
               severeFailedWritesCount.addAndGet(1);
             }
             writePermanentDlqMessage(
-                java.util.Collections.singletonList(failedItem),
+                Collections.singletonList(failedItem),
                 "Permanent failure writing document. Error: " + error.getMessage());
           } else {
             incDynamicCounter("inMemoryRetries", "MongoBulkWriteException", error.getCode(), 1);

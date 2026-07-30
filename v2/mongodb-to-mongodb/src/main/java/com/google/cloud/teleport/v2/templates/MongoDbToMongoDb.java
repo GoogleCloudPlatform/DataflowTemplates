@@ -53,6 +53,8 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Dataflow template which copies data from one MongoDB database to another. */
 @Template(
@@ -64,8 +66,7 @@ import org.bson.Document;
     optionsClass = MongoDbToMongoDb.Options.class)
 public class MongoDbToMongoDb {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(MongoDbToMongoDb.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
   public interface Options extends JavascriptTextTransformer.JavascriptTextTransformerOptions {
     @TemplateParameter.Text(

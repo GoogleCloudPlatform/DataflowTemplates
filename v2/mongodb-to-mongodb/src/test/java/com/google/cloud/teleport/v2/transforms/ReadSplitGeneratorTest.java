@@ -20,16 +20,26 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.mongodb.ServerAddress;
+import com.mongodb.ServerCursor;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -157,11 +167,8 @@ public class ReadSplitGeneratorTest {
     @SuppressWarnings("unchecked")
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
 
-    when(mockClient.getDatabase(org.mockito.ArgumentMatchers.anyString())).thenReturn(mockDb);
-    when(mockDb.getCollection(
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.eq(BsonDocument.class)))
-        .thenReturn(mockCol);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString(), eq(BsonDocument.class))).thenReturn(mockCol);
 
     // Mock detectIdTypes to return multiple types
     @SuppressWarnings("unchecked")
@@ -172,19 +179,19 @@ public class ReadSplitGeneratorTest {
 
     // Mock $sample aggregation
     @SuppressWarnings("unchecked")
-    com.mongodb.client.AggregateIterable<BsonDocument> mockAgg =
-        (com.mongodb.client.AggregateIterable<BsonDocument>)
-            java.lang.reflect.Proxy.newProxyInstance(
+    AggregateIterable<BsonDocument> mockAgg =
+        (AggregateIterable<BsonDocument>)
+            Proxy.newProxyInstance(
                 getClass().getClassLoader(),
-                new Class<?>[] {com.mongodb.client.AggregateIterable.class},
+                new Class<?>[] {AggregateIterable.class},
                 (proxy, method, args) -> {
                   if (method.getName().equals("iterator")) {
-                    return new com.mongodb.client.MongoCursor<BsonDocument>() {
-                      java.util.Iterator<BsonDocument> iter =
-                          java.util.Arrays.asList(
-                                  new BsonDocument("_id", new org.bson.BsonString("min")),
-                                  new BsonDocument("_id", new org.bson.BsonString("mid")),
-                                  new BsonDocument("_id", new org.bson.BsonString("max")))
+                    return new MongoCursor<BsonDocument>() {
+                      Iterator<BsonDocument> iter =
+                          Arrays.asList(
+                                  new BsonDocument("_id", new BsonString("min")),
+                                  new BsonDocument("_id", new BsonString("mid")),
+                                  new BsonDocument("_id", new BsonString("max")))
                               .iterator();
 
                       @Override
@@ -206,12 +213,12 @@ public class ReadSplitGeneratorTest {
                       }
 
                       @Override
-                      public com.mongodb.ServerCursor getServerCursor() {
+                      public ServerCursor getServerCursor() {
                         return null;
                       }
 
                       @Override
-                      public com.mongodb.ServerAddress getServerAddress() {
+                      public ServerAddress getServerAddress() {
                         return null;
                       }
 
