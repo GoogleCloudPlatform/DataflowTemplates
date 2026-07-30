@@ -39,12 +39,8 @@ import org.junit.runners.JUnit4;
 
 /**
  * Integration tests covering edge cases where Source and Spanner schemas have differences. Tests:
- *
- * <p>1. Data type differences (that don't require custom transformation)
- *
- * <p>2. Dropped columns in Spanner
- *
- * <p>3. Newly added columns in Spanner (populated via a custom transformation).
+ * 1. Data type differences (that don't require custom transformation) 2. Dropped columns in Spanner
+ * 3. Newly added columns in Spanner (populated via a custom transformation).
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -122,12 +118,6 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
             null);
 
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
-
-    System.out.println("DEBUG MismatchedRecords:");
-    bigQueryResourceManager
-        .readTable("MismatchedRecords")
-        .iterateAll()
-        .forEach(r -> System.out.println(r.toString()));
 
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
