@@ -20,7 +20,7 @@ This skill provides a step-by-step procedure for adding support for a new databa
 > Before running code searches, inspecting files, or executing unit tests, you MUST verify if the user provided the inputs below.
 > If any required input is missing, **STOP IMMEDIATELY** and ask the user for clarification before proceeding further.
 
-1. **Datatype Mapping File**: Ask the user to provide or point to the Datatype Mapping Matrix (e.g. CSV file or mapping specification) for the new source database, defining the mappings between source database datatypes and Spanner (GoogleSQL and PostgreSQL dialects) datatypes or `UnifiedMappingProvider.Type`.
+1. **Datatype Mapping File**: Ask the user to provide or point to the Datatype Mapping Matrix for the new source database, defining the mappings between source database datatypes and Spanner (GoogleSQL and PostgreSQL dialects) datatypes or `UnifiedMappingProvider.Type`.
 2. **Test Setup Details**: Ask the user for the test environment details required for smoke testing, including:
    * Source Database Instance details (host/instance name, port, database name, credentials/connection method, and schema/namespace if applicable).
    * Target Spanner Instance & Database details.

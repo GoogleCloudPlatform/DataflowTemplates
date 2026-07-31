@@ -23,7 +23,7 @@ This skill provides a step-by-step procedure for adding support for a new databa
 1. **Datastream Source Compatibility Check**: Verify that Google Cloud Datastream natively supports the requested source database type by referencing [Datastream Supported Sources](https://docs.cloud.google.com/datastream/docs/sources).
    * > [!CRITICAL]
    * > If the requested source database is **NOT supported by Datastream**, **STOP IMMEDIATELY** and inform the user that Datastream does not support CDC streaming for this database source. Do NOT proceed with inspection, implementation, or testing.
-2. **Datatype Mapping File**: Ask the user to provide or point to the Datatype Mapping Matrix (e.g. CSV file or mapping specification) for the new source database, defining the mappings to Spanner GoogleSQL and PostgreSQL dialects.
+2. **Datatype Mapping File**: Ask the user to provide or point to the Datatype Mapping Matrix for the new source database, defining the mappings to Spanner GoogleSQL and PostgreSQL dialects.
 3. **Test Setup Details**: Ask the user for the test environment details required for live smoke testing, including:
    * Source Database Instance details (host/instance name, database name, and credentials/connection method).
    * Target Spanner Instance & Database details.
