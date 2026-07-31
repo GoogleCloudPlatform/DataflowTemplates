@@ -125,7 +125,9 @@ public class GCSSpannerDVWideRowMax16KeyTableIT extends GCSSpannerDVITBase {
     StringBuilder mismatchedPks = new StringBuilder("[");
     for (int i = 1; i <= 16; i++) {
       mismatchedPks.append("col_").append(i).append(":2");
-      if (i < 16) mismatchedPks.append(", ");
+      if (i < 16) {
+        mismatchedPks.append(", ");
+      }
     }
     mismatchedPks.append("]");
 
