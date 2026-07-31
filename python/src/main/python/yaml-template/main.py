@@ -23,8 +23,14 @@ from apache_beam.yaml import main
 # YAML template. These will only be installed if the caller do not provide a
 # `requirements_file` option.
 DEFAULT_DEPENDENCIES = [
+    # Packages for AWS S3.
     'boto3',
     'botocore',
+    # Packages for Azure Blob Storage.
+    'azure-storage-blob',
+    'azure-core',
+    'azure-identity',
+    # Customer transforms used by Job builder.
     # When updating this, also update the container dependency in `python/default_base_yaml_requirements.txt`
     'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz',
 ]
