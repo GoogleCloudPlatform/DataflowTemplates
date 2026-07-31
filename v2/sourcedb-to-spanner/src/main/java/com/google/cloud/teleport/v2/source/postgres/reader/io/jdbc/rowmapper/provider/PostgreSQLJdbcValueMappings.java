@@ -69,22 +69,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
 
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
 
-  private static final ResultSetValueExtractor<ByteBuffer> bitStringExtractor =
-      (rs, fieldName) -> {
-        String bitString = rs.getString(fieldName);
-        if (bitString == null) {
-          return null;
-        }
-        int byteLen = (bitString.length() + 7) / 8;
-        byte[] packedBytes = new byte[byteLen];
-        for (int i = 0; i < bitString.length(); i++) {
-          if (bitString.charAt(i) == '1') {
-            packedBytes[i / 8] |= (1 << (7 - (i % 8)));
-          }
-        }
-        return ByteBuffer.wrap(packedBytes);
-      };
-
   private static final ResultSetValueExtractor<ByteBuffer> bytesExtractor =
       (rs, fieldName) -> {
         byte[] bytes = rs.getBytes(fieldName);
@@ -142,7 +126,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           return null;
         }
 
-        byte[] bytes = value.array();
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
         LocalTime parsedTime = PostgreSQLTimeConverter.toLocalTime(bytes);
 
         if (parsedTime.equals(LocalTime.MAX)) {
@@ -157,7 +142,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           return null;
         }
 
-        byte[] bytes = value.array();
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
         OffsetTime parsedTime = PostgreSQLTimeConverter.toOffsetTime(bytes);
 
         long timeMicros;
@@ -181,39 +167,41 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
         if (value == null) {
           return null;
         }
+        PGInterval pgInterval;
         if (value instanceof String) {
           try {
-            value = new PGInterval((String) value);
+            pgInterval = new PGInterval((String) value);
           } catch (java.sql.SQLException e) {
             throw new IllegalArgumentException("Failed to parse PGInterval string: " + value, e);
           }
+        } else if (value instanceof PGInterval) {
+          pgInterval = (PGInterval) value;
+        } else {
+          throw new IllegalArgumentException(
+              "Expected PGInterval or String but received: " + value.getClass());
         }
-        if (value instanceof PGInterval) {
-          PGInterval pgInterval = (PGInterval) value;
 
-          // PostgreSQL internally tracks intervals as months, days, and microseconds without
-          // normalizing across these units (e.g., 42 hours remains 42 hours, not 1 day 18 hours).
-          // However, Datastream currently maps INTERVAL to an Avro schema which has months,
-          // hours, and micros. To maintain parity with Datastream, we aggregate PostgreSQL days
-          // into hours (days * 24). Consequently, Spanner (which normalizes hours into
-          // days) might display a structurally different ISO-8601 string than the source, though
-          // the exact duration remains mathematically identical. For example, "53 days 42 hours"
-          // in PostgreSQL is aggregated to 1314 hours, which Spanner then normalizes to
-          // "54 days 18 hours". If Datastream corrects this mapping to include a 'days' field
-          // instead of the hours field in the future, this logic must be updated to avoid
-          // normalization discrepancies.
+        // PostgreSQL internally tracks intervals as months, days, and microseconds without
+        // normalizing across these units (e.g., 42 hours remains 42 hours, not 1 day 18 hours).
+        // However, Datastream currently maps INTERVAL to an Avro schema which has months,
+        // hours, and micros. To maintain parity with Datastream, we aggregate PostgreSQL days
+        // into hours (days * 24). Consequently, Spanner (which normalizes hours into
+        // days) might display a structurally different ISO-8601 string than the source, though
+        // the exact duration remains mathematically identical. For example, "53 days 42 hours"
+        // in PostgreSQL is aggregated to 1314 hours, which Spanner then normalizes to
+        // "54 days 18 hours". If Datastream corrects this mapping to include a 'days' field
+        // instead of the hours field in the future, this logic must be updated to avoid
+        // normalization discrepancies.
 
-          int months = (pgInterval.getYears() * 12) + pgInterval.getMonths();
-          int hours = (pgInterval.getDays() * 24) + pgInterval.getHours();
-          double totalSeconds = pgInterval.getMinutes() * 60L + pgInterval.getSeconds();
-          long micros = (long) (totalSeconds * 1_000_000);
-          return new GenericRecordBuilder(Interval.SCHEMA)
-              .set("months", months)
-              .set("hours", hours)
-              .set("micros", micros)
-              .build();
-        }
-        throw new IllegalArgumentException("Expected PGInterval but received: " + value.getClass());
+        int months = (pgInterval.getYears() * 12) + pgInterval.getMonths();
+        int hours = (pgInterval.getDays() * 24) + pgInterval.getHours();
+        double totalSeconds = pgInterval.getMinutes() * 60L + pgInterval.getSeconds();
+        long micros = (long) (totalSeconds * 1_000_000);
+        return new GenericRecordBuilder(Interval.SCHEMA)
+            .set("months", months)
+            .set("hours", hours)
+            .set("micros", micros)
+            .build();
       };
 
   private static final JdbcMappings JDBC_MAPPINGS =
@@ -225,7 +213,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("BIGSERIAL", ResultSet::getLong, valuePassThrough, 8) // -
           .put(
               "BIT",
-              bitStringExtractor,
+              bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
                 long n = getLengthOrPrecision(sourceColumnType, 1);
@@ -233,7 +221,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               })
           .put(
               "BIT VARYING",
-              bitStringExtractor,
+              bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
                 // bit varying without a length specification means unlimited length. ref:
@@ -360,7 +348,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("UUID", ResultSet::getString, valuePassThrough, 16)
           .put(
               "VARBIT",
-              bitStringExtractor,
+              bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
                 long n = getLengthOrPrecision(sourceColumnType, 10485760);

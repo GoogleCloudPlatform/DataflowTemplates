@@ -518,18 +518,14 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("CHAR(8) FOR BIT DATA")
                 .sourceColumnType("BIT")
-                .inputValue("0000000000000000000000000000000000000000000000000000000001111111")
                 .mappedValue(ByteBuffer.allocate(8).putLong(Byte.MAX_VALUE).array())
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(256)")
+                .derbyColumnType("CHAR(16) FOR BIT DATA")
                 .sourceColumnType("BIT VARYING")
-                .inputValue(
-                    "00000000000000000000000000000000000000000000000001111111111111110000000000000000"
-                        + "000000000000000000000000000000000000000000000000")
                 .mappedValue(ByteBuffer.allocate(16).putLong(Short.MAX_VALUE).array())
                 .build())
         .add(
@@ -1012,13 +1008,8 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(256)")
+                .derbyColumnType("CHAR(32) FOR BIT DATA")
                 .sourceColumnType("VARBIT")
-                .inputValue(
-                    "00000000000000000000000000000000011111111111111111111111111111110000000000000000"
-                        + "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                        + "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                        + "0000000000000000")
                 .mappedValue(ByteBuffer.allocate(32).putLong(Integer.MAX_VALUE).array())
                 .build())
         .add(

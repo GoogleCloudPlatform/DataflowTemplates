@@ -176,11 +176,11 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
         "bigserial_to_string", createRows("-9223372036854775808", "9223372036854775807", "42"));
     result.put(
         "bigserial_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "42"));
-    result.put("bit", createRows("AA==", "gA==", "NULL"));
+    result.put("bit", createRows("MA==", "MQ==", "NULL"));
     // bit_to_string is commented out to avoid failing the test case; returned data is the literal
     // string "java.nio.HeapByteBuffer[pos=0 lim=32 cap=32]"
     // result.put("bit_to_string", createRows("0", "1", "NULL"));
-    result.put("bit_varying", createRows("UA==", "NULL"));
+    result.put("bit_varying", createRows("MDEwMQ==", "NULL"));
     // bit_varying_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("bit_varying_to_string", createRows("5", "NULL"));
@@ -359,7 +359,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
     result.put("uuid_to_string", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
-    result.put("varbit", createRows("wA==", "NULL"));
+    result.put("varbit", createRows("MTEwMA==", "NULL"));
     // varbit_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("varbit_to_string", createRows("c", "NULL"));
