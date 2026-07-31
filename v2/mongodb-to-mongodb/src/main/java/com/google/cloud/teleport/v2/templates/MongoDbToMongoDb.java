@@ -344,6 +344,11 @@ public class MongoDbToMongoDb {
         options.getWriteRateRampUpMinutes(),
         options.getWriteRateRampUpSteps());
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
+    LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
+    LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
+    LOG.info(
+        "  DLQ Inspection Command:  gcloud storage cat \"{}/**/output-*\" | head -n 5",
+        permanentDlqPath);
 
     if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
       String reconsumePath = options.getReconsumeDlqPath();

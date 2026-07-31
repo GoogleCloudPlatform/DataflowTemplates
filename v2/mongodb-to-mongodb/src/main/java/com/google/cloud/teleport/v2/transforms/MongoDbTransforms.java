@@ -192,6 +192,7 @@ public class MongoDbTransforms {
   }
 
   public static class WriteToDlq extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+    private static final Logger LOG = LoggerFactory.getLogger(WriteToDlq.class);
     private final String retryablePath;
     private final String permanentPath;
     private final String tempLocation;
@@ -204,6 +205,12 @@ public class MongoDbTransforms {
 
     @Override
     public PDone expand(PCollection<DocumentWithMetadata> input) {
+      LOG.info("Configuring DLQ Retryable Output Path: {}", retryablePath);
+      LOG.info("Configuring DLQ Permanent Output Path: {}", permanentPath);
+      LOG.info(
+          "To inspect permanent DLQ errors, run: gcloud storage cat \"{}/**/output-*\" | head -n 5",
+          permanentPath);
+
       PCollection<DocumentWithMetadata> retryable =
           input.apply(
               "FilterRetryable",
