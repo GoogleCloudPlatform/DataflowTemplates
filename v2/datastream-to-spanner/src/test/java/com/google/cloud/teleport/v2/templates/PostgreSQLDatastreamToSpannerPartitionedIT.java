@@ -37,7 +37,6 @@ import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
@@ -121,7 +120,13 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
         replicationInfo = postgresResourceManager.createLogicalReplication();
         pgDialectReplicationInfo = postgresResourceManager.createLogicalReplication();
 
-        // Alter publications to publish via partition root so Datastream sees the parent table
+        // Alter publications to set publish_via_partition_root = true.
+        // This is critical because without it, PostgreSQL streams CDC events using the names
+        // of the underlying child partitions (e.g., measurements_range_y2006m02).
+        // Dataflow would drop these events because our Spanner schema only defines the unified
+        // parent table.
+        // Setting this flag masks the child partitions, making Datastream capture all events
+        // as if they occurred directly on the parent partitioned table.
         postgresResourceManager.runSQLUpdate(
             "ALTER PUBLICATION "
                 + replicationInfo.getPublicationName()
@@ -194,7 +199,7 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
+    ConditionCheck condition = buildBaseConditionCheck(spannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -241,7 +246,8 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
+    ConditionCheck condition =
+        buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -277,24 +283,6 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
 
   private List<String> getAllowedTables() {
     return List.of("measurements_range", "employees_list", "orders_hash");
-  }
-
-  private ConditionCheck buildConditionCheck(
-      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-
-    ConditionCheck combinedCondition = null;
-    for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
-      String tableName = entry.getKey();
-      int numRows = entry.getValue().size();
-      ConditionCheck c =
-          SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
-      if (combinedCondition == null) {
-        combinedCondition = c;
-      } else {
-        combinedCondition = combinedCondition.and(c);
-      }
-    }
-    return combinedCondition;
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -350,6 +338,12 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
     empRow3.put("name", "Charlie");
     empRow3.put("department", "Marketing");
     employeesListRows.add(empRow3);
+
+    Map<String, Object> empRow4 = new HashMap<>();
+    empRow4.put("id", 4L);
+    empRow4.put("name", "Dave");
+    empRow4.put("department", "Engineering");
+    employeesListRows.add(empRow4);
     result.put("employees_list", employeesListRows);
 
     // 3. Hash Partitioning
@@ -371,6 +365,12 @@ public class PostgreSQLDatastreamToSpannerPartitionedIT extends DataStreamToSpan
     orderRow3.put("customer_id", 103L);
     orderRow3.put("amount", 700L);
     ordersHashRows.add(orderRow3);
+
+    Map<String, Object> orderRow4 = new HashMap<>();
+    orderRow4.put("order_id", 4L);
+    orderRow4.put("customer_id", 104L);
+    orderRow4.put("amount", 800L);
+    ordersHashRows.add(orderRow4);
     result.put("orders_hash", ordersHashRows);
 
     return result;
