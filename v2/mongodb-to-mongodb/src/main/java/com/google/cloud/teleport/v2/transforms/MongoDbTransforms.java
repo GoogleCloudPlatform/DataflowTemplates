@@ -271,6 +271,7 @@ public class MongoDbTransforms {
     private static final int ERR_DOCUMENT_VALIDATION_FAILURE = 121;
     private static final int ERR_KEY_TOO_LONG = 17280;
     private static final int ERR_BAD_VALUE = 2;
+    private static final long DLQ_LOG_INTERVAL_MS = 30_000L;
 
     private static final Logger LOG = LoggerFactory.getLogger(WriteFn.class);
 
@@ -312,6 +313,7 @@ public class MongoDbTransforms {
     private transient AtomicLong dlqRetriesCount;
     private transient AtomicLong permanentFailuresCount;
     private transient List<DocumentWithMetadata> currentBatch;
+    private transient long lastDlqLogTimeMs;
 
     private void incDynamicCounter(String prefix, String exceptionName, int code, long count) {
       String counterName = prefix + "_" + exceptionName + "_" + code;
@@ -780,9 +782,18 @@ public class MongoDbTransforms {
           dlqRetriesCount.addAndGet(itemList.size());
         }
       }
+      long now = System.currentTimeMillis();
+      if (now - lastDlqLogTimeMs >= DLQ_LOG_INTERVAL_MS || lastDlqLogTimeMs == 0L) {
+        lastDlqLogTimeMs = now;
+        String sampleId = !itemList.isEmpty() ? String.valueOf(itemList.get(0).getId()) : "N/A";
+        LOG.warn(
+            "DLQ Error Summary (logged at most once every 30s per worker thread): {} document(s)"
+                + " sent to DLQ in this batch. Reason: {} [Sample Doc ID: {}]",
+            itemList.size(),
+            message,
+            sampleId);
+      }
       for (DocumentWithMetadata item : itemList) {
-        LOG.warn("{}: {}", message, item.getId());
-
         int retryCount = isPermanent ? dlqMaxRetries + 1 : item.getRetryCount() + 1;
         DocumentWithMetadata.ErrorType errorType = isPermanent ? PERMANENT : RETRYABLE;
 
