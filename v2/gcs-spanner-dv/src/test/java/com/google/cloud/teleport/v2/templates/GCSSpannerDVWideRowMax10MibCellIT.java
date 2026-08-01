@@ -34,13 +34,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Integration test for GCSSpannerDV validating a wide row with 10 MiB data per cell.
- *
- * <p>Simulation Methodology: Two records are generated. The first uses a 9.9MiB byte array that is
- * identical in both Avro and Spanner (MATCH). The second uses the same PK but differing 9.9MiB byte
- * arrays, resulting in 1 MISMATCHED_PAYLOAD record.
- */
+/** Integration test for GCSSpannerDV validating a wide row with 10 MiB data per cell. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
@@ -48,6 +42,8 @@ public class GCSSpannerDVWideRowMax10MibCellIT extends GCSSpannerDVITBase {
 
   private static final String SPANNER_DDL_RESOURCE =
       "GCSSpannerDVWideRowMax10MibCellIT/spanner-schema.sql";
+  private static final String AVRO_SCHEMA_RESOURCE =
+      "GCSSpannerDVWideRowMax10MibCellIT/10_mib_cell_table.avsc";
 
   @Before
   public void setUp() throws IOException {
@@ -61,11 +57,9 @@ public class GCSSpannerDVWideRowMax10MibCellIT extends GCSSpannerDVITBase {
   public void test10MibCell() throws Exception {
     GCSSpannerDVAvroSetupHelper.TableDef tableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            getSchemaFromAvscFile("GCSSpannerDVWideRowMax10MibCellIT/10_mib_cell_table.avsc"),
-            "Max10MibCellTable",
-            Arrays.asList("id"));
+            getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE), "Max10MibCellTable", Arrays.asList("id"));
 
-    final int safeBlobSize = (10 * 1024 * 1024) - 1024;
+    final int safeBlobSize = (10 * 1024 * 1024) - 1024; // 9.9MB to avoid limit issues
     byte[] matchBytes = new byte[safeBlobSize];
     Arrays.fill(matchBytes, (byte) 1);
     byte[] mismatchAvroBytes = new byte[safeBlobSize];
@@ -83,6 +77,7 @@ public class GCSSpannerDVWideRowMax10MibCellIT extends GCSSpannerDVITBase {
                 .set("id", 2L)
                 .set("large_blob", ByteBuffer.wrap(mismatchAvroBytes))
                 .build());
+
     uploadAvroFileToGcs("input/10_mib_cell.avro", tableDef.schema, records);
 
     spannerResourceManager.write(
