@@ -18,3 +18,10 @@ CREATE TABLE "Float32Table" (
                                 "Float32Value" real,
                                 PRIMARY KEY("Key")
 );
+
+DROP TABLE IF EXISTS "CustomDictionary";
+CREATE TABLE "CustomDictionary" (
+    "Key" character varying NOT NULL,
+    "Value" character varying[] NOT NULL,
+    PRIMARY KEY("Key")
+) WITH (fulltext_dictionary_table=true);
