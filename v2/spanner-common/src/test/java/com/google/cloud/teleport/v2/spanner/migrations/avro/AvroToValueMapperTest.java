@@ -406,6 +406,17 @@ public class AvroToValueMapperTest {
     result =
         AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().stringType());
     assertEquals("Test odd length input", expectedResult, result);
+
+    // Test 36-character string without hyphens (forces false evaluation of s.contains("-"))
+    inputValue = "0123456789abcdef0123456789abcdef0123";
+    expectedResult =
+        ByteArray.copyFrom(
+            new byte[] {
+              1, 35, 69, 103, -119, -85, -51, -17, 1, 35, 69, 103, -119, -85, -51, -17, 1, 35
+            });
+    result =
+        AvroToValueMapper.avroFieldToByteArray(inputValue, SchemaBuilder.builder().stringType());
+    assertEquals("Test 36 char non-UUID input", expectedResult, result);
   }
 
   @Test

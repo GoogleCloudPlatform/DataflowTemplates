@@ -475,6 +475,13 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.INTERVAL_SCHEMA);
     assertEquals("Test #3 interval conversion:", "P1Y2M1DT12H25M", result);
 
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_column",
+            AvroTestingHelper.createIntervalRecord(0, 0, 0L),
+            AvroTestingHelper.INTERVAL_SCHEMA);
+    assertEquals("Test #4 interval conversion:", "PT0S", result);
+
     // Test for unsupported type.
     assertThrows(
         UnsupportedOperationException.class,
