@@ -197,8 +197,8 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     // The avro file contains binary_content: b'\xde\xad\xbe\xef', which is converted to
-    // base64 encoded string by Jackson library.
-    assertEquals("3q2+7w==", changeEvent.get("binary_content").textValue());
+    // hex encoded string.
+    assertEquals("deadbeef", changeEvent.get("binary_content").textValue());
   }
 
   @Test
@@ -313,6 +313,68 @@ public class FormatDatastreamRecordToJsonTest {
             + "\"one_nano_interval\":\"P0DT0.000000001S\","
             + "\"large_values\":\"P2147483647Y11M2147483647DT2183871564H21M7.999999999S\","
             + "\"large_negative_values\":\"P-2147483647Y-11M-2147483647DT-2183871564H-21M-7.999999999S\"}";
+    assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
+  }
+
+  @Test
+  public void testInterval() throws JsonProcessingException {
+    ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
+
+    /* Basic Test: 1 month, 26 hours (1 day + 2 hours), 3000000 micros (3 seconds) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "basic", generateIntervalSchema(), generateIntervalRecord(1, 26, 3000000L), objectNode);
+
+    /* Zero interval */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "zero_interval", generateIntervalSchema(), generateIntervalRecord(0, 0, 0L), objectNode);
+
+    /* Only months */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "only_months", generateIntervalSchema(), generateIntervalRecord(12, 0, 0L), objectNode);
+
+    /* Only time (5 hours + 123456 micros = 5H0.123456S) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "only_time", generateIntervalSchema(), generateIntervalRecord(0, 5, 123456L), objectNode);
+
+    String expected =
+        "{\"basic\":\"P1M1DT2H3S\","
+            + "\"zero_interval\":\"PT0S\","
+            + "\"only_months\":\"P1Y\","
+            + "\"only_time\":\"PT5H0.123456S\"}";
+    assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
+  }
+
+  @Test
+  public void testTimeTz() throws JsonProcessingException {
+    ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
+
+    /* Basic Test: 23:59:59 + 10 hours offset */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "basic", generateTimeTzSchema(), generateTimeTzRecord(86399000000L, 36000000), objectNode);
+
+    /* Negative offset: 12:30:00 - 5 hours offset */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_offset",
+        generateTimeTzSchema(),
+        generateTimeTzRecord(45000000000L, -18000000),
+        objectNode);
+
+    /* Zero offset (UTC): 08:00:00Z */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "utc", generateTimeTzSchema(), generateTimeTzRecord(28800000000L, 0), objectNode);
+
+    /* 24:00:00 special case */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "max_time",
+        generateTimeTzSchema(),
+        generateTimeTzRecord(86400000000L, 36000000),
+        objectNode);
+
+    String expected =
+        "{\"basic\":\"23:59:59+10:00\","
+            + "\"neg_offset\":\"12:30:00-05:00\","
+            + "\"utc\":\"08:00:00Z\","
+            + "\"max_time\":\"24:00:00+10:00\"}";
     assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
   }
 
@@ -569,5 +631,49 @@ public class FormatDatastreamRecordToJsonTest {
     record.put("source_metadata", sourceMetadata);
     record.put("payload", payload);
     return record;
+  }
+
+  private GenericRecord generateIntervalRecord(Integer months, Integer hours, Long micros) {
+    GenericRecord genericRecord = new GenericData.Record(generateIntervalSchema());
+    genericRecord.put("months", months);
+    genericRecord.put("hours", hours);
+    genericRecord.put("micros", micros);
+    return genericRecord;
+  }
+
+  private Schema generateIntervalSchema() {
+    return SchemaBuilder.builder()
+        .record("interval")
+        .fields()
+        .name("months")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
+        .name("hours")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
+        .name("micros")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .endRecord();
+  }
+
+  private GenericRecord generateTimeTzRecord(Long time, Integer offset) {
+    GenericRecord genericRecord = new GenericData.Record(generateTimeTzSchema());
+    genericRecord.put("time", time);
+    genericRecord.put("offset", offset);
+    return genericRecord;
+  }
+
+  private Schema generateTimeTzSchema() {
+    return SchemaBuilder.builder()
+        .record("timeTz")
+        .fields()
+        .name("time")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("offset")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
+        .endRecord();
   }
 }
