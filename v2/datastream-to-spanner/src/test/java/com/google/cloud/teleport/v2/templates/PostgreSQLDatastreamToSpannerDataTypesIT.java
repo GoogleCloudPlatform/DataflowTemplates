@@ -92,7 +92,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_int4range",
           "t_int8multirange",
           "t_int8range",
-          "t_interval",
           "t_interval_to_int64",
           "t_line_to_float64_array",
           "t_lseg_to_float64_array",
@@ -109,8 +108,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_real_array_to_string",
           "t_smallint_array_to_int64_array",
           "t_smallint_array_to_string",
-          "t_time_with_time_zone",
-          "t_timetz",
           "t_tsmultirange",
           "t_tsrange",
           "t_tstzmultirange",
@@ -291,16 +288,11 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // These types are not mapped as expected, ignore them to avoid failing the test.
     Set<String> ignoredTypeMappings =
         Set.of(
-            "bit",
-            "bit_to_string",
-            "bit_varying",
-            "bit_varying_to_string",
-            "bytea",
             "time",
+            "time_with_time_zone",
             "time_without_time_zone",
+            "timetz",
             "uuid_to_bytes",
-            "varbit",
-            "varbit_to_string",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
             "t_bit_to_bool_array",
@@ -314,6 +306,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_float_array_to_string",
             "t_int_array_to_int64_array",
             "t_int_array_to_string",
+            "t_interval_to_int64",
             "t_line_to_float64_array",
             "t_lseg_to_float64_array",
             "t_money_to_int64",
@@ -473,16 +466,21 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         "bigserial_to_string", createRows("-9223372036854775808", "9223372036854775807", "42"));
     result.put(
         "bigserial_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "42"));
-    result.put("bit", createRows("AA==", "gA==", "NULL"));
-    result.put("bit_to_string", createRows("AA==", "gA==", "NULL"));
-    result.put("bit_varying", createRows("UA==", "NULL"));
-    result.put("bit_varying_to_string", createRows("UA==", "NULL"));
+    result.put("bit", createRows("MA==", "MQ==", "NULL"));
+    result.put(
+        "bit_to_string",
+        createRows(
+            "303030303030303030303030303030303...",
+            "303030303030303030303030303030303...",
+            "NULL"));
+    result.put("bit_varying", createRows("MDEwMQ==", "NULL"));
+    result.put("bit_varying_to_string", createRows("30313031", "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
     result.put("boolean_to_string", createRows("false", "true", "NULL"));
     result.put("bytea", createRows("YWJj", "NULL"));
-    result.put("bytea_to_string", createRows("YWJj", "NULL"));
+    result.put("bytea_to_string", createRows("616263", "NULL"));
     result.put("char", createRows("a", "Θ", "NULL"));
     result.put("char_n", createRows("a         ", "test      ", "NULL"));
     result.put("character", createRows("a", "Ξ", "NULL"));
@@ -553,6 +551,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         "int8_to_string", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put(
         "int8_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
+    result.put(
+        "interval", createRows("P1Y2M3DT4H5M6.789S", "PT0S", "P3M-2DT-2H-16M-13.210988S", "NULL"));
     result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string",
@@ -624,12 +624,13 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("smallserial_to_float64", createRows("-32768.0", "32767.0", "11.0"));
     result.put("text", createRows("testing text", "NULL"));
     // Datastream incorrectly wraps 24:00:00 to 0 microseconds during extraction.
-    // This causes 24:00:00 to be silently rewritten to Spanner as 'PT0S' instead of 'PT24H'.
+    // This causes 24:00:00 to be silently rewritten to Spanner as 'PT0S' instead of 'PT24H',
+    // and '24:00:00+10:00' as '00:00:00+10:00' instead of '24:00:00+10:00'.
     // Ignored in ignoredTypeMappings until the Datastream bug is resolved.
     result.put("time", createRows("PT24H", "NULL"));
     result.put("time_without_time_zone", createRows("PT24H", "NULL"));
-    result.put("time_with_time_zone", createRows("23:59:59+10:00", "NULL"));
-    result.put("timetz", createRows("23:59:59+10:00", "NULL"));
+    result.put("time_with_time_zone", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
+    result.put("timetz", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
     result.put("timestamp", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
     result.put("timestamp_to_timestamp", createRows("1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
@@ -658,8 +659,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
     result.put("uuid_to_string", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
-    result.put("varbit", createRows("wA==", "NULL"));
-    result.put("varbit_to_string", createRows("wA==", "NULL"));
+    result.put("varbit", createRows("MTEwMA==", "NULL"));
+    result.put("varbit_to_string", createRows("31313030", "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
     result.put("varchar_n", createRows("testing", "NULL"));
     result.put("xml", createRows("<test>123</test>", "NULL"));
