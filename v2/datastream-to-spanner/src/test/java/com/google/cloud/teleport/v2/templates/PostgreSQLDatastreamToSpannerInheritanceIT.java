@@ -37,7 +37,6 @@ import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
@@ -184,7 +183,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
+    ConditionCheck condition = buildBaseConditionCheck(spannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -231,7 +230,8 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
+    ConditionCheck condition =
+        buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -267,24 +267,6 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
   private List<String> getAllowedTables() {
     return List.of("parent_table", "child_table", "grandchild_table");
-  }
-
-  private ConditionCheck buildConditionCheck(
-      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-
-    ConditionCheck combinedCondition = null;
-    for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
-      String tableName = entry.getKey();
-      int numRows = entry.getValue().size();
-      ConditionCheck c =
-          SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
-      if (combinedCondition == null) {
-        combinedCondition = c;
-      } else {
-        combinedCondition = combinedCondition.and(c);
-      }
-    }
-    return combinedCondition;
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
