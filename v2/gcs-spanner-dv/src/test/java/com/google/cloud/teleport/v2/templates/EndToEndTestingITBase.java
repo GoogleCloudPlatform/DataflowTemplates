@@ -21,22 +21,90 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(EndToEndTestingITBase.class);
 
   protected FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
+
+  public record DataShard(
+      String dataShardId,
+      String host,
+      String user,
+      String password,
+      String port,
+      String dbName,
+      String namespace,
+      String connectionProperties,
+      List<Database> databases) {}
+
+  public record Database(String dbName, String databaseId, String refDataShardId) {}
+
+  protected void createAndUploadBulkShardConfigToGcs(
+      List<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
+    JSONObject bulkConfig = new JSONObject();
+    bulkConfig.put("configType", "dataflow");
+
+    JSONObject shardConfigBulk = new JSONObject();
+
+    JSONObject schemaSourceJson = new JSONObject();
+    schemaSourceJson.put("dataShardId", "");
+    schemaSourceJson.put("host", "");
+    schemaSourceJson.put("user", "");
+    schemaSourceJson.put("password", "");
+    schemaSourceJson.put("port", "");
+    schemaSourceJson.put("dbName", "");
+    shardConfigBulk.put("schemaSource", schemaSourceJson);
+
+    JSONArray dataShardsArray = new JSONArray();
+    if (dataShardsList != null) {
+      for (DataShard shardData : dataShardsList) {
+        JSONObject shardJson = new JSONObject();
+
+        shardJson.put("dataShardId", shardData.dataShardId());
+        shardJson.put("host", shardData.host());
+        shardJson.put("user", shardData.user());
+        shardJson.put("password", shardData.password());
+        shardJson.put("port", shardData.port());
+        shardJson.put("dbName", shardData.dbName());
+        shardJson.put("namespace", shardData.namespace());
+        shardJson.put("connectionProperties", shardData.connectionProperties());
+
+        JSONArray databasesArray = new JSONArray();
+
+        for (Database dbData : shardData.databases()) {
+          JSONObject dbJson = new JSONObject();
+          dbJson.put("dbName", dbData.dbName());
+          dbJson.put("databaseId", dbData.databaseId());
+          dbJson.put("refDataShardId", dbData.refDataShardId());
+          databasesArray.put(dbJson);
+        }
+        shardJson.put("databases", databasesArray);
+        dataShardsArray.put(shardJson);
+      }
+    }
+    shardConfigBulk.put("dataShards", dataShardsArray);
+
+    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
+    String shardFileContents = bulkConfig.toString();
+    gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+  }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
       String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager,
-      String sessionFilePath,
+      String sessionFileResourceName,
       boolean multiSharded)
       throws IOException {
     // launch dataflow template
@@ -47,14 +115,17 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName + "/" + testName)
-            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName + "/" + testName)
+            .addParameter("outputDirectory", "gs://" + artifactBucketName + "/" + testId)
+            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName + "/" + testId)
             .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"));
 
-    if (sessionFilePath != null) {
-      builder.addParameter("sessionFilePath", sessionFilePath);
+    if (sessionFileResourceName != null) {
+      LOG.info("Uploading session file from resource: {}", sessionFileResourceName);
+      gcsResourceManager.uploadArtifact(
+          "session.json", Resources.getResource(sessionFileResourceName).getPath());
+      builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
     }
 
     if (multiSharded) {
