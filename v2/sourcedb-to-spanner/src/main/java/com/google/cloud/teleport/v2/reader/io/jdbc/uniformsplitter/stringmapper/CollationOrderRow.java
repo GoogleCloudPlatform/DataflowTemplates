@@ -136,6 +136,7 @@ public abstract class CollationOrderRow {
         .build();
   }
 
+  /** Container for intermediate sort-key bytes returned by WEIGHT_BYTES queries. */
   public static class CharacterWeightRow {
     public final int codepoint;
     public final byte[] weightNonTrailing;
@@ -157,10 +158,24 @@ public abstract class CollationOrderRow {
     }
   }
 
+  /**
+   * Construct a {@link CollationOrderRow} from a WITH_RANKS result set row.
+   *
+   * @param rs ResultSet containing pre-computed codepoint_rank columns
+   * @return CollationOrderRow parsed from the result set
+   * @throws SQLException if thrown by JDBC ResultSet
+   */
   public static CollationOrderRow fromRankedRS(ResultSet rs) throws SQLException {
     return fromRS(rs);
   }
 
+  /**
+   * Construct a {@link CharacterWeightRow} from a WEIGHT_BYTES result set row.
+   *
+   * @param rs ResultSet containing weight_non_trailing and weight_trailing sort-key bytes
+   * @return CharacterWeightRow parsed from the result set, or null if invalid/skipped
+   * @throws SQLException if thrown by JDBC ResultSet
+   */
   public static CharacterWeightRow fromWeightBytesRS(ResultSet rs) throws SQLException {
     String charsetChar = rs.getString(CHARSET_CHAR_COL);
     if (charsetChar == null
