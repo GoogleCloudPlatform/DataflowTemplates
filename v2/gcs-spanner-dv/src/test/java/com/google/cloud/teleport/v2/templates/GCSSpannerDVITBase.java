@@ -200,8 +200,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     return jobInfo;
   }
 
-  public void uploadCustomShardJarToGcs(String gcsPathPrefix)
-      throws IOException {
+  public void uploadCustomShardJarToGcs(String gcsPathPrefix) throws IOException {
     gcsClient.uploadArtifact(
         gcsPathPrefix + "/customTransformation.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
