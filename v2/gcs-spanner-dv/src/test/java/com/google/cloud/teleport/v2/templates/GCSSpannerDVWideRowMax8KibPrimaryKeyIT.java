@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for GCSSpannerDV validating a wide row with 8 KiB primary key. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVWideRowMax8KibPrimaryKeyIT extends GCSSpannerDVITBase {
@@ -94,6 +94,9 @@ public class GCSSpannerDVWideRowMax8KibPrimaryKeyIT extends GCSSpannerDVITBase {
                 .set("full_name")
                 .to("spanner_val")
                 .build())); // mismatched row
+
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
