@@ -82,11 +82,13 @@ public abstract class CollationOrderRow {
   public abstract Builder toBuilder();
 
   /**
-   * Construct a {@link CollationOrderRow} from a result set row.
+   * Construct a {@link CollationOrderRow} from a result set for the collation order query. It is
+   * expected that the caller handlers iteration of resultSet via {@link ResultSet#next()} and
+   * exceptions if any.
    *
-   * @param rs ResultSet containing pre-computed codepoint_rank columns
-   * @return CollationOrderRow parsed from the result set
-   * @throws SQLException if thrown by JDBC ResultSet
+   * @param rs
+   * @return fields of the output enclosed in {@link CollationOrderRow}.
+   * @throws SQLException if thrown by the {@link ResultSet ResultSet api}.
    */
   public static CollationOrderRow fromRS(ResultSet rs) throws SQLException {
 
