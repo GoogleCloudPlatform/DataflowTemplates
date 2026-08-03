@@ -136,6 +136,50 @@ public abstract class CollationOrderRow {
         .build();
   }
 
+  public static class CharacterWeightRow {
+    public final int codepoint;
+    public final byte[] weightNonTrailing;
+    public final byte[] weightTrailing;
+    public final boolean isEmpty;
+    public final boolean isSpace;
+
+    public CharacterWeightRow(
+        int codepoint,
+        byte[] weightNonTrailing,
+        byte[] weightTrailing,
+        boolean isEmpty,
+        boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weightNonTrailing = weightNonTrailing;
+      this.weightTrailing = weightTrailing;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+  }
+
+  public static CollationOrderRow fromRankedRS(ResultSet rs) throws SQLException {
+    return fromRS(rs);
+  }
+
+  public static CharacterWeightRow fromWeightBytesRS(ResultSet rs) throws SQLException {
+    String charsetChar = rs.getString(CHARSET_CHAR_COL);
+    if (charsetChar == null
+        || charsetChar.isEmpty()
+        || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
+      return null;
+    }
+    int c = charsetChar.codePointAt(0);
+    byte[] wNt = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+    byte[] wT = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
+    boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
+    boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
+
+    if (wNt == null && !isEmpty) {
+      return null;
+    }
+    return new CharacterWeightRow(c, wNt, wT, isEmpty, isSpace);
+  }
+
   @AutoValue.Builder
   public abstract static class Builder {
 
