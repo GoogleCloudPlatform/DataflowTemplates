@@ -199,7 +199,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     result.put("character_n", createRows("b         ", "world     ", "NULL"));
     result.put("character_varying", createRows("testing character varying", "NULL"));
     result.put("character_varying_n", createRows("testing character varying n", "NULL"));
-    result.put("cidr", createRows("192.168.100.128/25", "NULL"));
+    result.put("cidr", createRows("192.168.100.128/25", "2001:db8:3333:4444::/64", "NULL"));
     result.put("date", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("date_to_string", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("decimal_to_string", createRows("0.12", "NULL"));
@@ -239,7 +239,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
         "float8_to_string",
         createRows(
             "-1.9876542E307", "1.9876542E307", "NaN", "-Infinity", "Infinity", "3.45", "NULL"));
-    result.put("inet", createRows("192.168.1.0/24", "NULL"));
+    result.put("inet", createRows("192.168.1.0/24", "2001:db8:3333:4444::/64", "NULL"));
     result.put("int", createRows("-2147483648", "2147483647", "1", "NULL"));
     result.put("int_to_string", createRows("-2147483648", "2147483647", "1", "NULL"));
     result.put("int_to_numeric", createRows("-2147483648", "2147483647", "1", "NULL"));

@@ -234,7 +234,7 @@ INSERT INTO t_char_n (col) VALUES ('a'), ('hello'), (NULL);
 INSERT INTO t_character_n (col) VALUES ('b'), ('world'), (NULL);
 INSERT INTO t_character_varying (col) VALUES ('testing character varying'), (NULL);
 INSERT INTO t_character_varying_n (col) VALUES ('testing character varying n'), (NULL);
-INSERT INTO t_cidr (col) VALUES ('192.168.100.128/25'), (NULL);
+INSERT INTO t_cidr (col) VALUES ('192.168.100.128/25'), ('2001:db8:3333:4444::/64'), (NULL);
 INSERT INTO t_circle (col) VALUES ('((1, 2), 3)'), (NULL);
 INSERT INTO t_circle_to_float64_array (col) VALUES ('((1, 2), 3)'), (NULL);
 INSERT INTO t_date (col) VALUES ('0001-01-01'::date), ('9999-12-31'::date), (NULL);
@@ -254,7 +254,7 @@ INSERT INTO t_float4_to_float32 (col) VALUES ('-1.9876542e38'), ('1.9876542e38')
 INSERT INTO t_float4_to_string (col) VALUES ('-1.9876542e38'), ('1.9876542e38'), ('NaN'), ('-Infinity'), ('Infinity'), (2.34), (NULL);
 INSERT INTO t_float8 (col) VALUES ('-1.9876542e307'), ('1.9876542e307'), ('NaN'), ('-Infinity'), ('Infinity'), (3.45), (NULL);
 INSERT INTO t_float8_to_string (col) VALUES ('-1.9876542e307'), ('1.9876542e307'), ('NaN'), ('-Infinity'), ('Infinity'), (3.45), (NULL);
-INSERT INTO t_inet (col) VALUES ('192.168.1.0/24'), (NULL);
+INSERT INTO t_inet (col) VALUES ('192.168.1.0/24'), ('2001:db8:3333:4444::/64'), (NULL);
 INSERT INTO t_int (col) VALUES (-2147483648), (2147483647), (1), (NULL);
 INSERT INTO t_int_to_string (col) VALUES (-2147483648), (2147483647), (1), (NULL);
 INSERT INTO t_int_to_numeric (col) VALUES (-2147483648), (2147483647), (1), (NULL);
