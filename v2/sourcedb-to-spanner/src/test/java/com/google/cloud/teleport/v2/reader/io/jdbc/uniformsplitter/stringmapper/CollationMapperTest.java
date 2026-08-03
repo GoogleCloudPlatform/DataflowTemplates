@@ -31,6 +31,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -456,18 +458,13 @@ public class CollationMapperTest {
 
   private static CollationMapper fromResultSetWithRanks(
       ResultSet rs, CollationReference collationReference) throws SQLException {
-    java.util.List<CollationOrderRow> list = new java.util.ArrayList<>();
+    List<CollationOrderRow> list = new ArrayList<>();
     while (rs.next()) {
       String charsetChar = rs.getString(CHARSET_CHAR_COL);
       if (charsetChar == null || charsetChar.isEmpty()) {
         continue;
       }
-      int c = charsetChar.codePointAt(0);
-      com.google.common.base.Preconditions.checkArgument(
-          charsetChar.length() == Character.charCount(c),
-          "Expected single character from collation query, got: %s",
-          charsetChar);
-      list.add(CollationOrderRow.fromRS(rs));
+      list.add(CollationOrderRow.fromRankedRS(rs));
     }
     return CollationMapper.fromRowsCollection(list, collationReference);
   }

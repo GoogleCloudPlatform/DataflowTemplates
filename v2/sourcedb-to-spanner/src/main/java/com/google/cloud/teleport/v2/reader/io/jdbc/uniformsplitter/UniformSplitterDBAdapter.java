@@ -126,7 +126,7 @@ public interface UniformSplitterDBAdapter extends Serializable {
       if (charsetChar == null || charsetChar.isEmpty()) {
         continue;
       }
-      list.add(CollationOrderRow.fromRS(rs));
+      list.add(CollationOrderRow.fromRankedRS(rs));
     }
     return list;
   }

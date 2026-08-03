@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -811,54 +810,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public List<CollationOrderRow> processCollationResultSet(
       ResultSet rs, CollationReference collationReference) throws SQLException {
 
-    class CharacterWeight {
-      final int codepoint;
-      final byte[] weightNonTrailing;
-      final byte[] weightTrailing;
-      final boolean isEmpty;
-      final boolean isSpace;
-
-      CharacterWeight(
-          int codepoint,
-          byte[] weightNonTrailing,
-          byte[] weightTrailing,
-          boolean isEmpty,
-          boolean isSpace) {
-        this.codepoint = codepoint;
-        this.weightNonTrailing = weightNonTrailing;
-        this.weightTrailing = weightTrailing;
-        this.isEmpty = isEmpty;
-        this.isSpace = isSpace;
-      }
-    }
-
-    List<CharacterWeight> rows = new ArrayList<>();
+    List<CollationOrderRow.CharacterWeightRow> rows = new ArrayList<>();
     while (rs.next()) {
-      String charsetChar = rs.getString(CollationsOrderQueryColumns.CHARSET_CHAR_COL);
-      if (charsetChar == null
-          || charsetChar.isEmpty()
-          || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
-        continue;
+      CollationOrderRow.CharacterWeightRow weightRow = CollationOrderRow.fromWeightBytesRS(rs);
+      if (weightRow != null) {
+        rows.add(weightRow);
       }
-      int c = charsetChar.codePointAt(0);
-      byte[] wNt = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
-      byte[] wT = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
-      boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
-      boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
-
-      if (wNt == null && !isEmpty) {
-        logger.warn(
-            "Skipping character codepoint={} for {} because weight_non_trailing is NULL",
-            c,
-            collationReference);
-        continue;
-      }
-      rows.add(new CharacterWeight(c, wNt, wT, isEmpty, isSpace));
     }
 
-    List<CharacterWeight> uniqueRows = new ArrayList<>();
+    List<CollationOrderRow.CharacterWeightRow> uniqueRows = new ArrayList<>();
     java.util.Set<Integer> seenCodepoints = new java.util.HashSet<>();
-    for (CharacterWeight row : rows) {
+    for (CollationOrderRow.CharacterWeightRow row : rows) {
       if (seenCodepoints.add(row.codepoint)) {
         uniqueRows.add(row);
       } else {
@@ -871,7 +833,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
         new java.util.TreeMap<>(weightKeyOrder);
-    for (CharacterWeight row : rows) {
+    for (CollationOrderRow.CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
         String keyNt =
             (row.weightNonTrailing != null)
@@ -897,7 +859,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
         new java.util.TreeMap<>(weightKeyOrder);
-    for (CharacterWeight row : rows) {
+    for (CollationOrderRow.CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
         String keyT =
             (row.weightTrailing != null)
@@ -921,7 +883,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     List<CollationOrderRow> result = new ArrayList<>();
-    for (CharacterWeight row : rows) {
+    for (CollationOrderRow.CharacterWeightRow row : rows) {
       long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
       long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
       int equivalentChar = ntEquivalent.getOrDefault(row.codepoint, row.codepoint);
