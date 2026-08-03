@@ -49,7 +49,9 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -128,6 +130,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   // Stores parent tables so we can append 'ONLY' to their extraction queries and avoid duplicates.
   private final Set<String> parentTables = ConcurrentHashMap.newKeySet();
+
+  // Stores ordered list of columns for each table to construct the SELECT query
+  private final Map<String, List<String>> tableColumns = new ConcurrentHashMap<>();
+  // Stores which columns are of type MONEY and need casting
+  private final Set<ColumnKey> moneyColumnKeys = ConcurrentHashMap.newKeySet();
 
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
@@ -259,7 +266,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + " WHERE table_catalog = ?"
             + "  AND table_schema = ?"
             + "  AND table_name IN "
-            + DialectAdapter.generateInClause(tables.size());
+            + DialectAdapter.generateInClause(tables.size())
+            + " ORDER BY table_name, ordinal_position";
 
     Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
@@ -278,6 +286,12 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
+
+          tableColumns.computeIfAbsent(tableName, k -> new ArrayList<>()).add(columnName);
+          if ("money".equalsIgnoreCase(columnType)) {
+            moneyColumnKeys.add(new ColumnKey(tableName, columnName));
+          }
+
           if (CUSTOM_BOUNDARY_QUERY_TYPES.contains(columnType.toUpperCase())) {
             logger.info(
                 "Discovered {} column '{}' in table '{}'; bypassing MIN()/MAX() with optimized subqueries for boundaries",
@@ -570,7 +584,25 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
     String extractionTableName = getExtractionTableName(tableName);
-    return addWhereClause("SELECT * FROM " + extractionTableName, partitionColumns);
+    String unquotedTableName = extractBaseTableName(tableName);
+
+    String selectClause = "SELECT *";
+    if (tableColumns.containsKey(unquotedTableName)) {
+      List<String> columns = tableColumns.get(unquotedTableName);
+      selectClause =
+          "SELECT "
+              + columns.stream()
+                  .map(
+                      col -> {
+                        if (moneyColumnKeys.contains(new ColumnKey(unquotedTableName, col))) {
+                          return String.format("\"%s\"::numeric AS \"%s\"", col, col);
+                        }
+                        return String.format("\"%s\"", col);
+                      })
+                  .collect(Collectors.joining(", "));
+    }
+
+    return addWhereClause(selectClause + " FROM " + extractionTableName, partitionColumns);
   }
 
   /**

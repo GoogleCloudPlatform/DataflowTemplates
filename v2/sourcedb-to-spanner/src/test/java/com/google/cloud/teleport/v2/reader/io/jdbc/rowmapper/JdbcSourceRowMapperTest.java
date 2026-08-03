@@ -756,10 +756,10 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("DECIMAL(9,2)")
                 .sourceColumnType("MONEY")
-                .inputValue("1.23")
-                .mappedValue(1.23D)
+                .inputValue(1.23)
+                .mappedValue("1.23")
                 .build())
         .add(
             Column.builder()

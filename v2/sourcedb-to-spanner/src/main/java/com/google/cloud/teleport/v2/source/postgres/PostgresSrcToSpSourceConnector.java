@@ -75,7 +75,7 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           .put("INTERVAL", UnifiedMappingProvider.Type.INTERVAL)
           .put("JSON", UnifiedMappingProvider.Type.JSON)
           .put("JSONB", UnifiedMappingProvider.Type.JSON)
-          .put("MONEY", UnifiedMappingProvider.Type.DOUBLE)
+          .put("MONEY", UnifiedMappingProvider.Type.NUMBER)
           // TODO: Refine mapping type according to
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a
           // precision and scale are >= 0, map to DECIMAL)
