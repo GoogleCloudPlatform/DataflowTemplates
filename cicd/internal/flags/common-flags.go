@@ -52,6 +52,7 @@ var (
 			"v2/sourcedb-to-spanner/",
 			"v2/spanner-to-sourcedb/",
 			"v2/spanner-custom-shard/",
+			"v2/gcs-spanner-dv/",
 			"plugins/templates-maven-plugin"},
 		BIGTABLE: {"v2/bigtable-common/",
 			"v2/bigquery-to-bigtable/",

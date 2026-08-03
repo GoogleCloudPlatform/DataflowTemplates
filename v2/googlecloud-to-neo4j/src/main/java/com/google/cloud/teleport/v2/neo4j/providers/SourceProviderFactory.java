@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQuerySourceProvider;
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class SourceProviderFactory {
   private static final Logger LOG = LoggerFactory.getLogger(SourceProviderFactory.class);
 
-  public static SourceProvider of(Source source, TargetSequence targetSequence) {
+  public static SourceProvider of(Source source, StepSequence targetSequence) {
     var sourceType = source.getType();
     return switch (sourceType) {
       case "bigquery" -> new BigQuerySourceProvider((BigQuerySource) source, targetSequence);

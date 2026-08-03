@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dofn;
 
+import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
@@ -23,6 +24,7 @@ import com.google.cloud.teleport.v2.templates.model.LifecycleEvent;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.sink.DataWriterFactory;
+import com.google.cloud.teleport.v2.templates.utils.CustomDataGeneratorFetcher;
 import com.google.cloud.teleport.v2.templates.utils.FailureRecord;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -70,11 +72,14 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
 
   private transient DataWriter writer;
   private transient Faker faker;
+  private transient CustomDataGenerator customGenerator;
   private transient volatile DataGeneratorSchema schema;
   private transient volatile List<String> insertTopoOrder;
 
   private transient DataGeneratorEngine dataGeneratorEngine;
   private transient MutationBatcher batcher;
+  private final String customJarPath;
+  private final String customClassName;
 
   @StateId("eventQueue")
   private final StateSpec<MapState<Long, List<LifecycleEvent>>> eventQueueSpec =
@@ -102,7 +107,9 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
       Integer jdbcPoolSize,
       Integer updateInterval,
       Integer deleteInterval,
-      PCollectionView<DataGeneratorSchema> schemaView) {
+      PCollectionView<DataGeneratorSchema> schemaView,
+      String customJarPath,
+      String customClassName) {
     this.sinkType = sinkType;
     this.sinkConfig = sinkConfig;
     this.batchSize = batchSize;
@@ -110,10 +117,14 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     this.updateInterval = updateInterval;
     this.deleteInterval = deleteInterval;
     this.schemaView = schemaView;
+    this.customJarPath = customJarPath;
+    this.customClassName = customClassName;
   }
 
   @Setup
   public void setup() {
+    this.customGenerator =
+        CustomDataGeneratorFetcher.getCustomDataGenerator(customJarPath, customClassName);
     this.schema = null;
     this.insertTopoOrder = null;
     if (writer == null) {
@@ -124,7 +135,8 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     }
 
     this.batcher = new MutationBatcher(batchSize, jdbcPoolSize, writer);
-    this.dataGeneratorEngine = new DataGeneratorEngine(updateInterval, deleteInterval, faker);
+    this.dataGeneratorEngine =
+        new DataGeneratorEngine(updateInterval, deleteInterval, faker, customGenerator);
   }
 
   @StartBundle

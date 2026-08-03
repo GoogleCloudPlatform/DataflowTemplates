@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec.BigQuerySpecBuilder;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
@@ -35,18 +35,15 @@ import org.slf4j.LoggerFactory;
 public class BigQuerySourceProvider implements SourceProvider {
   private static final Logger LOG = LoggerFactory.getLogger(BigQuerySourceProvider.class);
   private final BigQuerySource source;
-  private final TargetSequence targetSequence;
-  private OverlayTokens overlayTokens;
+  private final StepSequence targetSequence;
 
-  public BigQuerySourceProvider(BigQuerySource source, TargetSequence targetSequence) {
+  public BigQuerySourceProvider(BigQuerySource source, StepSequence targetSequence) {
     this.source = source;
     this.targetSequence = targetSequence;
   }
 
   @Override
-  public void configure(OverlayTokens overlayTokens) {
-    this.overlayTokens = overlayTokens;
-  }
+  public void configure(OverlayTokens overlayTokens) {}
 
   @Override
   public boolean supportsSqlPushDown() {
@@ -75,7 +72,6 @@ public class BigQuerySourceProvider implements SourceProvider {
    * @return helper object includes metadata and SQL
    */
   public BigQuerySpec getMetadataQueryBeamSpec() {
-
     String baseQuery = source.getQuery();
 
     ////////////////////////////
@@ -115,17 +111,12 @@ public class BigQuerySourceProvider implements SourceProvider {
    */
   private BigQuerySpec getTargetQueryBeamSpec(TargetQuerySpec spec) {
     var sourceFields = ModelUtils.getBeamFieldSet(spec.getSourceBeamSchema());
-    var target = spec.getTarget();
-    var startNodeTarget = spec.getStartNodeTarget();
-    var endNodeTarget = spec.getEndNodeTarget();
-    String sql =
-        ModelUtils.getTargetSql(
-            target, startNodeTarget, endNodeTarget, sourceFields, true, source.getQuery());
+    var step = spec.getTargetStep();
+    String sql = ModelUtils.getTargetSql(step, sourceFields, true, source.getQuery());
     return new BigQuerySpecBuilder()
-        .readDescription(
-            targetSequence.getSequenceNumber(target) + ": Read from BQ " + target.getName())
+        .readDescription(targetSequence.getSequenceNumber(step) + ": Read from BQ " + step.name())
         .castDescription(
-            targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
+            targetSequence.getSequenceNumber(step) + ": Cast to BeamRow " + step.name())
         .sql(sql)
         .queryTempProject(source.getQueryTempProject())
         .queryTempDataset(source.getQueryTempDataset())

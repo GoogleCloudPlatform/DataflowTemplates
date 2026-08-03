@@ -10,6 +10,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from read_from_delta_lake import DELTA_LAKE_READ_URN, ReadFromDeltaLake
 
+if os.environ.get('LOCAL_TEST_LOOPBACK') == '1':
+  TestPipeline.pytest_test_pipeline_options = '--runner=FnApiRunner --environment_type=LOOPBACK'
+
 
 class ReadFromDeltaLakeTest(unittest.TestCase):
 
@@ -69,6 +72,7 @@ class ReadFromDeltaLakeTest(unittest.TestCase):
     mock_saet.assert_called_once_with(
         identifier=DELTA_LAKE_READ_URN,
         expansion_service=ANY,
+        rearrange_based_on_discovery=True,
         table=table,
         hadoop_config=hadoop_config,
     )

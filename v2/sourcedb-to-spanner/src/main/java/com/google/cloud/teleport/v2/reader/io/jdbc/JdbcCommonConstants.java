@@ -20,4 +20,7 @@ public final class JdbcCommonConstants {
 
   /** Database column/data type name for UUID. */
   public static final String UUID_TYPE = "uuid";
+
+  /** Database column/data type name for bit. */
+  public static final String BIT_TYPE = "bit";
 }

@@ -29,13 +29,19 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.postgresql.util.PGobject;
 
 /** Test class for {@link RangePreparedStatementSetter}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -359,5 +365,164 @@ public class RangePreparedStatementSetterTest {
     // UUID).
     verify(mockStatement).setObject(2, new java.util.UUID(0L, 0L));
     verify(mockStatement).setObject(3, new java.util.UUID(-1L, -1L));
+  }
+
+  @Test
+  public void testSetParameters_withBit() throws Exception {
+    TableIdentifier tableId =
+        TableIdentifier.builder().setDataSourceId("test_ds").setTableName("test_bit_table").build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("bit_col")
+            .setColumnClass(String.class)
+            .setColumnTypeName("bit")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("bit")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.createBitSplitter())
+            .setColName("bit_col")
+            .setColClass(String.class)
+            .setStart("0000")
+            .setEnd("1010")
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    ArgumentCaptor<Object> captor2 = ArgumentCaptor.forClass(Object.class);
+    ArgumentCaptor<Object> captor3 = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(2), captor2.capture());
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor3.capture());
+
+    Object capturedStart = captor2.getValue();
+    assertThat(capturedStart).isInstanceOf(PGobject.class);
+    PGobject startPgObj = (PGobject) capturedStart;
+    assertThat(startPgObj.getType()).isEqualTo("bit");
+    assertThat(startPgObj.getValue()).isEqualTo("0000");
+
+    Object capturedEnd = captor3.getValue();
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject endPgObj = (PGobject) capturedEnd;
+    assertThat(endPgObj.getType()).isEqualTo("bit");
+    assertThat(endPgObj.getValue()).isEqualTo("1010");
+  }
+
+  @Test
+  public void testSetParameters_withLocalTimeMax() throws Exception {
+    LocalTime start = LocalTime.parse("08:00:00");
+    LocalTime end = LocalTime.MAX;
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_time_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("time_col")
+            .setColumnClass(LocalTime.class)
+            .setColumnTypeName("time") // Time column type
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("time")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(LocalTime.class))
+            .setColName("time_col")
+            .setColClass(LocalTime.class)
+            .setStart(start)
+            .setEnd(end)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor.capture());
+    Object capturedEnd = captor.getValue();
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject pgObj = (PGobject) capturedEnd;
+    assertThat(pgObj.getType()).isEqualTo("time");
+    assertThat(pgObj.getValue()).isEqualTo("24:00:00");
+  }
+
+  @Test
+  public void testSetParameters_withOffsetTimeMax() throws Exception {
+    OffsetTime start = OffsetTime.parse("08:00:00+05:00");
+    OffsetTime end = OffsetTime.of(LocalTime.MAX, ZoneOffset.ofHours(5));
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_timetz_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("timetz_col")
+            .setColumnClass(java.time.OffsetTime.class)
+            .setColumnTypeName("timetz")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("timetz")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(java.time.OffsetTime.class))
+            .setColName("timetz_col")
+            .setColClass(java.time.OffsetTime.class)
+            .setStart(start)
+            .setEnd(end)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(mockStatement).setObject(ArgumentMatchers.eq(3), captor.capture());
+    Object capturedEnd = captor.getValue();
+    assertThat(capturedEnd).isInstanceOf(PGobject.class);
+    PGobject pgObj = (PGobject) capturedEnd;
+    assertThat(pgObj.getType()).isEqualTo("timetz");
+    assertThat(pgObj.getValue()).isEqualTo("24:00:00+05:00");
   }
 }

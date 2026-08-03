@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
@@ -98,14 +100,18 @@ public abstract class PartitionColumn implements Serializable {
 
     public PartitionColumn build() {
       PartitionColumn partitionColumn = this.autoBuild();
+
+      boolean isBit = BIT_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
+
       Preconditions.checkState(
           (partitionColumn.columnClass() == String.class
-                  && partitionColumn.stringCollation() != null
-                  && partitionColumn.stringMaxLength() != null)
+                  && (partitionColumn.stringCollation() != null || isBit)
+                  && (partitionColumn.stringMaxLength() != null || isBit))
               || (partitionColumn.columnClass() != String.class
                   && partitionColumn.stringCollation() == null
                   && partitionColumn.stringMaxLength() == null),
-          "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
+          "String columns must specify collation, and non string columns must not specify"
+              + " collation. PartitionColum = "
               + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == BigDecimal.class
