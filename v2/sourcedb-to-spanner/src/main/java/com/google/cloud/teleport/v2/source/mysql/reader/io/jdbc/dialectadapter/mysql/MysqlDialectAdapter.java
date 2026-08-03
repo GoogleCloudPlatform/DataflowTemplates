@@ -778,7 +778,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
+   * character set with the columns listed in {@link MysqlCollationOrderQueryColumns}.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
@@ -797,10 +797,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-  private static class CharacterWeightRow {
+  private static class MysqlCollationOrderQueryColumns
+      extends CollationOrderRow.CollationsOrderQueryColumns {
     static final String WEIGHT_NON_TRAILING_COL = "weight_non_trailing";
     static final String WEIGHT_TRAILING_COL = "weight_trailing";
 
+    private MysqlCollationOrderQueryColumns() {}
+  }
+
+  private static class CharacterWeightRow {
     final int codepoint;
     final byte[] weightNonTrailing;
     final byte[] weightTrailing;
@@ -821,18 +826,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
-      String charsetChar =
-          rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      String charsetChar = rs.getString(MysqlCollationOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null
           || charsetChar.isEmpty()
           || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
         return null;
       }
       int c = charsetChar.codePointAt(0);
-      byte[] wNt = rs.getBytes(WEIGHT_NON_TRAILING_COL);
-      byte[] wT = rs.getBytes(WEIGHT_TRAILING_COL);
-      boolean isEmpty = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
-      boolean isSpace = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
+      byte[] wNt = rs.getBytes(MysqlCollationOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+      byte[] wT = rs.getBytes(MysqlCollationOrderQueryColumns.WEIGHT_TRAILING_COL);
+      boolean isEmpty = rs.getBoolean(MysqlCollationOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(MysqlCollationOrderQueryColumns.IS_SPACE_COL);
 
       if (wNt == null && !isEmpty) {
         return null;

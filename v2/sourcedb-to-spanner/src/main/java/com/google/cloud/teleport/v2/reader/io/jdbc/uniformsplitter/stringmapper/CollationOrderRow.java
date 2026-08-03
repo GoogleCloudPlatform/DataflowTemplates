@@ -194,6 +194,6 @@ public abstract class CollationOrderRow {
      */
     public static final String CODEPOINT_RANK_PAD_SPACE_COL = "codepoint_rank_pad_space";
 
-    private CollationsOrderQueryColumns() {}
+    protected CollationsOrderQueryColumns() {}
   }
 }
