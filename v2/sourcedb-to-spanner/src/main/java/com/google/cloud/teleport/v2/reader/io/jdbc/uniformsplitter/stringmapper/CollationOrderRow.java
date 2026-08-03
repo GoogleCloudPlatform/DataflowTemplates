@@ -82,13 +82,13 @@ public abstract class CollationOrderRow {
   public abstract Builder toBuilder();
 
   /**
-   * Construct a {@link CollationOrderRow} from a WITH_RANKS result set row.
+   * Construct a {@link CollationOrderRow} from a result set row.
    *
    * @param rs ResultSet containing pre-computed codepoint_rank columns
    * @return CollationOrderRow parsed from the result set
    * @throws SQLException if thrown by JDBC ResultSet
    */
-  public static CollationOrderRow fromRankedRS(ResultSet rs) throws SQLException {
+  public static CollationOrderRow fromRS(ResultSet rs) throws SQLException {
 
     String charSetChar = rs.getString(CHARSET_CHAR_COL);
     String equivalentCharsetChar = rs.getString(EQUIVALENT_CHARSET_CHAR_COL);

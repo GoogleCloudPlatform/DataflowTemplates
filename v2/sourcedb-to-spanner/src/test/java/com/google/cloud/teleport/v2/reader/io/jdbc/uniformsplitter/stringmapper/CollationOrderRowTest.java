@@ -70,7 +70,7 @@ public class CollationOrderRowTest {
     when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
     when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
 
-    CollationOrderRow collationOrderRow = CollationOrderRow.fromRankedRS(mockResultSet);
+    CollationOrderRow collationOrderRow = CollationOrderRow.fromRS(mockResultSet);
     assertThat(collationOrderRow)
         .isEqualTo(
             CollationOrderRow.builder()
@@ -95,7 +95,7 @@ public class CollationOrderRowTest {
     when(mockRs.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL)).thenReturn("A");
     when(mockRs.getLong(CODEPOINT_RANK_PAD_SPACE_COL)).thenReturn(1L);
 
-    CollationOrderRow row = CollationOrderRow.fromRankedRS(mockRs);
+    CollationOrderRow row = CollationOrderRow.fromRS(mockRs);
     assertThat(row.charsetChar()).isEqualTo("a");
     assertThat(row.codepointRank()).isEqualTo(1L);
   }

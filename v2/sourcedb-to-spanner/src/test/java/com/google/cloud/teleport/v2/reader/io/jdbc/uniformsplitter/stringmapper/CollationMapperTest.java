@@ -464,7 +464,7 @@ public class CollationMapperTest {
       if (charsetChar == null || charsetChar.isEmpty()) {
         continue;
       }
-      list.add(CollationOrderRow.fromRankedRS(rs));
+      list.add(CollationOrderRow.fromRS(rs));
     }
     return CollationMapper.fromRowsCollection(list, collationReference);
   }
