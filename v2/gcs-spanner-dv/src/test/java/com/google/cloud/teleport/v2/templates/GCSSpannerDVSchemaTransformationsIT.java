@@ -344,7 +344,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
 
     // DataflowRunner does not need Thread.sleep(20000)
 
-    createAndUploadCustomShardJarToGcs("custom");
+    uploadCustomShardJarToGcs("custom");
     CustomTransformation customTransformation =
         CustomTransformation.builder(
                 "custom/customTransformation.jar", "com.custom.CustomTransformationForDVIT")
