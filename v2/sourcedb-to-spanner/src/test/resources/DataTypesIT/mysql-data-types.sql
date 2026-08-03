@@ -716,7 +716,6 @@ INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (X'78
 INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (REPEAT(X'FF', 65000));
 INSERT INTO `varchar_table` (`varchar_col`) VALUES ('abc');
 INSERT INTO `varchar_table` (`varchar_col`) VALUES (REPEAT('a', 21000));
-
 INSERT INTO `year_table` (`year_col`) VALUES (2022);
 INSERT INTO `year_table` (`year_col`) VALUES (1901);
 INSERT INTO `year_table` (`year_col`) VALUES (2155);
