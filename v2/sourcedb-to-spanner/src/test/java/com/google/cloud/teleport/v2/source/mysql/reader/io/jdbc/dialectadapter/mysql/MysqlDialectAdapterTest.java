@@ -747,7 +747,7 @@ public class MysqlDialectAdapterTest {
   public void testGetIndexDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getIndexDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build(), 1))
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1, true))
         .isEqualTo(
             "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as 'stats.COLUMN_NAME', stats.INDEX_NAME as 'stats.INDEX_NAME', stats.SEQ_IN_INDEX as 'stats.SEQ_IN_INDEX', stats.NON_UNIQUE as 'stats.NON_UNIQUE', stats.CARDINALITY as 'stats.CARDINALITY', cols.COLUMN_TYPE as 'cols.COLUMN_TYPE', cols.CHARACTER_MAXIMUM_LENGTH as 'cols.CHARACTER_MAXIMUM_LENGTH', cols.CHARACTER_SET_NAME as 'cols.CHARACTER_SET_NAME', cols.COLLATION_NAME as 'cols.COLLATION_NAME', cols.DATETIME_PRECISION as 'cols.DATETIME_PRECISION', collations.PAD_ATTRIBUTE as 'collations.PAD_ATTRIBUTE', cols.NUMERIC_SCALE as 'cols.NUMERIC_SCALE'  FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME IN (?)");
   }

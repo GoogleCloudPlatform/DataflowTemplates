@@ -402,11 +402,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + DialectAdapter.generateInClause(numTables);
   }
 
-  protected static String getIndexDiscoveryQuery(
-      JdbcSchemaReference sourceSchemaReference, int numTables) {
-    return getIndexDiscoveryQuery(sourceSchemaReference, numTables, true);
-  }
-
   /**
    * Discover Indexed columns and their Collations(if applicable). You could try this on <a href =
    * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/5>db-fiddle</a>
