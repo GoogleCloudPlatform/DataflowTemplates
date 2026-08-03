@@ -126,8 +126,7 @@ gcloud storage buckets create gs://${BUCKET_NAME} --location=${BUCKET_LOCATION}
 gcloud storage cp ${CSV_FILE_PATH} gs://${BUCKET_NAME}
 ```
 
-4. Use [GSUTIL COMPOSE](https://cloud.google.com/storage/docs/gsutil/commands/compose) to merge these CSV files and 
-generate larger files of required row counts.
+4. Use [Gcloud Storage Compose](https://docs.cloud.google.com/storage/docs/composing-objects#create-composite) to merge these CSV files and generate larger files of required row counts.
 ```shell
 export MERGE_COUNT=<number>
 export BUCKET_NAME=<my-bucket>
