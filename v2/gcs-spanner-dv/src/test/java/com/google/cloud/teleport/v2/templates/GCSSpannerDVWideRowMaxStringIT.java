@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -37,7 +37,7 @@ import org.junit.runners.JUnit4;
  * Integration tests validating handling of the Spanner maximum string length limit (2,621,440
  * characters).
  */
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVWideRowMaxStringIT extends GCSSpannerDVITBase {
@@ -94,9 +94,6 @@ public class GCSSpannerDVWideRowMaxStringIT extends GCSSpannerDVITBase {
                 .set("role_name")
                 .to(spannerMismatchString)
                 .build())); // mismatched row
-
-    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
-    Thread.sleep(20000);
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
