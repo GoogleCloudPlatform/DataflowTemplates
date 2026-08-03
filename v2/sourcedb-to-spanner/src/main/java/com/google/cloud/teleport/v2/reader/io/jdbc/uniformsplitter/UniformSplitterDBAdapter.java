@@ -71,7 +71,6 @@ public interface UniformSplitterDBAdapter extends Serializable {
    */
   boolean checkForTimeout(SQLException exception);
 
-
   /**
    * Get a query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.

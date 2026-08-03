@@ -134,8 +134,6 @@ public abstract class CollationOrderRow {
         .build();
   }
 
-
-
   @AutoValue.Builder
   public abstract static class Builder {
 
