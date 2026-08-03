@@ -807,6 +807,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   private static class CharacterWeightRow {
+    static final String WEIGHT_NON_TRAILING_COL = "weight_non_trailing";
+    static final String WEIGHT_TRAILING_COL = "weight_trailing";
+
     final int codepoint;
     final byte[] weightNonTrailing;
     final byte[] weightTrailing;
@@ -835,14 +838,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         return null;
       }
       int c = charsetChar.codePointAt(0);
-      byte[] wNt =
-          rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
-      byte[] wT =
-          rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
-      boolean isEmpty =
-          rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
-      boolean isSpace =
-          rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
+      byte[] wNt = rs.getBytes(WEIGHT_NON_TRAILING_COL);
+      byte[] wT = rs.getBytes(WEIGHT_TRAILING_COL);
+      boolean isEmpty = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
 
       if (wNt == null && !isEmpty) {
         return null;
