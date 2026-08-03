@@ -758,8 +758,8 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("MONEY")
-                .inputValue("$1,234.56")
-                .mappedValue("1234.56")
+                .inputValue("1.23")
+                .mappedValue(1.23D)
                 .build())
         .add(
             Column.builder()

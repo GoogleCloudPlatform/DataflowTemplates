@@ -112,14 +112,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
 
-  private static final ResultSetValueMapper<String> moneyToAvro =
-      (value, schema) -> {
-        if (value == null) {
-          return null;
-        }
-        return value.replaceAll("[^0-9\\.\\-]", "");
-      };
-
   private static final ResultSetValueMapper<ByteBuffer> timeToAvro =
       (value, schema) -> {
         if (value == null) {
@@ -308,7 +300,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
-          .put("MONEY", ResultSet::getString, moneyToAvro, 8)
+          .put("MONEY", ResultSet::getDouble, valuePassThrough, 8)
           .put(
               "NUMERIC",
               ResultSet::getObject,

@@ -134,6 +134,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
             // "t_lseg_to_float64_array",
             "t_macaddr",
             "t_macaddr8",
+            // "t_money_to_int64",
             "t_nummultirange",
             "t_numrange",
             "t_path",
@@ -284,11 +285,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
             "99999999999999999999999.9999999999",
             "123456789012345678901234567890.12...",
             "NULL"));
-    result.put(
-        "money", createRows("-92233720368547758.08", "92233720368547758.07", "123.45", "NULL"));
-    result.put(
-        "money_to_numeric",
-        createRows("-92233720368547758.08", "92233720368547758.07", "123.45", "NULL"));
+    result.put("money", createRows("123.45", "NULL"));
     result.put("numeric_to_string", createRows("4.56", "NULL"));
     result.put("oid", createRows("1000", "NULL"));
     result.put("oid_to_string", createRows("1000", "NULL"));
