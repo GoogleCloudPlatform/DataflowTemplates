@@ -112,7 +112,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -158,7 +158,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table, table, table, table, table))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -212,7 +212,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(t1, t2, t1))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -270,7 +270,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table, table, table, table, table))
-            .apply("GeneratePK", new GeneratePrimaryKey(config, "MYSQL"));
+            .apply("GeneratePK", new GeneratePrimaryKey(config, "MYSQL", null, null));
 
     PAssert.that(out)
         .satisfies(

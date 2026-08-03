@@ -50,6 +50,7 @@ from typing import Optional
 
 import apache_beam as beam
 from apache_beam.coders import FastPrimitivesCoder
+from apache_beam.metrics import Metrics
 from apache_beam.transforms.timeutil import TimeDomain
 from apache_beam.transforms.userstate import BagStateSpec
 from apache_beam.transforms.userstate import OrderedListStateSpec
@@ -166,6 +167,9 @@ class TimestampBufferDoFn(beam.DoFn, abc.ABC):
 
   TB_STATE = ReadModifyWriteStateSpec('tb_state', FastPrimitivesCoder())
 
+  _LATE_DROPPED_COUNTER = Metrics.counter(
+      'bqmonitor.timestamp_buffer', 'late_elements_dropped')
+
   def __init__(self, context_size, batch_interval_sec=5):
     self._context_size = context_size
     self._batch_interval_sec = batch_interval_sec
@@ -210,21 +214,24 @@ class TimestampBufferDoFn(beam.DoFn, abc.ABC):
 
   def _do_process(self, element, buffer_state, tb_state_handle,
                   min_wm_timer, element_timestamp, **extra_state):
-    """Buffer element, track min/max, set MIN_WM if needed."""
-    _, value = self.extract_kv(element)
-    self._buffer_add(buffer_state, element_timestamp, value)
+    """Buffer element, track min/max, set MIN_WM if needed.
 
+    Late elements (timestamp <= safe_watermark) are rejected.
+    """
     state = tb_state_handle.read() or BufferState()
 
-    state.update_min_max(element_timestamp)
-
     if element_timestamp <= state.safe_watermark:
+      self._LATE_DROPPED_COUNTER.inc()
       _LOGGER.info(
           '[process] dropping late element at %s '
           '(safe_watermark=%s already advanced past it)',
           _fmt(element_timestamp), _fmt(state.safe_watermark))
-      tb_state_handle.write(state)
       return []
+
+    _, value = self.extract_kv(element)
+    self._buffer_add(buffer_state, element_timestamp, value)
+
+    state.update_min_max(element_timestamp)
 
     if state.min_event_time > state.safe_watermark:
       min_wm_timer.set(state.min_event_time)

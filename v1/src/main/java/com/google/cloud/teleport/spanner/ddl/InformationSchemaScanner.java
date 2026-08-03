@@ -599,14 +599,12 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
-        // Tokenlist columns do not have ordering.
-        if (spannerType != null
-            && (spannerType.equals(tokenlistType)
-                || spannerType.startsWith("ARRAY")
-                || spannerType.contains("vector length"))) {
-          indexColumnsBuilder.none();
-        } else if (ordering == null) {
+        boolean isStoring = resultSet.isNull(7);
+        if (isStoring) {
           indexColumnsBuilder.storing();
+        } else if (ordering == null) {
+          // Unordered keys (like Vector ARRAYs and Search TOKENLISTs) have no column ordering
+          indexColumnsBuilder.none();
         } else {
           ordering = ordering.toUpperCase();
           if (ordering.startsWith("ASC")) {
@@ -633,7 +631,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type "
+                + " t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -641,7 +639,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type "
+                + " t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
@@ -1287,12 +1285,14 @@ public class InformationSchemaScanner {
         for (int i = 0; i < labelsArray.length(); i++) {
           JSONObject label = labelsArray.getJSONObject(i);
           String name = label.getString("name");
-          JSONArray propertyDeclarationNamesArray = label.getJSONArray("propertyDeclarationNames");
+          JSONArray propertyDeclarationNamesArray = label.optJSONArray("propertyDeclarationNames");
 
           List<String> propertyNames = new ArrayList<>();
-          for (int j = 0; j < propertyDeclarationNamesArray.length(); j++) {
-            String propertyName = propertyDeclarationNamesArray.getString(j);
-            propertyNames.add(propertyName);
+          if (propertyDeclarationNamesArray != null) {
+            for (int j = 0; j < propertyDeclarationNamesArray.length(); j++) {
+              String propertyName = propertyDeclarationNamesArray.getString(j);
+              propertyNames.add(propertyName);
+            }
           }
 
           ImmutableList<String> immutablePropertyNames = ImmutableList.copyOf(propertyNames);
@@ -1361,7 +1361,7 @@ public class InformationSchemaScanner {
           String kind = table.getString("kind");
           JSONArray labelNamesArray = table.getJSONArray("labelNames");
           String name = table.getString("name");
-          JSONArray propertyDefinitionsArray = table.getJSONArray("propertyDefinitions");
+          JSONArray propertyDefinitionsArray = table.optJSONArray("propertyDefinitions");
 
           ImmutableList.Builder<String> keyColumnsBuilder = ImmutableList.builder();
           for (int j = 0; j < keyColumnsArray.length(); j++) {
@@ -1427,19 +1427,21 @@ public class InformationSchemaScanner {
                   propertyDefinitionsBuilder = ImmutableList.builder();
 
               for (String propertyName : propertyGraphLabel.properties) {
-                for (int k = 0; k < propertyDefinitionsArray.length(); k++) {
-                  JSONObject propertyDefinition = propertyDefinitionsArray.getJSONObject(k);
-                  String propertyDeclarationName =
-                      propertyDefinition.getString("propertyDeclarationName");
+                if (propertyDefinitionsArray != null) {
+                  for (int k = 0; k < propertyDefinitionsArray.length(); k++) {
+                    JSONObject propertyDefinition = propertyDefinitionsArray.getJSONObject(k);
+                    String propertyDeclarationName =
+                        propertyDefinition.getString("propertyDeclarationName");
 
-                  if (propertyName.equals(propertyDeclarationName)) {
-                    PropertyGraph.PropertyDeclaration propertyDeclaration =
-                        propertyGraph.getPropertyDeclaration(propertyDeclarationName);
-                    propertyDefinitionsBuilder.add(
-                        new GraphElementTable.PropertyDefinition(
-                            propertyDeclaration.name,
-                            propertyDefinition.getString("valueExpressionSql")));
-                    break;
+                    if (propertyName.equals(propertyDeclarationName)) {
+                      PropertyGraph.PropertyDeclaration propertyDeclaration =
+                          propertyGraph.getPropertyDeclaration(propertyDeclarationName);
+                      propertyDefinitionsBuilder.add(
+                          new GraphElementTable.PropertyDefinition(
+                              propertyDeclaration.name,
+                              propertyDefinition.getString("valueExpressionSql")));
+                      break;
+                    }
                   }
                 }
               }

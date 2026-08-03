@@ -1,96 +1,88 @@
--- Returns all valid characters in the given charset with their WEIGHT_STRING sort keys.
--- All grouping, ranking and equivalent-char computation is done in Java (see CollationMapper).
--- No window functions are used, making this query fully compatible with MySQL 5.7+.
--- WEIGHT_STRING() has been available since MySQL 5.6.
---
--- charset_replacement_tag  is replaced with the actual charset  name by the Java adapter.
--- collation_replacement_tag is replaced with the actual collation name by the Java adapter.
---
--- weight_non_trailing: sort key for the character when surrounded by 'a' on both sides
---   (forces non-trailing evaluation, so PAD SPACE stripping does not affect this weight).
--- weight_trailing: sort key for the bare character (reflects PAD SPACE semantics for
---   collations that strip trailing spaces).
--- is_empty: 1 if the collation treats this character as invisible at all positions
---   (e.g. control characters such as U+001A in utf8mb4_0900_ai_ci).
--- is_space: 1 if the collation treats this character as equivalent to a trailing space.
+-- In this query, at a high level we sort a sequence of variable length code points as per the collation order of the database to understand how the code points for characters compare for the given collation.
+-- We start with all possible variable length code points which represent a single characters, sort them by the collation order and condense the output to groups.
+-- More details are explained in the query that follows.
+-- Note that although the query appears big it completes in a time < 60 seconds as the db just has to do in-memory sorting of literals.
+-- TODO(vardhanvthigle): Currently this query might not be compatible with MySQl 5.7. Change window functions with inner joins.
 
-SELECT
-    hex_val,
-    charset_char,
-    WEIGHT_STRING(
-        CONCAT(
-            CONVERT('a' USING charset_replacement_tag),
-            charset_char,
-            CONVERT('a' USING charset_replacement_tag)
-        ) COLLATE collation_replacement_tag
-    ) AS weight_non_trailing,
-    WEIGHT_STRING(charset_char COLLATE collation_replacement_tag) AS weight_trailing,
-    (
-        CONCAT(
-            CONVERT('a' USING charset_replacement_tag),
-            charset_char,
-            CONVERT('a' USING charset_replacement_tag)
-        ) = CONCAT(
-            CONVERT('a' USING charset_replacement_tag),
-            CONVERT('a' USING charset_replacement_tag)
-        ) COLLATE collation_replacement_tag
-    ) AS is_empty,
-    (
-        CONCAT(
-            CONVERT('a' USING charset_replacement_tag),
-            charset_char,
-            CONVERT('a' USING charset_replacement_tag)
-        ) = CONCAT(
-            CONVERT('a' USING charset_replacement_tag),
-            CONVERT(' ' USING charset_replacement_tag),
-            CONVERT('a' USING charset_replacement_tag)
-        ) COLLATE collation_replacement_tag
-    ) AS is_space
-FROM (
-    SELECT 
-        hex_val,
-        CONVERT(UNHEX(hex_val) USING utf8mb4) AS utf8_char,
-        CONVERT(CONVERT(UNHEX(hex_val) USING utf8mb4) USING charset_replacement_tag) AS charset_char
-    FROM (
-        /* 4-BYTE UTF-8 */
-        SELECT CONCAT(n1.n, n2.n, n3.n, n4.n, n5.n, n6.n, n7.n, n8.n) AS hex_val
-        FROM (SELECT 'F' AS n) n1
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4') n2
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n3
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n4
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n5
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n6
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n7
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n8
-    
-        UNION ALL
-    
-        /* 3-BYTE UTF-8 */
-        SELECT CONCAT(n1.n, n2.n, n3.n, n4.n, n5.n, n6.n) AS hex_val
-        FROM (SELECT 'E' AS n) n1
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n2
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n3
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n4
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n5
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n6
-    
-        UNION ALL
-    
-        /* 2-BYTE UTF-8 */
-        SELECT CONCAT(n1.n, n2.n, n3.n, n4.n) AS hex_val
-        FROM (SELECT 'C' AS n UNION ALL SELECT 'D') n1
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n2
-        CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B') n3
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n4
-    
-        UNION ALL
-    
-        /* 1-BYTE UTF-8 */
-        SELECT CONCAT(n1.n, n2.n) AS hex_val
-        FROM (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7') n1
-        CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'A' UNION ALL SELECT 'B' UNION ALL SELECT 'C' UNION ALL SELECT 'D' UNION ALL SELECT 'E' UNION ALL SELECT 'F') n2
-    ) AS all_chars
-    HAVING utf8_char IS NOT NULL AND hex_val NOT BETWEEN 'EDA080' AND 'EDBFBF'
-) AS valid_utf8_chars
-WHERE charset_char IS NOT NULL
-  AND (charset_char != '?' OR utf8_char = '?');
+-- Unfortunately we can't use prepared statement to set variable values via jdbc.
+-- The dataflow code will replace the below tags with the actual db charset and collation.
+SET @db_charset = 'charset_replacement_tag';
+SET @db_collation = 'collation_replacement_tag';
+
+
+
+-- Enumerating valid utf8mb4 byte sequences
+-- There are a total of 1,112,064 valid code points within the Unicode codespace.
+-- All of them are generated by this enumeration.
+-- https://en.wikipedia.org/wiki/Unicode#:~:text=There%20are%20a%20total%20of%201112064%20valid%20code%20points%20within%20the%20codespace
+SET @all_chars = '
+SELECT CONCAT(n1.n, n2.n, n3.n, n4.n, n5.n, n6.n, n7.n, n8.n) AS hex_val
+FROM (SELECT ''F'' AS n) n1
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'') n2
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n3
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n4
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n5
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n6
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n7
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n8
+UNION ALL
+SELECT CONCAT(n1.n, n2.n, n3.n, n4.n, n5.n, n6.n) AS hex_val
+FROM (SELECT ''E'' AS n) n1
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n2
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n3
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n4
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n5
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n6
+UNION ALL
+SELECT CONCAT(n1.n, n2.n, n3.n, n4.n) AS hex_val
+FROM (SELECT ''C'' AS n UNION ALL SELECT ''D'') n1
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n2
+CROSS JOIN (SELECT ''8'' AS n UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'') n3
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n4
+UNION ALL
+SELECT CONCAT(n1.n, n2.n) AS hex_val
+FROM (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'') n1
+CROSS JOIN (SELECT ''0'' AS n UNION ALL SELECT ''1'' UNION ALL SELECT ''2'' UNION ALL SELECT ''3'' UNION ALL SELECT ''4'' UNION ALL SELECT ''5'' UNION ALL SELECT ''6'' UNION ALL SELECT ''7'' UNION ALL SELECT ''8'' UNION ALL SELECT ''9'' UNION ALL SELECT ''A'' UNION ALL SELECT ''B'' UNION ALL SELECT ''C'' UNION ALL SELECT ''D'' UNION ALL SELECT ''E'' UNION ALL SELECT ''F'') n2
+';
+
+SET @charset_chars = CONCAT(
+  '(SELECT charset_char FROM ( ',
+    'SELECT hex_val, CONVERT(UNHEX(hex_val) USING utf8mb4) AS utf8_char, ',
+    'CONVERT(CONVERT(UNHEX(hex_val) USING utf8mb4) USING ', @db_charset, ') AS charset_char ',
+    'FROM ( ', @all_chars, ' ) AS all_chars ',
+    'HAVING utf8_char IS NOT NULL AND hex_val NOT BETWEEN ''EDA080'' AND ''EDBFBF'' ',
+  ') AS valid_utf8_chars ',
+  'WHERE charset_char IS NOT NULL AND (HEX(CONVERT(charset_char USING utf8mb4)) != ''3F'' OR hex_val = ''3F'') ',
+')');
+
+
+SET @SPACE=CONCAT('CONVERT('' '' USING ', @db_charset,')');
+SET @ALPHABET=CONCAT('CONVERT(''a'' USING ', @db_charset,')');
+SET @ALPHABET_PAIR=CONCAT('CONCAT(', @ALPHABET, ',', @ALPHABET, ')');
+SET @SPACE_BETWEEN_ALPHABET=CONCAT('CONCAT(',@ALPHABET,',',@SPACE,',',@ALPHABET, ')');
+SET @CHAR_BETWEEN_ALPHABET=CONCAT('CONCAT(', @ALPHABET , ',', 'charset_char,', @ALPHABET, ')');
+SET @CHECK_SPACE=CONCAT(@CHAR_BETWEEN_ALPHABET, ' = ', @SPACE_BETWEEN_ALPHABET, ' COLLATE ', @db_collation);
+SET @CHECK_EMPTY=CONCAT(@CHAR_BETWEEN_ALPHABET, ' = ', @ALPHABET_PAIR, ' COLLATE ', @db_collation);
+
+
+-- Get the characters with their codepoints.
+SET @charset_chars_with_codepoints = CONCAT(
+    'SELECT ',
+    '  CONV(HEX(CONVERT(charset_char using ', @db_charset ,' )), 16, 10) AS codepoint, charset_char, ',
+    @CHAR_BETWEEN_ALPHABET, ' AS charset_char_non_trailing,',
+     @CHECK_EMPTY,' AS is_empty,',
+     @CHECK_SPACE, ' AS is_space ',
+    '  FROM (', @charset_chars, ') AS charset_with_codepoints_query '
+);
+
+SET @output_query = CONCAT(
+  ' SELECT *, ',
+  '   WEIGHT_STRING(', @CHAR_BETWEEN_ALPHABET, ' COLLATE ', @db_collation, ') AS weight_non_trailing, ',
+  '   WEIGHT_STRING(charset_char COLLATE ', @db_collation, ') AS weight_trailing ',
+  ' FROM (', @charset_chars_with_codepoints, ' ) AS output_query ',
+  ' ORDER BY CAST(codepoint AS SIGNED) '
+);
+
+PREPARE stmt FROM @output_query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

@@ -43,6 +43,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -147,7 +148,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -242,7 +243,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -306,7 +307,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -363,7 +364,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -413,7 +414,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
     // Missing first_name and last_name which are PKs
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -484,9 +485,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 200L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 200L);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -612,9 +613,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 10000L); // older than shadow
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 10000L); // older than shadow
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 100L);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -700,9 +701,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 10000L); // older than shadow
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 10000L); // older than shadow
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 100L);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -827,9 +828,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 15000L);
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 150L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 15000L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 150L);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -988,7 +989,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 123);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 123);
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
@@ -1038,7 +1039,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
@@ -1104,7 +1105,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
@@ -1167,7 +1168,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
     Ddl ddl = getTestDdl();
@@ -1232,7 +1233,7 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -1330,9 +1331,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 10000L);
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 10000L);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 100L);
     outputObject.put("_metadata_timestamp", 12345L);
     outputObject.put("_metadata_read_timestamp", 12346L);
     outputObject.put("_metadata_dataflow_timestamp", 12347L);
@@ -1527,9 +1528,9 @@ public class SpannerTransactionWriterDoFnTest {
     outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     outputObject.put("id", "123");
     outputObject.put("name", "Test");
-    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
-    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
-    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 100);
 
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());

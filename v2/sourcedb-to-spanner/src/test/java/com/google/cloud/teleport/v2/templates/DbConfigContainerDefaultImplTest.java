@@ -19,8 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.source.reader.IoWrapperFactory;
-import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.reader.IoWrapperFactory;
+import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;

@@ -26,6 +26,10 @@ public class DMLGeneratorResponse {
     this.dmlStatement = dmlStatement;
   }
 
+  public boolean isEmpty() {
+    return dmlStatement == null || dmlStatement.isEmpty();
+  }
+
   public DMLGeneratorResponse(String dmlStatement) {
     this.dmlStatement = dmlStatement;
   }

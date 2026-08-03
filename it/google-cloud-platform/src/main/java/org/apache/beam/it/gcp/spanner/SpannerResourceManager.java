@@ -202,7 +202,14 @@ public final class SpannerResourceManager implements ResourceManager {
       try {
         InstanceInfo instanceInfo =
             InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
-                .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
+                .setInstanceConfigId(
+                    InstanceConfigId.of(
+                        projectId,
+                        (region.startsWith("nam")
+                                || region.startsWith("eur")
+                                || region.startsWith("asia"))
+                            ? region
+                            : "regional-" + region))
                 .setDisplayName(instanceId)
                 .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
                 .setNodeCount(nodeCount)
@@ -637,6 +644,10 @@ public final class SpannerResourceManager implements ResourceManager {
     } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Error occurred while reading table records.", e);
     }
+  }
+
+  public List<String> getDatabaseDdl() {
+    return databaseAdminClient.getDatabaseDdl(instanceId, databaseId);
   }
 
   /**

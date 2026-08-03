@@ -561,6 +561,7 @@ public class AvroToValueMapperTest {
     assertThat(
             AvroToValueMapper.getGsqlMap().keySet().stream()
                 .filter(t -> !t.getCode().equals(Code.ARRAY))
+                .filter(t -> !t.getCode().equals(Code.UUID))
                 .map(t -> t.toString())
                 .sorted()
                 .collect(Collectors.toList()))

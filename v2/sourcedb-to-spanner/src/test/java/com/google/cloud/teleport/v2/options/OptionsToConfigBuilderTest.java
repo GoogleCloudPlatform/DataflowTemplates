@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.options;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
@@ -315,22 +315,6 @@ public class OptionsToConfigBuilderTest {
   }
 
   @Test
-  public void testMySqlSetCursorModeIfNeeded() {
-    assertThat(
-            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
-                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
-    assertThat(
-            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
-                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", null))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
-    assertThat(
-            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
-                SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
-  }
-
-  @Test
   public void testExtractWorkerZone() {
     DataflowPipelineWorkerPoolOptions mockOptions =
         Mockito.mock(DataflowPipelineWorkerPoolOptions.class);
@@ -365,43 +349,5 @@ public class OptionsToConfigBuilderTest {
             options, List.of("table1"), null, null);
 
     assertThat(config.maxFetchSize()).isNull();
-  }
-
-  @Test
-  public void testMySqlCursorModeEnabledForNullFetchSize() {
-    String url = "jdbc:mysql://localhost:3306/testDB";
-    String updatedUrl =
-        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, null);
-    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
-  }
-
-  @Test
-  public void testMySqlCursorModeEnabledForMinusOneFetchSize() {
-    // Note: In the builder, -1 is normalized to null BEFORE calling
-    // mysqlSetCursorModeIfNeeded,
-    // but here we test the method directly. If we pass -1 directly (if it were
-    // possible),
-    // it would be treated as != 0, so it would enable cursor mode.
-    // However, the main propagation test testFetchSizeMinusOneBehavesLikeNull
-    // covers the normalization.
-    String url = "jdbc:mysql://localhost:3306/testDB";
-    String updatedUrl =
-        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, -1);
-    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
-  }
-
-  @Test
-  public void testMySqlCursorModeDisabledForZeroFetchSize() {
-    String url = "jdbc:mysql://localhost:3306/testDB";
-    String updatedUrl = OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, 0);
-    assertThat(updatedUrl).isEqualTo(url); // No change
-  }
-
-  @Test
-  public void testMySqlCursorModeEnabledForPositiveFetchSize() {
-    String url = "jdbc:mysql://localhost:3306/testDB";
-    String updatedUrl =
-        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, 100);
-    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
   }
 }

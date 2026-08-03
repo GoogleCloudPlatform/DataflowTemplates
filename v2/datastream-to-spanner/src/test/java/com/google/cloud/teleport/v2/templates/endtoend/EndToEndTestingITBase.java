@@ -289,21 +289,23 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   protected void createAndUploadShardContextFileToGcs(
       Map<String, Map<String, String>> streamDbMapping, GcsResourceManager gcsResourceManager) {
-    JSONObject shardConfig = new JSONObject();
-    JSONObject streams = new JSONObject();
+    JSONObject config = new JSONObject();
+    JSONArray shardConfigs = new JSONArray();
 
     for (String stream : streamDbMapping.keySet()) {
-      JSONObject dbs = new JSONObject();
       for (String db : streamDbMapping.get(stream).keySet()) {
-        dbs.put(db, streamDbMapping.get(stream).get(db));
+        JSONObject shardConfig = new JSONObject();
+        shardConfig.put("streamId", stream);
+        shardConfig.put("dbName", db);
+        shardConfig.put("logicalShardId", streamDbMapping.get(stream).get(db));
+        shardConfigs.put(shardConfig);
       }
-      streams.put(stream, dbs);
     }
 
-    shardConfig.put("StreamToDbAndShardMap", streams);
-    String shardFileContents = shardConfig.toString();
-    LOG.info("Shard context file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/sharding-context.json", shardFileContents);
+    config.put("shardConfigs", shardConfigs);
+    String shardFileContents = config.toString();
+    LOG.info("Shard config file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/sharding-config.conf", shardFileContents);
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -475,8 +477,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
               .addParameter("inputFileFormat", "avro")
               .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
               .addParameter(
-                  "shardingContextFilePath",
-                  getGcsPath("input/sharding-context.json", gcsResourceManager))
+                  "sourceConfigURL", getGcsPath("input/sharding-config.conf", gcsResourceManager))
               .addEnvironmentVariable(
                   "additionalExperiments", Collections.singletonList("use_runner_v2"))
               .build();

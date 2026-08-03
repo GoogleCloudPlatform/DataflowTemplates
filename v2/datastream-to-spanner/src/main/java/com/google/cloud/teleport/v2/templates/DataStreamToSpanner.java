@@ -36,16 +36,20 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverride
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -55,6 +59,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -494,13 +499,13 @@ public class DataStreamToSpanner {
     @TemplateParameter.GcsReadFile(
         order = 29,
         optional = true,
+        description = "Source Config URL",
         helpText =
-            "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
-                + "It expects a JSON file with the format: {\\\"StreamToDbAndShardMap\\\": Map<stream_name, Map<db_name, shard_id>>}",
-        description = "Sharding context file path in cloud storage")
-    String getShardingContextFilePath();
+            "Cloud Storage path to a shard config file for sharded migrations. It expects a HOCON or JSON file. For a sample file, please refer to v2/datastream-to-spanner/src/test/resources/DatastreamToSpannerSingleDFShardedMigrationIT/sharding-config.conf in the repository. For example, `gs://my-bucket/my-shard-config.conf`.",
+        example = "gs://my-bucket/my-shard-config.conf")
+    String getSourceConfigURL();
 
-    void setShardingContextFilePath(String value);
+    void setSourceConfigURL(String value);
 
     @TemplateParameter.Text(
         order = 30,
@@ -589,12 +594,13 @@ public class DataStreamToSpanner {
       return;
     }
     String sourceType = getSourceType(options);
-    if (!DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES.contains(sourceType)) {
+    if (!DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes()
+        .contains(sourceType)) {
       throw new IllegalArgumentException(
           "Unsupported source type found: "
               + sourceType
               + ". Specify one of the following source types: "
-              + DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES);
+              + DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes());
     }
     options.setDatastreamSourceType(sourceType);
   }
@@ -620,15 +626,12 @@ public class DataStreamToSpanner {
   }
 
   static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
-    if (sourceConfig.getMysqlSourceConfig() != null) {
-      return DatastreamConstants.MYSQL_SOURCE_TYPE;
-    } else if (sourceConfig.getOracleSourceConfig() != null) {
-      return DatastreamConstants.ORACLE_SOURCE_TYPE;
-    } else if (sourceConfig.getPostgresqlSourceConfig() != null) {
-      return DatastreamConstants.POSTGRES_SOURCE_TYPE;
+    try {
+      return DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(sourceConfig);
+    } catch (IllegalArgumentException e) {
+      LOG.error("Source Connection Profile Type Not Supported", e);
+      throw e;
     }
-    LOG.error("Source Connection Profile Type Not Supported");
-    throw new IllegalArgumentException("Unsupported source connection profile type in Datastream");
   }
 
   /**
@@ -814,8 +817,7 @@ public class DataStreamToSpanner {
             options.getTransformationContextFilePath());
 
     // Ingest sharding context file into memory.
-    ShardingContext shardingContext =
-        ShardingContextReader.getShardingContext(options.getShardingContextFilePath());
+    ShardingContext shardingContext = getShardingContext(options);
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(
@@ -862,12 +864,25 @@ public class DataStreamToSpanner {
             ? tempLocation + "filteredEvents/"
             : options.getFilteredEventsDirectory();
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
+    TextIO.Write filterEventsWrite;
+    if (options.getRunner() != null && options.getRunner().getSimpleName().equals("DirectRunner")) {
+      // DirectRunner does not support dynamic sharding for unbounded PCollections
+      filterEventsWrite =
+          TextIO.write()
+              .to(filterEventsDirectory)
+              .withSuffix(".json")
+              .withWindowedWrites()
+              .withNumShards(20);
+    } else {
+      // Cloud Dataflow natively supports dynamic sharding
+      filterEventsWrite =
+          TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites();
+    }
+
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
         .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
-        .apply(
-            "Write Filtered Events To GCS",
-            TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
+        .apply("Write Filtered Events To GCS", filterEventsWrite);
 
     spannerConfig =
         SpannerServiceFactoryImpl.createSpannerService(
@@ -938,6 +953,34 @@ public class DataStreamToSpanner {
                 .setIncludePaneInfo(true)
                 .build());
     return pipeline;
+  }
+
+  static ShardingContext getShardingContext(Options options) {
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext = new ShardingContext();
+    if (options.getSourceConfigURL() != null && !options.getSourceConfigURL().isEmpty()) {
+      try {
+        SourceConfigParser parser = new SourceConfigParser(new SecretManagerAccessorImpl());
+        SourceConnectionConfig sourceConfig =
+            parser.parseConfiguration(
+                getSourceType(options), options.getSourceConfigURL(), /* resolveSecrets= */ false);
+
+        if (sourceConfig instanceof JdbcShardConfig jdbcShardConfig) {
+          List<Shard> shards = jdbcShardConfig.getShardConfigs();
+          Map<String, Map<String, String>> streamToDbAndShardMap = new HashMap<>();
+          for (Shard shard : shards) {
+            // TO-DO: add checks in SourceConfigParser to ensure not null fields.
+            streamToDbAndShardMap
+                .computeIfAbsent(shard.getStreamId(), k -> new HashMap<>())
+                .put(shard.getDbName(), shard.getLogicalShardId());
+          }
+          shardingContext = new ShardingContext(streamToDbAndShardMap);
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to parse source config URL", e);
+      }
+    }
+    return shardingContext;
   }
 
   static SpannerConfig getShadowTableSpannerConfig(Options options) {

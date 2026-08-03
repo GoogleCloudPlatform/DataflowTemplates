@@ -215,7 +215,9 @@ public class GenericRecordTypeConvertor {
         throw e;
       } catch (Exception e) {
         throw new RuntimeException(
-            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
+            String.format(
+                "Unable to convert spanner value for spanner col: %s. table: %s",
+                spannerColName, srcTableName),
             e);
       }
     }

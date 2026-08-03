@@ -1,0 +1,58 @@
+template:
+  name: "Iceberg_To_AlloyDB_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg to AlloyDB (YAML)"
+  description: >
+    The Iceberg to AlloyDB template is a batch pipeline that reads data from an Iceberg table
+    and outputs the records to an AlloyDB database table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergToAlloyDB.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/alloydb_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Iceberg table must exist and be accessible through the provided catalog.",
+     "The Output AlloyDB instance must exist and the target table must exist or be created."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+    - "alloydb_options"
+
+  parameters:
+    - iceberg_common_options
+    - iceberg_read_options
+    - alloydb_common_options
+    - alloydb_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+
+    - type: WriteToPostgres
+      name: WriteToAlloyDB
+      config:
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        query: {{ query }}
+        connection_properties: {{ connectionProperties }}
+        table: {{ alloydbTable }}
+        batch_size: {{ batchSize }}
+        autosharding: {{ autosharding }}
+
+options:
+  streaming: false

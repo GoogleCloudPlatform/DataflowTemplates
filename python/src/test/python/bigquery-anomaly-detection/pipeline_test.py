@@ -41,7 +41,9 @@ from bqmonitor.pipeline import _FormatAnomalyAsJson
 from bqmonitor.pipeline import _FormatResultForBQ
 from bqmonitor.pipeline import _is_outlier
 from bqmonitor.pipeline import _key_anomaly_for_async
+from bqmonitor.pipeline import _nest_key_for_webhook_id
 from bqmonitor.pipeline import _parse_detector_spec
+from bqmonitor.pipeline import _unnest_key_for_webhook_id
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _parse_webhook_spec
 from bqmonitor.pipeline import _PostAnomalyToWebhook
@@ -1059,6 +1061,34 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
     self.assertEqual(
         dofn._session.calls[0]['json']['q'], 'k=campaign_search')
 
+  def test_nested_keyed_element_substitutes_key(self):
+    """Production shape: (key, (key, result)) from _nest_key_for_webhook_id
+    so AsyncWrapper's id_fn can include the key. The DoFn must unwrap the
+    inner pair and still substitute {key} correctly."""
+    dofn = self._make_dofn({'q': 'k={key}'})
+    result = self._make_result(label=1)
+    dofn.process(('campaign_search', ('campaign_search', result)))
+    self.assertEqual(
+        dofn._session.calls[0]['json']['q'], 'k=campaign_search')
+
+  def test_nested_unkeyed_sentinel_renders_empty_key(self):
+    """Unkeyed pipelines carry the sentinel key through the nesting; it
+    must still render {key} as empty, exactly like a bare element."""
+    dofn = self._make_dofn({'q': 'k=[{key}]'})
+    result = self._make_result(label=1)
+    dofn.process((_UNKEYED_SENTINEL, (_UNKEYED_SENTINEL, result)))
+    self.assertEqual(dofn._session.calls[0]['json']['q'], 'k=[]')
+
+  def test_nested_unkeyed_default_anomaly_message(self):
+    """The nested unkeyed shape must produce the same {anomaly_message}
+    as a bare element."""
+    dofn = self._make_dofn({'q': '{anomaly_message}'})
+    result = self._make_result(label=1, value=12.0)
+    dofn.process((_UNKEYED_SENTINEL, (_UNKEYED_SENTINEL, result)))
+    body_q = dofn._session.calls[0]['json']['q']
+    self.assertIn('Anomaly detected', body_q)
+    self.assertIn('value=12.0', body_q)
+
   def test_headers_substituted(self):
     dofn = self._make_dofn(
         {'q': 'x'},
@@ -1235,7 +1265,15 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
 
 
 class AnomalyIdTest(unittest.TestCase):
-  """Tests for _anomaly_id used by AsyncWrapper for per-element dedup."""
+  """Tests for _anomaly_id used by AsyncWrapper for per-element dedup.
+
+  _anomaly_id receives the ``(key, AnomalyResult)`` pair that
+  ``_nest_key_for_webhook_id`` copies into the element value. The key
+  must participate in the identity: AsyncWrapper tracks in-flight work
+  in a worker-global map indexed by this id alone, so without the key
+  two group-by keys anomalous in the same window with the same detector
+  would collide — one alert silently dropped, the other posted twice.
+  """
 
   def _result(self, ws=1000, we=1001, model_id='ZScore', value=42.0):
     row = beam.Row(
@@ -1243,24 +1281,67 @@ class AnomalyIdTest(unittest.TestCase):
     pred = AnomalyPrediction(model_id=model_id, score=1.0, label=1)
     return AnomalyResult(example=row, predictions=[pred])
 
-  def test_stable_for_same_anomaly(self):
-    a = self._result()
-    b = self._result()
+  def test_keyed_stable_for_same_anomaly(self):
+    a = ("('search',)", self._result())
+    b = ("('search',)", self._result())
     self.assertEqual(_anomaly_id(a), _anomaly_id(b))
+
+  def test_unkeyed_stable_for_same_anomaly(self):
+    a = (_UNKEYED_SENTINEL, self._result())
+    b = (_UNKEYED_SENTINEL, self._result())
+    self.assertEqual(_anomaly_id(a), _anomaly_id(b))
+
+  def test_differs_by_key(self):
+    """Regression for the AsyncWrapper cross-key collision: two group-by
+    keys anomalous in the SAME window with the SAME detector must get
+    distinct ids, otherwise AsyncWrapper's worker-global in-flight map
+    aliases them (one webhook post dropped, the other duplicated)."""
+    self.assertNotEqual(
+        _anomaly_id(("('search',)", self._result())),
+        _anomaly_id(("('display',)", self._result())))
+
+  def test_keyed_differs_from_unkeyed(self):
+    self.assertNotEqual(
+        _anomaly_id(("('search',)", self._result())),
+        _anomaly_id((_UNKEYED_SENTINEL, self._result())))
 
   def test_differs_by_window(self):
     self.assertNotEqual(
-        _anomaly_id(self._result(ws=1000)),
-        _anomaly_id(self._result(ws=2000)))
+        _anomaly_id(('k1', self._result(ws=1000))),
+        _anomaly_id(('k1', self._result(ws=2000))))
 
   def test_differs_by_model_id(self):
     self.assertNotEqual(
-        _anomaly_id(self._result(model_id='ZScore')),
-        _anomaly_id(self._result(model_id='IQR')))
+        _anomaly_id(('k1', self._result(model_id='ZScore'))),
+        _anomaly_id(('k1', self._result(model_id='IQR'))))
 
   def test_hashable(self):
     # AsyncWrapper stores ids as dict keys, so they must be hashable.
-    hash(_anomaly_id(self._result()))
+    hash(_anomaly_id(("('search',)", self._result())))
+    hash(_anomaly_id((_UNKEYED_SENTINEL, self._result())))
+
+
+class NestKeyForWebhookIdTest(unittest.TestCase):
+  """Tests for _nest_key_for_webhook_id, which copies the element key
+  into the value so AsyncWrapper's id_fn (which only ever sees the
+  value) can include it in the dedup identity."""
+
+  def test_keyed(self):
+    out = _nest_key_for_webhook_id(("('search',)", 'val'))
+    self.assertEqual(out, ("('search',)", ("('search',)", 'val')))
+
+  def test_unkeyed_sentinel(self):
+    out = _nest_key_for_webhook_id((_UNKEYED_SENTINEL, 'val'))
+    self.assertEqual(out, (_UNKEYED_SENTINEL, (_UNKEYED_SENTINEL, 'val')))
+
+  def test_unnest_round_trips_keyed(self):
+    nested = _nest_key_for_webhook_id(("('search',)", 'val'))
+    self.assertEqual(
+        _unnest_key_for_webhook_id(nested), ("('search',)", 'val'))
+
+  def test_unnest_round_trips_unkeyed_to_none(self):
+    nested = _nest_key_for_webhook_id((_UNKEYED_SENTINEL, 'val'))
+    self.assertEqual(_unnest_key_for_webhook_id(nested), (None, 'val'))
 
 
 class KeyAnomalyForAsyncTest(unittest.TestCase):
@@ -1392,7 +1473,11 @@ class AsyncWebhookWiringTest(unittest.TestCase):
 
   def test_outlier_posts_via_async_wrapper(self):
     async_dofn, _, stub = self._build({'q': 'value={value}'})
-    msg = ('k1', self._make_result(label=1, value=99.0))
+    # NestKeyForWebhookId copies the key into the value
+    # so _anomaly_id (AsyncWrapper's id_fn, which only sees the value)
+    # can include it.
+    result_obj = self._make_result(label=1, value=99.0)
+    msg = ('k1', ('k1', result_obj))
     state = _FakeBagState([])
     timer = _FakeTimer(0)
 

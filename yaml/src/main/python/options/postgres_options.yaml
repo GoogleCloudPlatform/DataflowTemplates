@@ -93,7 +93,7 @@ options:
         type: integer
         default: 1000
       - order: 2
-        name: "autosharding"
+        name: "autoSharding"
         description: "If true, enables using a dynamically determined number of shards to write."
         help: "If true, a dynamic number of shards will be used for writing."
         example: false

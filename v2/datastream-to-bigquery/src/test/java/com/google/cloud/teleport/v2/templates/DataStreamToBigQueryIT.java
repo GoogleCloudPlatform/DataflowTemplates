@@ -55,11 +55,13 @@ import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
+import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -81,7 +83,8 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
 
   enum JDBCType {
     MYSQL,
-    ORACLE
+    ORACLE,
+    POSTGRES
   }
 
   // TODO: Decrease timeout. Currently need to wait for long to make sure results are propagated.
@@ -120,7 +123,16 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
             + "  if (data['_metadata_retry_count'] === undefined) {\n"
             + "    throw 'You shall not pass!';\n"
             + "  }\n"
-            + "  data['NAME'] = data['NAME'].toUpperCase();\n"
+            + "  var nameKey = null;\n"
+            + "  for (var key in data) {\n"
+            + "    if (key.toUpperCase() === 'NAME') {\n"
+            + "      nameKey = key;\n"
+            + "      break;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  if (nameKey && data[nameKey]) {\n"
+            + "    data[nameKey] = data[nameKey].toUpperCase();\n"
+            + "  }\n"
             + "  return JSON.stringify(data);\n"
             + "}");
 
@@ -188,6 +200,17 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  public void testDataStreamPostgresToBigQuery() throws IOException {
+    simpleJdbcToBigQueryTest(
+        JDBCType.POSTGRES,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", ""));
+  }
+
+  @Test
   public void testDataStreamMySqlToSpannerGCSNotifications() throws IOException {
     // Set up pubsub notifications
     SubscriptionName subscriptionName = createGcsNotifications();
@@ -247,19 +270,27 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
 
     // Create JDBC Resource manager
     cloudSqlResourceManager =
-        jdbcType.equals(JDBCType.MYSQL)
-            ? CloudMySQLResourceManager.builder(testName).build()
-            : CloudOracleResourceManager.builder(testName).build();
+        switch (jdbcType) {
+          case MYSQL -> CloudMySQLResourceManager.builder(testName).build();
+          case POSTGRES -> CloudPostgresResourceManager.builder(testName)
+              .setSchema("public")
+              .build();
+          case ORACLE -> CloudOracleResourceManager.builder(testName).build();
+        };
 
     // Create JDBC tables
-    String tableName = "JDBCTOBIGQUERY_" + RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+    String tableName =
+        switch (jdbcType) {
+          case POSTGRES -> "jdbctobigquery_"
+              + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+          default -> "JDBCTOBIGQUERY_" + RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+        };
     cloudSqlResourceManager.createTable(
         tableName, createJdbcSchema(jdbcType.equals(JDBCType.ORACLE)));
 
-    JDBCSource jdbcSource;
-    if (jdbcType.equals(JDBCType.MYSQL)) {
-      jdbcSource =
-          MySQLSource.builder(
+    JDBCSource jdbcSource =
+        switch (jdbcType) {
+          case MYSQL -> MySQLSource.builder(
                   cloudSqlResourceManager.getHost(),
                   cloudSqlResourceManager.getUsername(),
                   cloudSqlResourceManager.getPassword(),
@@ -267,9 +298,21 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
               .setAllowedTables(
                   Map.of(cloudSqlResourceManager.getDatabaseName(), List.of(tableName)))
               .build();
-    } else {
-      jdbcSource =
-          OracleSource.builder(
+          case POSTGRES -> {
+            CloudPostgresResourceManager.ReplicationInfo replicationInfo =
+                ((CloudPostgresResourceManager) cloudSqlResourceManager).createLogicalReplication();
+            yield PostgresqlSource.builder(
+                    cloudSqlResourceManager.getHost(),
+                    cloudSqlResourceManager.getUsername(),
+                    cloudSqlResourceManager.getPassword(),
+                    cloudSqlResourceManager.getPort(),
+                    cloudSqlResourceManager.getDatabaseName(),
+                    replicationInfo.getReplicationSlotName(),
+                    replicationInfo.getPublicationName())
+                .setAllowedTables(Map.of("public", List.of(tableName)))
+                .build();
+          }
+          case ORACLE -> OracleSource.builder(
                   cloudSqlResourceManager.getHost(),
                   cloudSqlResourceManager.getUsername(),
                   cloudSqlResourceManager.getPassword(),
@@ -280,7 +323,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
                       cloudSqlResourceManager.getUsername().toUpperCase(),
                       List.of(tableName.toUpperCase())))
               .build();
-    }
+        };
 
     // Create a BigQuery table
     List<Field> bqSchemaFields =

@@ -99,6 +99,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     setUpResourceManagers(spannerDdlResource, false);
   }
 
+  protected boolean shouldUsePrivateConnectivity() {
+    return false;
+  }
+
   /**
    * Setup resource managers.
    *
@@ -123,7 +127,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     DatastreamResourceManager.Builder datastreamBuilder =
         DatastreamResourceManager.builder(testName, project, region)
             .setCredentialsProvider(CREDENTIALS_PROVIDER);
-    if (System.getProperty("privateConnectivity") != null) {
+    if (System.getProperty("privateConnectivity") != null && shouldUsePrivateConnectivity()) {
       datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
     }
 

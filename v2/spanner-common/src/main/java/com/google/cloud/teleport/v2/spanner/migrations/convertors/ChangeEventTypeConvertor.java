@@ -71,6 +71,8 @@ public class ChangeEventTypeConvertor {
       case STRING:
       case PG_VARCHAR:
       case PG_TEXT:
+      case UUID:
+      case PG_UUID:
         return Value.string(toString(changeEvent, key, requiredField));
       case NUMERIC:
       case PG_NUMERIC:

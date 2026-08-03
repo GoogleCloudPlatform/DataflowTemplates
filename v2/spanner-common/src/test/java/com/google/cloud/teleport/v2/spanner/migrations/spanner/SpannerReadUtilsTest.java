@@ -121,6 +121,9 @@ public class SpannerReadUtilsTest {
             .column("date_field")
             .pgDate()
             .endColumn()
+            .column("pg_uuid_field")
+            .pgUuid()
+            .endColumn()
             .column("version")
             .pgInt8()
             .endColumn()
@@ -133,6 +136,7 @@ public class SpannerReadUtilsTest {
             .asc("bytea_field")
             .asc("timestamptz_field")
             .asc("date_field")
+            .asc("pg_uuid_field")
             .end()
             .endTable()
             .build();
@@ -146,6 +150,7 @@ public class SpannerReadUtilsTest {
     ByteArray bytesValue = ByteArray.copyFrom("test_bytes");
     Timestamp timestampValue = Timestamp.ofTimeMicroseconds(1234567);
     Date dateValue = Date.fromYearMonthDay(2024, 1, 1);
+    String uuidValue = "123e4567-e89b-12d3-a456-426614174000";
 
     Key primaryKey =
         Key.of(
@@ -156,7 +161,8 @@ public class SpannerReadUtilsTest {
             textValue,
             bytesValue,
             timestampValue,
-            dateValue);
+            dateValue,
+            uuidValue);
 
     // 3. Generate the Statement
     Statement stmt =
@@ -171,7 +177,7 @@ public class SpannerReadUtilsTest {
             + "\" WHERE "
             + "\"bool_field\"=$1 AND \"int_field\"=$2 AND \"float_field\"=$3 AND "
             + "\"numeric_field\"=$4 AND \"text_field\"=$5 AND \"bytea_field\"=$6 AND "
-            + "\"timestamptz_field\"=$7 AND \"date_field\"=$8";
+            + "\"timestamptz_field\"=$7 AND \"date_field\"=$8 AND \"pg_uuid_field\"=$9";
 
     assertEquals(expectedSql, stmt.getSql());
 
@@ -186,6 +192,7 @@ public class SpannerReadUtilsTest {
     assertEquals(Value.bytes(bytesValue), params.get("p6"));
     assertEquals(Value.timestamp(timestampValue), params.get("p7"));
     assertEquals(Value.date(dateValue), params.get("p8"));
+    assertEquals(Value.string(uuidValue), params.get("p9"));
   }
 
   @Test

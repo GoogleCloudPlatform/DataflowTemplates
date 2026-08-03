@@ -41,6 +41,8 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
   private final SpannerConfig spannerConfig;
   private final PCollectionView<List<String>> pendingDDLStatements;
   private final ValueProvider<Boolean> waitForApply;
+  private final ValueProvider<Boolean> runInParallel;
+  private final String statementType;
   private static final Logger LOG = LoggerFactory.getLogger(ApplyDDLTransform.class);
 
   /**
@@ -49,14 +51,20 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
    * @param spannerConfig the spanner config for database.
    * @param pendingDDLStatements the list of pending DDL statements to be applied.
    * @param waitForApply wait till all the ddl statements are committed.
+   * @param runInParallel execute the DDL statements in parallel.
+   * @param statementType the type of the DDL statements (e.g., "index").
    */
   public ApplyDDLTransform(
       SpannerConfig spannerConfig,
       PCollectionView<List<String>> pendingDDLStatements,
-      ValueProvider<Boolean> waitForApply) {
+      ValueProvider<Boolean> waitForApply,
+      ValueProvider<Boolean> runInParallel,
+      String statementType) {
     this.spannerConfig = spannerConfig;
     this.pendingDDLStatements = pendingDDLStatements;
     this.waitForApply = waitForApply;
+    this.runInParallel = runInParallel;
+    this.statementType = statementType;
   }
 
   @Override
@@ -86,15 +94,34 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
                     List<String> statements = c.sideInput(pendingDDLStatements);
                     LOG.info("Applying DDL statements: {}", statements);
                     if (!statements.isEmpty()) {
-                      // This just kicks off the applying the DDL statements.
-                      // It does not wait for it to complete.
-                      OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+                      if ("index".equalsIgnoreCase(statementType)
+                          && Boolean.TRUE.equals(runInParallel.get())) {
+                        executeInParallel(databaseAdminClient, statements);
+                      } else {
+                        executeBatched(databaseAdminClient, statements);
+                      }
+                    }
+                    c.output(ddl);
+                  }
+
+                  private void executeInParallel(
+                      DatabaseAdminClient databaseAdminClient, List<String> statements) {
+                    LOG.info(
+                        "Applying {} {} DDL statements in parallel mode.",
+                        statements.size(),
+                        statementType);
+                    List<OperationFuture<Void, UpdateDatabaseDdlMetadata>> operations =
+                        new java.util.ArrayList<>();
+                    for (String statement : statements) {
+                      operations.add(
                           databaseAdminClient.updateDatabaseDdl(
                               spannerConfig.getInstanceId().get(),
                               spannerConfig.getDatabaseId().get(),
-                              statements,
-                              null);
-                      if (waitForApply.get()) {
+                              java.util.Arrays.asList(statement),
+                              null));
+                    }
+                    if (waitForApply.get()) {
+                      for (OperationFuture<Void, UpdateDatabaseDdlMetadata> op : operations) {
                         try {
                           op.get();
                         } catch (InterruptedException | ExecutionException e) {
@@ -102,7 +129,29 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
                         }
                       }
                     }
-                    c.output(ddl);
+                  }
+
+                  private void executeBatched(
+                      DatabaseAdminClient databaseAdminClient, List<String> statements) {
+                    LOG.info(
+                        "Applying {} {} DDL statements in batched mode.",
+                        statements.size(),
+                        statementType);
+                    // This just kicks off the applying the DDL statements.
+                    // It does not wait for it to complete.
+                    OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+                        databaseAdminClient.updateDatabaseDdl(
+                            spannerConfig.getInstanceId().get(),
+                            spannerConfig.getDatabaseId().get(),
+                            statements,
+                            null);
+                    if (waitForApply.get()) {
+                      try {
+                        op.get();
+                      } catch (InterruptedException | ExecutionException e) {
+                        throw new RuntimeException(e);
+                      }
+                    }
                   }
                 })
             .withSideInputs(pendingDDLStatements));

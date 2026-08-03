@@ -383,6 +383,18 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     return rows;
   }
 
+  private List<Map<String, Object>> createUuidPkRows(Object... values) {
+    List<Object> vals = Arrays.asList(values);
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = 0; i < vals.size(); i++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("id", vals.get(i));
+      row.put("col", vals.get(i));
+      rows.add(row);
+    }
+    return rows;
+  }
+
   private List<String> getAllowedTables() {
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
     List<String> tableNames = new ArrayList<>(expectedData.size() + UNSUPPORTED_TYPE_TABLES.size());
@@ -607,6 +619,10 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         createRows("1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
     result.put("timestamp_without_time_zone", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
     result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+    result.put(
+        "uuid_pk",
+        createUuidPkRows(
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
     result.put("varbit", createRows("wA==", "NULL"));
     result.put("varbit_to_string", createRows("wA==", "NULL"));

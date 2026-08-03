@@ -34,7 +34,7 @@ import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.Computed;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.EmbeddedCassandra;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.EmbeddedCassandra;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;

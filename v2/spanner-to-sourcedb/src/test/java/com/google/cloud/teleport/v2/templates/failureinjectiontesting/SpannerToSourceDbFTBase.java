@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -102,11 +103,10 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
     shard.setPassword(cloudSqlResourceManager.getPassword());
     shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
     shard.setDbName(cloudSqlResourceManager.getDatabaseName());
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(Collections.singletonList(shard));
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
@@ -116,7 +116,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
       List<CloudSqlResourceManager> cloudSqlResourceManagers,
       String privateHost,
       List<String> logicalShardIds) {
-    JsonArray ja = new JsonArray();
+    List<Shard> shardConfigs = new ArrayList<>();
     for (int i = 0; i < cloudSqlResourceManagers.size(); ++i) {
       Shard shard = new Shard();
       shard.setLogicalShardId(logicalShardIds.get(i));
@@ -126,11 +126,12 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
       shard.setPassword(cloudSqlResourceManager.getPassword());
       shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
       shard.setDbName(cloudSqlResourceManager.getDatabaseName());
-      JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-      ja.add(jsObj);
+      shardConfigs.add(shard);
     }
-    String shardFileContents = ja.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shardConfigs);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }

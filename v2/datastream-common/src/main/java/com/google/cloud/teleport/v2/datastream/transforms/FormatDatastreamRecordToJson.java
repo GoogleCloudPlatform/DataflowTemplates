@@ -285,13 +285,23 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.getSchema().getField("primary_keys") == null
-        || sourceMetadata.get("primary_keys") == null) {
+    if (sourceMetadata == null) {
       return null;
     }
 
-    JsonNode dataInput = getSourceMetadataJson(record);
-    return dataInput.get("primary_keys");
+    // Try primary_keys first (MySQL, Oracle, PostgreSQL)
+    if (sourceMetadata.getSchema().getField("primary_keys") != null
+        && sourceMetadata.get("primary_keys") != null) {
+      return getSourceMetadataJson(record).get("primary_keys");
+    }
+
+    // Fallback to replication_index for SQL Server
+    if (sourceMetadata.getSchema().getField("replication_index") != null
+        && sourceMetadata.get("replication_index") != null) {
+      return getSourceMetadataJson(record).get("replication_index");
+    }
+
+    return null;
   }
 
   private String getUUID() {

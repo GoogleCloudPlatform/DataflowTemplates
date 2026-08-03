@@ -313,7 +313,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       LOG.info(
           "Uploading sharding context file from resource: {}", shardingContextFileResourceName);
       gcsResourceManager.uploadArtifact(
-          gcsPathPrefix + "/shardingContext.json",
+          gcsPathPrefix + "/shardingConfig.conf",
           Resources.getResource(shardingContextFileResourceName).getPath());
     } else {
       LOG.info("No sharding context file provided, skipping upload.");
@@ -398,8 +398,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     if (shardingContextFileResourceName != null) {
       params.put(
-          "shardingContextFilePath",
-          getGcsPath(gcsPathPrefix + "/shardingContext.json", gcsResourceManager));
+          "sourceConfigURL",
+          getGcsPath(gcsPathPrefix + "/shardingConfig.conf", gcsResourceManager));
     }
 
     if (customTransformation != null) {
