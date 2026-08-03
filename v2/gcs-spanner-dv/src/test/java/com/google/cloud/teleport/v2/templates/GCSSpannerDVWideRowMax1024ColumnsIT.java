@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -40,7 +40,7 @@ import org.junit.runners.JUnit4;
  * identical in both Avro and Spanner (MATCH). The second uses the same PK but with differing data
  * in the 1024th column, resulting in 1 MISMATCHED_PAYLOAD record.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
@@ -91,6 +91,9 @@ public class GCSSpannerDVWideRowMax1024ColumnsIT extends GCSSpannerDVITBase {
     List<GenericRecord> records = List.of(matchedAvro.build(), mismatchedAvro.build());
     uploadAvroFileToGcs("input/1024_columns.avro", tableDef.schema, records);
     spannerResourceManager.write(List.of(matchedSpanner.build(), mismatchedSpanner.build()));
+
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
