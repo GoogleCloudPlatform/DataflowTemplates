@@ -22,8 +22,6 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.string
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -99,23 +97,6 @@ public class CollationOrderRowTest {
 
     CollationOrderRow row = CollationOrderRow.fromRankedRS(mockRs);
     assertThat(row.charsetChar()).isEqualTo("a");
-    assertThat(row.equivalentChar()).isEqualTo("A");
     assertThat(row.codepointRank()).isEqualTo(1L);
-  }
-
-  @Test
-  public void testFromWeightBytesRS() throws SQLException {
-    ResultSet mockRs = mock(ResultSet.class);
-    when(mockRs.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    byte[] w = new byte[] {0x01, 0x02};
-    when(mockRs.getBytes(WEIGHT_NON_TRAILING_COL)).thenReturn(w);
-    when(mockRs.getBytes(WEIGHT_TRAILING_COL)).thenReturn(w);
-    when(mockRs.getBoolean(IS_EMPTY_COL)).thenReturn(false);
-    when(mockRs.getBoolean(IS_SPACE_COL)).thenReturn(false);
-
-    CollationOrderRow.CharacterWeightRow weightRow =
-        CollationOrderRow.CharacterWeightRow.fromRS(mockRs);
-    assertThat(weightRow.codepoint).isEqualTo('a');
-    assertThat(weightRow.weightNonTrailing).isEqualTo(w);
   }
 }

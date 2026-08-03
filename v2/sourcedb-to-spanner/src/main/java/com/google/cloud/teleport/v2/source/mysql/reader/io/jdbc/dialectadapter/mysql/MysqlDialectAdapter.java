@@ -806,22 +806,66 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
+  private static class CharacterWeightRow {
+    final int codepoint;
+    final byte[] weightNonTrailing;
+    final byte[] weightTrailing;
+    final boolean isEmpty;
+    final boolean isSpace;
+
+    CharacterWeightRow(
+        int codepoint,
+        byte[] weightNonTrailing,
+        byte[] weightTrailing,
+        boolean isEmpty,
+        boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weightNonTrailing = weightNonTrailing;
+      this.weightTrailing = weightTrailing;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+
+    static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
+      String charsetChar =
+          rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      if (charsetChar == null
+          || charsetChar.isEmpty()
+          || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
+        return null;
+      }
+      int c = charsetChar.codePointAt(0);
+      byte[] wNt =
+          rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+      byte[] wT =
+          rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
+      boolean isEmpty =
+          rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace =
+          rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
+
+      if (wNt == null && !isEmpty) {
+        return null;
+      }
+      return new CharacterWeightRow(c, wNt, wT, isEmpty, isSpace);
+    }
+  }
+
   @Override
   public List<CollationOrderRow> processCollationResultSet(
       ResultSet rs, CollationReference collationReference) throws SQLException {
 
-    List<CollationOrderRow.CharacterWeightRow> rows = new ArrayList<>();
+    List<CharacterWeightRow> rows = new ArrayList<>();
     while (rs.next()) {
-      CollationOrderRow.CharacterWeightRow weightRow =
-          CollationOrderRow.CharacterWeightRow.fromRS(rs);
+      CharacterWeightRow weightRow = CharacterWeightRow.fromRS(rs);
       if (weightRow != null) {
         rows.add(weightRow);
       }
     }
 
-    List<CollationOrderRow.CharacterWeightRow> uniqueRows = new ArrayList<>();
+    List<CharacterWeightRow> uniqueRows = new ArrayList<>();
     java.util.Set<Integer> seenCodepoints = new java.util.HashSet<>();
-    for (CollationOrderRow.CharacterWeightRow row : rows) {
+    for (CharacterWeightRow row : rows) {
       if (seenCodepoints.add(row.codepoint)) {
         uniqueRows.add(row);
       } else {
@@ -834,7 +878,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
         new java.util.TreeMap<>(weightKeyOrder);
-    for (CollationOrderRow.CharacterWeightRow row : rows) {
+    for (CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
         String keyNt =
             (row.weightNonTrailing != null)
@@ -860,7 +904,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
         new java.util.TreeMap<>(weightKeyOrder);
-    for (CollationOrderRow.CharacterWeightRow row : rows) {
+    for (CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
         String keyT =
             (row.weightTrailing != null)
@@ -884,7 +928,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     List<CollationOrderRow> result = new ArrayList<>();
-    for (CollationOrderRow.CharacterWeightRow row : rows) {
+    for (CharacterWeightRow row : rows) {
       long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
       long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
       int equivalentChar = ntEquivalent.getOrDefault(row.codepoint, row.codepoint);
