@@ -14,7 +14,7 @@ Currently, this template works for tables of any size on the follow sources
 
 Tables without primary keys or primary keys not mentioned above are not supported.
 
-For detailed information regarding PostgreSQL-specific features and limitations, please refer to the [PostgreSQL Specific Limitations](#postgresql-specific-limitations) section.
+For detailed information regarding PostgreSQL-specific features and limitations, please refer to the [PostgreSQL Supported Features and Limitations](#postgresql-supported-features-and-limitations) section.
 
 ## Getting Started
 
@@ -151,7 +151,7 @@ However, because the continuous reader watches the `retry/` directory indefinite
     * For tables with string primary key, all shards have the same weights for a given collation (the collection weight detection
       is queried on available shards for efficient parallel discovery).
 
-#### PostgreSQL Specific Limitations
+#### PostgreSQL Supported Features and Limitations
 * **Table Inheritance:** When migrating databases utilizing table inheritance, the pipeline queries parent tables using the `ONLY` keyword. This ensures data is not duplicated from child tables into the parent table in Spanner. Instead, child tables are discovered and migrated as their own separate, independent tables in Spanner.
 * **Declarative Partitioning:** Fully supported. When migrating partitioned tables, provision only the parent table in your target Spanner schema. The pipeline will automatically read records from all underlying source partitions and seamlessly consolidate them into the single parent table in Spanner. **Do not provision the individual child partitions in Spanner, as doing so will cause the pipeline to migrate them separately and result in data duplication.**
 * **Custom Namespaces:** Full end-to-end support for custom namespaces (schemas other than `public`) is currently out of scope. Providing a custom namespace will cause the pipeline initialization to fail-fast.
