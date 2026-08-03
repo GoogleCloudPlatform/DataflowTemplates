@@ -90,8 +90,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
     avroRecord.put("id", "007");
     avroRecord.put("state", "CA");
     avroRecord.put("price", 26.23);
-    byte[] parquetBytes =
-        ParquetTestUtil.createParquetFile(avroSchema, List.of(avroRecord));
+    byte[] parquetBytes = ParquetTestUtil.createParquetFile(avroSchema, List.of(avroRecord));
 
     // Upload data Parquet file
     gcsClient.createArtifact(deltaTableDir + "/part-00000.parquet", parquetBytes);
@@ -127,8 +126,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
         LaunchConfig.builder(testName, specPath)
             .addParameter("deltaLakeTable", deltaTableGcsPath)
             .addParameter(
-                "deltaLakeHadoopConfig",
-                new org.json.JSONObject(getGcsHadoopConfig()).toString())
+                "deltaLakeHadoopConfig", new org.json.JSONObject(getGcsHadoopConfig()).toString())
             .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(

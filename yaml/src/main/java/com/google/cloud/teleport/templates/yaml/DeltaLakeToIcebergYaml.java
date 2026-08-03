@@ -24,14 +24,21 @@ import org.apache.beam.sdk.options.Validation;
     name = "DeltaLake_To_Iceberg_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "Delta Lake to Iceberg (YAML)",
-    description = "The Delta Lake to Iceberg template is a batch pipeline that reads data from a Delta Lake table and outputs the records to an Apache Iceberg table.",
+    displayName = "Delta Lake to Lakehouse",
+    description =
+        "The Delta Lake to Iceberg template is a batch pipeline that reads data from a Delta Lake table and outputs the records to an Apache Iceberg table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "DeltaLakeToIceberg.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/iceberg_options.yaml"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/deltalake_options.yaml",
+      "options/iceberg_options.yaml"
+    },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The Input Delta Lake table must exist and be accessible.",
+    requirements = {
+      "The Input Delta Lake table must exist and be accessible.",
       "The Output Iceberg table must exist or be created, and the warehouse must be accessible."
     },
     streaming = false,
@@ -44,8 +51,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = false,
       description = "A GCS path to the Delta Lake table.",
       helpText = "The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table.",
-      example = "gs://your-bucket/path/to/table"
-    )
+      example = "gs://your-bucket/path/to/table")
   @Validation.Required
   String getDeltaLakeTable();
 
@@ -55,8 +61,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "Properties passed to Hadoop Configuration.",
       helpText = "A map of properties to pass to Hadoop Configuration, e.g. key-value pairs.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
-    )
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
   String getDeltaLakeHadoopConfig();
 
   @TemplateParameter.Text(
@@ -65,8 +70,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = false,
       description = "A fully-qualified table identifier.",
       helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
-      example = "my_dataset.my_table"
-    )
+      example = "my_dataset.my_table")
   @Validation.Required
   String getTable();
 
@@ -76,8 +80,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = false,
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
-      example = "my_hadoop_catalog"
-    )
+      example = "my_hadoop_catalog")
   @Validation.Required
   String getCatalogName();
 
@@ -87,8 +90,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
-      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
-    )
+      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
   @Validation.Required
   String getCatalogProperties();
 
@@ -98,8 +100,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
       helpText = "A map of properties to pass to the Hadoop Configuration.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
-    )
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
   String getConfigProperties();
 
   @TemplateParameter.Text(
@@ -108,8 +109,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
       helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
-      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]"
-    )
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
   String getDrop();
 
   @TemplateParameter.Text(
@@ -118,8 +118,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18"
-    )
+      example = "age > 18")
   String getFilter();
 
   @TemplateParameter.Text(
@@ -128,8 +127,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]"
-    )
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
 
   @TemplateParameter.Text(
@@ -138,8 +136,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "The name of a single record field that should be written.",
       helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
-      example = "my_record_field"
-    )
+      example = "my_record_field")
   String getOnly();
 
   @TemplateParameter.Text(
@@ -148,8 +145,7 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
       helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
-      example = "[\"day(ts)\", \"bucket(id, 4)\"]"
-    )
+      example = "[\"day(ts)\", \"bucket(id, 4)\"]")
   String getPartitionFields();
 
   @TemplateParameter.Text(
@@ -158,7 +154,6 @@ public interface DeltaLakeToIcebergYaml {
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
       helpText = "A map of Iceberg table properties to set when the table is created.",
-      example = "{\"commit.retry.num-retries\": \"2\"}"
-    )
+      example = "{\"commit.retry.num-retries\": \"2\"}")
   String getTableProperties();
 }
