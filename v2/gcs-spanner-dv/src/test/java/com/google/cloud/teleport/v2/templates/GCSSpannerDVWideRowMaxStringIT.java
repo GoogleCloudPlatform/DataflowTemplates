@@ -58,9 +58,9 @@ public class GCSSpannerDVWideRowMaxStringIT extends GCSSpannerDVITBase {
   // MISMATCH.
   @Test
   public void testMaxStringLength() throws Exception {
-    String matchString = String.join("", Collections.nCopies(2621440, "A"));
-    String avroMismatchString = String.join("", Collections.nCopies(2621440, "C"));
-    String spannerMismatchString = String.join("", Collections.nCopies(2621440, "B"));
+    String matchString = "A".repeat(2621440);
+    String avroMismatchString = "C".repeat(2621440);
+    String spannerMismatchString = "B".repeat(2621440);
 
     List<GenericRecord> rolesRecords =
         Arrays.asList(
