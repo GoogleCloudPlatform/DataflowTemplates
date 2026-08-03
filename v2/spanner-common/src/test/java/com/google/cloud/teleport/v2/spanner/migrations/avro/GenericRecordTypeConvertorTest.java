@@ -687,18 +687,22 @@ public class GenericRecordTypeConvertorTest {
     assertThat(genericRecordTypeConvertor.transformChangeEvent(payload, "few_types"))
         .isEqualTo(
             Map.of(
-                "booleanCol", Value.bool(true),
-                "intervalNanoCol", Value.string("P1083Y4M3890DT30H31M12.000000009S"),
+                "booleanCol",
+                Value.bool(true),
+                "intervalNanoCol",
+                Value.string("P1083Y4M3890DT30H31M12.000000009S"),
                 "timeStampCol",
-                    Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")),
-                "booleanArrayCol", Value.boolArray(ImmutableList.of(true, false)),
+                Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")),
+                "booleanArrayCol",
+                Value.boolArray(ImmutableList.of(true, false)),
                 "intervalNanoArrayCol",
-                    Value.stringArray(
-                        ImmutableList.of(
-                            "P1083Y4M3890DT30H31M12.000000009S",
-                            "P1083Y4M3890DT30H31M12.000000009S",
-                            "P1083Y4M3890DT25H12.000000009S")),
-                "timeStampArrayCol", Value.timestampArray(expectedTimeStampArray)));
+                Value.stringArray(
+                    ImmutableList.of(
+                        "P1083Y4M3890DT30H31M12.000000009S",
+                        "P1083Y4M3890DT30H31M12.000000009S",
+                        "P1083Y4M3890DT25H12.000000009S")),
+                "timeStampArrayCol",
+                Value.timestampArray(expectedTimeStampArray)));
   }
 
   @Test
@@ -1033,16 +1037,24 @@ public class GenericRecordTypeConvertorTest {
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
         Map.of(
-            "bool_col", Value.bool(true),
-            "int_col", Value.int64(10),
-            "float_col", Value.float64(10.34),
-            "string_col", Value.string("hello"),
-            "numeric_col", Value.numeric(new BigDecimal("12.340000000")),
-            "bytes_col", Value.bytes(ByteArray.copyFrom(new byte[] {10, 20, 30})),
+            "bool_col",
+            Value.bool(true),
+            "int_col",
+            Value.int64(10),
+            "float_col",
+            Value.float64(10.34),
+            "string_col",
+            Value.string("hello"),
+            "numeric_col",
+            Value.numeric(new BigDecimal("12.340000000")),
+            "bytes_col",
+            Value.bytes(ByteArray.copyFrom(new byte[] {10, 20, 30})),
             "timestamp_col",
-                Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056483Z")),
-            "date_col", Value.date(com.google.cloud.Date.parseDate("3993-04-16")),
-            "simple_array_col", Value.stringArray(ImmutableList.of("G", "O", "O", "G")));
+            Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056483Z")),
+            "date_col",
+            Value.date(com.google.cloud.Date.parseDate("3993-04-16")),
+            "simple_array_col",
+            Value.stringArray(ImmutableList.of("G", "O", "O", "G")));
     // Implementation Detail, the transform returns Spanner values, and Value.Null is not equal to
     // java null,
     // So simple transform for expected map to have null values does not work for us.
@@ -1564,6 +1576,55 @@ public class GenericRecordTypeConvertorTest {
         new byte[] {127, -1, -1, -1, -1, -1, -1, -1}; // Signed bytes for 0x7F FF...
 
     assertEquals(Value.bytes(ByteArray.copyFrom(expectedBytes)), actual.get("bytes_col"));
+  }
+
+  @Test
+  public void transformChangeEventTest_NullResponseRowFromCustomTransform()
+      throws InvalidTransformationException {
+    /*
+     * This test verifies that if a Custom Transformation returns a MigrationTransformationResponse
+     * with a null responseRow (meaning no custom transformation is applied to this record),
+     * the pipeline safely falls back to returning the original row instead of throwing a NullPointerException.
+     */
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
+    genericRecord.put("int_col", 123L);
+    genericRecord.put("string_col", "test_string");
+
+    // Define a transformer that returns null for responseRow
+    ISpannerMigrationTransformer nullResponseRowTransformer =
+        new ISpannerMigrationTransformer() {
+          @Override
+          public void init(String customParameters) {}
+
+          @Override
+          public MigrationTransformationResponse toSpannerRow(
+              MigrationTransformationRequest request) {
+            return new MigrationTransformationResponse(null, false);
+          }
+
+          @Override
+          public MigrationTransformationResponse toSourceRow(
+              MigrationTransformationRequest request) {
+            return null;
+          }
+
+          @Override
+          public MigrationTransformationResponse transformFailedSpannerMutation(
+              MigrationTransformationRequest request) throws InvalidTransformationException {
+            return new MigrationTransformationResponse(request.getRequestRow(), false);
+          }
+        };
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(
+            new IdentityMapper(getIdentityDdl()), "", null, nullResponseRowTransformer);
+
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+
+    // Expected: The original row is returned untouched
+    assertEquals(Value.int64(123L), actual.get("int_col"));
+    assertEquals(Value.string("test_string"), actual.get("string_col"));
   }
 
   private class TestCustomTransform implements ISpannerMigrationTransformer {

@@ -261,6 +261,9 @@ public class GenericRecordTypeConvertor {
       return null;
     }
     Map<String, Object> transformedCols = migrationTransformationResponse.getResponseRow();
+    if (transformedCols == null) {
+      return result;
+    }
     for (Map.Entry<String, Object> entry : transformedCols.entrySet()) {
       LOG.debug(
           "Updating record with {} from custom transformations for table {}", entry, srcTableName);
