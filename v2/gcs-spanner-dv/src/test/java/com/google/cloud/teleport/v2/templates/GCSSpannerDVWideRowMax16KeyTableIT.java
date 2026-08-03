@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
@@ -33,7 +33,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for GCSSpannerDV validating a wide row with 16 primary key columns. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
 public class GCSSpannerDVWideRowMax16KeyTableIT extends GCSSpannerDVITBase {
@@ -90,9 +90,10 @@ public class GCSSpannerDVWideRowMax16KeyTableIT extends GCSSpannerDVITBase {
     uploadAvroFileToGcs("input/16_keys.avro", tableDef.schema, records);
     spannerResourceManager.write(Arrays.asList(matchedSpanner.build(), mismatchedSpanner.build()));
 
-    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
-    java.util.Map<String, String> jobParameters = new java.util.HashMap<>();
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
 
+    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
         launchDataflowJob(
             options,
@@ -106,7 +107,7 @@ public class GCSSpannerDVWideRowMax16KeyTableIT extends GCSSpannerDVITBase {
             null,
             null,
             null,
-            jobParameters);
+            null);
 
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
