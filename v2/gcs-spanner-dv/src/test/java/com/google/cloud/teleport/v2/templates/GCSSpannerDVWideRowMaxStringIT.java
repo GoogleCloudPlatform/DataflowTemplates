@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValid
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
