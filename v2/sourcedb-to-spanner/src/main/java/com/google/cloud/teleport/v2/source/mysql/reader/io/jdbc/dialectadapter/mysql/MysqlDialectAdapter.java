@@ -562,8 +562,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         padSpace,
         numericScale,
         datetimePrecision);
-    String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
-    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
+    String columnType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
+    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columnType, IndexType.OTHER);
     CollationReference collationReference = null;
     if (indexType.equals(IndexType.STRING)) {
       collationReference =
@@ -606,7 +606,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         .setNumericScale(hasNumericScale ? numericScale : null)
         .setDecimalStepSize(decimalStepSize)
         .setDatetimePrecision(datetimePrecision)
-        .setColumnTypeName(columType)
+        .setColumnTypeName(columnType)
         .build();
   }
 
@@ -777,20 +777,14 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Get Query that returns order of collation. The query returns one row per valid character with
-   * columns {@code charset_char}, {@code weight_non_trailing}, {@code weight_trailing}, {@code
-   * is_empty}, and {@code is_space}. All grouping, ranking and equivalent-character resolution is
-   * performed in Java by {@link
-   * com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper}.
-   *
-   * <p>The query uses {@code WEIGHT_STRING()} (available since MySQL 5.6) and plain {@code CROSS
-   * JOIN} hex-nibble tables, making it fully compatible with MySQL 5.7+. No window functions, no
-   * {@code SET} variables, and no {@code PREPARE}/{@code EXECUTE} are required.
+   * Get Query that returns order of collation. The query must return all the characters in the
+   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
-   * @param dbCollation collation used by the database for which collation ordering has to be found.
-   * @param padSpace pad space attribute of the collation.
+   * @param dbCollation collation set used by the database for which collation ordering has to be
+   *     found.
+   * @param padSpace pad space used by the database for which collation ordering has to be found.
    */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
@@ -798,6 +792,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     Map<String, String> tags = new HashMap<>();
     tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");
     tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", "'" + dbCollation + "'");
+    // Queries with size > max_allowed_packet get rejected by
+    // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
     return replaceTagsAndSanitize(query, tags);
   }
 
