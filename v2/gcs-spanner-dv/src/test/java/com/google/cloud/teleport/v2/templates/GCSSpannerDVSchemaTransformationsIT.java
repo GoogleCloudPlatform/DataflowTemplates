@@ -38,9 +38,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Integration tests covering edge cases where Source and Spanner schemas have differences. Tests:
- * 1. Data type differences (that don't require custom transformation) 2. Dropped columns in Spanner
- * 3. Newly added columns in Spanner (populated via a custom transformation).
+ * Integration tests covering edge cases where Source and Spanner schemas have differences. 1. Data
+ * type differences (that don't require custom transformation) 2. Dropped columns in Spanner 3.
+ * Newly added columns in Spanner (populated via a custom transformation).
  */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -98,7 +98,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 .to(9999L) // Mismatch
                 .build()));
 
-    // Wait for exact staleness
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
     Thread.sleep(20000);
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
@@ -212,7 +212,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 .to(Timestamp.parseTimestamp(t1.toString()))
                 .build()));
 
-    // Wait for exact staleness
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
     Thread.sleep(20000);
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
@@ -256,6 +256,8 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 /* mismatchRowCount= */ 2L)));
 
     // Verify full_name column mismatch (Source: Bob, Spanner: Bobby)
+    // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+    // and one MISSING_IN_DESTINATION) is the expected behavior.
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
@@ -389,6 +391,8 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 /* mismatchRowCount= */ 2L)));
 
     // Verify status column mismatch (Source+Transform: ACTIVE, Spanner: INACTIVE)
+    // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+    // and one MISSING_IN_DESTINATION) is the expected behavior.
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
