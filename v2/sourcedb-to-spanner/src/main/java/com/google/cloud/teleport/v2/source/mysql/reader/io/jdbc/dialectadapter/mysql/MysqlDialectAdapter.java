@@ -812,7 +812,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
     List<CollationOrderRow.CharacterWeightRow> rows = new ArrayList<>();
     while (rs.next()) {
-      CollationOrderRow.CharacterWeightRow weightRow = CollationOrderRow.fromWeightBytesRS(rs);
+      CollationOrderRow.CharacterWeightRow weightRow =
+          CollationOrderRow.CharacterWeightRow.fromRS(rs);
       if (weightRow != null) {
         rows.add(weightRow);
       }

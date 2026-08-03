@@ -154,33 +154,32 @@ public abstract class CollationOrderRow {
       this.isEmpty = isEmpty;
       this.isSpace = isSpace;
     }
-  }
 
+    /**
+     * Construct a {@link CharacterWeightRow} from a WEIGHT_BYTES result set row.
+     *
+     * @param rs ResultSet containing weight_non_trailing and weight_trailing sort-key bytes
+     * @return CharacterWeightRow parsed from the result set, or null if invalid/skipped
+     * @throws SQLException if thrown by JDBC ResultSet
+     */
+    public static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
+      String charsetChar = rs.getString(CHARSET_CHAR_COL);
+      if (charsetChar == null
+          || charsetChar.isEmpty()
+          || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
+        return null;
+      }
+      int c = charsetChar.codePointAt(0);
+      byte[] wNt = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+      byte[] wT = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
+      boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
 
-  /**
-   * Construct a {@link CharacterWeightRow} from a WEIGHT_BYTES result set row.
-   *
-   * @param rs ResultSet containing weight_non_trailing and weight_trailing sort-key bytes
-   * @return CharacterWeightRow parsed from the result set, or null if invalid/skipped
-   * @throws SQLException if thrown by JDBC ResultSet
-   */
-  public static CharacterWeightRow fromWeightBytesRS(ResultSet rs) throws SQLException {
-    String charsetChar = rs.getString(CHARSET_CHAR_COL);
-    if (charsetChar == null
-        || charsetChar.isEmpty()
-        || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
-      return null;
+      if (wNt == null && !isEmpty) {
+        return null;
+      }
+      return new CharacterWeightRow(c, wNt, wT, isEmpty, isSpace);
     }
-    int c = charsetChar.codePointAt(0);
-    byte[] wNt = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
-    byte[] wT = rs.getBytes(CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
-    boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
-    boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
-
-    if (wNt == null && !isEmpty) {
-      return null;
-    }
-    return new CharacterWeightRow(c, wNt, wT, isEmpty, isSpace);
   }
 
   @AutoValue.Builder

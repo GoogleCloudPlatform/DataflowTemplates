@@ -113,7 +113,8 @@ public class CollationOrderRowTest {
     when(mockRs.getBoolean(IS_EMPTY_COL)).thenReturn(false);
     when(mockRs.getBoolean(IS_SPACE_COL)).thenReturn(false);
 
-    CollationOrderRow.CharacterWeightRow weightRow = CollationOrderRow.fromWeightBytesRS(mockRs);
+    CollationOrderRow.CharacterWeightRow weightRow =
+        CollationOrderRow.CharacterWeightRow.fromRS(mockRs);
     assertThat(weightRow.codepoint).isEqualTo('a');
     assertThat(weightRow.weightNonTrailing).isEqualTo(w);
   }
