@@ -72,7 +72,7 @@ public class CollationOrderRowTest {
     when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
     when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
 
-    CollationOrderRow collationOrderRow = CollationOrderRow.fromRS(mockResultSet);
+    CollationOrderRow collationOrderRow = CollationOrderRow.fromRankedRS(mockResultSet);
     assertThat(collationOrderRow)
         .isEqualTo(
             CollationOrderRow.builder()

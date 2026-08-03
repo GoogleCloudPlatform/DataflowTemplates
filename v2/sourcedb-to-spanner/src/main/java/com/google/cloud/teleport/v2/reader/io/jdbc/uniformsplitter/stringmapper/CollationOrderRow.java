@@ -82,15 +82,13 @@ public abstract class CollationOrderRow {
   public abstract Builder toBuilder();
 
   /**
-   * Construct a {@link CollationOrderRow} from a result set for the collation order query. It is
-   * expected that the caller handlers iteration of resultSet via {@link ResultSet#next()} and
-   * exceptions if any.
+   * Construct a {@link CollationOrderRow} from a WITH_RANKS result set row.
    *
-   * @param rs
-   * @return fields of the output enclosed in {@link CollationOrderRow}.
-   * @throws SQLException if thrown by the {@link ResultSet ResultSet api}.
+   * @param rs ResultSet containing pre-computed codepoint_rank columns
+   * @return CollationOrderRow parsed from the result set
+   * @throws SQLException if thrown by JDBC ResultSet
    */
-  public static CollationOrderRow fromRS(ResultSet rs) throws SQLException {
+  public static CollationOrderRow fromRankedRS(ResultSet rs) throws SQLException {
 
     String charSetChar = rs.getString(CHARSET_CHAR_COL);
     String equivalentCharsetChar = rs.getString(EQUIVALENT_CHARSET_CHAR_COL);
@@ -158,16 +156,6 @@ public abstract class CollationOrderRow {
     }
   }
 
-  /**
-   * Construct a {@link CollationOrderRow} from a WITH_RANKS result set row.
-   *
-   * @param rs ResultSet containing pre-computed codepoint_rank columns
-   * @return CollationOrderRow parsed from the result set
-   * @throws SQLException if thrown by JDBC ResultSet
-   */
-  public static CollationOrderRow fromRankedRS(ResultSet rs) throws SQLException {
-    return fromRS(rs);
-  }
 
   /**
    * Construct a {@link CharacterWeightRow} from a WEIGHT_BYTES result set row.
