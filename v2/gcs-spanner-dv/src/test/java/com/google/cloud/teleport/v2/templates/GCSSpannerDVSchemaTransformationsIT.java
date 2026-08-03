@@ -141,9 +141,8 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 /* matchedRowCount= */ 1L,
                 /* mismatchRowCount= */ 2L)));
 
-    // Verify role_name column mismatch (Source: 5678, Spanner: 9999)
-    // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category. Differing row values are
-    // emitted as two discrepancies: one MISSING_IN_SOURCE and one MISSING_IN_DESTINATION.
+    // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+    // and one MISSING_IN_DESTINATION) is the expected behavior.
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
