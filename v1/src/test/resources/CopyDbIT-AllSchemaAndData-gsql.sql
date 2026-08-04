@@ -203,4 +203,8 @@ REMOTE OPTIONS (endpoint='//aiplatform.googleapis.com/projects/%PROJECT_ID%/loca
 -- Functions (UDFs)
 CREATE FUNCTION `my_schema`.`MyCustomFunction`(`input_val` INT64) RETURNS INT64 AS (`input_val` * 2);
 
+-- Tables w/o PKs
+CREATE TABLE `MyTable_NoPks` (
+	`val` INT64
+);
 
