@@ -754,13 +754,13 @@ google-auth-httplib2==0.2.1 \
     --hash=sha256:1be94c611db91c01f9703e7f62b0a59bbd5587a95571c7b6fade510d648bc08b \
     --hash=sha256:5ef03be3927423c87fb69607b42df23a444e434ddb2555b73b3679793187b7de
     # via apache-beam
-google-cloud-aiplatform==1.162.0 \
-    --hash=sha256:07ac79932b8f7a683c3bec6dcc21dd05234b55d01636b5a622ec93c18aad15fd \
-    --hash=sha256:2403f75e6e44e879aecc0eab2d8c26e972507e4b4414d873b31cd4f4b49c9edb
+google-cloud-aiplatform==1.163.0 \
+    --hash=sha256:23855d261aadcf949fa6102f94d0d0dbd9af879dc4e3f651e7f4e27296af8cca \
+    --hash=sha256:b570d22b145504e66f3f50f4bdeeae3c818ba46f330276566e80a42937ff53ef
     # via apache-beam
-google-cloud-bigquery==3.42.2 \
-    --hash=sha256:08d4b264e5ee4790f719724c76b538f204b7190999328a2f1a6a95eaab74ca39 \
-    --hash=sha256:41658c19e8ed5b83307011b4e55aca3b1f72052545a22788f1d637984615173f
+google-cloud-bigquery==3.42.3 \
+    --hash=sha256:81b9bfa3a5fa098a04351c1a12579d16f28b93b836e4556ef6410a01deebf418 \
+    --hash=sha256:d03f8da5ed94aeae5457f3127216cb385392ba266bede25ea257aeec94512900
     # via
     #   apache-beam
     #   google-cloud-aiplatform
@@ -886,9 +886,9 @@ google-crc32c==1.8.0 \
     #   google-cloud-bigtable
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==2.14.0 \
-    --hash=sha256:a9d1f4f362d76280f1be1340fcb3c86e63dbca128f6a4ae09d86ab47ff7148e8 \
-    --hash=sha256:ae7172cdd35695189b516b33a878e4132e5daa2dbc03a5b44cddfa8a82fad664
+google-genai==2.16.0 \
+    --hash=sha256:c4c2524926001b18073db927a5d75bb7c8be7b5fd13ab507d599f51fff2284c5 \
+    --hash=sha256:f9eda6a7a3dd4491a0d2253c4bdd4536462d63838ed3f1b0e4fb9a0eb8f43331
     # via google-cloud-aiplatform
 google-resumable-media==2.10.0 \
     --hash=sha256:88152884bee37b2bf36a0ab81ad8c7fd12212c9803dd981d77c1b35b02d34e7c \
@@ -1062,9 +1062,9 @@ h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
     # via httpcore
-h2==4.4.0 \
-    --hash=sha256:46b551bdcdc7e83cf5c04d0bf93badb8a939bd2287d9fee1abb23a445b9e0580 \
-    --hash=sha256:6acffe1aeab79098d7eb0f8385c1add11f2c7a94815f6fa2b7060eeddee3d87c
+h2==4.4.1 \
+    --hash=sha256:0e25f1462b23c9cb82d9eb02e28bc706dac2a68cb457c6a0d74d63c8a2a5d0e6 \
+    --hash=sha256:4e866ffb1a869ae14dd9b5e6beb5c24a13da0495ad72b65925ded182521c1516
     # via grpclib
 hpack==4.2.0 \
     --hash=sha256:0895cfa3b5531fc65fe439c05eb65144f123bf7a394fcaa56aa423548d8e45c0 \
