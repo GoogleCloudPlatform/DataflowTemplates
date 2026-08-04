@@ -77,8 +77,7 @@ SET @charset_chars_with_codepoints = CONCAT(
 
 SET @output_query = CONCAT(
   ' SELECT *, ',
-  '   WEIGHT_STRING(', @CHAR_BETWEEN_ALPHABET, ' COLLATE ', @db_collation, ') AS weight_non_trailing, ',
-  '   WEIGHT_STRING(charset_char COLLATE ', @db_collation, ') AS weight_trailing ',
+  '   WEIGHT_STRING(charset_char COLLATE ', @db_collation, ') AS weight ',
   ' FROM (', @charset_chars_with_codepoints, ' ) AS output_query ',
   ' ORDER BY CAST(codepoint AS SIGNED) '
 );

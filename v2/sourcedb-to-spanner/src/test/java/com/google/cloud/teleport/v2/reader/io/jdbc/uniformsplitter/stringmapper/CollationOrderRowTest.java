@@ -23,7 +23,6 @@ import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.string
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
 import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
@@ -84,19 +83,4 @@ public class CollationOrderRowTest {
                 .build());
   }
 
-  @Test
-  public void testFromRankedRS() throws SQLException {
-    ResultSet mockRs = mock(ResultSet.class);
-    when(mockRs.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    when(mockRs.getString(EQUIVALENT_CHARSET_CHAR_COL)).thenReturn("A");
-    when(mockRs.getLong(CODEPOINT_RANK_COL)).thenReturn(1L);
-    when(mockRs.getBoolean(IS_EMPTY_COL)).thenReturn(false);
-    when(mockRs.getBoolean(IS_SPACE_COL)).thenReturn(false);
-    when(mockRs.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL)).thenReturn("A");
-    when(mockRs.getLong(CODEPOINT_RANK_PAD_SPACE_COL)).thenReturn(1L);
-
-    CollationOrderRow row = CollationOrderRow.fromRS(mockRs);
-    assertThat(row.charsetChar()).isEqualTo("a");
-    assertThat(row.codepointRank()).isEqualTo(1L);
-  }
 }

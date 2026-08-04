@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.ResultSet;

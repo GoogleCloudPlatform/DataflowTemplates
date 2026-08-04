@@ -51,7 +51,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -801,7 +800,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link MysqlCollationOrderQueryColumns}.
+   * character set with the columns listed in {@link CollationOrderRow.CollationsOrderQueryColumns}.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
@@ -820,73 +819,37 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-  private static class MysqlCollationOrderQueryColumns
-      extends CollationOrderRow.CollationsOrderQueryColumns {
-    static final String WEIGHT_NON_TRAILING_COL = "weight_non_trailing";
-    static final String WEIGHT_TRAILING_COL = "weight_trailing";
-
-    private MysqlCollationOrderQueryColumns() {}
-  }
 
   private static class CharacterWeightRow {
     final int codepoint;
-    final byte[] weightNonTrailing;
-    final byte[] weightTrailing;
+    final byte[] weight;
     final boolean isEmpty;
     final boolean isSpace;
 
-    CharacterWeightRow(
-        int codepoint,
-        byte[] weightNonTrailing,
-        byte[] weightTrailing,
-        boolean isEmpty,
-        boolean isSpace) {
+    CharacterWeightRow(int codepoint, byte[] weight, boolean isEmpty, boolean isSpace) {
       this.codepoint = codepoint;
-      this.weightNonTrailing = weightNonTrailing;
-      this.weightTrailing = weightTrailing;
+      this.weight = weight;
       this.isEmpty = isEmpty;
       this.isSpace = isSpace;
     }
 
     static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
-      String charsetChar = rs.getString(MysqlCollationOrderQueryColumns.CHARSET_CHAR_COL);
+      String charsetChar = rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null
           || charsetChar.isEmpty()
           || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
         return null;
       }
       int c = charsetChar.codePointAt(0);
-      byte[] wNt = rs.getBytes(MysqlCollationOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
-      byte[] wT = rs.getBytes(MysqlCollationOrderQueryColumns.WEIGHT_TRAILING_COL);
-      boolean isEmpty = rs.getBoolean(MysqlCollationOrderQueryColumns.IS_EMPTY_COL);
-      boolean isSpace = rs.getBoolean(MysqlCollationOrderQueryColumns.IS_SPACE_COL);
+      byte[] w = rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL);
+      boolean isEmpty = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
 
-      if (wNt == null && !isEmpty) {
+      if (w == null && !isEmpty) {
         return null;
       }
-      return new CharacterWeightRow(c, wNt, wT, isEmpty, isSpace);
+      return new CharacterWeightRow(c, w, isEmpty, isSpace);
     }
-  }
-
-  private static int compareBytes(byte[] b1, byte[] b2) {
-    if (b1 == b2) {
-      return 0;
-    }
-    if (b1 == null) {
-      return -1;
-    }
-    if (b2 == null) {
-      return 1;
-    }
-    int len = Math.min(b1.length, b2.length);
-    for (int i = 0; i < len; i++) {
-      int v1 = b1[i] & 0xFF;
-      int v2 = b2[i] & 0xFF;
-      if (v1 != v2) {
-        return v1 - v2;
-      }
-    }
-    return b1.length - b2.length;
   }
 
   @Override
@@ -912,25 +875,21 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
     rows = uniqueRows;
 
-    Map<String, List<CharacterWeightRow>> ntGroupsMap = new LinkedHashMap<>();
+    Map<String, List<CharacterWeightRow>> ntGroupsMap = new java.util.TreeMap<>();
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
         String keyNt =
-            (row.weightNonTrailing != null)
-                ? new String(row.weightNonTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
+            (row.weight != null)
+                ? new String(row.weight, java.nio.charset.StandardCharsets.ISO_8859_1)
                 : "";
         ntGroupsMap.computeIfAbsent(keyNt, k -> new ArrayList<>()).add(row);
       }
     }
 
-    List<List<CharacterWeightRow>> sortedNtGroups = new ArrayList<>(ntGroupsMap.values());
-    sortedNtGroups.sort(
-        (g1, g2) -> compareBytes(g1.get(0).weightTrailing, g2.get(0).weightTrailing));
-
     Map<Integer, Long> ntRank = new HashMap<>();
     Map<Integer, Integer> ntEquivalent = new HashMap<>();
     long rank = 0;
-    for (List<CharacterWeightRow> group : sortedNtGroups) {
+    for (List<CharacterWeightRow> group : ntGroupsMap.values()) {
       int equiv = group.get(0).codepoint;
       for (CharacterWeightRow row : group) {
         ntRank.put(row.codepoint, rank);
@@ -939,25 +898,21 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       rank++;
     }
 
-    Map<String, List<CharacterWeightRow>> tGroupsMap = new LinkedHashMap<>();
+    Map<String, List<CharacterWeightRow>> tGroupsMap = new java.util.TreeMap<>();
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
         String keyT =
-            (row.weightTrailing != null)
-                ? new String(row.weightTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
+            (row.weight != null)
+                ? new String(row.weight, java.nio.charset.StandardCharsets.ISO_8859_1)
                 : "";
         tGroupsMap.computeIfAbsent(keyT, k -> new ArrayList<>()).add(row);
       }
     }
 
-    List<List<CharacterWeightRow>> sortedTGroups = new ArrayList<>(tGroupsMap.values());
-    sortedTGroups.sort(
-        (g1, g2) -> compareBytes(g1.get(0).weightTrailing, g2.get(0).weightTrailing));
-
     Map<Integer, Long> tRank = new HashMap<>();
     Map<Integer, Integer> tEquivalent = new HashMap<>();
     long tRankVal = 0;
-    for (List<CharacterWeightRow> group : sortedTGroups) {
+    for (List<CharacterWeightRow> group : tGroupsMap.values()) {
       int equiv = group.get(0).codepoint;
       for (CharacterWeightRow row : group) {
         tRank.put(row.codepoint, tRankVal);
