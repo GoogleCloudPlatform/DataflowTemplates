@@ -270,7 +270,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + " ORDER BY table_name, ordinal_position";
 
     Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
-    tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
+    tables.forEach(
+        table -> {
+          builders.put(table, ImmutableMap.builder());
+          tableColumns.remove(extractBaseTableName(table));
+        });
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement statement = conn.prepareStatement(query)) {

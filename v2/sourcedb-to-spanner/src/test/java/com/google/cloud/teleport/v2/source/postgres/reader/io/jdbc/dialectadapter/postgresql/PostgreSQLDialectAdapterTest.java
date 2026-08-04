@@ -778,13 +778,13 @@ public class PostgreSQLDialectAdapterTest {
 
   @Test
   public void testReadQueryWithMoneyType() throws Exception {
-    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+    ImmutableList<String> tables = ImmutableList.of("public.table1");
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true, true, false);
-    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getString("table_name")).thenReturn("table1");
     when(mockResultSet.getString("column_name")).thenReturn("id", "amount");
     when(mockResultSet.getString("data_type")).thenReturn("bigint", "money");
     when(mockResultSet.getLong("character_maximum_length")).thenReturn(0L, 0L);
@@ -794,12 +794,12 @@ public class PostgreSQLDialectAdapterTest {
 
     adapter.discoverTableSchema(mockDataSource, sourceSchemaReference, tables);
 
-    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of()))
-        .isEqualTo("SELECT \"id\", \"amount\"::numeric AS \"amount\" FROM my_schema.table1");
+    assertThat(adapter.getReadQuery("public.table1", ImmutableList.of()))
+        .isEqualTo("SELECT \"id\", \"amount\"::numeric AS \"amount\" FROM public.table1");
 
-    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("id", "amount")))
+    assertThat(adapter.getReadQuery("public.table1", ImmutableList.of("id", "amount")))
         .isEqualTo(
-            "SELECT \"id\", \"amount\"::numeric AS \"amount\" FROM my_schema.table1 "
+            "SELECT \"id\", \"amount\"::numeric AS \"amount\" FROM public.table1 "
                 + "WHERE ((? = FALSE) OR (id >= ? AND (id < ? OR (? = TRUE AND id = ?)))) "
                 + "AND ((? = FALSE) OR (amount >= ? AND (amount < ? OR (? = TRUE AND amount = ?))))");
   }
