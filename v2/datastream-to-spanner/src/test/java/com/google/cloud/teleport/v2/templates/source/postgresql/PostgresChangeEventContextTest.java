@@ -61,6 +61,9 @@ public final class PostgresChangeEventContextTest {
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, "1/867");
     changeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(
+        "bytes_field",
+        java.util.Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
     ChangeEventContext changeEventContext =
         new PostgresqlDsToSpSourceConnector()
@@ -97,6 +100,9 @@ public final class PostgresChangeEventContextTest {
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, JSONObject.NULL);
     changeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(
+        "bytes_field",
+        java.util.Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
     ChangeEventContext changeEventContext =
         new PostgresqlDsToSpSourceConnector()
@@ -132,6 +138,9 @@ public final class PostgresChangeEventContextTest {
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(
+        "bytes_field",
+        java.util.Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
     ChangeEventContext changeEventContext =
         new PostgresqlDsToSpSourceConnector()

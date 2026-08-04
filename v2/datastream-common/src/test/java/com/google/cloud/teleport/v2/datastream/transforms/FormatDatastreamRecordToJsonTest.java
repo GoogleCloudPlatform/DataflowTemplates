@@ -197,8 +197,8 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     // The avro file contains binary_content: b'\xde\xad\xbe\xef', which is converted to
-    // hex encoded string.
-    assertEquals("deadbeef", changeEvent.get("binary_content").textValue());
+    // base64 encoded string by Jackson.
+    assertEquals("3q2+7w==", changeEvent.get("binary_content").textValue());
   }
 
   @Test
