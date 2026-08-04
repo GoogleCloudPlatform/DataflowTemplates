@@ -196,8 +196,8 @@ However, because the continuous reader watches the `retry/` directory indefinite
     * *Spanner GoogleSQL:* `BYTES`
     * *Spanner PostgreSQL:* `BYTEA`
   * **`UUID`:**
-    * *Spanner GoogleSQL:* `UUID`, `BYTES`, `STRING`
-    * *Spanner PostgreSQL:* `UUID`, `BYTEA`, `VARCHAR` / `TEXT`
+    * *Spanner GoogleSQL:* `UUID`, `STRING`
+    * *Spanner PostgreSQL:* `UUID`, `VARCHAR` / `TEXT`
   * **`CIDR`, `INET`:**
     * *Spanner GoogleSQL:* `STRING`
     * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
