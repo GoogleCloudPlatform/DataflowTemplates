@@ -36,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Pattern;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -52,6 +53,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
@@ -103,6 +107,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final String COLLATIONS_QUERY_RESOURCE_PATH =
       "sql/mysql_collation_order_query.sql";
+
+  private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -242,6 +248,13 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         String tableName = rs.getString("TABLE_NAME");
         String colName = rs.getString(InformationSchemaCols.NAME_COL);
         SourceColumnType colType = resultSetToSourceColumnType(rs);
+        if ("BIT".equalsIgnoreCase(colType.getName())) {
+          logger.info(
+              "Discovered BIT column '{}' in table '{}'; applying +0 cast to boundaries",
+              colName,
+              tableName);
+          customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, colName));
+        }
         if (builders.containsKey(tableName)) {
           builders.get(tableName).put(colName, colType);
         }
@@ -751,6 +764,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    logger.info(
+        "getBoundaryQuery called for table: {}, column: {}. customBoundaryQueryColumnKeys size: {}, contents: {}",
+        tableName,
+        colName,
+        customBoundaryQueryColumnKeys.size(),
+        customBoundaryQueryColumnKeys);
+    if (customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      return addWhereClause(
+          String.format("select MIN(%s + 0),MAX(%s + 0) from %s", colName, colName, tableName),
+          partitionColumns);
+    }
     return addWhereClause(
         String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
         partitionColumns);
@@ -1016,5 +1040,44 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return MysqlTimeConverter.toDuration(rs.getBytes(index));
+  }
+
+  private static final class ColumnKey implements Serializable {
+    private final String tableName;
+    private final String columnName;
+
+    public ColumnKey(String tableName, String columnName) {
+      this.tableName = clean(tableName);
+      this.columnName = clean(columnName);
+    }
+
+    private static String clean(String identifier) {
+      if (identifier == null) {
+        return "";
+      }
+      return identifier.replace("`", "").replace("\"", "").toLowerCase();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ColumnKey)) {
+        return false;
+      }
+      ColumnKey that = (ColumnKey) o;
+      return tableName.equals(that.tableName) && columnName.equals(that.columnName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tableName, columnName);
+    }
+
+    @Override
+    public String toString() {
+      return tableName + "." + columnName;
+    }
   }
 }

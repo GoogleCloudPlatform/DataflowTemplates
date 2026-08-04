@@ -855,6 +855,36 @@ public class MysqlDialectAdapterTest {
   }
 
   @Test
+  public void testGetBoundaryQueryForBitColumn()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String testTable = "testTable";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(testTable);
+    when(mockResultSet.getString(InformationSchemaCols.NAME_COL)).thenReturn("col3");
+    when(mockResultSet.getString(InformationSchemaCols.TYPE_COL)).thenReturn("bit");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    adapter.discoverTableSchema(
+        com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
+        SourceSchemaReference.ofJdbc(sourceSchemaReference),
+        ImmutableList.of(testTable));
+
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(adapter.getBoundaryQuery(testTable, cols, "col3"))
+        .isEqualTo(
+            "select MIN(col3 + 0),MAX(col3 + 0) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
   public void testCheckTimeoutException() {
     MysqlDialectAdapter mysqlDialectAdapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     //  ER_QUERY_INTERRUPTED;
