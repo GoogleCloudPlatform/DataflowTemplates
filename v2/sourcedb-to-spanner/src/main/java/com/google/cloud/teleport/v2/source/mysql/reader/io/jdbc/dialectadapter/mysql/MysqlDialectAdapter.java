@@ -51,6 +51,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -867,6 +868,27 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
   }
 
+  private static int compareBytes(byte[] b1, byte[] b2) {
+    if (b1 == b2) {
+      return 0;
+    }
+    if (b1 == null) {
+      return -1;
+    }
+    if (b2 == null) {
+      return 1;
+    }
+    int len = Math.min(b1.length, b2.length);
+    for (int i = 0; i < len; i++) {
+      int v1 = b1[i] & 0xFF;
+      int v2 = b2[i] & 0xFF;
+      if (v1 != v2) {
+        return v1 - v2;
+      }
+    }
+    return b1.length - b2.length;
+  }
+
   @Override
   public List<CollationOrderRow> processCollationResultSet(
       ResultSet rs, CollationReference collationReference) throws SQLException {
@@ -890,57 +912,58 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
     rows = uniqueRows;
 
-    java.util.Comparator<String> weightKeyOrder = java.util.Comparator.naturalOrder();
-
-    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
-        new java.util.TreeMap<>(weightKeyOrder);
+    Map<String, List<CharacterWeightRow>> ntGroupsMap = new LinkedHashMap<>();
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
         String keyNt =
             (row.weightNonTrailing != null)
                 ? new String(row.weightNonTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
                 : "";
-        ntGroups
-            .computeIfAbsent(keyNt, k -> new java.util.TreeMap<>())
-            .put(row.codepoint, row.codepoint);
+        ntGroupsMap.computeIfAbsent(keyNt, k -> new ArrayList<>()).add(row);
       }
     }
+
+    List<List<CharacterWeightRow>> sortedNtGroups = new ArrayList<>(ntGroupsMap.values());
+    sortedNtGroups.sort(
+        (g1, g2) -> compareBytes(g1.get(0).weightTrailing, g2.get(0).weightTrailing));
 
     Map<Integer, Long> ntRank = new HashMap<>();
     Map<Integer, Integer> ntEquivalent = new HashMap<>();
     long rank = 0;
-    for (java.util.TreeMap<Integer, Integer> group : ntGroups.values()) {
-      int equiv = group.firstKey();
-      for (Integer c : group.values()) {
-        ntRank.put(c, rank);
-        ntEquivalent.put(c, equiv);
+    for (List<CharacterWeightRow> group : sortedNtGroups) {
+      int equiv = group.get(0).codepoint;
+      for (CharacterWeightRow row : group) {
+        ntRank.put(row.codepoint, rank);
+        ntEquivalent.put(row.codepoint, equiv);
       }
       rank++;
     }
 
-    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
-        new java.util.TreeMap<>(weightKeyOrder);
+    Map<String, List<CharacterWeightRow>> tGroupsMap = new LinkedHashMap<>();
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
         String keyT =
             (row.weightTrailing != null)
                 ? new String(row.weightTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
                 : "";
-        tGroups
-            .computeIfAbsent(keyT, k -> new java.util.TreeMap<>())
-            .put(row.codepoint, row.codepoint);
+        tGroupsMap.computeIfAbsent(keyT, k -> new ArrayList<>()).add(row);
       }
     }
+
+    List<List<CharacterWeightRow>> sortedTGroups = new ArrayList<>(tGroupsMap.values());
+    sortedTGroups.sort(
+        (g1, g2) -> compareBytes(g1.get(0).weightTrailing, g2.get(0).weightTrailing));
+
     Map<Integer, Long> tRank = new HashMap<>();
     Map<Integer, Integer> tEquivalent = new HashMap<>();
-    long tRankCounter = 0;
-    for (java.util.TreeMap<Integer, Integer> group : tGroups.values()) {
-      int equiv = group.firstKey();
-      for (Integer c : group.values()) {
-        tRank.put(c, tRankCounter);
-        tEquivalent.put(c, equiv);
+    long tRankVal = 0;
+    for (List<CharacterWeightRow> group : sortedTGroups) {
+      int equiv = group.get(0).codepoint;
+      for (CharacterWeightRow row : group) {
+        tRank.put(row.codepoint, tRankVal);
+        tEquivalent.put(row.codepoint, equiv);
       }
-      tRankCounter++;
+      tRankVal++;
     }
 
     List<CollationOrderRow> result = new ArrayList<>();
