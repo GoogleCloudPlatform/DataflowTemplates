@@ -94,6 +94,30 @@ public class SourceDbToSpanner {
   }
 
   /**
+   * Validates the provided pipeline options. TODO: move this to source connector.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @param sourceConnectionConfig Parsed source connection config.
+   * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
+   */
+  @VisibleForTesting
+  static void validateOptions(
+      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
+    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(options.getSourceDbDialect())) {
+      Preconditions.checkArgument(
+          (sourceConnectionConfig instanceof JdbcShardConfig),
+          "Postgresql dialect should have JDBC source config.");
+      for (Shard shard : ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs()) {
+        if (StringUtils.isNotBlank(shard.getNamespace())
+            && !shard.getNamespace().equals("public")) {
+          throw new IllegalArgumentException(
+              "Non-public namespaces are currently unsupported for PostgreSQL migrations.");
+        }
+      }
+    }
+  }
+
+  /**
    * Create the pipeline with the supplied options.
    *
    * @param options The execution parameters to the pipeline.
@@ -131,29 +155,5 @@ public class SourceDbToSpanner {
       spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
     }
     return spannerConfig;
-  }
-
-  /**
-   * Validates the provided pipeline options.
-   *
-   * @param options The execution parameters to the pipeline.
-   * @param sourceConnectionConfig Parsed source connection config.
-   * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
-   */
-  @VisibleForTesting
-  static void validateOptions(
-      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
-    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(options.getSourceDbDialect())) {
-      Preconditions.checkArgument(
-          (sourceConnectionConfig instanceof JdbcShardConfig),
-          "Postgresql dialect should have JDBC source config.");
-      for (Shard shard : ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs()) {
-        if (StringUtils.isNotBlank(shard.getNamespace())
-            && !shard.getNamespace().equals("public")) {
-          throw new IllegalArgumentException(
-              "Non-public namespaces are currently unsupported for PostgreSQL migrations.");
-        }
-      }
-    }
   }
 }
