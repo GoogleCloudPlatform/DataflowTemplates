@@ -248,6 +248,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         String tableName = rs.getString("TABLE_NAME");
         String colName = rs.getString(InformationSchemaCols.NAME_COL);
         SourceColumnType colType = resultSetToSourceColumnType(rs);
+        // MySQL 5.7 returns binary string metadata for aggregate MIN/MAX functions on BIT columns,
+        // which prevents JDBC drivers from reading them as numeric longs.
+        // We register them here to apply a "+ 0" cast in getBoundaryQuery to force a numeric
+        // context.
         if ("BIT".equalsIgnoreCase(colType.getName())) {
           logger.info(
               "Discovered BIT column '{}' in table '{}'; applying +0 cast to boundaries",
@@ -764,12 +768,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
-    logger.info(
-        "getBoundaryQuery called for table: {}, column: {}. customBoundaryQueryColumnKeys size: {}, contents: {}",
-        tableName,
-        colName,
-        customBoundaryQueryColumnKeys.size(),
-        customBoundaryQueryColumnKeys);
     if (customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))) {
       return addWhereClause(
           String.format("select MIN(%s + 0),MAX(%s + 0) from %s", colName, colName, tableName),
