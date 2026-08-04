@@ -42,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
-* **namespace**: Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Note: Custom non-public namespaces are currently unsupported for PostgreSQL and will cause the job to fail immediately. Defaults to empty.
+* **namespace**: Namespace to be exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Note: Custom non-public namespaces are currently unsupported for PostgreSQL and will cause the job to fail immediately. Defaults to empty.
 * **insertOnlyModeForSpannerMutations**: By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.
 * **batchSizeForSpannerMutations**: BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
