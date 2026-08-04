@@ -46,7 +46,7 @@ public class CustomTransformationForDVIT implements ISpannerMigrationTransformer
       throws InvalidTransformationException {
 
     Map<String, Object> row = request.getRequestRow();
-    Map<String, Object> responseRow = new HashMap<>(row);
+    Map<String, Object> responseRow = new HashMap<>();
 
     if ("Users".equals(request.getTableName())) {
       // Filter out records where age is 99
@@ -67,6 +67,16 @@ public class CustomTransformationForDVIT implements ISpannerMigrationTransformer
         Instant t = Instant.parse((String) row.get("created_at"));
         Instant shifted = t.plus(1, ChronoUnit.HOURS);
         responseRow.put("created_at", shifted);
+      }
+
+      return new MigrationTransformationResponse(responseRow, false);
+    }
+
+    if ("Users_PKTransformed".equals(request.getTableName())) {
+      // Transform Primary Key user_id
+      if (row.get("user_id") != null) {
+        long id = ((Number) row.get("user_id")).longValue();
+        responseRow.put("user_id", id + 10);
       }
 
       return new MigrationTransformationResponse(responseRow, false);
