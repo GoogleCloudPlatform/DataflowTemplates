@@ -47,7 +47,6 @@ import org.apache.avro.data.TimeConversions.DateConversion;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -451,9 +450,9 @@ public class FormatDatastreamRecordToJson
             ByteBuffer byteBuffer = (ByteBuffer) record.get(fieldName);
             byte[] byteArray = new byte[byteBuffer.remaining()];
             byteBuffer.get(byteArray);
-            jsonObject.put(fieldName, Hex.encodeHexString(byteArray));
+            jsonObject.put(fieldName, byteArray);
           } else if (record.get(fieldName) instanceof byte[]) {
-            jsonObject.put(fieldName, Hex.encodeHexString((byte[]) record.get(fieldName)));
+            jsonObject.put(fieldName, (byte[]) record.get(fieldName));
           } else {
             // Handle other types appropriately, possibly throwing an exception
             // if the type is unexpected. Or log it.
@@ -655,9 +654,10 @@ public class FormatDatastreamRecordToJson
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
         case "timeTz":
-          Long timeTzNanos =
-              Long.valueOf(element.get("time").toString()) * TimeUnit.MICROSECONDS.toNanos(1);
-          int offsetSeconds = Integer.valueOf(element.get("offset").toString()) / 1000;
+          long timeTzNanos =
+              ((Number) getOrDefault(element, "time", 0L)).longValue()
+                  * TimeUnit.MICROSECONDS.toNanos(1);
+          int offsetSeconds = ((Number) getOrDefault(element, "offset", 0)).intValue() / 1000;
 
           ZoneOffset timeTzOffset = ZoneOffset.ofTotalSeconds(offsetSeconds);
 

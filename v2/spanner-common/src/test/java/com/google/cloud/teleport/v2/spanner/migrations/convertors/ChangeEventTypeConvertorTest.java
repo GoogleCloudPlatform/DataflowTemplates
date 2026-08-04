@@ -575,6 +575,20 @@ public final class ChangeEventTypeConvertorTest {
         ByteArray.copyFrom(new byte[] {-1, 0}));
   }
 
+  @Test
+  public void canConvertToByteArrayPostgresqlBase64() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("_metadata_source_type", "postgresql");
+    // Base64 encoding of byte array: { (byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef }
+    changeEvent.put("field1", "3q2+7w==");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef}));
+  }
+
   @Test(expected = ChangeEventConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToByteArray() throws Exception {
     JSONObject changeEvent = new JSONObject();
