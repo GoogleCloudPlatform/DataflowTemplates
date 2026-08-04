@@ -60,8 +60,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class CassandraIOWrapperFactoryTest {
   private MockedStatic<CassandraIOWrapperHelper> mockCassandraIoWrapperHelper;
-  private static final String TEST_BUCKET_CASSANDRA_CONFIG_CONF =
-      "gs://smt-test-bucket/cassandraConfig.conf";
   private static final ImmutableList<String> TABLES_TO_READ =
       ImmutableList.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE);
   @Mock SourceSchema mockSourceSchema;
