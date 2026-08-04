@@ -101,7 +101,7 @@ public class GCSSpannerDVPrimaryKeyIT extends GCSSpannerDVITBase {
                 .build()));
 
     // 3. Build Transformation and Launch Job
-    createAndUploadCustomShardJarToGcs("input");
+    uploadCustomShardJarToGcs("input");
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(

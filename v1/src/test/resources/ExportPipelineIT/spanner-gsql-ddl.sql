@@ -52,3 +52,9 @@ DROP SEARCH INDEX IF EXISTS `%PREFIX%SequenceIndex`;
 CREATE SEARCH INDEX `%PREFIX%SearchIndex`
  ON `%PREFIX%Singers`(`MyTokens`)
  OPTIONS (sort_order_sharding=TRUE);
+
+DROP TABLE IF EXISTS `%PREFIX%NoPkTable`;
+CREATE TABLE `%PREFIX%NoPkTable` (
+    Name STRING(MAX)
+);
+

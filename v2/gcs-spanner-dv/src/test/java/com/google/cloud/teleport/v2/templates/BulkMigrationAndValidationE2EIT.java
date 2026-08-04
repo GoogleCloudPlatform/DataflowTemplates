@@ -230,14 +230,13 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
                 /* matchedRowCount= */ 3L,
                 /* mismatchRowCount= */ 0L)));
 
+    // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+    // and one MISSING_IN_DESTINATION) is the expected behavior.
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
-            // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category.
-            // Differing row values (like User 4's age) are emitted as two discrepancies:
-            // one MISSING_IN_SOURCE and one MISSING_IN_DESTINATION.
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(

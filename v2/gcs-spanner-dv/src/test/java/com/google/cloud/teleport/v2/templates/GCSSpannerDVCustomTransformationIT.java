@@ -58,7 +58,7 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     // Create and upload jar for custom transformations
-    createAndUploadCustomShardJarToGcs("custom");
+    uploadCustomShardJarToGcs("custom");
   }
 
   /**
