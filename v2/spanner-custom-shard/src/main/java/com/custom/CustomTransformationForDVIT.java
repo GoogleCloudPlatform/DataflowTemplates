@@ -81,6 +81,11 @@ public class CustomTransformationForDVIT implements ISpannerMigrationTransformer
 
       return new MigrationTransformationResponse(responseRow, false);
     }
+
+    if ("Users_AddedColumn".equals(request.getTableName())) {
+      responseRow.put("status", "ACTIVE");
+      return new MigrationTransformationResponse(responseRow, false);
+    }
     return new MigrationTransformationResponse(null, false);
   }
 

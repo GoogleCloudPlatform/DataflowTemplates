@@ -299,9 +299,9 @@ public class ShardedBulkMigrationAndValidationE2EIT extends EndToEndTestingITBas
                 USERS_TABLE,
                 "[migration_shard_id:logical_shard1, user_id:2, event_id:E2]",
                 MISSING_IN_DESTINATION),
-            // Note: gcs-spanner-dv currently lacks a MISMATCHED_VALUE category.
-            // Differing row values (like User 4's age) are emitted as two discrepancies:
-            // one MISSING_IN_SOURCE and one MISSING_IN_DESTINATION.
+
+            // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+            // and one MISSING_IN_DESTINATION) is the expected behavior.
             new MismatchedRecordDto(
                 LOGICAL_SHARD_2,
                 null,
