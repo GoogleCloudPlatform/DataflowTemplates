@@ -1,6 +1,6 @@
 CREATE TABLE Users (
   user_id INT64,
-  event_id STRING(8176),
+  event_id STRING(MAX),
   full_name STRING(MAX),
   age INT64,
   created_at TIMESTAMP

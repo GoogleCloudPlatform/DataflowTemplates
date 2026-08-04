@@ -56,11 +56,11 @@ public class GCSSpannerDVWideRowMax8KibPrimaryKeyIT extends GCSSpannerDVITBase {
 
     // The maximum size of a Spanner primary key is 8192 bytes.
     // The Users table has a composite primary key: user_id (INT64) + event_id (STRING).
-    // An INT64 takes 8 bytes. A STRING has an 8 byte internal overhead.
-    // To hit exactly 8192 bytes, the event_id string length must be: 8192 - 8 (INT64) - 8
-    // (overhead) = 8176 characters.
-    String matchPkStr = StringUtils.repeat("a", 8176);
-    String mismatchPkStr = StringUtils.repeat("b", 8176);
+    // An INT64 takes 8 bytes. Primary Keys in Spanner take up 2 to 4 bytes of internal overhead.
+    // To hit exactly 8192 bytes, the event_id string length must be: 8192 - 8 (INT64) - 4
+    // (overhead) = 8180 characters.
+    String matchPkStr = StringUtils.repeat("a", 8180);
+    String mismatchPkStr = StringUtils.repeat("b", 8180);
 
     List<GenericRecord> records =
         Arrays.asList(
