@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.UnsignedBytes;
 import com.google.re2j.Pattern;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -819,7 +820,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-
   private static class CharacterWeightRow {
     final int codepoint;
     final byte[] weight;
@@ -834,7 +834,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
-      String charsetChar = rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      String charsetChar =
+          rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null
           || charsetChar.isEmpty()
           || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
@@ -875,13 +876,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
     rows = uniqueRows;
 
-    Map<String, List<CharacterWeightRow>> ntGroupsMap = new java.util.TreeMap<>();
+    Map<byte[], List<CharacterWeightRow>> ntGroupsMap =
+        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
-        String keyNt =
-            (row.weight != null)
-                ? new String(row.weight, java.nio.charset.StandardCharsets.ISO_8859_1)
-                : "";
+        byte[] keyNt = (row.weight != null) ? row.weight : new byte[0];
         ntGroupsMap.computeIfAbsent(keyNt, k -> new ArrayList<>()).add(row);
       }
     }
@@ -898,13 +897,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       rank++;
     }
 
-    Map<String, List<CharacterWeightRow>> tGroupsMap = new java.util.TreeMap<>();
+    Map<byte[], List<CharacterWeightRow>> tGroupsMap =
+        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
-        String keyT =
-            (row.weight != null)
-                ? new String(row.weight, java.nio.charset.StandardCharsets.ISO_8859_1)
-                : "";
+        byte[] keyT = (row.weight != null) ? row.weight : new byte[0];
         tGroupsMap.computeIfAbsent(keyT, k -> new ArrayList<>()).add(row);
       }
     }
@@ -938,6 +935,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
               .setIsSpace(row.isSpace)
               .build());
     }
+    result.sort(
+        java.util.Comparator.comparingLong(CollationOrderRow::codepointRank)
+            .thenComparing(CollationOrderRow::charsetChar));
     return result;
   }
 

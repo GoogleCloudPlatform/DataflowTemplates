@@ -31,6 +31,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -50,6 +51,7 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.List;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Test;
@@ -931,6 +933,7 @@ public class MysqlDialectAdapterTest {
         .isEqualTo(java.time.Duration.ofHours(-838).minusMinutes(59).minusSeconds(59));
   }
 
+  @Test
   public void testGetCollationsOrderQuery() {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     String dbCharset = "utf8mb4";
@@ -941,6 +944,52 @@ public class MysqlDialectAdapterTest {
 
     assertThat(query).contains("'" + dbCharset + "'");
     assertThat(query).contains("'" + dbCollation + "'");
+  }
+
+  @Test
+  public void testProcessCollationResultSet() throws SQLException {
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    CollationReference collationReference =
+        CollationReference.builder()
+            .setDbCharacterSet("utf8mb4")
+            .setDbCollation("utf8mb4_0900_ai_ci")
+            .setPadSpace(false)
+            .build();
+
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.next()).thenReturn(true, true, true, false);
+
+    // Mock returning: "b" (weight 0x02), "a" (weight 0x01), "A" (weight 0x01)
+    when(mockRs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL))
+        .thenReturn("b", "a", "A");
+    when(mockRs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL))
+        .thenReturn(new byte[] {0x02}, new byte[] {0x01}, new byte[] {0x01});
+    when(mockRs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL))
+        .thenReturn(false);
+    when(mockRs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL))
+        .thenReturn(false);
+
+    List<CollationOrderRow> result = adapter.processCollationResultSet(mockRs, collationReference);
+
+    // Order should be sorted by rank and then charsetChar: "A" (rank 0), "a" (rank 0), then "b"
+    // (rank 1)
+    assertThat(result).hasSize(3);
+
+    // First row: "A"
+    assertThat(result.get(0).charsetChar()).isEqualTo("A");
+    assertThat(result.get(0).codepointRank()).isEqualTo(0L);
+    assertThat(result.get(0).equivalentChar())
+        .isEqualTo("a"); // "a" is equivalent because it appeared first in ResultSet for this weight
+
+    // Second row: "a"
+    assertThat(result.get(1).charsetChar()).isEqualTo("a");
+    assertThat(result.get(1).codepointRank()).isEqualTo(0L);
+    assertThat(result.get(1).equivalentChar()).isEqualTo("a");
+
+    // Third row: "b"
+    assertThat(result.get(2).charsetChar()).isEqualTo("b");
+    assertThat(result.get(2).codepointRank()).isEqualTo(1L);
+    assertThat(result.get(2).equivalentChar()).isEqualTo("b");
   }
 
   @Test
