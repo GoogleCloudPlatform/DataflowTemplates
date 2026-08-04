@@ -79,6 +79,8 @@ public class ProcessChangeEventFn
       Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries");
   private final Counter outOfOrderSkips =
       Metrics.counter(ProcessChangeEventFn.class, "outOfOrderSkips");
+  private final Counter nullDataUpdateSkips =
+      Metrics.counter(ProcessChangeEventFn.class, "nullDataUpdateSkips");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -124,6 +126,7 @@ public class ProcessChangeEventFn
         Document shadowDoc = shadowCollection.find(session, lookupById).first();
 
         if (isEventNewerThanShadowDoc(element, shadowDoc)) {
+          boolean writeSucceeded = false;
           if (element.isDeleteEvent()) {
             // This is a delete event - delete the document from data collection
             dataCollection.deleteOne(session, lookupById);
@@ -133,20 +136,49 @@ public class ProcessChangeEventFn
                 lookupById,
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
+            writeSucceeded = true;
           } else {
             // Regular insert or update.
-            dataCollection.replaceOne(
-                session,
-                lookupById,
-                Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId()),
-                new ReplaceOptions().upsert(true));
-            shadowCollection.replaceOne(
-                session,
-                lookupById,
-                element.getShadowDocument(),
-                new ReplaceOptions().upsert(true));
+            Document docToWrite =
+                Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId());
+            if (docToWrite == null) {
+              if (element.isUpdateEvent()) {
+                LOG.info(
+                    "Skipping update event for document ID: {} because 'data' field is null"
+                        + " (document may have been deleted immediately after update in MongoDB).",
+                    element.getDocumentId());
+                nullDataUpdateSkips.inc();
+                Metrics.counter(
+                        ProcessChangeEventFn.class,
+                        "nullDataUpdateSkips_" + element.getChangeType())
+                    .inc();
+              } else {
+                throw new IllegalArgumentException(
+                    "Event payload has missing or null 'data' field for non-UPDATE event (type: "
+                        + element.getChangeType()
+                        + "), document ID: "
+                        + element.getDocumentId());
+              }
+            } else {
+              dataCollection.replaceOne(
+                  session,
+                  lookupById,
+                  docToWrite,
+                  new ReplaceOptions().upsert(true));
+              shadowCollection.replaceOne(
+                  session,
+                  lookupById,
+                  element.getShadowDocument(),
+                  new ReplaceOptions().upsert(true));
+              writeSucceeded = true;
+            }
           }
-          successfulWrites.inc();
+          if (writeSucceeded) {
+            successfulWrites.inc();
+            Metrics.counter(
+                    ProcessChangeEventFn.class, "successfulWrites_" + element.getChangeType())
+                .inc();
+          }
         } else {
           // Existing document has a later timestamp, skip this event
           outOfOrderSkips.inc();

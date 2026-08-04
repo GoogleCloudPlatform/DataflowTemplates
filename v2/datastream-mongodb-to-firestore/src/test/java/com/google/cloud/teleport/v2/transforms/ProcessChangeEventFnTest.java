@@ -486,4 +486,58 @@ public class ProcessChangeEventFnTest {
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
   }
+
+  @Test
+  public void testProcessElement_updateEventWithNullDataSkips() {
+    when(mockFindIterable.first()).thenReturn(null);
+    when(mockElement.getDataAsJsonString()).thenReturn(new Document("data", null).toJson());
+    when(mockElement.isDeleteEvent()).thenReturn(false);
+    when(mockElement.isUpdateEvent()).thenReturn(true);
+    when(mockElement.getChangeType()).thenReturn("UPDATE");
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockDataCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockShadowCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockSession).commitTransaction();
+    verify(mockSession, never()).abortTransaction();
+    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockSuccessReceiver, times(1)).output(mockElement);
+
+    MetricsContainerImpl container =
+        (MetricsContainerImpl) MetricsEnvironment.getCurrentContainer();
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "nullDataUpdateSkips"))
+                .getCumulative());
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(
+                    MetricName.named(ProcessChangeEventFn.class, "nullDataUpdateSkips_UPDATE"))
+                .getCumulative());
+  }
+
+  @Test
+  public void testProcessElement_insertEventWithNullDataRoutesToSevereDlq() {
+    when(mockFindIterable.first()).thenReturn(null);
+    when(mockElement.getDataAsJsonString()).thenReturn(new Document("data", null).toJson());
+    when(mockElement.isDeleteEvent()).thenReturn(false);
+    when(mockElement.isUpdateEvent()).thenReturn(false);
+    when(mockElement.getChangeType()).thenReturn("INSERT");
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockDataCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockShadowCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockSevereFailureReceiver, times(1)).output(any());
+  }
 }
