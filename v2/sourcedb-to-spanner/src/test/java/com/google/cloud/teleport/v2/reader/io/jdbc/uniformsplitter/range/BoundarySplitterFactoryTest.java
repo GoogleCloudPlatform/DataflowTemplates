@@ -733,6 +733,33 @@ public class BoundarySplitterFactoryTest {
                     .build()));
   }
 
+  @Test
+  public void testStringBoundarySplitterSurrogatePairs() {
+    CollationReference collationReference =
+        CollationReference.builder()
+            .setDbCharacterSet("utf8mb4")
+            .setDbCollation("utf8mb4_bin")
+            .setPadSpace(true)
+            .build();
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("VARCHAR")
+            .setColumnName("col1")
+            .setColumnClass(String.class)
+            .setStringMaxLength(200)
+            .setStringCollation(collationReference)
+            .build();
+
+    TestBoundaryTypeMapper typeMapper = new TestBoundaryTypeMapper();
+    // Test with strings sharing a surrogate pair prefix (emoji 😀)
+    String start = "😀a";
+    String end = "😀c";
+
+    String split =
+        BoundarySplitterFactory.splitStrings(start, end, partitionColumn, typeMapper, null);
+    assertThat(split).startsWith("😀b");
+  }
+
   /* Not for production as it does not look at collation ordering */
   private class TestBoundaryTypeMapper implements BoundaryTypeMapper {
 

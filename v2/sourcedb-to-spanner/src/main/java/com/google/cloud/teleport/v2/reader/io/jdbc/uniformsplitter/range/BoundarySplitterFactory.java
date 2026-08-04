@@ -390,7 +390,8 @@ public class BoundarySplitterFactory {
     return result;
   }
 
-  private static String splitStrings(
+  @VisibleForTesting
+  protected static String splitStrings(
       String start,
       String end,
       PartitionColumn partitionColumn,
@@ -416,10 +417,13 @@ public class BoundarySplitterFactory {
     // To avoid undefined behaviour in the padding logic, we take the max of the input strings and
     // the partition column width.
     int commonPrefixLength = 0;
-    while (commonPrefixLength < start.length()
-        && commonPrefixLength < end.length()
-        && start.charAt(commonPrefixLength) == end.charAt(commonPrefixLength)) {
-      commonPrefixLength++;
+    while (commonPrefixLength < start.length() && commonPrefixLength < end.length()) {
+      int cpStart = start.codePointAt(commonPrefixLength);
+      int cpEnd = end.codePointAt(commonPrefixLength);
+      if (cpStart != cpEnd) {
+        break;
+      }
+      commonPrefixLength += Character.charCount(cpStart);
     }
     String commonPrefix = start.substring(0, commonPrefixLength);
     String suffixStart = start.substring(commonPrefixLength);
