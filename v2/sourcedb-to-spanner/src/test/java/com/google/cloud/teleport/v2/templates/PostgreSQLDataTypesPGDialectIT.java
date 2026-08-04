@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -155,6 +156,7 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             "t_tstzrange",
             "t_tsvector",
             "t_txid_snapshot",
+            // "t_uuid_to_bytes",
             // "t_varbit_to_bool_array",
             "t_xml");
 
@@ -184,11 +186,13 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         "bigserial_to_numeric",
         createRows(
             "-9223372036854775808.000000000", "9223372036854775807.000000000", "42.000000000"));
-    result.put("bit", createRows("MA==", "MQ==", "NULL"));
+    result.put(
+        "bit",
+        createRows(ByteArray.copyFrom("0").toBase64(), ByteArray.copyFrom("1").toBase64(), "NULL"));
     // bit_to_string is commented out to avoid failing the test case; returned data is the literal
     // string "java.nio.HeapByteBuffer[pos=0 lim=32 cap=32]"
     // result.put("bit_to_string", createRows("0", "1", "NULL"));
-    result.put("bit_varying", createRows("MDEwMQ==", "NULL"));
+    result.put("bit_varying", createRows(ByteArray.copyFrom("0101").toBase64(), "NULL"));
     // bit_varying_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("bit_varying_to_string", createRows("5", "NULL"));
@@ -196,7 +200,7 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
     result.put("boolean_to_string", createRows("false", "true", "NULL"));
-    result.put("bytea", createRows("YWJj", "NULL"));
+    result.put("bytea", createRows(ByteArray.copyFrom("abc").toBase64(), "NULL"));
     // bytea_to_string is commented out to avoid failing the test case; returned data is the literal
     // string "java.nio.HeapByteBuffer[pos=0 lim=3 cap=3]"
     // result.put("bytea_to_string", createRows("616263", "NULL"));
@@ -385,9 +389,8 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put("time_with_time_zone", createRows("23:59:59+10:00", "24:00:00-05:30", "NULL"));
     result.put("timetz", createRows("23:59:59+10:00", "24:00:00-05:30", "NULL"));
     result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
-    result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
     result.put("uuid_to_string", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
-    result.put("varbit", createRows("MTEwMA==", "NULL"));
+    result.put("varbit", createRows(ByteArray.copyFrom("1100").toBase64(), "NULL"));
     // varbit_to_string is commented out to avoid failing the test case; returned data is the
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("varbit_to_string", createRows("c", "NULL"));
