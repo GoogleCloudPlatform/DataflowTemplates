@@ -369,8 +369,7 @@ public class ProcessChangeEventFnTest {
     WriteError writeError =
         new WriteError(
             2, "At most 20 nested array/entity values are supported.", new BsonDocument());
-    MongoWriteException permanentError =
-        new MongoWriteException(writeError, new ServerAddress());
+    MongoWriteException permanentError = new MongoWriteException(writeError, new ServerAddress());
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(permanentError);
 
@@ -582,9 +581,7 @@ public class ProcessChangeEventFnTest {
   public void testIsTransientTransactionError_code251NoSuchTransaction() {
     BsonDocument response =
         new BsonDocument("code", new BsonInt32(251))
-            .append(
-                "errmsg",
-                new BsonString("Given transaction number 488769 does not exist"));
+            .append("errmsg", new BsonString("Given transaction number 488769 does not exist"));
     MongoCommandException commandException =
         new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
