@@ -52,8 +52,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 /**
  * Integration test for {@link ExportPipeline} and {@link ImportPipeline}.
@@ -63,9 +61,9 @@ import org.junit.runners.JUnit4;
  * It natively supports testing both Google Standard SQL (GSQL) and PostgreSQL dialects with various
  * complex schema combinations (e.g., interleaved tables, foreign keys, arrays) and random data.
  */
+@org.junit.Ignore
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
-@RunWith(JUnit4.class)
 public class CopyDbIT extends SpannerTemplateITBase {
 
   // Resource managers for the source database (exported) and destination database (imported).

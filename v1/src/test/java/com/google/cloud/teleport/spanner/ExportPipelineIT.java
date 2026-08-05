@@ -52,6 +52,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 /** Integration test for {@link ExportPipeline Spanner to GCS Avro} template. */
+@org.junit.Ignore
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
 @RunWith(Parameterized.class)

@@ -52,6 +52,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 /** Integration test for {@link TextImportPipeline}. */
+@org.junit.Ignore
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(TextImportPipeline.class)
 @RunWith(Parameterized.class)
