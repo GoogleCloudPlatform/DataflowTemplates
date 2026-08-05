@@ -458,8 +458,7 @@ public class ProcessChangeEventFnTest {
   public void testProcessElementTransientCommandError_retry() {
     BsonDocument response = new BsonDocument("code", new BsonInt32(123));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     commandException.addLabel("TransientTransactionError");
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
@@ -481,8 +480,7 @@ public class ProcessChangeEventFnTest {
   public void testProcessElementSevereCommandError() {
     BsonDocument response = new BsonDocument("code", new BsonInt32(123));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(commandException);
 
@@ -550,8 +548,7 @@ public class ProcessChangeEventFnTest {
   public void testIsTransientTransactionError_code112WithoutLabel() {
     BsonDocument response = new BsonDocument("code", new BsonInt32(112));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -567,8 +564,7 @@ public class ProcessChangeEventFnTest {
   public void testIsTransientTransactionError_nonTransientError() {
     BsonDocument response = new BsonDocument("code", new BsonInt32(123));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertFalse(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -578,8 +574,7 @@ public class ProcessChangeEventFnTest {
         new BsonDocument("code", new BsonInt32(2))
             .append("errmsg", new BsonString("Transaction number 488769 is unknown."));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -591,8 +586,7 @@ public class ProcessChangeEventFnTest {
                 "errmsg",
                 new BsonString("Given transaction number 488769 does not exist"));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -602,8 +596,7 @@ public class ProcessChangeEventFnTest {
         new BsonDocument("code", new BsonInt32(2))
             .append("errmsg", new BsonString("Transaction 488769 not found on server"));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -613,8 +606,7 @@ public class ProcessChangeEventFnTest {
         new BsonDocument("code", new BsonInt32(112))
             .append("errmsg", new BsonString("Too much contention on these documents."));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -628,8 +620,7 @@ public class ProcessChangeEventFnTest {
                     "The service is temporarily unavailable. Please retry with exponential"
                         + " backoff."));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
   }
 
@@ -637,8 +628,7 @@ public class ProcessChangeEventFnTest {
   public void testIsTransientTransactionError_wrappedInRuntimeException() {
     BsonDocument response = new BsonDocument("code", new BsonInt32(112));
     MongoCommandException commandException =
-        new MongoCommandException(
-            response, new ServerAddress("localhost", 27017));
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     RuntimeException wrappedException = new RuntimeException("Wrapped error", commandException);
     assertTrue(ProcessChangeEventFn.isTransientTransactionError(wrappedException));
   }
