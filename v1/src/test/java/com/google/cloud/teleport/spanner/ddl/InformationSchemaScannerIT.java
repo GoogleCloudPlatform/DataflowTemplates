@@ -193,10 +193,11 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
-            testName + "-" + UUID.randomUUID().toString().substring(0, 8),
-            projectId,
-            region,
-            dialect);
+                testName + "-" + UUID.randomUUID().toString().substring(0, 8),
+                projectId,
+                region,
+                dialect)
+            .setNodeCount(2);
     if (spannerHost != null) {
       builder.useCustomHost(spannerHost);
     }
