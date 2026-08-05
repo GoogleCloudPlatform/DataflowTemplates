@@ -73,7 +73,7 @@ import org.junit.experimental.categories.Category;
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
-  public static final String INSTANCE_PARTITION_ID = "mr-partition";
+  public static final String INSTANCE_PARTITION_ID = "default";
 
   public static SpannerResourceManager sharedSpannerResourceManager;
   public static SpannerResourceManager sharedPgSpannerResourceManager;
@@ -179,23 +179,24 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
     }
   }
 
-  private void setupResourceManager(Dialect dialect) {
-    setupResourceManager(dialect, null);
-  }
-
-  private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
+  private void setupMultiRegionSpannerResourceManager(Dialect dialect) {
     String projectId = TestProperties.project();
+
+    String region = "nam6";
+    if (spannerHost != null) {
+      if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
+        region = "nam3";
+      } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
+        region = "nam-private1";
+      }
+    }
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
-                testName + "-" + UUID.randomUUID().toString().substring(0, 8),
-                projectId,
-                "nam6",
-                dialect)
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
-    if (protoDescriptors != null) {
-      builder.setProtoDescriptors(protoDescriptors);
-    }
+            testName + "-" + UUID.randomUUID().toString().substring(0, 8),
+            projectId,
+            region,
+            dialect);
     if (spannerHost != null) {
       builder.useCustomHost(spannerHost);
     }
@@ -2017,7 +2018,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void placementsAndPlacementTables() throws Exception {
-    setupResourceManager(Dialect.GOOGLE_STANDARD_SQL);
+    setupMultiRegionSpannerResourceManager(Dialect.GOOGLE_STANDARD_SQL);
     try {
       List<String> statements =
           Arrays.asList(
@@ -2076,7 +2077,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void pgPlacementTables() throws Exception {
-    setupResourceManager(Dialect.POSTGRESQL);
+    setupMultiRegionSpannerResourceManager(Dialect.POSTGRESQL);
     try {
       List<String> statements =
           Arrays.asList(
