@@ -309,7 +309,7 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             "123456789012345678901234567890.12...",
             "NULL"));
     result.put(
-        "money",
+        "money_to_string",
         createRows(
             "123.45",
             "1234.56",
