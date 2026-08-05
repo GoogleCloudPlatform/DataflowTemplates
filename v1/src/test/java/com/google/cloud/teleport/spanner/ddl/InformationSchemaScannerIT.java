@@ -2031,7 +2031,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-central1\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")",
               "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"
