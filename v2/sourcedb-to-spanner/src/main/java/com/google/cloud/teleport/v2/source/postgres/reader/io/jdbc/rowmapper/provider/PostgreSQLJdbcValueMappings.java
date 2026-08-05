@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapte
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -163,7 +164,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
         if (value instanceof String) {
           try {
             pgInterval = new PGInterval((String) value);
-          } catch (java.sql.SQLException e) {
+          } catch (SQLException e) {
             throw new IllegalArgumentException("Failed to parse PGInterval string: " + value, e);
           }
         } else if (value instanceof PGInterval) {
@@ -330,8 +331,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
           .put("TIME", bytesExtractor, timeToAvro, 8)
-          .put("TIMETZ", bytesExtractor, timetzToAvro, 8)
-          .put("TIME WITH TIME ZONE", bytesExtractor, timetzToAvro, 8)
+          .put("TIMETZ", bytesExtractor, timetzToAvro, 12)
+          .put("TIME WITH TIME ZONE", bytesExtractor, timetzToAvro, 12)
           .put("TIME WITHOUT TIME ZONE", bytesExtractor, timeToAvro, 8)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)

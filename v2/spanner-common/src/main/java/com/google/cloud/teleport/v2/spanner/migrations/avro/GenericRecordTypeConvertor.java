@@ -716,8 +716,9 @@ public class GenericRecordTypeConvertor {
           .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getName().equals("timeTz")) {
       Long nanoseconds =
-          Long.valueOf(element.get("time").toString()) * TimeUnit.MICROSECONDS.toNanos(1);
-      int offsetSeconds = Integer.valueOf(element.get("offset").toString()) / 1000;
+          ((Number) getOrDefault(element, "time", 0L)).longValue()
+              * TimeUnit.MICROSECONDS.toNanos(1);
+      int offsetSeconds = ((Number) getOrDefault(element, "offset", 0)).intValue() / 1000;
 
       ZoneOffset offset = ZoneOffset.ofTotalSeconds(offsetSeconds);
 

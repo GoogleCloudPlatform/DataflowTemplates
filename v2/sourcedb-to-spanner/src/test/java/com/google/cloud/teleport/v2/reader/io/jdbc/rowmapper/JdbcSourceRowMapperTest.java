@@ -42,6 +42,7 @@ import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.pro
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -230,19 +231,19 @@ public class JdbcSourceRowMapperTest {
     var mapping = new MysqlJdbcValueMappings().getMappings().get("TIME");
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("-838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("-838:59:58.999999".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(-3020398999999L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("838:59:58.999999".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(3020398999999L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("00:00:00".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("00:00:00".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("invalid_data".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("invalid_data".getBytes(StandardCharsets.UTF_8));
     Assert.assertThrows(
         java.lang.IllegalArgumentException.class,
         () -> mapping.mapValue(mockResultSet, "testField", null));
@@ -447,8 +448,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(20) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .inputValue(
-                    "23:09:02".getBytes(java.nio.charset.StandardCharsets.UTF_8)) // Derby supports
+                .inputValue("23:09:02".getBytes(StandardCharsets.UTF_8)) // Derby supports
                 // only time of
                 // the day */
                 .mappedValue(83342000000L)
@@ -873,21 +873,21 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .inputValue("01:02:03".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .inputValue("01:02:03".getBytes(StandardCharsets.UTF_8))
                 .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME WITHOUT TIME ZONE")
-                .inputValue("01:02:03".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .inputValue("01:02:03".getBytes(StandardCharsets.UTF_8))
                 .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
                 .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIMETZ")
-                .inputValue("01:02:03-05".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .inputValue("01:02:03-05".getBytes(StandardCharsets.UTF_8))
                 .mappedValue(
                     new GenericRecordBuilder(TimeTz.SCHEMA)
                         .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
@@ -898,7 +898,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME WITH TIME ZONE")
-                .inputValue("01:02:03-05".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .inputValue("01:02:03-05".getBytes(StandardCharsets.UTF_8))
                 .mappedValue(
                     new GenericRecordBuilder(TimeTz.SCHEMA)
                         .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
