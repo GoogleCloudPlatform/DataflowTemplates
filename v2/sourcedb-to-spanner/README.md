@@ -154,7 +154,7 @@ However, because the continuous reader watches the `retry/` directory indefinite
 #### PostgreSQL Supported Features and Limitations
 * **Table Inheritance:** When migrating databases utilizing table inheritance, the pipeline queries parent tables using the `ONLY` keyword. This ensures data is not duplicated from child tables into the parent table in Spanner. Instead, child tables are discovered and migrated as their own separate, independent tables in Spanner.
 * **Declarative Partitioning:** Fully supported. When migrating partitioned tables, provision only the parent table in your target Spanner schema. The pipeline will automatically read records from all underlying source partitions and seamlessly consolidate them into the single parent table in Spanner. **Do not provision the individual child partitions in Spanner, as doing so will cause the pipeline to migrate them separately and result in data duplication.**
-* **Custom Namespaces:** Full end-to-end support for custom namespaces (schemas other than `public`) is currently out of scope. Providing a custom namespace will cause the pipeline initialization to fail-fast.
+* **Custom Namespaces:** Custom namespaces (schemas other than the default schema i.e. `public`) are not supported.
 * **Supported Data Types:**
   * **`SMALLINT` / `SMALLSERIAL`:**
     * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `FLOAT32`, `FLOAT64`, `STRING`
