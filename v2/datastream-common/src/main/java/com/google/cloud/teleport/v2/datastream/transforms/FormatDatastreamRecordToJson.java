@@ -566,6 +566,10 @@ public class FormatDatastreamRecordToJson
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
+        /*
+         * Note: Upstream Datastream incorrectly wraps 24:00:00 to 0 microseconds during extraction.
+         * This causes 24:00:00 to be extracted as 00:00:00 (e.g. 'PT0S' instead of 'PT24H').
+         */
         Long microseconds = (Long) element.get(fieldName);
         if (microseconds.equals(DATETIME_POSITIVE_INFINITY)) {
           jsonObject.put(fieldName, "infinity");
@@ -653,6 +657,10 @@ public class FormatDatastreamRecordToJson
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
+          /*
+           * Note: Upstream Datastream incorrectly wraps 24:00:00 to 0 microseconds during extraction.
+           * This causes 24:00:00+offset to be extracted as 00:00:00+offset.
+           */
         case "timeTz":
           long timeTzNanos =
               ((Number) getOrDefault(element, "time", 0L)).longValue()

@@ -336,11 +336,19 @@ public class FormatDatastreamRecordToJsonTest {
     UnifiedTypesFormatter.handleDatastreamRecordType(
         "only_time", generateIntervalSchema(), generateIntervalRecord(0, 5, 123456L), objectNode);
 
+    /* Negative interval (-1 month, -26 hours = -1 day - 2 hours, -3000000 micros = -3 seconds) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_basic",
+        generateIntervalSchema(),
+        generateIntervalRecord(-1, -26, -3000000L),
+        objectNode);
+
     String expected =
         "{\"basic\":\"P1M1DT2H3S\","
             + "\"zero_interval\":\"PT0S\","
             + "\"only_months\":\"P1Y\","
-            + "\"only_time\":\"PT5H0.123456S\"}";
+            + "\"only_time\":\"PT5H0.123456S\","
+            + "\"neg_basic\":\"P-1M-1DT-2H-3S\"}";
     assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
   }
 
