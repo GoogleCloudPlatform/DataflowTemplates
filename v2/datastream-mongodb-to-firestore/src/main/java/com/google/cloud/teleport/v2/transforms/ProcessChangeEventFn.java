@@ -354,34 +354,12 @@ public class ProcessChangeEventFn
         if (mongoException.getErrorLabels().contains("TransientTransactionError")) {
           return true;
         }
-        // Extract the server error code across different MongoDB exception wrappers:
-        // - MongoWriteException: getError().getCode()
-        // - MongoCommandException: getErrorCode()
-        // - Standard MongoException: getCode()
-        int errorCode =
-            t instanceof MongoWriteException writeEx
-                ? writeEx.getError().getCode()
-                : t instanceof com.mongodb.MongoCommandException cmdEx
-                    ? cmdEx.getErrorCode()
-                    : mongoException.getCode();
+        int errorCode = getErrorCode(t, mongoException);
+        boolean isUnknownTxn = isUnknownTransactionError(errorCode, mongoException.getMessage());
 
-        // Check for unknown/expired transaction errors:
-        // - Standard MongoDB code 251 (NoSuchTransaction)
-        // - Firestore compatibility code 2 (BadValue) with messages mentioning a missing/unknown
-        //   transaction (case-insensitive to be resilient against server rephrasing).
-        String msg = mongoException.getMessage();
-        boolean isUnknownTxn =
-            errorCode == 251
-                || (errorCode == 2
-                    && msg != null
-                    && msg.toLowerCase().contains("transaction")
-                    && (msg.toLowerCase().contains("unknown")
-                        || msg.toLowerCase().contains("not found")
-                        || msg.toLowerCase().contains("expired")
-                        || msg.toLowerCase().contains("no such")));
-
-        // Error 112 (WriteConflict/Aborted), Error 91 (ShutdownInProgress), and unknown transaction
-        // errors are transient server aborts that succeed when retried with exponential backoff.
+        // Error 112 (WriteConflict/Aborted), Error 91 (ShutdownInProgress), and unknown
+        // transaction errors are transient server aborts that succeed when retried with
+        // exponential backoff.
         if (errorCode == 112 || errorCode == 91 || isUnknownTxn) {
           return true;
         }
@@ -389,5 +367,41 @@ public class ProcessChangeEventFn
       t = t.getCause();
     }
     return false;
+  }
+
+  // Extract the server error code across different MongoDB exception wrappers:
+  // - MongoWriteException: getError().getCode()
+  // - MongoCommandException: getErrorCode()
+  // - Standard MongoException: getCode()
+  private static int getErrorCode(Throwable t, MongoException mongoException) {
+    if (t instanceof MongoWriteException writeEx && writeEx.getError() != null) {
+      return writeEx.getError().getCode();
+    }
+    if (t instanceof com.mongodb.MongoCommandException cmdEx) {
+      return cmdEx.getErrorCode();
+    }
+    return mongoException.getCode();
+  }
+
+  // Check for unknown/expired transaction errors:
+  private static boolean isUnknownTransactionError(int errorCode, String msg) {
+    // Standard MongoDB code 251 (NoSuchTransaction)
+    if (errorCode == 251) {
+      return true;
+    }
+    if (errorCode != 2 || msg == null) {
+      return false;
+    }
+    // Firestore compatibility code 2 (BadValue) with messages mentioning a
+    // missing/unknown
+    // transaction (case-insensitive to be resilient against server rephrasing).
+    String lowerMsg = msg.toLowerCase();
+    if (!lowerMsg.contains("transaction")) {
+      return false;
+    }
+    return lowerMsg.contains("unknown")
+        || lowerMsg.contains("not found")
+        || lowerMsg.contains("expired")
+        || lowerMsg.contains("no such");
   }
 }
