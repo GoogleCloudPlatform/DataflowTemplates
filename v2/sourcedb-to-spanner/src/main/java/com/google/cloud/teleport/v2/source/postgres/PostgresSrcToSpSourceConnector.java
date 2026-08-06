@@ -56,6 +56,7 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("CHARACTER VARYING", UnifiedMappingProvider.Type.STRING)
+          .put("CIDR", UnifiedMappingProvider.Type.STRING)
           .put("CITEXT", UnifiedMappingProvider.Type.STRING)
           .put("DATE", UnifiedMappingProvider.Type.DATE)
           // TODO: Refine mapping type according to
@@ -65,11 +66,13 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           .put("DOUBLE PRECISION", UnifiedMappingProvider.Type.DOUBLE)
           .put("FLOAT4", UnifiedMappingProvider.Type.FLOAT)
           .put("FLOAT8", UnifiedMappingProvider.Type.DOUBLE)
+          .put("INET", UnifiedMappingProvider.Type.STRING)
           .put("INT", UnifiedMappingProvider.Type.INTEGER)
           .put("INTEGER", UnifiedMappingProvider.Type.INTEGER)
           .put("INT2", UnifiedMappingProvider.Type.INTEGER)
           .put("INT4", UnifiedMappingProvider.Type.INTEGER)
           .put("INT8", UnifiedMappingProvider.Type.LONG)
+          .put("INTERVAL", UnifiedMappingProvider.Type.INTERVAL)
           .put("JSON", UnifiedMappingProvider.Type.JSON)
           .put("JSONB", UnifiedMappingProvider.Type.JSON)
           .put("MONEY", UnifiedMappingProvider.Type.DOUBLE)
@@ -89,6 +92,10 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           // https://cloud.google.com/datastream/docs/unified-types#map-psql (if there is a limit
           // for length we should use varchar instead)
           .put("TEXT", UnifiedMappingProvider.Type.STRING)
+          .put("TIME", UnifiedMappingProvider.Type.TIME)
+          .put("TIME WITHOUT TIME ZONE", UnifiedMappingProvider.Type.TIME)
+          .put("TIMETZ", UnifiedMappingProvider.Type.TIME_WITH_TIME_ZONE)
+          .put("TIME WITH TIME ZONE", UnifiedMappingProvider.Type.TIME_WITH_TIME_ZONE)
           .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("TIMESTAMPTZ", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
           .put("TIMESTAMP WITH TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)

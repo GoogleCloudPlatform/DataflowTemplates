@@ -394,6 +394,7 @@ public class AvroToValueMapper {
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
+
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }

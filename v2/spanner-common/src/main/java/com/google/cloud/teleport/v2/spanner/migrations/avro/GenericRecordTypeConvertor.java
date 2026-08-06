@@ -31,11 +31,13 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -624,7 +626,11 @@ public class GenericRecordTypeConvertor {
       return bigDecimal.toPlainString();
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
       Long nanoseconds = Long.valueOf(recordValue.toString()) * TimeUnit.MICROSECONDS.toNanos(1);
-      return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
+      // Handle PostgreSQL "24:00:00" (86400000000000L ns) separately as LocalTime rejects it.
+      if (nanoseconds == 86400000000000L) {
+        return "PT24H";
+      }
+      return java.time.Duration.ofNanos(nanoseconds).toString();
     } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
       Long nanoseconds = TimeUnit.MILLISECONDS.toNanos(Long.valueOf(recordValue.toString()));
       return LocalTime.ofNanoOfDay(nanoseconds).format(DateTimeFormatter.ISO_LOCAL_TIME);
@@ -708,6 +714,21 @@ public class GenericRecordTypeConvertor {
       return fullDate
           .withZoneSameInstant(ZoneId.of("UTC"))
           .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    } else if (fieldSchema.getName().equals("timeTz")) {
+      Long nanoseconds =
+          ((Number) getOrDefault(element, "time", 0L)).longValue()
+              * TimeUnit.MICROSECONDS.toNanos(1);
+      int offsetSeconds = ((Number) getOrDefault(element, "offset", 0)).intValue() / 1000;
+
+      ZoneOffset offset = ZoneOffset.ofTotalSeconds(offsetSeconds);
+
+      if (nanoseconds == 86400000000000L) {
+        return "24:00:00" + offset.toString();
+      }
+
+      LocalTime localTime = LocalTime.ofNanoOfDay(nanoseconds);
+      OffsetTime offsetTime = OffsetTime.of(localTime, offset);
+      return offsetTime.format(DateTimeFormatter.ISO_OFFSET_TIME);
     } else if (fieldSchema.getName().equals("datetime")) {
       // Convert to timestamp string.
       Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));
@@ -718,22 +739,33 @@ public class GenericRecordTypeConvertor {
               TimeUnit.MICROSECONDS.toNanos(totalMicros % TimeUnit.SECONDS.toMicros(1)));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getName().equals("interval")) {
-      // TODO: For MySQL, we ignore the months field. This might require source-specific handling
-      // when PG is supported.
-      String hours = element.get("hours").toString();
-      Long totalMicros = Long.valueOf(element.get("micros").toString());
-      if (totalMicros >= TimeUnit.MINUTES.toMicros(60)) {
-        throw new IllegalArgumentException(
-            String.format(
-                "found duration %s for interval type, micros field. This field should be strictly less than 60 minutes.",
-                totalMicros));
+      int months = ((Number) getOrDefault(element, "months", 0)).intValue();
+      int hours = ((Number) getOrDefault(element, "hours", 0)).intValue();
+      long micros = ((Number) getOrDefault(element, "micros", 0L)).longValue();
+
+      int days = hours / 24;
+      int remainingHours = hours % 24;
+
+      Period period = Period.ZERO.plusMonths(months).plusDays(days).normalized();
+      java.time.Duration duration =
+          java.time.Duration.ZERO.plusHours(remainingHours).plus(micros, ChronoUnit.MICROS);
+
+      if (period.isZero() && duration.isZero()) {
+        return "PT0S";
       }
-      String localTime =
-          LocalTime.ofNanoOfDay(TimeUnit.MICROSECONDS.toNanos(totalMicros))
-              .format(DateTimeFormatter.ISO_LOCAL_TIME);
-      // Handle hours separately since that can also be negative. We convert micros to localTime
-      // format (HH:MM:SS), then strip of HH:, which will always be "00:".
-      return String.format("%s:%s", hours, localTime.substring(3));
+
+      StringBuilder result = new StringBuilder();
+      if (!period.isZero()) {
+        result.append(period.toString());
+      }
+      if (!duration.isZero()) {
+        if (result.length() == 0) {
+          result.append(duration.toString());
+        } else {
+          result.append(duration.toString().substring(1)); // Remove the 'P' from Duration
+        }
+      }
+      return result.toString();
     } else if (fieldSchema.getName().equals("intervalNano")) {
       Period period =
           Period.ZERO

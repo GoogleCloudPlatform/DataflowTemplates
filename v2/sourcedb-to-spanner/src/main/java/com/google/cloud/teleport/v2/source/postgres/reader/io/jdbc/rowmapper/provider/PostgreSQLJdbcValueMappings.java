@@ -20,12 +20,18 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMapper;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLTimeConverter;
 import com.google.common.collect.ImmutableMap;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -34,6 +40,7 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.postgresql.util.PGInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +60,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .optionalEnd()
           .appendOffset("+HH:mm", "+00")
           .toFormatter();
+
+  private static final long MAX_POSTGRES_TIME_MICROS = 86400000000L;
 
   private static long toMicros(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
@@ -103,6 +112,90 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeStampTz.OFFSET_FIELD_NAME,
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
+
+  private static final ResultSetValueMapper<ByteBuffer> timeToAvro =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
+        LocalTime parsedTime = PostgreSQLTimeConverter.toLocalTime(bytes);
+
+        if (parsedTime.equals(LocalTime.MAX)) {
+          return MAX_POSTGRES_TIME_MICROS;
+        }
+        return TimeUnit.NANOSECONDS.toMicros(parsedTime.toNanoOfDay());
+      };
+
+  private static final ResultSetValueMapper<ByteBuffer> timetzToAvro =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
+        OffsetTime parsedTime = PostgreSQLTimeConverter.toOffsetTime(bytes);
+
+        long timeMicros;
+        if (parsedTime.toLocalTime().equals(LocalTime.MAX)) {
+          timeMicros = MAX_POSTGRES_TIME_MICROS;
+        } else {
+          timeMicros = TimeUnit.NANOSECONDS.toMicros(parsedTime.toLocalTime().toNanoOfDay());
+        }
+
+        int offsetMillis =
+            (int) TimeUnit.SECONDS.toMillis(parsedTime.getOffset().getTotalSeconds());
+
+        return new GenericRecordBuilder(TimeTz.SCHEMA)
+            .set(TimeTz.TIME_FIELD_NAME, timeMicros)
+            .set(TimeTz.OFFSET_FIELD_NAME, offsetMillis)
+            .build();
+      };
+
+  private static final ResultSetValueMapper<Object> intervalToAvro =
+      (value, schema) -> {
+        if (value == null) {
+          return null;
+        }
+        PGInterval pgInterval;
+        if (value instanceof String) {
+          try {
+            pgInterval = new PGInterval((String) value);
+          } catch (SQLException e) {
+            throw new IllegalArgumentException("Failed to parse PGInterval string: " + value, e);
+          }
+        } else if (value instanceof PGInterval) {
+          pgInterval = (PGInterval) value;
+        } else {
+          throw new IllegalArgumentException(
+              "Expected PGInterval or String but received: " + value.getClass());
+        }
+
+        // PostgreSQL internally tracks intervals as months, days, and microseconds without
+        // normalizing across these units (e.g., 42 hours remains 42 hours, not 1 day 18 hours).
+        // However, Datastream currently maps INTERVAL to an Avro schema which has months,
+        // hours, and micros. To maintain parity with Datastream, we aggregate PostgreSQL days
+        // into hours (days * 24). Consequently, Spanner (which normalizes hours into
+        // days) might display a structurally different ISO-8601 string than the source, though
+        // the exact duration remains mathematically identical. For example, "53 days 42 hours"
+        // in PostgreSQL is aggregated to 1314 hours, which Spanner then normalizes to
+        // "54 days 18 hours". If Datastream corrects this mapping to include a 'days' field
+        // instead of the hours field in the future, this logic must be updated to avoid
+        // normalization discrepancies.
+
+        int months = (pgInterval.getYears() * 12) + pgInterval.getMonths();
+        int hours = (pgInterval.getDays() * 24) + pgInterval.getHours();
+        double totalSeconds = pgInterval.getMinutes() * 60L + pgInterval.getSeconds();
+        long micros = (long) (totalSeconds * 1_000_000);
+        return new GenericRecordBuilder(Interval.SCHEMA)
+            .set("months", months)
+            .set("hours", hours)
+            .set("micros", micros)
+            .build();
+      };
 
   private static final JdbcMappings JDBC_MAPPINGS =
       /*
@@ -164,6 +257,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long n = getLengthOrPrecision(sourceColumnType, 255);
                 return (int) Math.min((n * 4) + 24, Integer.MAX_VALUE);
               })
+          .put("CIDR", ResultSet::getString, valuePassThrough, 196)
           .put(
               "CITEXT",
               ResultSet::getString,
@@ -184,11 +278,13 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 8)
           .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 4)
           .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 8)
+          .put("INET", ResultSet::getString, valuePassThrough, 196)
           .put("INT", ResultSet::getInt, valuePassThrough, 4)
           .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
           .put("INT2", ResultSet::getInt, valuePassThrough, 2)
           .put("INT4", ResultSet::getInt, valuePassThrough, 4)
           .put("INT8", ResultSet::getLong, valuePassThrough, 8)
+          .put("INTERVAL", ResultSet::getObject, intervalToAvro, 255)
           .put(
               "JSON",
               ResultSet::getString,
@@ -234,6 +330,10 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
+          .put("TIME", bytesExtractor, timeToAvro, 8)
+          .put("TIMETZ", bytesExtractor, timetzToAvro, 12)
+          .put("TIME WITH TIME ZONE", bytesExtractor, timetzToAvro, 12)
+          .put("TIME WITHOUT TIME ZONE", bytesExtractor, timeToAvro, 8)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
           .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)
