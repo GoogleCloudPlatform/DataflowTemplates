@@ -185,7 +185,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
         "type",
         "rest",
         "uri",
-        "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
+        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
         "warehouse",
         "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project",
