@@ -39,6 +39,8 @@ public class BoundarySplitterFactory {
   private static final BigInteger SECONDS_TO_NANOS =
       BigInteger.valueOf(Duration.ofSeconds(1).toNanos());
 
+  @VisibleForTesting protected static final int MAX_STRING_PARTITION_PAD_LENGTH = 300;
+
   private static final ImmutableMap<Class, BoundarySplitter<?>> splittermap =
       ImmutableMap.<Class, BoundarySplitter<?>>builder()
           .put(
@@ -388,7 +390,8 @@ public class BoundarySplitterFactory {
     return result;
   }
 
-  private static String splitStrings(
+  @VisibleForTesting
+  protected static String splitStrings(
       String start,
       String end,
       PartitionColumn partitionColumn,
@@ -413,15 +416,33 @@ public class BoundarySplitterFactory {
     // during a run.
     // To avoid undefined behaviour in the padding logic, we take the max of the input strings and
     // the partition column width.
+    int commonPrefixLength = 0;
+    while (commonPrefixLength < start.length() && commonPrefixLength < end.length()) {
+      int cpStart = start.codePointAt(commonPrefixLength);
+      int cpEnd = end.codePointAt(commonPrefixLength);
+      if (cpStart != cpEnd) {
+        break;
+      }
+      commonPrefixLength += Character.charCount(cpStart);
+    }
+    String commonPrefix = start.substring(0, commonPrefixLength);
+    String suffixStart = start.substring(commonPrefixLength);
+    String suffixEnd = end.substring(commonPrefixLength);
+
     int lengthToPad =
         Math.max(
-            Math.max(start.length(), end.length()), partitionColumn.stringMaxLength().intValue());
+            Math.max(suffixStart.length(), suffixEnd.length()),
+            Math.min(
+                Math.max(0, partitionColumn.stringMaxLength().intValue() - commonPrefixLength),
+                MAX_STRING_PARTITION_PAD_LENGTH));
     BigInteger bigIntegerStart =
-        (BigInteger) typeMapper.mapStringToBigInteger(start, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(suffixStart, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerEnd =
-        (BigInteger) typeMapper.mapStringToBigInteger(end, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(suffixEnd, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerSplit = splitBigIntegers(bigIntegerStart, bigIntegerEnd);
-    return (String) typeMapper.unMapStringFromBigInteger(bigIntegerSplit, partitionColumn, c);
+    String suffixMid =
+        (String) typeMapper.unMapStringFromBigInteger(bigIntegerSplit, partitionColumn, c);
+    return commonPrefix + suffixMid;
   }
 
   @VisibleForTesting

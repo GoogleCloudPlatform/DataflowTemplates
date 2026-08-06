@@ -383,6 +383,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     // bit_pk is commented out to avoid failing the test case; returned data is bits "00110000" and
     // "00110001" (base64 strings "MA==" and "MQ==")
     // result.put("bit_pk", createPkRows("AA==", "gA=="));
+    result.put("varchar_4byte_pk", createPkRows("😀", "😁", "😂"));
     return result;
   }
 

@@ -175,3 +175,8 @@ CREATE TABLE IF NOT EXISTS t_uuid_pk (
     id UUID NOT NULL,
     col INT64,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS t_varchar_4byte_pk (
+  id STRING(MAX) NOT NULL,
+  col INT64,
+) PRIMARY KEY(id);

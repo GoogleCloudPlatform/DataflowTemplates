@@ -352,3 +352,9 @@ CREATE TABLE t_uuid_pk (
   PRIMARY KEY(id)
 );
 INSERT INTO t_uuid_pk (id, col) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1), ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 2);
+
+CREATE TABLE t_varchar_4byte_pk (
+  id varchar(200) PRIMARY KEY,
+  col integer
+);
+INSERT INTO t_varchar_4byte_pk (id, col) VALUES ('😀', 1), ('😁', 2), ('😂', 3);
