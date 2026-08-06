@@ -182,7 +182,7 @@ public class ShardedBulkMigrationAndValidationE2EIT extends EndToEndTestingITBas
                         mySQLResourceManager2.getDatabaseName(),
                         LOGICAL_SHARD_2,
                         LOGICAL_SHARD_2))));
-    createAndUploadBulkShardConfigToGcs(dataShards, gcsClient);
+    createAndUploadShardConfigToGcs(dataShards, gcsClient);
 
     // 3. Launch Bulk Pipeline (SourceDbToSpanner) with multiSharded=true
     String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;
