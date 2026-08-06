@@ -147,8 +147,14 @@ public class FormatDatastreamRecordToJson
     if (sourceType.equals("mysql")) {
       // MySQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataDatabase(record));
-      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
-      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      if (getSourceMetadata(record, "gtid") != null) {
+        // GTID mode
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "binlog_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "binlog_position"));
+      } else {
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      }
     } else if (sourceType.equals("postgresql")) {
       // PostgreSQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
