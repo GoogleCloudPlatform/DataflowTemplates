@@ -52,8 +52,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 /**
  * Integration test for {@link ExportPipeline} and {@link ImportPipeline}.
@@ -65,7 +63,6 @@ import org.junit.runners.JUnit4;
  */
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
-@RunWith(JUnit4.class)
 public class CopyDbIT extends SpannerTemplateITBase {
 
   // Resource managers for the source database (exported) and destination database (imported).
