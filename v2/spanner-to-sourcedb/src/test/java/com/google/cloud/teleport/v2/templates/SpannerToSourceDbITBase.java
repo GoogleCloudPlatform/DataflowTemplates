@@ -309,7 +309,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
-            put("workerMachineType", "n2-standard-4");
+            put("resourceHints", "cpu_count=4");
             // Query Spanner server time to bypass local clock skew and set as startTimestamp
             // to ensure the DirectRunner catches all test mutations during initialization.
             put("startTimestamp", getSpannerServerTime(spannerResourceManager, dialect));

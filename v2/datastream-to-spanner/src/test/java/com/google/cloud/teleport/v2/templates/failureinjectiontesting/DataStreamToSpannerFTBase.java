@@ -227,7 +227,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription)
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            .addParameter("workerMachineType", "n2-standard-4");
+            .addParameter("resourceHints", "cpu_count=4");
 
     if (shadowTableSpannerResourceManager != null) {
       flexTemplateBuilder.addParameter(

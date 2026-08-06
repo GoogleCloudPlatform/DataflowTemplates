@@ -229,7 +229,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("workerMachineType", "n2-standard-4");
+            put("resourceHints", "cpu_count=4");
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {

@@ -176,7 +176,7 @@ public class PostgreSQL5KTablesLT extends SourceDbToSpannerLTBase {
     params.put("maxConnections", "16");
     params.put("numWorkers", "16");
     params.put("maxNumWorkers", "16");
-    params.put("workerMachineType", "n2-standard-4");
+    params.put("resourceHints", "cpu_count=4");
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, SPEC_PATH).setParameters(params);
 

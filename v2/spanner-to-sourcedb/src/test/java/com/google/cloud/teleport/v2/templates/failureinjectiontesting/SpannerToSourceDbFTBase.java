@@ -196,7 +196,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("workerMachineType", "n2-standard-4")
+            .addParameter("resourceHints", "cpu_count=4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
@@ -249,7 +249,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("workerMachineType", "n2-standard-4")
+            .addParameter("resourceHints", "cpu_count=4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"));
 

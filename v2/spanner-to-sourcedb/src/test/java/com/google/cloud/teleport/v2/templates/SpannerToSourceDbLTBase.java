@@ -282,7 +282,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "100");
     params.put("sourceType", sourceType);
-    params.put("workerMachineType", "n2-standard-4");
+    params.put("resourceHints", "cpu_count=4");
 
     if (customTransformation != null) {
       params.put(

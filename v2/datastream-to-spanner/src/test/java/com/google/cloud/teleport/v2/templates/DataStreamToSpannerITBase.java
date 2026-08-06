@@ -354,7 +354,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
     }
     params.put("inputFileFormat", "avro");
-    params.put("workerMachineType", "n2-standard-4");
+    params.put("resourceHints", "cpu_count=4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {
