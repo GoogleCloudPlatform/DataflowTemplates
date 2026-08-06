@@ -19,12 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,7 +43,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.commons.codec.binary.Hex;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -291,15 +288,11 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // These types are not mapped as expected, ignore them to avoid failing the test.
     Set<String> ignoredTypeMappings =
         Set.of(
-            "bit_to_string",
-            "bit_varying_to_string",
-            "bytea_to_string",
             "time",
             "time_with_time_zone",
             "time_without_time_zone",
             "timetz",
             "uuid_to_bytes",
-            "varbit_to_string",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
             "t_bit_to_bool_array",
@@ -403,7 +396,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // for the timeout.
     Set<String> ignoredTables =
         Set.of(
-            "uuid_to_bytes",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
             "t_bit_to_bool_array",
@@ -474,29 +466,21 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         "bigserial_to_string", createRows("-9223372036854775808", "9223372036854775807", "42"));
     result.put(
         "bigserial_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "42"));
-    result.put(
-        "bit",
-        createRows(ByteArray.copyFrom("0").toBase64(), ByteArray.copyFrom("1").toBase64(), "NULL"));
+    result.put("bit", createRows("MA==", "MQ==", "NULL"));
     result.put(
         "bit_to_string",
         createRows(
-            Hex.encodeHexString(
-                "00000000000000000000000000000000".getBytes(StandardCharsets.UTF_8)),
-            Hex.encodeHexString(
-                "00000000000000000000000000000001".getBytes(StandardCharsets.UTF_8)),
+            "303030303030303030303030303030303...",
+            "303030303030303030303030303030303...",
             "NULL"));
-    result.put("bit_varying", createRows(ByteArray.copyFrom("0101").toBase64(), "NULL"));
-    result.put(
-        "bit_varying_to_string",
-        createRows(Hex.encodeHexString("0101".getBytes(StandardCharsets.UTF_8)), "NULL"));
+    result.put("bit_varying", createRows("MDEwMQ==", "NULL"));
+    result.put("bit_varying_to_string", createRows("30313031", "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
     result.put("boolean_to_string", createRows("false", "true", "NULL"));
-    result.put("bytea", createRows(ByteArray.copyFrom("abc").toBase64(), "NULL"));
-    result.put(
-        "bytea_to_string",
-        createRows(Hex.encodeHexString("abc".getBytes(StandardCharsets.UTF_8)), "NULL"));
+    result.put("bytea", createRows("YWJj", "NULL"));
+    result.put("bytea_to_string", createRows("616263", "NULL"));
     result.put("char", createRows("a", "Θ", "NULL"));
     result.put("char_n", createRows("a         ", "test      ", "NULL"));
     result.put("character", createRows("a", "Ξ", "NULL"));
@@ -675,10 +659,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
     result.put("uuid_to_string", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
-    result.put("varbit", createRows(ByteArray.copyFrom("1100").toBase64(), "NULL"));
-    result.put(
-        "varbit_to_string",
-        createRows(Hex.encodeHexString("1100".getBytes(StandardCharsets.UTF_8)), "NULL"));
+    result.put("varbit", createRows("MTEwMA==", "NULL"));
+    result.put("varbit_to_string", createRows("31313030", "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
     result.put("varchar_n", createRows("testing", "NULL"));
     result.put("xml", createRows("<test>123</test>", "NULL"));
