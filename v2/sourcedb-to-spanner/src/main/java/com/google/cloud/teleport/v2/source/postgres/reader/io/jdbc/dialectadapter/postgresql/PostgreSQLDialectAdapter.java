@@ -273,7 +273,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     tables.forEach(
         table -> {
           builders.put(table, ImmutableMap.builder());
-          tableColumns.remove(extractBaseTableName(table));
+          String baseTableName = extractBaseTableName(table);
+          tableColumns.remove(baseTableName);
+          String cleanTableName = ColumnKey.clean(baseTableName);
+          moneyColumnKeys.removeIf(k -> k.tableName.equals(cleanTableName));
         });
 
     try (Connection conn = dataSource.getConnection();
