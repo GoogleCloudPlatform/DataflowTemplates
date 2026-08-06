@@ -263,9 +263,9 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
    * Validates the pipeline's handling of duplicate source records in Avro, covering two edge cases:
    *
    * <ul>
-   *   <li><b>Multiple instances of the exact same row in the source Avro, and Spanner has one
+   *   <li>Multiple instances of the exact same row in the source Avro, and Spanner has one
    *       corresponding record.
-   *   <li><b>Duplicates in the source Avro without a corresponding record in Spanner.
+   *   <li>Duplicates in the source Avro without a corresponding record in Spanner.
    * </ul>
    */
   @Test
@@ -364,13 +364,14 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
                 /* destinationRowCount= */ 0L,
                 /* matchedRowCount= */ 0L,
                 /* mismatchRowCount= */ 2L),
+            // TODO: @aasthabharill investigate a better way to report this as destinationRowCount
+            // is actually 1.
             new TableValidationStatsDto(
                 /* schemaName= */ null,
                 /* tableName= */ "Users",
                 /* status= */ "MATCH",
                 /* sourceRowCount= */ 2L,
-                /* destinationRowCount= */ 2L, // TODO: @aasthabharill investigate a better way to
-                // report this as destinationRowCount is actually 1.
+                /* destinationRowCount= */ 2L,
                 /* matchedRowCount= */ 2L,
                 /* mismatchRowCount= */ 0L)));
 

@@ -409,4 +409,104 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 /* recordKey= */ "[user_id:2, event_id:E2]",
                 /* mismatchType= */ "MISSING_IN_SOURCE")));
   }
+
+  /** Tests pipeline resilience when columns present in the source are generated in Spanner. */
+  @Test
+  @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+  public void testGeneratedColumnInSpanner() throws Exception {
+    GCSSpannerDVAvroSetupHelper.TableDef tableDef =
+        new GCSSpannerDVAvroSetupHelper.TableDef(
+            GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema,
+            "Users_GeneratedColumn",
+            Arrays.asList("user_id", "event_id"));
+
+    Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
+
+    List<GenericRecord> sourceRecords =
+        Arrays.asList(
+            new GCSSpannerDVAvroSetupHelper.RecordBuilder(tableDef, null)
+                .set("user_id", 1L)
+                .set("event_id", "E1")
+                .set("full_name", "1E1")
+                .set("age", 30)
+                .set("created_at", t1)
+                .build(), // Match scenario (1E1 matches Spanner generated value)
+            new GCSSpannerDVAvroSetupHelper.RecordBuilder(tableDef, null)
+                .set("user_id", 2L)
+                .set("event_id", "E2")
+                .set("full_name", "Bob")
+                .set("age", 35)
+                .set("created_at", t1)
+                .build() // Mismatch scenario (Bob does not match Spanner generated value 2E2)
+            );
+
+    String gcsInputDirectory = getGcsPath("input");
+    uploadAvroFileToGcs("input/users_generated_column.avro", tableDef.schema, sourceRecords);
+
+    spannerResourceManager.write(
+        Arrays.asList(
+            Mutation.newInsertOrUpdateBuilder("Users_GeneratedColumn")
+                .set("user_id")
+                .to(1L)
+                .set("event_id")
+                .to("E1")
+                .set("age")
+                .to(30L)
+                .set("created_at")
+                .to(Timestamp.parseTimestamp(t1.toString()))
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("Users_GeneratedColumn")
+                .set("user_id")
+                .to(2L)
+                .set("event_id")
+                .to("E2")
+                .set("age")
+                .to(35L)
+                .set("created_at")
+                .to(Timestamp.parseTimestamp(t1.toString()))
+                .build()));
+
+    // Wait for Spanner's 20-second exact staleness read bound in SpannerReaderTransform
+    Thread.sleep(20000);
+
+    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
+    LaunchInfo jobInfo =
+        launchDataflowJob(
+            options,
+            testName,
+            PROJECT,
+            spannerResourceManager,
+            bigQueryResourceManager.getDatasetId(),
+            gcsInputDirectory,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    pipelineOperator().waitUntilDone(createConfig(jobInfo));
+
+    GCSSpannerDVTestAsserts.assertValidationSummary(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new ValidationSummaryDto(
+                /* status= */ "MATCH",
+                /* totalTablesValidated= */ 1L,
+                /* totalRowsMatched= */ 2L,
+                /* totalRowsMismatched= */ 0L,
+                /* tablesWithMismatches= */ "")));
+
+    GCSSpannerDVTestAsserts.assertTableValidationStats(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "Users_GeneratedColumn",
+                /* status= */ "MATCH",
+                /* sourceRowCount= */ 2L,
+                /* destinationRowCount= */ 2L,
+                /* matchedRowCount= */ 2L,
+                /* mismatchRowCount= */ 0L)));
+  }
 }
