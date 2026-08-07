@@ -315,12 +315,9 @@ INSERT INTO t_smallserial_to_numeric (col) VALUES (-32768), (32767), (11);
 INSERT INTO t_smallserial_to_float32 (col) VALUES (-32768), (32767), (11);
 INSERT INTO t_smallserial_to_float64 (col) VALUES (-32768), (32767), (11);
 INSERT INTO t_text (col) VALUES ('testing text'), (NULL);
-INSERT INTO t_time (col) VALUES ('12:34:56'::time), (NULL);
--- INSERT INTO t_time (col) VALUES ('12:34:56'::time), ('24:00:00'::time), (NULL); -- TODO: test 24:00:00 once upstream Datastream bug is resolved
-INSERT INTO t_time_with_time_zone (col) VALUES ('23:59:59+10:00'), (NULL);
--- INSERT INTO t_time_with_time_zone (col) VALUES ('23:59:59+10:00'), ('24:00:00+10:00'), (NULL); -- TODO: test 24:00:00 once upstream Datastream bug is resolved
-INSERT INTO t_time_without_time_zone (col) VALUES ('12:34:56'::time), (NULL);
--- INSERT INTO t_time_without_time_zone (col) VALUES ('12:34:56'::time), ('24:00:00'::time), (NULL); -- TODO: test 24:00:00 once upstream Datastream bug is resolved
+INSERT INTO t_time (col) VALUES ('24:00:00'::time), (NULL);
+INSERT INTO t_time_with_time_zone (col) VALUES ('23:59:59+10:00'), ('24:00:00+10:00'), (NULL);
+INSERT INTO t_time_without_time_zone (col) VALUES ('24:00:00'::time), (NULL);
 INSERT INTO t_timestamp (col) VALUES ('1970-01-02 03:04:05.123456'::timestamp), (NULL);
 INSERT INTO t_timestamp_to_timestamp (col) VALUES ('1970-01-02 03:04:05.123456'::timestamp), (NULL);
 INSERT INTO t_timestamp_with_time_zone (col) VALUES ('1970-02-03 04:05:06.123456+10:00'::timestamptz), ('1970-02-03 04:05:06.123456-01'::timestamptz), (NULL);
@@ -329,8 +326,7 @@ INSERT INTO t_timestamp_without_time_zone (col) VALUES ('1970-01-02 03:04:05.123
 INSERT INTO t_timestamp_without_time_zone_to_timestamp (col) VALUES ('1970-01-02 03:04:05.123456'::timestamp), (NULL);
 INSERT INTO t_timestamptz (col) VALUES ('1970-02-03 04:05:06.123456+10:00'::timestamptz), ('1970-02-03 04:05:06.123456-01'::timestamptz), (NULL);
 INSERT INTO t_timestamptz_to_string (col) VALUES ('1970-02-03 04:05:06.123456+10:00'::timestamptz), ('1970-02-03 04:05:06.123456-01'::timestamptz), (NULL);
-INSERT INTO t_timetz (col) VALUES ('23:59:59+10:00'), (NULL);
--- INSERT INTO t_timetz (col) VALUES ('23:59:59+10:00'), ('24:00:00+10:00'), (NULL); -- TODO: test 24:00:00 once upstream Datastream bug is resolved
+INSERT INTO t_timetz (col) VALUES ('23:59:59+10:00'), ('24:00:00+10:00'), (NULL);
 INSERT INTO t_tsmultirange (col) VALUES ('{[1970-01-01 01:00, 1970-01-01 02:00]}'), (NULL);
 INSERT INTO t_tsquery (col) VALUES ('fat & rat'::tsquery), (NULL);
 INSERT INTO t_tsrange (col) VALUES ('[1970-01-01 01:00, 1970-01-01 02:00]'), (NULL);
