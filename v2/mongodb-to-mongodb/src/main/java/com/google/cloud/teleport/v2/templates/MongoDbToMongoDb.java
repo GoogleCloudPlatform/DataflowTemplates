@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.google.cloud.teleport.v2.transforms.ReadSplitGenerator;
 import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -290,7 +289,7 @@ public class MongoDbToMongoDb {
       sourceCollections.add(sourceCollection);
     } else {
       // List collections from source
-      try (MongoClient mongoClient = MongoClients.create(sourceUri)) {
+      try (MongoClient mongoClient = MongoDbTransforms.createMongoClient(sourceUri)) {
         MongoDatabase db = mongoClient.getDatabase(sourceDatabase);
         for (String name : db.listCollectionNames()) {
           sourceCollections.add(name);
@@ -358,7 +357,8 @@ public class MongoDbToMongoDb {
       }
       PCollection<DocumentWithMetadata> documents = readFromDlq(pipeline, reconsumePath);
       documents.apply(
-          "ProcessDlq", new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+          "ProcessDlq",
+          new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
     } else {
       for (String inputCollection : sourceCollections) {
         String targetCollectionRaw = options.getTargetCollection();
@@ -371,7 +371,7 @@ public class MongoDbToMongoDb {
             readFromMongo(pipeline, options, inputCollection, targetCollection);
         documents.apply(
             "Process_" + inputCollection,
-            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
       }
     }
 
@@ -383,11 +383,14 @@ public class MongoDbToMongoDb {
     private final transient Options options;
     private final String retryableDlqPath;
     private final String permanentDlqPath;
+    private final String tmpDirectory;
 
-    public ProcessDocuments(Options options, String retryableDlqPath, String permanentDlqPath) {
+    public ProcessDocuments(
+        Options options, String retryableDlqPath, String permanentDlqPath, String tmpDirectory) {
       this.options = options;
       this.retryableDlqPath = retryableDlqPath;
       this.permanentDlqPath = permanentDlqPath;
+      this.tmpDirectory = tmpDirectory;
     }
 
     @Override
@@ -430,7 +433,7 @@ public class MongoDbToMongoDb {
             .apply(
                 "WriteToDlq_UDF",
                 new MongoDbTransforms.WriteToDlq(
-                    retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+                    retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents =
             udfProcessed
@@ -479,7 +482,7 @@ public class MongoDbToMongoDb {
           .apply(
               "WriteToDlq_Validate",
               new MongoDbTransforms.WriteToDlq(
-                  retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+                  retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       // Write Stage with DLQ
       PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
@@ -514,7 +517,7 @@ public class MongoDbToMongoDb {
       writeFailures.apply(
           "WriteToDlq_Write",
           new MongoDbTransforms.WriteToDlq(
-              retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+              retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(input.getPipeline());
     }
@@ -553,7 +556,7 @@ public class MongoDbToMongoDb {
     Integer numReadSplits = options.getNumReadSplits();
     if (numReadSplits != null && numReadSplits > 1) {
       List<BsonDocument> filters;
-      try (MongoClient client = MongoClients.create(options.getSourceUri())) {
+      try (MongoClient client = MongoDbTransforms.createMongoClient(options.getSourceUri())) {
         filters =
             ReadSplitGenerator.generateIndexSliceFilters(
                 client, options.getSourceDatabase(), sourceCollection, numReadSplits);

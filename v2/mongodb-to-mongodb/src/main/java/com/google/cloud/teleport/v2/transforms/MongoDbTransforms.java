@@ -20,8 +20,10 @@ import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.Error
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.RateLimiter;
+import com.mongodb.ConnectionString;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.MongoClient;
@@ -44,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -62,6 +65,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -69,6 +73,21 @@ import org.slf4j.LoggerFactory;
 
 /** Transforms for the MongoDB to MongoDB template. */
 public class MongoDbTransforms {
+
+  /**
+   * Helper method to create a MongoClient with default UuidRepresentation.STANDARD if not explicitly
+   * specified in the connection string.
+   */
+  public static MongoClient createMongoClient(String uri) {
+    ConnectionString connectionString = new ConnectionString(uri);
+    MongoClientSettings.Builder builder =
+        MongoClientSettings.builder().applyConnectionString(connectionString);
+    if (connectionString.getUuidRepresentation() == null
+        || connectionString.getUuidRepresentation() == UuidRepresentation.UNSPECIFIED) {
+      builder.uuidRepresentation(UuidRepresentation.STANDARD);
+    }
+    return MongoClients.create(builder.build());
+  }
 
   public static WriteWithDlq writeWithDlq() {
     return new WriteWithDlq();
@@ -87,7 +106,8 @@ public class MongoDbTransforms {
     private Integer writeRateRampUpMinutes = 5;
     private Integer writeRateRampUpSteps = 5;
     private Integer maxWriteRatePerWorker = 500;
-    private SerializableFunction<String, MongoClient> clientFactory = MongoClients::create;
+    private SerializableFunction<String, MongoClient> clientFactory =
+        MongoDbTransforms::createMongoClient;
 
     public WriteWithDlq withUri(String uri) {
       this.uri = uri;
@@ -236,10 +256,9 @@ public class MongoDbTransforms {
                   }))
           .apply(
               "WriteDlq_Retryable",
-              DLQWriteTransform.WriteDLQ.newBuilder()
-                  .withDlqDirectory(retryablePath)
-                  .withTmpDirectory(tempLocation)
-                  .build());
+              TextIO.write()
+                  .to(retryablePath + "/error")
+                  .withSuffix(".json"));
 
       permanent
           .apply(
@@ -256,10 +275,9 @@ public class MongoDbTransforms {
                   }))
           .apply(
               "WriteDlq_Permanent",
-              DLQWriteTransform.WriteDLQ.newBuilder()
-                  .withDlqDirectory(permanentPath)
-                  .withTmpDirectory(tempLocation)
-                  .build());
+              TextIO.write()
+                  .to(permanentPath + "/error")
+                  .withSuffix(".json"));
 
       return PDone.in(input.getPipeline());
     }
@@ -572,6 +590,10 @@ public class MongoDbTransforms {
       currentBatch.add(c.element());
       if (currentBatch.size() >= batchSize) {
         flushBatch();
+      }
+      DocumentWithMetadata failure;
+      while ((failure = failures.poll()) != null) {
+        c.output(failureTag, failure);
       }
     }
 
