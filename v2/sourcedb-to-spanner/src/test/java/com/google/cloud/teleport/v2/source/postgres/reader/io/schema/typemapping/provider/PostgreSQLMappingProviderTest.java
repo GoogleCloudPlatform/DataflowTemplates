@@ -70,7 +70,7 @@ public class PostgreSQLMappingProviderTest {
         .put("INT8", "\"long\"")
         .put("JSON", "{\"type\":\"string\",\"logicalType\":\"json\"}")
         .put("JSONB", "{\"type\":\"string\",\"logicalType\":\"json\"}")
-        .put("MONEY", "\"double\"")
+        .put("MONEY", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("NUMERIC", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("OID", "\"long\"")
         .put("REAL", "\"float\"")

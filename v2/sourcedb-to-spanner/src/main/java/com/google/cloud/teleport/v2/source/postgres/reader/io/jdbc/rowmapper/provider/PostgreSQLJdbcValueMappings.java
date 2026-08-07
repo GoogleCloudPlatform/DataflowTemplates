@@ -301,7 +301,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
-          .put("MONEY", ResultSet::getDouble, valuePassThrough, 8)
+          .put("MONEY", ResultSet::getObject, numericToAvro, 8)
           .put(
               "NUMERIC",
               ResultSet::getObject,
