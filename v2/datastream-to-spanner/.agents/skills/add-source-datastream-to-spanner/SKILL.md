@@ -60,7 +60,7 @@ Implement `IDsToSpSourceConnector` in `com.google.cloud.teleport.v2.templates.so
 2. Implement any other methods in this class to work for GoogleSQL and PostgreSQL Spanner dialects similar to other supported sources.
 
 ### Step 2: Implement Source Processing Classes
-Implement remaining source-specific change event context and sequence classes in package `com.google.cloud.teleport.v2.templates.source.<source_type>` similar to other existing source connectors.
+Implement remaining source-specific change event context and sequence classes in package `com.google.cloud.teleport.v2.templates.source.<source_type>` similar to other existing source connectors. Skip the types that are not supported by Datastream. These are mentioned in the type mapping skill.
 
 ### Step 3: Register Source in Registries & Config Files
 1. Register connector in `DatastreamToSpannerSourceConnectorRegistry.java`:
