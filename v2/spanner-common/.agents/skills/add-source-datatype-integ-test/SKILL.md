@@ -11,15 +11,15 @@ This skill instructs an AI Coding Agent to design and synthesize an exhaustive, 
 ---
 
 ## 1. Goal
-Given a Scenario ID, parse its configuration from `manifest.yaml`, gather structural class/helper context from a reference test (without copying its columns/assertions), research and compile a comprehensive list of all native datatypes supported by the target database dialect (including recommended and alternative Spanner mappings), generate native source SQL schemas containing CREATE and INSERT statements with type-specific formats, write a complete Java integration test from scratch with dynamic assertions, compile-verify, and self-heal.
+Given a Scenario ID, parse its configuration from `manifest.yaml`, gather structural class/helper context from a reference test (without copying its columns/assertions), read provided datatype mapping matrix and compile a comprehensive list of all native datatypes supported by the target database dialect (including recommended and alternative Spanner mappings), generate native source SQL schemas containing CREATE and INSERT statements with type-specific formats, write a complete Java integration test from scratch with dynamic assertions, compile-verify, and self-heal.
 
 ## 1.1 Initialization Check
 Before you begin parsing or executing any core steps, you MUST verify the following inputs and dependencies exist:
-1. **Scenario ID** 
-2. **Path to the `manifest.yaml`**
-3. **Target Database Name**
-4. **Path to the `.csv` Reference Mapping file**
-5. **Environment Configuration**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
+1. **Scenario ID**
+2. **Manifest File Path**
+3. **Target Source Database Name**
+4. **Reference Datatype Mapping Matrix File Path**
+5. **Testing Environment Setup Path**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
 
 If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed without the environment variables. Output a direct question asking for the missing inputs or complaining about the missing file.
 
@@ -136,7 +136,6 @@ For every discovered datatype **and every identified type alias**, you must gene
 - **Scenario D: Unsupported/Complex Types**: Tables containing unsupported spatial, collection, or complex types to verify graceful migration and row-count consistency without pipeline failures.
 - **Scenario E: Array/Collection Types**: Tables explicitly testing arrays, lists, or collections of all supported scalar base types.
 
-> [!IMPORTANT]
 > [!IMPORTANT]
 > **Case Preservation & Identifier Quoting**:
 > To ensure generated tests and schemas run successfully, you must align and preserve the exact character casing of all table names, column names, keys, and constraints between the target source database and the target Spanner database.

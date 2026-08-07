@@ -31,11 +31,13 @@ You MUST execute all spawned subagents **sequentially**. Do NOT run subagents co
 When a user begins a session with this Meta-Skill, ensure you have the following inputs before starting:
 1. **Target Source Database Name:**
 2. **Reference Mapping Matrix File Path:**
-3. **Environment Config:** Confirm that `testing_execution.env` is populated in the workspace root.
+3. **Testing Environment Setup Path:** Confirm that `testing_execution.env` is populated in the workspace root.
 4. **Target Template Path:**
 5. **Phase 1 Smoke Scenarios:** (comma-separated list of scenario IDs)
 6. **Phase 2 Baseline Datatype Scenarios:** (comma-separated list of scenario IDs)
 7. **Manifest File Path:**
+
+If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed. Output a direct question asking the user to provide the missing inputs or create the missing environment file.
 
 ---
 
@@ -47,7 +49,7 @@ When a user begins a session with this Meta-Skill, ensure you have the following
    - **Consolidated Bug Log:** Aggregate all source-code bugs discovered by subagents and the fixes applied to the `<Target_Template_Path>` source code.
    - **Challenges:** Summarize any roadblocks or unsupported features (e.g., missing Spanner APIs).
 3. **Error Escalation:** If a subagent exhausts its self-healing retries and fails, report back to the user with a summary of the roadblock before halting the pipeline.
-4. **Artifact Relocation & Syncing:** Subagents frequently save their final migration reports (e.g., `test_automation_migration_report.md` and `live_logs.txt`) into their isolated 'brain' execution sandboxes. As the parent Orchestrator, upon validating a subagent's success, you MUST natively copy their generated reports out of their system-isolated directories and move them directly into the correct workspace root directory using the following exact structure:
+4. **Artifact Relocation & Syncing:** Subagents frequently save their final migration reports (e.g., `test_automation_migration_report.md` and `live_logs`) into their isolated 'brain' execution sandboxes. As the parent Orchestrator, upon validating a subagent's success, you MUST natively copy their generated reports out of their system-isolated directories and move them directly into the correct workspace root directory using the following exact structure:
    - For Datatype tests: `src/test/resources/<target_db_name_lowercase>/reports/datatype_testing/<Scenario_ID>_<Timestamp>/`
    - For Functional tests: `src/test/resources/<target_db_name_lowercase>/reports/functional_testing/<Scenario_ID>_<Timestamp>/`
 5. **Continuous Meta-Report Syncing:** You MUST copy the overarching meta-skill report (`template_onboarding_report.md`) and orchestration execution logs to a persistent directory in the workspace at `src/test/resources/<target_db_name_lowercase>/reports/meta-reports/` right from the beginning, and you must constantly update/overwrite this workspace file as tests run and statuses change iteratively!
@@ -96,9 +98,10 @@ Please load and execute the `v2/spanner-common/.agents/skills/add-source-functio
 
 Inputs:
 1. Scenario ID: [INSERT_SCENARIO_ID]
-2. Manifest Path: [INSERT_MANIFEST_FILE_PATH]
-3. Reference Mapping File: [INSERT_MAPPING_FILE_PATH]
-4. Target Database: [INSERT_DB_NAME]
+2. Manifest File Path: [INSERT_MANIFEST_FILE_PATH]
+3. Target Source Database Name: [INSERT_DB_NAME]
+4. Reference Datatype Mapping Matrix File Path: [INSERT_MAPPING_FILE_PATH]
+5. Testing Environment Setup Path: [INSERT_ENV_PATH]
 
 CRITICAL CONSTRAINTS:
 - Treat the provided Reference Mapping File as your absolute source of truth to derive baseline mapping schemas. You MUST strictly use this matrix to generate testing mappings. Do NOT perform independent type research.
@@ -117,9 +120,10 @@ Please load and execute the `v2/spanner-common/.agents/skills/add-source-datatyp
 
 Inputs:
 1. Scenario ID: [INSERT_SCENARIO_ID]
-2. Manifest Path: [INSERT_MANIFEST_FILE_PATH]
-3. Reference Mapping File: [INSERT_MAPPING_FILE_PATH]
-4. Target Database: [INSERT_DB_NAME]
+2. Manifest File Path: [INSERT_MANIFEST_FILE_PATH]
+3. Target Source Database Name: [INSERT_DB_NAME]
+4. Reference Datatype Mapping Matrix File Path: [INSERT_MAPPING_FILE_PATH]
+5. Testing Environment Setup Path: [INSERT_ENV_PATH]
 
 CRITICAL CONSTRAINTS:
 - Treat the provided Reference Mapping File as your absolute source of truth to derive baseline mapping schemas. You MUST strictly use this matrix to generate testing mappings. Do NOT perform independent type research.

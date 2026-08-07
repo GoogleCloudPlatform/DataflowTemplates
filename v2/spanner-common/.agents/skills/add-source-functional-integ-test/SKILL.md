@@ -15,11 +15,11 @@ Given a Scenario ID, read its configuration from `manifest.yaml`, locate all ref
 
 ## 1.1 Initialization Check
 Before you begin parsing or executing any core steps, you MUST verify the following inputs and dependencies exist:
-1. **Scenario ID** (Must be in your prompt)
-2. **Path to the `manifest.yaml`** (Must be in your prompt)
-3. **Target Database Name** (Must be in your prompt)
-4. **Path to the `.csv` Reference Mapping file** (Must be in your prompt)
-5. **Environment Configuration**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
+1. **Scenario ID**
+2. **Manifest File Path**
+3. **Target Source Database Name**
+4. **Reference Datatype Mapping Matrix File Path**
+5. **Testing Environment Setup Path**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
 
 If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed without the environment variables. Output a direct question asking the user to provide the missing inputs or create the file.
 
