@@ -8,10 +8,8 @@ CREATE TABLE IF NOT EXISTS t_bigserial_to_string (id INT8, col VARCHAR, PRIMARY 
 CREATE TABLE IF NOT EXISTS t_bigserial_to_numeric (id INT8, col NUMERIC, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bit (id INT8, col BYTEA, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bit_to_bool_array (id INT8, col BOOL[], PRIMARY KEY (id));
-CREATE TABLE IF NOT EXISTS t_bit_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bit_varying (id INT8, col BYTEA, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bit_varying_to_bool_array (id INT8, col BOOL[], PRIMARY KEY (id));
-CREATE TABLE IF NOT EXISTS t_bit_varying_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bool (id INT8, col BOOL, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bool_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bool_array_to_bool_array (id INT8, col BOOL[], PRIMARY KEY (id));
@@ -21,7 +19,6 @@ CREATE TABLE IF NOT EXISTS t_boolean_to_string (id INT8, col VARCHAR, PRIMARY KE
 CREATE TABLE IF NOT EXISTS t_box (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_box_to_float64_array (id INT8, col FLOAT8[], PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_bytea (id INT8, col BYTEA, PRIMARY KEY (id));
-CREATE TABLE IF NOT EXISTS t_bytea_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_char (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_char_n (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_character (id INT8, col VARCHAR, PRIMARY KEY (id));
@@ -165,7 +162,6 @@ CREATE TABLE IF NOT EXISTS t_uuid_to_bytes (id INT8, col BYTEA, PRIMARY KEY (id)
 CREATE TABLE IF NOT EXISTS t_uuid_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_varbit (id INT8, col BYTEA, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_varbit_to_bool_array (id INT8, col BOOL[], PRIMARY KEY (id));
-CREATE TABLE IF NOT EXISTS t_varbit_to_string (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_varchar (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_varchar_n (id INT8, col VARCHAR, PRIMARY KEY (id));
 CREATE TABLE IF NOT EXISTS t_xml (id INT8, col VARCHAR, PRIMARY KEY (id));
