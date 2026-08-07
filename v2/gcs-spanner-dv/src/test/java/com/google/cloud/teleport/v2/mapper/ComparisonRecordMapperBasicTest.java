@@ -91,6 +91,7 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertNull(record.getSourcePrimaryKeyColumns());
     assertNull(record.getShardId());
   }
 
@@ -107,6 +108,7 @@ public class ComparisonRecordMapperBasicTest {
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -116,6 +118,7 @@ public class ComparisonRecordMapperBasicTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "public.Users");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     String cleanTableName = "Users";
@@ -154,24 +157,32 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals("public", record.getSchemaName());
     assertEquals("shard1", record.getShardId());
     assertNotNull(record.getHash());
+    assertEquals(1, record.getSourcePrimaryKeyColumns().size());
+    assertEquals("id", record.getSourcePrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getSourcePrimaryKeyColumns().get(0).getColValue());
   }
 
   @Test
   public void testMapFromAvroRecord_FilteredEvent() throws Exception {
     Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
-    payloadSchema.setFields(Collections.emptyList());
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null)));
     GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id", 1L);
 
     Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
     avroSchema.setFields(
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "Users");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     // Mock transformer to filter the event
@@ -180,25 +191,30 @@ public class ComparisonRecordMapperBasicTest {
     when(mockTransformer.toSpannerRow(org.mockito.ArgumentMatchers.any())).thenReturn(mockResponse);
 
     ComparisonRecord record = mapper.mapFrom(avroRecord);
-    org.junit.Assert.assertNull(record);
+    assertNull(record);
   }
 
   @Test(expected = RuntimeException.class)
   public void testMapFromAvroRecord_TableNotFound() throws Exception {
     Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
-    payloadSchema.setFields(Collections.emptyList());
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null)));
     GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id", 1L);
 
     Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
     avroSchema.setFields(
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "Users");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("Users");
@@ -241,6 +257,7 @@ public class ComparisonRecordMapperBasicTest {
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -250,6 +267,7 @@ public class ComparisonRecordMapperBasicTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "Users");
     avroRecord.put("shardId", null); // Check null shardId
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     String tableName = "Users";
@@ -298,6 +316,7 @@ public class ComparisonRecordMapperBasicTest {
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -307,6 +326,7 @@ public class ComparisonRecordMapperBasicTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "public.Users");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     String cleanTableName = "Users";
@@ -354,5 +374,204 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("2", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertEquals(1, record.getSourcePrimaryKeyColumns().size());
+    assertEquals("id", record.getSourcePrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getSourcePrimaryKeyColumns().get(0).getColValue());
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testMapFromAvroRecord_MissingPrimaryKeysMetadata() throws Exception {
+    Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null),
+            new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
+
+    Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
+    avroSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
+            new Schema.Field("payload", payloadSchema, null, null)));
+
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id", 1L);
+    payload.put("name", "Alice");
+
+    GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    avroRecord.put("tableName", "public.Users");
+    avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", null); // MISSING METADATA
+    avroRecord.put("payload", payload);
+
+    mapper.mapFrom(avroRecord);
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testMapFromAvroRecord_MissingPrimaryKeySchema() throws Exception {
+    Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
+
+    Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
+    avroSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
+            new Schema.Field("payload", payloadSchema, null, null)));
+
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("name", "Alice");
+
+    GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    avroRecord.put("tableName", "public.Users");
+    avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id")); // "id" is not in payload schema
+    avroRecord.put("payload", payload);
+
+    mapper.mapFrom(avroRecord);
+  }
+
+  @Test
+  public void testMapFromAvroRecord_NullPrimaryKeyValue() throws Exception {
+    Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null),
+            new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
+
+    Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
+    avroSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
+            new Schema.Field("payload", payloadSchema, null, null)));
+
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id", null); // MISSING VALUE IN PAYLOAD
+    payload.put("name", "Alice");
+
+    GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    avroRecord.put("tableName", "public.Users");
+    avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
+    avroRecord.put("payload", payload);
+
+    String cleanTableName = "Users";
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("public.Users");
+    when(mockSchemaMapper.getSpannerColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+    when(mockSchemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
+    when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(Arrays.asList("id", "name"));
+    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("id")))
+        .thenReturn(Type.int64());
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("name")))
+        .thenReturn(Type.string());
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    Table mockTable = mock(Table.class);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
+    IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
+    when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
+
+    MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);
+    when(mockResponse.isEventFiltered()).thenReturn(false);
+    when(mockResponse.getResponseRow()).thenReturn(Collections.emptyMap());
+    when(mockTransformer.toSpannerRow(org.mockito.ArgumentMatchers.any())).thenReturn(mockResponse);
+
+    ComparisonRecord record = mapper.mapFrom(avroRecord);
+
+    assertNotNull(record);
+    assertEquals(1, record.getSourcePrimaryKeyColumns().size());
+    assertEquals("id", record.getSourcePrimaryKeyColumns().get(0).getColName());
+    assertNull(record.getSourcePrimaryKeyColumns().get(0).getColValue());
+  }
+
+  @Test
+  public void testMapFromAvroRecord_CompoundPrimaryKey() throws Exception {
+    Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id1", Schema.create(Schema.Type.LONG), null, null),
+            new Schema.Field("id2", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
+
+    Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
+    avroSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
+            new Schema.Field("payload", payloadSchema, null, null)));
+
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id1", 1L);
+    payload.put("id2", "A");
+    payload.put("name", "Alice");
+
+    GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    avroRecord.put("tableName", "public.Users");
+    avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id1", "id2"));
+    avroRecord.put("payload", payload);
+
+    String cleanTableName = "Users";
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("public.Users");
+    when(mockSchemaMapper.getSpannerColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+
+    when(mockSchemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
+    when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(Arrays.asList("id1", "id2", "name"));
+    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("id1")))
+        .thenReturn(Type.int64());
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("id2")))
+        .thenReturn(Type.string());
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("name")))
+        .thenReturn(Type.string());
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    Table mockTable = mock(Table.class);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
+    IndexColumn pkCol1 = IndexColumn.create("id1", IndexColumn.Order.ASC);
+    IndexColumn pkCol2 = IndexColumn.create("id2", IndexColumn.Order.ASC);
+    when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol1, pkCol2));
+
+    MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);
+    when(mockResponse.isEventFiltered()).thenReturn(false);
+    when(mockResponse.getResponseRow()).thenReturn(Collections.emptyMap());
+    when(mockTransformer.toSpannerRow(org.mockito.ArgumentMatchers.any())).thenReturn(mockResponse);
+
+    ComparisonRecord record = mapper.mapFrom(avroRecord);
+
+    assertNotNull(record);
+    assertEquals(2, record.getPrimaryKeyColumns().size());
+    assertEquals("id1", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertEquals("id2", record.getPrimaryKeyColumns().get(1).getColName());
+    assertEquals("A", record.getPrimaryKeyColumns().get(1).getColValue());
+
+    assertNotNull(record.getSourcePrimaryKeyColumns());
+    assertEquals(2, record.getSourcePrimaryKeyColumns().size());
+    assertEquals("id1", record.getSourcePrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getSourcePrimaryKeyColumns().get(0).getColValue());
+    assertEquals("id2", record.getSourcePrimaryKeyColumns().get(1).getColName());
+    assertEquals("A", record.getSourcePrimaryKeyColumns().get(1).getColValue());
   }
 }
