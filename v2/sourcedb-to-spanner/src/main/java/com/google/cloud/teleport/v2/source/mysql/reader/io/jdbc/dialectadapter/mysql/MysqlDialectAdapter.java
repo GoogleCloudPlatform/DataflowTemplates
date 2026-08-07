@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -35,7 +35,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.UnsignedBytes;
 import com.google.re2j.Pattern;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -47,9 +49,14 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
@@ -101,6 +108,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final String COLLATIONS_QUERY_RESOURCE_PATH =
       "sql/mysql_collation_order_query.sql";
+
+  private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
   public MysqlDialectAdapter(MySqlVersion mySqlVersion) {
     this.mySqlVersion = mySqlVersion;
@@ -240,6 +249,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         String tableName = rs.getString("TABLE_NAME");
         String colName = rs.getString(InformationSchemaCols.NAME_COL);
         SourceColumnType colType = resultSetToSourceColumnType(rs);
+        // MySQL 5.7 returns binary string metadata for aggregate MIN/MAX functions on BIT columns,
+        // which prevents JDBC drivers from reading them as numeric longs.
+        // We register them here to apply a "+ 0" cast in getBoundaryQuery to force a numeric
+        // context.
+        if ("BIT".equalsIgnoreCase(colType.getName())) {
+          logger.info(
+              "Discovered BIT column '{}' in table '{}'; applying +0 cast to boundaries",
+              colName,
+              tableName);
+          customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, colName));
+        }
         if (builders.containsKey(tableName)) {
           builders.get(tableName).put(colName, colType);
         }
@@ -284,6 +304,26 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
+   * Check if INFORMATION_SCHEMA.COLLATIONS table has PAD_ATTRIBUTE column (MySQL 8.0+).
+   *
+   * @param conn Open database connection.
+   * @return true if PAD_ATTRIBUTE column exists, false otherwise (e.g. MySQL 5.7).
+   */
+  private boolean checkIfPadAttributeExists(Connection conn) {
+    String query =
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'COLLATIONS' AND COLUMN_NAME = 'PAD_ATTRIBUTE'";
+    try (PreparedStatement stmt = conn.prepareStatement(query);
+        ResultSet rs = stmt.executeQuery()) {
+      if (rs.next()) {
+        return rs.getInt(1) > 0;
+      }
+    } catch (SQLException e) {
+      logger.warn("Failed to check if PAD_ATTRIBUTE exists, defaulting to false", e);
+    }
+    return false;
+  }
+
+  /**
    * Discover the indexes of tables to migrate.
    *
    * @param dataSource Provider for JDBC connection.
@@ -306,23 +346,27 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         String.format(
             "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
-    String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference, tables.size());
 
     Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableList.builder()));
 
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
-      statement.setFetchSize(1000);
-      for (int i = 0; i < tables.size(); i++) {
-        statement.setString(i + 1, tables.get(i));
-      }
-      ResultSet rs = statement.executeQuery();
-      while (rs.next()) {
-        String tableName = rs.getString("TABLE_NAME");
-        SourceColumnIndexInfo info = resultSetToSourceColumnIndexInfo(rs);
-        if (builders.containsKey(tableName)) {
-          builders.get(tableName).add(info);
+    try (Connection conn = dataSource.getConnection()) {
+      boolean padAttributeExists = checkIfPadAttributeExists(conn);
+      String discoveryQuery =
+          getIndexDiscoveryQuery(sourceSchemaReference, tables.size(), padAttributeExists);
+      try (PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
+        statement.setFetchSize(1000);
+        for (int i = 0; i < tables.size(); i++) {
+          statement.setString(i + 1, tables.get(i));
+        }
+        try (ResultSet rs = statement.executeQuery()) {
+          while (rs.next()) {
+            String tableName = rs.getString("TABLE_NAME");
+            SourceColumnIndexInfo info = resultSetToSourceColumnIndexInfo(rs);
+            if (builders.containsKey(tableName)) {
+              builders.get(tableName).add(info);
+            }
+          }
         }
       }
     } catch (SQLTransientConnectionException e) {
@@ -384,7 +428,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @return
    */
   protected static String getIndexDiscoveryQuery(
-      JdbcSchemaReference sourceSchemaReference, int numTables) {
+      JdbcSchemaReference sourceSchemaReference, int numTables, boolean padAttributeExists) {
     // We are selecting only the necessary columns as are quering multiple tables
     // And we would like the resultset to be crisp.
     return "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as '"
@@ -417,9 +461,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + "cols.DATETIME_PRECISION as '"
         + InformationSchemaStatsCols.DATETIME_PRECISION_COL
         + "', "
-        + "collations.PAD_ATTRIBUTE as '"
-        + InformationSchemaStatsCols.PAD_SPACE_COL
-        + "', "
+        + (padAttributeExists
+            ? "collations.PAD_ATTRIBUTE as '" + InformationSchemaStatsCols.PAD_SPACE_COL + "', "
+            : "'PAD SPACE' as '" + InformationSchemaStatsCols.PAD_SPACE_COL + "', ")
         + "cols.NUMERIC_SCALE as '"
         + InformationSchemaStatsCols.NUMERIC_SCALE_COL
         + "' "
@@ -430,10 +474,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + "stats.table_schema = cols.table_schema"
         + " AND stats.table_name = cols.table_name"
         + " AND stats.column_name = cols.column_name"
-        + " LEFT JOIN "
-        + "INFORMATION_SCHEMA.COLLATIONS collations"
-        + " ON "
-        + "cols.COLLATION_NAME = collations.COLLATION_NAME"
+        + (padAttributeExists
+            ? " LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME"
+            : "")
         + " WHERE stats.TABLE_SCHEMA = "
         + "'"
         + sourceSchemaReference.dbName()
@@ -494,10 +537,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
       }
     }
-    // For MySql5.7 there is no pad-space column in the INFORMATION_SCHEMA.COLLATIONS table.
-    // In these older versions, non-binary string comparisons (like VARCHAR) always follow
-    // PAD SPACE rules (where trailing spaces are ignored). We default to this behavior
-    // to ensure correct partitioning across both MySQL 5.7 and 8.x.
+    // MySQL 5.7 does not have a PAD_ATTRIBUTE column in INFORMATION_SCHEMA.COLLATIONS.
+    // In 5.7 all non-binary string comparisons follow PAD SPACE rules (trailing spaces ignored).
+    // We default to that behaviour so that partitioning is correct on both 5.7 and 8.x.
     logger.info(
         "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
         InformationSchemaStatsCols.PAD_SPACE_COL);
@@ -538,8 +580,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         padSpace,
         numericScale,
         datetimePrecision);
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
-    // Column.
     String columnType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
     IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columnType, IndexType.OTHER);
     CollationReference collationReference = null;
@@ -729,6 +769,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    if (customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      return addWhereClause(
+          String.format("select MIN(%s + 0),MAX(%s + 0) from %s", colName, colName, tableName),
+          partitionColumns);
+    }
     return addWhereClause(
         String.format("select MIN(%s),MAX(%s) from %s", colName, colName, tableName),
         partitionColumns);
@@ -756,7 +801,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
+   * character set with the columns listed in {@link CollationOrderRow.CollationsOrderQueryColumns}.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
@@ -775,12 +820,145 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
+  private static class CharacterWeightRow {
+    final int codepoint;
+    final byte[] weight;
+    final boolean isEmpty;
+    final boolean isSpace;
+
+    CharacterWeightRow(int codepoint, byte[] weight, boolean isEmpty, boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weight = weight;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+
+    static CharacterWeightRow fromRS(ResultSet rs) throws SQLException {
+      String charsetChar =
+          rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      if (charsetChar == null
+          || charsetChar.isEmpty()
+          || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
+        return null;
+      }
+      int c = charsetChar.codePointAt(0);
+      byte[] w = rs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL);
+      boolean isEmpty = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
+
+      if (w == null && !isEmpty) {
+        return null;
+      }
+      return new CharacterWeightRow(c, w, isEmpty, isSpace);
+    }
+  }
+
+  @Override
+  public List<CollationOrderRow> processCollationResultSet(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+
+    List<CharacterWeightRow> rows = new ArrayList<>();
+    while (rs.next()) {
+      CharacterWeightRow weightRow = CharacterWeightRow.fromRS(rs);
+      if (weightRow != null) {
+        rows.add(weightRow);
+      }
+    }
+
+    List<CharacterWeightRow> uniqueRows = new ArrayList<>();
+    java.util.Set<Integer> seenCodepoints = new java.util.HashSet<>();
+    for (CharacterWeightRow row : rows) {
+      if (seenCodepoints.add(row.codepoint)) {
+        uniqueRows.add(row);
+      } else {
+        logger.warn("Skipping duplicate codepoint={} for {}", row.codepoint, collationReference);
+      }
+    }
+    rows = uniqueRows;
+
+    Map<byte[], List<CharacterWeightRow>> ntGroupsMap =
+        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
+    for (CharacterWeightRow row : rows) {
+      if (!row.isEmpty) {
+        byte[] keyNt = (row.weight != null) ? row.weight : new byte[0];
+        ntGroupsMap.computeIfAbsent(keyNt, k -> new ArrayList<>()).add(row);
+      }
+    }
+
+    Map<Integer, Long> ntRank = new HashMap<>();
+    Map<Integer, Integer> ntEquivalent = new HashMap<>();
+    long rank = 0;
+    for (List<CharacterWeightRow> group : ntGroupsMap.values()) {
+      int equiv = group.get(0).codepoint;
+      for (CharacterWeightRow row : group) {
+        ntRank.put(row.codepoint, rank);
+        ntEquivalent.put(row.codepoint, equiv);
+      }
+      rank++;
+    }
+
+    Map<byte[], List<CharacterWeightRow>> tGroupsMap =
+        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
+    for (CharacterWeightRow row : rows) {
+      if (!row.isEmpty && !row.isSpace) {
+        byte[] keyT = (row.weight != null) ? row.weight : new byte[0];
+        tGroupsMap.computeIfAbsent(keyT, k -> new ArrayList<>()).add(row);
+      }
+    }
+
+    Map<Integer, Long> tRank = new HashMap<>();
+    Map<Integer, Integer> tEquivalent = new HashMap<>();
+    long tRankVal = 0;
+    for (List<CharacterWeightRow> group : tGroupsMap.values()) {
+      int equiv = group.get(0).codepoint;
+      for (CharacterWeightRow row : group) {
+        tRank.put(row.codepoint, tRankVal);
+        tEquivalent.put(row.codepoint, equiv);
+      }
+      tRankVal++;
+    }
+
+    List<CollationOrderRow> result = new ArrayList<>();
+    for (CharacterWeightRow row : rows) {
+      long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
+      long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
+      int equivalentChar = ntEquivalent.getOrDefault(row.codepoint, row.codepoint);
+      int equivalentCharPs = tEquivalent.getOrDefault(row.codepoint, row.codepoint);
+      result.add(
+          CollationOrderRow.builder()
+              .setCharsetChar(new String(Character.toChars(row.codepoint)))
+              .setEquivalentChar(new String(Character.toChars(equivalentChar)))
+              .setCodepointRank(codepointRank)
+              .setEquivalentCharPadSpace(new String(Character.toChars(equivalentCharPs)))
+              .setCodepointRankPadSpace(codepointRankPs)
+              .setIsEmpty(row.isEmpty)
+              .setIsSpace(row.isSpace)
+              .build());
+    }
+    result.sort(
+        java.util.Comparator.comparingLong(CollationOrderRow::codepointRank)
+            .thenComparing(CollationOrderRow::charsetChar));
+    return result;
+  }
+
   /**
-   * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
-   * Having the type allows the implementation do finer distinctions if needed in the future.
+   * Version of MySql.
+   *
+   * <p>The collation order query (used for string range splitting) works on both {@link #DEFAULT}
+   * (MySQL 8.0+) and {@link #MYSQL_5_7} using the same SQL file. The file uses temporary tables and
+   * GROUP BY joins instead of window functions (FIRST_VALUE / DENSE_RANK), which are only available
+   * in MySQL 8.0+. This approach is also a performance improvement on 8.0 because the expensive
+   * codepoint cross-join is materialised once rather than being re-evaluated as a nested subquery
+   * inside each window partition.
+   *
+   * <p>The count query uses the {@code MAX_EXECUTION_TIME} optimizer hint, which is supported from
+   * MySQL 5.7.8+. For earlier 5.7 patch releases the hint is silently ignored by MySQL.
    */
   public enum MySqlVersion {
+    /** MySQL 8.0 and later (default). */
     DEFAULT,
+    /** MySQL 5.7.x. */
+    MYSQL_5_7,
   }
 
   protected static final class InformationSchemaCols {
@@ -811,7 +989,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
     public static final String DATETIME_PRECISION_COL = "cols.DATETIME_PRECISION";
 
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
+    // MySQL 5.7 does not expose PAD_ATTRIBUTE; the adapter defaults to PAD SPACE in that case.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
 
     public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
@@ -838,5 +1016,44 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return MysqlTimeConverter.toDuration(rs.getBytes(index));
+  }
+
+  private static final class ColumnKey implements Serializable {
+    private final String tableName;
+    private final String columnName;
+
+    public ColumnKey(String tableName, String columnName) {
+      this.tableName = clean(tableName);
+      this.columnName = clean(columnName);
+    }
+
+    private static String clean(String identifier) {
+      if (identifier == null) {
+        return "";
+      }
+      return identifier.replace("`", "").replace("\"", "").toLowerCase();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ColumnKey)) {
+        return false;
+      }
+      ColumnKey that = (ColumnKey) o;
+      return tableName.equals(that.tableName) && columnName.equals(that.columnName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tableName, columnName);
+    }
+
+    @Override
+    public String toString() {
+      return tableName + "." + columnName;
+    }
   }
 }

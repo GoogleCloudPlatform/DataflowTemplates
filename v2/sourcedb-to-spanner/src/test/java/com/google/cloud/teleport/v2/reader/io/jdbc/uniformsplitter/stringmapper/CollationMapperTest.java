@@ -16,12 +16,9 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper;
 
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_COL;
-import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -252,10 +249,7 @@ public class CollationMapperTest {
     when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
     when(mockResultSet.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    when(mockResultSet.getString(EQUIVALENT_CHARSET_CHAR_COL)).thenReturn("a");
-    when(mockResultSet.getLong(CODEPOINT_RANK_COL)).thenReturn(0L);
-    when(mockResultSet.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL)).thenReturn("a");
-    when(mockResultSet.getLong(CODEPOINT_RANK_PAD_SPACE_COL)).thenReturn(0L);
+    when(mockResultSet.getBytes(WEIGHT_COL)).thenReturn(new byte[] {0x01, 0x00});
     when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
     when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
 

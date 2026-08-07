@@ -84,6 +84,25 @@ public class TestUtils {
               return (values.get(colToIdx.get(colName)).equals("1")
                   || Boolean.parseBoolean(values.get(colToIdx.get(colName))));
             });
+
+    when(mockResultSet.getBytes(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String colName = invocation.getArgument(0);
+              Integer idx = colToIdx.get(colName);
+              if (idx != null) {
+                String hex = values.get(idx);
+                if (hex == null || hex.isEmpty()) {
+                  return null;
+                }
+                try {
+                  return org.apache.commons.codec.binary.Hex.decodeHex(hex);
+                } catch (org.apache.commons.codec.DecoderException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+              return null;
+            });
     return lines.size();
   }
 }

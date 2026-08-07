@@ -31,6 +31,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -50,6 +51,7 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.util.List;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Test;
@@ -339,6 +341,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
@@ -389,6 +392,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
@@ -623,6 +627,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, false);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
@@ -744,9 +749,18 @@ public class MysqlDialectAdapterTest {
   public void testGetIndexDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getIndexDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build(), 1))
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1, true))
         .isEqualTo(
             "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as 'stats.COLUMN_NAME', stats.INDEX_NAME as 'stats.INDEX_NAME', stats.SEQ_IN_INDEX as 'stats.SEQ_IN_INDEX', stats.NON_UNIQUE as 'stats.NON_UNIQUE', stats.CARDINALITY as 'stats.CARDINALITY', cols.COLUMN_TYPE as 'cols.COLUMN_TYPE', cols.CHARACTER_MAXIMUM_LENGTH as 'cols.CHARACTER_MAXIMUM_LENGTH', cols.CHARACTER_SET_NAME as 'cols.CHARACTER_SET_NAME', cols.COLLATION_NAME as 'cols.COLLATION_NAME', cols.DATETIME_PRECISION as 'cols.DATETIME_PRECISION', collations.PAD_ATTRIBUTE as 'collations.PAD_ATTRIBUTE', cols.NUMERIC_SCALE as 'cols.NUMERIC_SCALE'  FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME IN (?)");
+  }
+
+  @Test
+  public void testGetIndexDiscoveryQuery5_7() {
+    assertThat(
+            MysqlDialectAdapter.getIndexDiscoveryQuery(
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1, false))
+        .isEqualTo(
+            "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as 'stats.COLUMN_NAME', stats.INDEX_NAME as 'stats.INDEX_NAME', stats.SEQ_IN_INDEX as 'stats.SEQ_IN_INDEX', stats.NON_UNIQUE as 'stats.NON_UNIQUE', stats.CARDINALITY as 'stats.CARDINALITY', cols.COLUMN_TYPE as 'cols.COLUMN_TYPE', cols.CHARACTER_MAXIMUM_LENGTH as 'cols.CHARACTER_MAXIMUM_LENGTH', cols.CHARACTER_SET_NAME as 'cols.CHARACTER_SET_NAME', cols.COLLATION_NAME as 'cols.COLLATION_NAME', cols.DATETIME_PRECISION as 'cols.DATETIME_PRECISION', 'PAD SPACE' as 'collations.PAD_ATTRIBUTE', cols.NUMERIC_SCALE as 'cols.NUMERIC_SCALE'  FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME IN (?)");
   }
 
   @Test
@@ -787,6 +801,7 @@ public class MysqlDialectAdapterTest {
     when(mockConnection.prepareStatement(anyString()))
         .thenThrow(new SQLException("test"))
         .thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     exceptionCount++;
     doThrow(new SQLException("test"))
         .doNothing()
@@ -842,6 +857,36 @@ public class MysqlDialectAdapterTest {
   }
 
   @Test
+  public void testGetBoundaryQueryForBitColumn()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String testTable = "testTable";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(testTable);
+    when(mockResultSet.getString(InformationSchemaCols.NAME_COL)).thenReturn("col3");
+    when(mockResultSet.getString(InformationSchemaCols.TYPE_COL)).thenReturn("bit");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    adapter.discoverTableSchema(
+        com.google.cloud.teleport.v2.reader.io.datasource.DataSource.ofJdbc(mockDataSource),
+        SourceSchemaReference.ofJdbc(sourceSchemaReference),
+        ImmutableList.of(testTable));
+
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    assertThat(adapter.getBoundaryQuery(testTable, cols, "col3"))
+        .isEqualTo(
+            "select MIN(col3 + 0),MAX(col3 + 0) from testTable WHERE ((? = FALSE) OR (col_1 >= ? AND (col_1 < ? OR (? = TRUE AND col_1 = ?)))) AND ((? = FALSE) OR (col_2 >= ? AND (col_2 < ? OR (? = TRUE AND col_2 = ?))))");
+  }
+
+  @Test
   public void testCheckTimeoutException() {
     MysqlDialectAdapter mysqlDialectAdapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     //  ER_QUERY_INTERRUPTED;
@@ -888,6 +933,7 @@ public class MysqlDialectAdapterTest {
         .isEqualTo(java.time.Duration.ofHours(-838).minusMinutes(59).minusSeconds(59));
   }
 
+  @Test
   public void testGetCollationsOrderQuery() {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     String dbCharset = "utf8mb4";
@@ -898,6 +944,52 @@ public class MysqlDialectAdapterTest {
 
     assertThat(query).contains("'" + dbCharset + "'");
     assertThat(query).contains("'" + dbCollation + "'");
+  }
+
+  @Test
+  public void testProcessCollationResultSet() throws SQLException {
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    CollationReference collationReference =
+        CollationReference.builder()
+            .setDbCharacterSet("utf8mb4")
+            .setDbCollation("utf8mb4_0900_ai_ci")
+            .setPadSpace(false)
+            .build();
+
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.next()).thenReturn(true, true, true, false);
+
+    // Mock returning: "b" (weight 0x02), "a" (weight 0x01), "A" (weight 0x01)
+    when(mockRs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL))
+        .thenReturn("b", "a", "A");
+    when(mockRs.getBytes(CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL))
+        .thenReturn(new byte[] {0x02}, new byte[] {0x01}, new byte[] {0x01});
+    when(mockRs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL))
+        .thenReturn(false);
+    when(mockRs.getBoolean(CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL))
+        .thenReturn(false);
+
+    List<CollationOrderRow> result = adapter.processCollationResultSet(mockRs, collationReference);
+
+    // Order should be sorted by rank and then charsetChar: "A" (rank 0), "a" (rank 0), then "b"
+    // (rank 1)
+    assertThat(result).hasSize(3);
+
+    // First row: "A"
+    assertThat(result.get(0).charsetChar()).isEqualTo("A");
+    assertThat(result.get(0).codepointRank()).isEqualTo(0L);
+    assertThat(result.get(0).equivalentChar())
+        .isEqualTo("a"); // "a" is equivalent because it appeared first in ResultSet for this weight
+
+    // Second row: "a"
+    assertThat(result.get(1).charsetChar()).isEqualTo("a");
+    assertThat(result.get(1).codepointRank()).isEqualTo(0L);
+    assertThat(result.get(1).equivalentChar()).isEqualTo("a");
+
+    // Third row: "b"
+    assertThat(result.get(2).charsetChar()).isEqualTo("b");
+    assertThat(result.get(2).codepointRank()).isEqualTo(1L);
+    assertThat(result.get(2).equivalentChar()).isEqualTo("b");
   }
 
   @Test
@@ -1019,6 +1111,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
@@ -1064,6 +1157,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     doNothing().when(mockPreparedStatement).setString(1, testTable);
 
     // We'll run this with different padSpace return values
@@ -1203,6 +1297,18 @@ public class MysqlDialectAdapterTest {
             .put("int_unsigned_col", new SourceColumnType("INTEGER UNSIGNED", new Long[] {}, null))
             .put("tiny_int_unsigned_col", new SourceColumnType("TINYINT", new Long[] {}, null))
             .build());
+  }
+
+  private void mockPadAttributeCheck(Connection conn, boolean exists) throws SQLException {
+    PreparedStatement stmt = mock(PreparedStatement.class);
+    ResultSet rs = mock(ResultSet.class);
+    when(conn.prepareStatement(
+            org.mockito.ArgumentMatchers.eq(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'COLLATIONS' AND COLUMN_NAME = 'PAD_ATTRIBUTE'")))
+        .thenReturn(stmt);
+    when(stmt.executeQuery()).thenReturn(rs);
+    when(rs.next()).thenReturn(true);
+    when(rs.getInt(1)).thenReturn(exists ? 1 : 0);
   }
 }
 
