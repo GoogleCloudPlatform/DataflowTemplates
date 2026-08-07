@@ -106,15 +106,27 @@ public class ProcessDml {
       // If there is no PK then state can be skipped
       String numThreads = Integer.toString(Math.abs(stateKey.hashCode()) % NUM_THREADS);
       if (dmlInfo.getAllPkFields().size() == 0) {
+        LOG.info("Record kept (no PK): Key={}, SortKey={}", stateKey, currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
         // FIX: Changed '> 0' to '>= 0' to allow DLQ retries to pass through
       } else if (lastSortKey == null
           || currentSortKey.compareTo(lastSortKey) > 0
           || (currentSortKey.compareTo(lastSortKey) >= 0 && isDLQEvent(dmlInfo))) {
+        LOG.info(
+            "Record kept: Key={}, SortKey={}, LastSortKey={}",
+            stateKey,
+            currentSortKey,
+            lastSortKey);
         myState.write(currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
 
         distribution.update(0);
+      } else {
+        LOG.info(
+            "Record dropped: Key={}, SortKey={}, LastSortKey={}",
+            stateKey,
+            currentSortKey,
+            lastSortKey);
       }
     }
   }
