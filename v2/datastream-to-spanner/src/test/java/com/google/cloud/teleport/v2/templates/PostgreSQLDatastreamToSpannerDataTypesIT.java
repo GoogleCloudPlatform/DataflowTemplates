@@ -289,10 +289,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // These types are not mapped as expected, ignore them to avoid failing the test.
     Set<String> ignoredTypeMappings =
         Set.of(
-            "time",
-            "time_with_time_zone",
-            "time_without_time_zone",
-            "timetz",
             "uuid_to_bytes",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
@@ -619,14 +615,21 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("smallserial_to_float32", createRows("-32768.0", "32767.0", "11.0"));
     result.put("smallserial_to_float64", createRows("-32768.0", "32767.0", "11.0"));
     result.put("text", createRows("testing text", "NULL"));
-    // Datastream incorrectly wraps 24:00:00 to 0 microseconds during extraction.
-    // This causes 24:00:00 to be silently rewritten to Spanner as 'PT0S' instead of 'PT24H',
-    // and '24:00:00+10:00' as '00:00:00+10:00' instead of '24:00:00+10:00'.
-    // Ignored in ignoredTypeMappings until the Datastream bug is resolved.
-    result.put("time", createRows("PT24H", "NULL"));
-    result.put("time_without_time_zone", createRows("PT24H", "NULL"));
-    result.put("time_with_time_zone", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
-    result.put("timetz", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
+    /*
+     * Note: Upstream Datastream incorrectly wraps 24:00:00 to 00:00:00 during extraction.
+     * This causes '24:00:00' to be extracted as 'PT0S' instead of 'PT24H', and '24:00:00+10:00'
+     * as '00:00:00+10:00' instead of '24:00:00+10:00'.
+     *
+     * TODO: Uncomment the following 24:00:00 test assertions once the upstream bug is resolved:
+     * result.put("time", createRows("PT12H34M56S", "PT24H", "NULL"));
+     * result.put("time_without_time_zone", createRows("PT12H34M56S", "PT24H", "NULL"));
+     * result.put("time_with_time_zone", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
+     * result.put("timetz", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
+     */
+    result.put("time", createRows("PT12H34M56S", "NULL"));
+    result.put("time_without_time_zone", createRows("PT12H34M56S", "NULL"));
+    result.put("time_with_time_zone", createRows("23:59:59+10:00", "NULL"));
+    result.put("timetz", createRows("23:59:59+10:00", "NULL"));
     result.put("timestamp", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
     result.put("timestamp_to_timestamp", createRows("1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
