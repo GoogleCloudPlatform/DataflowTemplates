@@ -178,6 +178,19 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                   + "  ]"
                   + "}");
 
+  private static final Schema NO_PK_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{\n"
+                  + "  \"type\": \"record\",\n"
+                  + "  \"name\": \"NoPkTable\",\n"
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
+                  + "  \"fields\": [\n"
+                  + "    { \"name\": \"Name\", \"type\": [\"null\", \"string\"], \"sqlType\": \"STRING(MAX)\" },\n"
+                  + "    { \"name\": \"rowid\", \"type\": \"long\", \"sqlType\": \"INT64\", \"identityColumn\":\"true\", \"hidden\":\"true\" }\n"
+                  + "  ]\n"
+                  + "}");
+
   private SpannerResourceManager spannerResourceManager;
 
   @After
@@ -220,7 +233,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     spannerResourceManager.executeDdlStatements(ddls);
 
     List<Mutation> expectedData = generateTableRows(String.format("%sSingers", prefix));
+    List<Mutation> expectedNoPkData = generateTableRowsNoPk(String.format("%sNoPkTable", prefix));
     spannerResourceManager.write(expectedData);
+    spannerResourceManager.write(expectedNoPkData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -262,7 +277,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
-
+    List<Artifact> noPkArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "NoPkTable")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(udfRemoteArtifacts).isNotEmpty();
@@ -270,12 +287,14 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThat(identityArtifacts).isNotEmpty();
     assertThat(sequenceArtifacts).isNotEmpty();
     assertThat(sequenceNoKindArtifacts).isNotEmpty();
+    assertThat(noPkArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
     List<GenericRecord> identityRecords = extractArtifacts(identityArtifacts, IDENTITY_SCHEMA);
+    List<GenericRecord> noPkRecords = extractArtifacts(noPkArtifacts, NO_PK_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
@@ -283,6 +302,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThatGenericRecords(modelStructRecords).hasRows(0);
     assertThatGenericRecords(identityRecords).hasRows(0);
 
+    assertThatGenericRecords(noPkRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedNoPkData));
     // TODO(b/517150731): Assert the content of exported schema metadata.
   }
 
@@ -320,7 +341,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     spannerResourceManager.executeDdlStatements(ddls);
 
     List<Mutation> expectedData = generateTableRows(String.format("%sSingers", prefix));
+    List<Mutation> expectedNoPkData = generateTableRowsNoPk(String.format("%sNoPkTable", prefix));
     spannerResourceManager.write(expectedData);
+    spannerResourceManager.write(expectedNoPkData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -355,21 +378,27 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
+    List<Artifact> noPkArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "NoPkTable")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();
     assertThat(sequenceArtifacts).isNotEmpty();
     assertThat(sequenceNoKindArtifacts).isNotEmpty();
+    assertThat(noPkArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
+    List<GenericRecord> identityRecords = extractArtifacts(identityArtifacts, IDENTITY_SCHEMA);
+    List<GenericRecord> noPkRecords = extractArtifacts(noPkArtifacts, NO_PK_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
-
-    List<GenericRecord> identityRecords = extractArtifacts(identityArtifacts, IDENTITY_SCHEMA);
     assertThatGenericRecords(identityRecords).hasRows(0);
+    assertThatGenericRecords(noPkRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedNoPkData));
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
@@ -482,6 +511,18 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("Rating").to(RandomUtils.nextFloat());
+      mutations.add(mutation.build());
+    }
+
+    return mutations;
+  }
+
+  private static List<Mutation> generateTableRowsNoPk(String tableId) {
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("rowid").to(i);
+      mutation.set("Name").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutations.add(mutation.build());
     }
 

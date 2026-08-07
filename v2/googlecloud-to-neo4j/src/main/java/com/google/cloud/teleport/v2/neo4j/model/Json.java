@@ -19,14 +19,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import com.networknt.schema.Error;
-import com.networknt.schema.InputFormat;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SchemaRegistryConfig;
-import com.networknt.schema.SpecificationVersion;
-import com.networknt.schema.path.NodePath;
-import com.networknt.schema.path.PathType;
+import com.networknt.schema.CustomErrorMessageType;
+import com.networknt.schema.JsonNodePath;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.PathType;
+import com.networknt.schema.SpecVersion.VersionFlag;
+import com.networknt.schema.ValidationMessage;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.List;
@@ -35,18 +34,14 @@ import java.util.stream.Collectors;
 
 public class Json {
 
-  public static final SchemaRegistry SCHEMA_REGISTRY =
-      SchemaRegistry.withDefaultDialect(
-          SpecificationVersion.DRAFT_2020_12,
-          builder ->
-              builder.schemaRegistryConfig(
-                  SchemaRegistryConfig.builder().pathType(PathType.LEGACY).build()));
+  public static final JsonSchemaFactory SCHEMA_FACTORY =
+      JsonSchemaFactory.getInstance(VersionFlag.V202012);
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  public static ParsingResult parseAndValidate(String json, Schema schema) {
+  public static ParsingResult parseAndValidate(String json, JsonSchema schema) {
     ParsingResult result = Json.parseNode(json);
-    return result.flatMap(node -> ParsingResult.of(node, schema.validate(json, InputFormat.JSON)));
+    return result.flatMap(node -> ParsingResult.of(node, schema.validate(node)));
   }
 
   public static <T> T map(ParsingResult result, Class<T> type) {
@@ -57,12 +52,15 @@ public class Json {
     try {
       return ParsingResult.success(MAPPER.readTree(json));
     } catch (JsonProcessingException e) {
+      var messageType = CustomErrorMessageType.of("dataflow.invalidJSON");
+      var parentPath = new JsonNodePath(PathType.DEFAULT);
       return ParsingResult.failure(
           List.of(
-              Error.builder()
-                  .keyword("invalidJson")
-                  .instanceLocation(new NodePath(PathType.LEGACY))
-                  .format(new MessageFormat("The provided string is not valid JSON: {0}"))
+              ValidationMessage.builder()
+                  .type("invalidJson")
+                  .code(messageType.getErrorCode())
+                  .instanceLocation(parentPath)
+                  .format(new MessageFormat("The provided string is not valid JSON: {1}"))
                   .arguments(json)
                   .build()));
     }
@@ -70,14 +68,14 @@ public class Json {
 
   public static class ParsingResult {
     private final JsonNode node;
-    private final Collection<Error> errors;
+    private final Collection<ValidationMessage> errors;
 
-    private ParsingResult(JsonNode node, Collection<Error> errors) {
+    private ParsingResult(JsonNode node, Collection<ValidationMessage> errors) {
       this.node = node;
       this.errors = errors;
     }
 
-    public static ParsingResult of(JsonNode node, Collection<Error> messages) {
+    public static ParsingResult of(JsonNode node, Collection<ValidationMessage> messages) {
       if (!messages.isEmpty()) {
         return failure(messages);
       }
@@ -88,7 +86,7 @@ public class Json {
       return new ParsingResult(node, List.of());
     }
 
-    public static ParsingResult failure(Collection<Error> errors) {
+    public static ParsingResult failure(Collection<ValidationMessage> errors) {
       return new ParsingResult(null, errors);
     }
 
@@ -110,7 +108,7 @@ public class Json {
     }
 
     @VisibleForTesting
-    Collection<Error> getErrors() {
+    Collection<ValidationMessage> getErrors() {
       return errors;
     }
 
@@ -119,7 +117,7 @@ public class Json {
       return node;
     }
 
-    private static String formatValidationError(String prefix, Error error) {
+    private static String formatValidationError(String prefix, ValidationMessage error) {
       return String.format("%s: %s", prefix, error.getMessage());
     }
   }

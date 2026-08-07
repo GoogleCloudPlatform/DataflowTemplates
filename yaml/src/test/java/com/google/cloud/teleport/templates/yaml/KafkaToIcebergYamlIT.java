@@ -191,8 +191,6 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
         "header.x-goog-user-project",
         PROJECT,
         "rest.auth.type",
-        "org.apache.iceberg.gcp.auth.GoogleAuthManager",
-        "rest-metrics-reporting-enabled",
-        "false");
+        "org.apache.iceberg.gcp.auth.GoogleAuthManager");
   }
 }

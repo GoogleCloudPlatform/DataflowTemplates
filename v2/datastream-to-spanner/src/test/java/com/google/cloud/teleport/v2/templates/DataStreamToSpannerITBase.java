@@ -48,6 +48,7 @@ import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -594,5 +595,23 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         }
       }
     }
+  }
+
+  protected ConditionCheck buildBaseConditionCheck(
+      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
+
+    ConditionCheck combinedCondition = null;
+    for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
+      String tableName = entry.getKey();
+      int numRows = entry.getValue().size();
+      ConditionCheck c =
+          SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
+      if (combinedCondition == null) {
+        combinedCondition = c;
+      } else {
+        combinedCondition = combinedCondition.and(c);
+      }
+    }
+    return combinedCondition;
   }
 }

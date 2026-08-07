@@ -239,6 +239,8 @@ public class GCSSpannerDVRenamedColumnsIT extends GCSSpannerDVITBase {
                 /* matchedRowCount= */ 0L,
                 /* mismatchRowCount= */ 2L)));
 
+    // Note: In case of a data mismatch, getting two separate rows (one MISSING_IN_SOURCE
+    // and one MISSING_IN_DESTINATION) is the expected behavior.
     GCSSpannerDVTestAsserts.assertMismatchedRecords(
         bigQueryResourceManager,
         Arrays.asList(

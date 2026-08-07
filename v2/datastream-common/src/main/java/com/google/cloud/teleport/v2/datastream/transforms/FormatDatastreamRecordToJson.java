@@ -25,11 +25,14 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -649,6 +652,54 @@ public class FormatDatastreamRecordToJson
               fullDate
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          break;
+        case "timeTz":
+          long timeTzNanos =
+              ((Number) getOrDefault(element, "time", 0L)).longValue()
+                  * TimeUnit.MICROSECONDS.toNanos(1);
+          int offsetSeconds = ((Number) getOrDefault(element, "offset", 0)).intValue() / 1000;
+
+          ZoneOffset timeTzOffset = ZoneOffset.ofTotalSeconds(offsetSeconds);
+
+          if (timeTzNanos == 86400000000000L) {
+            jsonObject.put(fieldName, "24:00:00" + timeTzOffset.toString());
+            break;
+          }
+
+          LocalTime localTime = LocalTime.ofNanoOfDay(timeTzNanos);
+          OffsetTime offsetTime = OffsetTime.of(localTime, timeTzOffset);
+          jsonObject.put(fieldName, offsetTime.format(DateTimeFormatter.ISO_OFFSET_TIME));
+          break;
+        case "interval":
+          int months = ((Number) getOrDefault(element, "months", 0)).intValue();
+          int hours = ((Number) getOrDefault(element, "hours", 0)).intValue();
+          long micros = ((Number) getOrDefault(element, "micros", 0L)).longValue();
+
+          int days = hours / 24;
+          int remainingHours = hours % 24;
+
+          Period intervalPeriod = Period.ZERO.plusMonths(months).plusDays(days).normalized();
+          Duration intervalDuration =
+              Duration.ZERO.plusHours(remainingHours).plus(micros, ChronoUnit.MICROS);
+
+          if (intervalPeriod.isZero() && intervalDuration.isZero()) {
+            jsonObject.put(fieldName, "PT0S");
+            break;
+          }
+
+          StringBuilder result = new StringBuilder();
+          if (!intervalPeriod.isZero()) {
+            result.append(intervalPeriod.toString());
+          }
+          if (!intervalDuration.isZero()) {
+            if (result.length() == 0) {
+              result.append(intervalDuration.toString());
+            } else {
+              // Remove the 'P' from Duration
+              result.append(intervalDuration.toString().substring(1));
+            }
+          }
+          jsonObject.put(fieldName, result.toString());
           break;
           /*
            * The `intervalNano` maps to nano second precision interval type used by Cassandra Interval.

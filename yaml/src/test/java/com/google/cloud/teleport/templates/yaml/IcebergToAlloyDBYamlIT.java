@@ -167,7 +167,6 @@ public class IcebergToAlloyDBYamlIT extends TemplateTestBase {
         "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
         "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project", PROJECT,
-        "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
-        "rest-metrics-reporting-enabled", "false");
+        "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager");
   }
 }

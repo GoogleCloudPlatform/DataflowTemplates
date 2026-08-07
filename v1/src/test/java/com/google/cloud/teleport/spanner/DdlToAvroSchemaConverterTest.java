@@ -668,6 +668,47 @@ public class DdlToAvroSchemaConverterTest {
   }
 
   @Test
+  public void tableWithHiddenPrimaryKey() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("rowid")
+            .int64()
+            .notNull()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .isHidden(true)
+            .endColumn()
+            .column("name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("rowid")
+            .end()
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    List<Schema.Field> fields = avroSchema.getFields();
+    assertThat(fields, hasSize(2));
+
+    assertThat(fields.get(0).name(), equalTo("rowid"));
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.LONG));
+    assertThat(fields.get(0).getProp(HIDDEN), equalTo("true"));
+    assertThat(fields.get(0).getProp(IDENTITY_COLUMN), equalTo("true"));
+
+    assertThat(fields.get(1).name(), equalTo("name"));
+
+    assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`rowid` ASC"));
+  }
+
+  @Test
   public void udfSimple() {
     DdlToAvroSchemaConverter converter =
         new DdlToAvroSchemaConverter("spannertest", "booleans", false);

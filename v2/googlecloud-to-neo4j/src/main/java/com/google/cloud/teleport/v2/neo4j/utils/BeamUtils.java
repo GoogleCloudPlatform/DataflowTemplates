@@ -27,36 +27,30 @@ import org.apache.beam.sdk.schemas.logicaltypes.DateTime;
 import org.apache.beam.sdk.schemas.logicaltypes.NanosDuration;
 import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.importer.v1.targets.EntityTarget;
-import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
-import org.neo4j.importer.v1.targets.Target;
-import org.neo4j.importer.v1.targets.TargetType;
 
 /** Utilities for organizing Bean rows and schema. */
 public class BeamUtils {
 
-  public static Schema toBeamSchema(
-      Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
-    TargetType targetType = target.getTargetType();
-    if (targetType == TargetType.QUERY) {
+  public static Schema toBeamSchema(TargetStep step) {
+    if (step instanceof CustomQueryTargetStep) {
       return new Schema(new ArrayList<>());
     }
-    if (targetType != TargetType.NODE && targetType != TargetType.RELATIONSHIP) {
+    if (!(step instanceof EntityTargetStep)) {
       throw new IllegalArgumentException(
-          String.format("Expected relationship or node target, got %s", targetType));
+          String.format("Expected relationship or node target, got %s", step.getClass().getName()));
     }
-    EntityTarget entityTarget = (EntityTarget) target;
-
     List<Schema.Field> fields = new ArrayList<>();
-    for (PropertyMapping mapping :
-        ModelUtils.getAllPropertyMappings(entityTarget, startNodeTarget, endNodeTarget)) {
+    for (PropertyMapping mapping : ModelUtils.getAllPropertyMappings(step)) {
       // map source column names to order
       String field = mapping.getSourceField();
       if (StringUtils.isEmpty(field)) {
         throw new RuntimeException(
-            "Could not find field name or constant in target: " + target.getName());
+            "Could not find field name or constant in target: " + step.name());
       }
       Schema.Field schemaField;
       PropertyType propertyType = mapping.getTargetPropertyType();

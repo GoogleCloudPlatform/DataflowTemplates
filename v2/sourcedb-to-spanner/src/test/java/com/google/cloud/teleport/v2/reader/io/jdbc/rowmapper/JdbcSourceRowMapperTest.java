@@ -32,7 +32,9 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeStampTz;
+import com.google.cloud.teleport.v2.reader.io.schema.typemapping.provider.unified.CustomSchema.TimeTz;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.rowmapper.provider.MysqlJdbcValueMappings;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
@@ -40,6 +42,7 @@ import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.rowmapper.pro
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -228,19 +231,19 @@ public class JdbcSourceRowMapperTest {
     var mapping = new MysqlJdbcValueMappings().getMappings().get("TIME");
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("-838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("-838:59:58.999999".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(-3020398999999L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("838:59:58.999999".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(3020398999999L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("00:00:00".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("00:00:00".getBytes(StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
 
     when(mockResultSet.getBytes(anyString()))
-        .thenReturn("invalid_data".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        .thenReturn("invalid_data".getBytes(StandardCharsets.UTF_8));
     Assert.assertThrows(
         java.lang.IllegalArgumentException.class,
         () -> mapping.mapValue(mockResultSet, "testField", null));
@@ -445,8 +448,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(20) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .inputValue(
-                    "23:09:02".getBytes(java.nio.charset.StandardCharsets.UTF_8)) // Derby supports
+                .inputValue("23:09:02".getBytes(StandardCharsets.UTF_8)) // Derby supports
                 // only time of
                 // the day */
                 .mappedValue(83342000000L)
@@ -572,7 +574,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("CIDR")
-                .mappedValue(null) // Unsupported
+                .mappedValue("192.168.100.128/25")
                 .build())
         .add(
             Column.builder()
@@ -643,7 +645,7 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("INET")
-                .mappedValue(null) // Unsupported
+                .mappedValue("192.168.1.0/24")
                 .build())
         .add(
             Column.builder()
@@ -661,8 +663,13 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("INTERVAL")
-                .inputValue("1 hour")
-                .mappedValue(null) // Unsupported
+                .inputValue("1 year 2 mons 3 days 04:05:06.789")
+                .mappedValue(
+                    new GenericRecordBuilder(Interval.SCHEMA)
+                        .set("months", 14)
+                        .set("hours", 76)
+                        .set("micros", 306789000L)
+                        .build())
                 .build())
         .add(
             Column.builder()
@@ -749,10 +756,10 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("DECIMAL(9,2)")
                 .sourceColumnType("MONEY")
-                .inputValue("1.23")
-                .mappedValue(1.23D)
+                .inputValue(1.23)
+                .mappedValue("1.23")
                 .build())
         .add(
             Column.builder()
@@ -864,24 +871,39 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .mappedValue(0L)
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03".getBytes(StandardCharsets.UTF_8))
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIME WITHOUT TIME ZONE")
-                .inputValue("01:02:03")
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03".getBytes(StandardCharsets.UTF_8))
+                .mappedValue(3723000000L)
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("VARCHAR(100)")
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
                 .sourceColumnType("TIMETZ")
-                .inputValue("01:02:03-05")
-                .mappedValue(null) // Unsupported
+                .inputValue("01:02:03-05".getBytes(StandardCharsets.UTF_8))
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000)
+                        .build())
+                .build())
+        .add(
+            Column.builder()
+                .derbyColumnType("VARCHAR(100) FOR BIT DATA")
+                .sourceColumnType("TIME WITH TIME ZONE")
+                .inputValue("01:02:03-05".getBytes(StandardCharsets.UTF_8))
+                .mappedValue(
+                    new GenericRecordBuilder(TimeTz.SCHEMA)
+                        .set(TimeTz.TIME_FIELD_NAME, 3723000000L)
+                        .set(TimeTz.OFFSET_FIELD_NAME, -18000000)
+                        .build())
                 .build())
         .add(
             Column.builder()
