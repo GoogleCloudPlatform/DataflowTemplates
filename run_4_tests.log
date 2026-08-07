@@ -1,0 +1,571 @@
+======================================
+Starting test run 1 at Mon Jul 20 04:18:18 PM UTC 2026...
+======================================
+Submitting load generator...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] Loaded 1 groupId for remote repository splunk-artifactory
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:gcs-spanner-dv:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 68, column 16
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:sourcedb-to-spanner:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.codahale.metrics:metrics-core:jar -> duplicate declaration of version 3.0.2 @ line 200, column 21
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:spanner-to-sourcedb:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 104, column 22
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] Detecting the operating system and CPU architecture
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] os.detected.name: linux
+[[1;34mINFO[m] os.detected.arch: x86_64
+[[1;34mINFO[m] os.detected.bitness: 64
+[[1;34mINFO[m] os.detected.version: 6.18
+[[1;34mINFO[m] os.detected.version.major: 6
+[[1;34mINFO[m] os.detected.version.minor: 18
+[[1;34mINFO[m] os.detected.release: debian
+[[1;34mINFO[m] os.detected.release.like.debian: true
+[[1;34mINFO[m] os.detected.classifier: linux-x86_64
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------< [0;36mcom.google.cloud.teleport.v2:spanner-to-sourcedb[0;1m >----------[m
+[[1;34mINFO[m] [1mBuilding spanner-to-sourcedb 1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[[1;34mINFO[m] Rule 1: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[[1;34mINFO[m] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce-banned-dependencies)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.13:prepare-agent[m [1m(default-prepare-agent)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/usr/local/google/home/pratick/.m2/repository/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar=destfile=/usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/target-cli/jacoco.exec,excludes=**/*AutoValue_*:**/*Exception.*:**/constants/**:**/CustomTransformationImplFetcher.*:**/JarFileReader.*:**/CustomTransformationWithShardFor*IT.*:**/CustomTransformationWithCassandraForIT.*:**/models/*:**/exceptions/*
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target-cli/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:compile[m [1m(default-compile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec:3.6.3:java[m [1m(default-cli)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+Jul 20, 2026 4:18:30 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+{"message":"org.apache.beam.sdk.extensions.gcp.options.GcpOptions$GcpTempLocationFactory - No tempLocation specified, attempting to use default bucket: dataflow-staging-us-central1-940149800767","severity":"INFO"}
+{"message":"org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer - Request failed with code 409, performed 0 retries due to IOExceptions, performed 0 retries due to unsuccessful status codes, HTTP framework says request can be retried, (caller responsible for retrying): https://storage.googleapis.com/storage/v1/b?predefinedAcl\u003dprojectPrivate\u0026predefinedDefaultObjectAcl\u003dprojectPrivate\u0026project\u003dspan-cloud-migrations-testing. ","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.options.DataflowPipelineOptions$StagingLocationFactory - No stagingLocation provided, falling back to gcpTempLocation","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - PipelineOptions.filesToStage was not specified. Defaulting to files from the classpath: will stage 499 files. Enable logging at DEBUG level to see which files will be staged.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Unbounded PCollection(s) found in a batch pipeline! You might consider using \u0027streaming\u003dtrue\u0027! Unbounded PCollection(s): [Generate Sequence/Read(UnboundedCountingSource)/ParDo(UnboundedSourceAsSDFWrapper)/ParMultiDo(UnboundedSourceAsSDFWrapper).output [PCollection@1490167721], Generate Sequence/Read(UnboundedCountingSource)/ParDo(StripIds)/ParMultiDo(StripIds).output [PCollection@1513894141], Reshuffle/Pair with random key/ParMultiDo(AssignShard).output [PCollection@650206240], Reshuffle/Reshuffle/SetIdentityWindow/Window.Assign.out [PCollection@310936139], Reshuffle/Reshuffle/ReifyOriginalMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@1940699566], Reshuffle/Reshuffle/GroupByKey.out [PCollection@120503312], Reshuffle/Reshuffle/ExpandIterable/ParMultiDo(Anonymous).output [PCollection@314756935], Reshuffle/Reshuffle/RestoreMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@1846162419], Reshuffle/Values/Values/Map/ParMultiDo(Anonymous).output [PCollection@393908466], Write to Spanner/ParMultiDo(WriteMutations).output [PCollection@1912760120]]","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Executing pipeline on the Dataflow Service, which will have billing implications related to Google Compute Engine usage and other Google Cloud Services.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading 498 files from PipelineOptions.filesToStage to staging location to prepare for execution.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading /tmp/classes5937291949178207341.zip to gs://dataflow-staging-us-central1-940149800767/temp/staging/classes--WCPonGFk9HuukxHOFWZ7Htk7R4dSsGk5lzWse_cbu4.jar","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Staging files complete: 497 files cached, 1 files newly uploaded in 11 seconds","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Staging portable pipeline proto to gs://dataflow-staging-us-central1-940149800767/temp/staging/","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading \u003c208214 bytes, hash 081fa7c8c10c293d40065d59b6744951b09a388158d7fa61a1882c8a399fb2a9\u003e to gs://dataflow-staging-us-central1-940149800767/temp/staging/pipeline-CB-nyMEMKT1ABl1ZtnRJUbCaOIFY1_phoYgsijmfsqk.pb","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds as step s1","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/StripIds as step s2","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Pair with random key as step s3","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/Window.Into()/Window.Assign as step s4","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/GroupByKey as step s5","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/ExpandIterable as step s6","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Values/Values/Map as step s7","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Write to Spanner as step s8","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Dataflow SDK version: 2.74.0","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To access the Dataflow monitoring console, please navigate to https://console.cloud.google.com/dataflow/jobs/us-central1/2026-07-20_09_18_58-13397366854244890342?project\u003dspan-cloud-migrations-testing","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Submitted job: 2026-07-20_09_18_58-13397366854244890342","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To cancel the job using the \u0027gcloud\u0027 tool, run:\n\u003e gcloud dataflow jobs --project\u003dspan-cloud-migrations-testing cancel --region\u003dus-central1 2026-07-20_09_18_58-13397366854244890342","severity":"INFO"}
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  38.763 s
+[[1;34mINFO[m] Finished at: 2026-07-20T16:18:59Z
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+Load generator submitted. Waiting exactly 5 minutes for it to generate load...
+Canceling load generator...
+`--region` not set; getting jobs from all available regions. Some jobs may be missing in the event of an outage. https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
+WARNING: `--region` not set; defaulting to 'us-central1'. In an upcoming release, users must specify a region explicitly. See https://cloud.google.com/dataflow/docs/concepts/regional-endpoints for additional details.
+Cancelled job [2026-07-20_09_18_58-13397366854244890342]
+Cancelled job 2026-07-20_09_18_58-13397366854244890342. Waiting for dataflow to catch up...
+Running DataValidator at Mon Jul 20 04:25:03 PM UTC 2026...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+Jul 20, 2026 4:25:19 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@273fdf32]
+SLF4J(W): Found provider [org.slf4j.simple.SimpleServiceProvider@46e42732]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@273fdf32]
+Jul 20, 2026 4:25:21 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-1: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:25:21 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-2: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:25:21 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-3: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:25:21 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-migrations-testing
+Host: https://spanner.googleapis.com
+Num gRPC channels: 8
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 20, 2026 4:25:21 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+Data validation succeeded with 0 mismatches!
+Test run 1 completed successfully at Mon Jul 20 04:25:25 PM UTC 2026!
+
+======================================
+Starting test run 2 at Mon Jul 20 04:25:25 PM UTC 2026...
+======================================
+Submitting load generator...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] Loaded 1 groupId for remote repository splunk-artifactory
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:gcs-spanner-dv:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 68, column 16
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:sourcedb-to-spanner:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.codahale.metrics:metrics-core:jar -> duplicate declaration of version 3.0.2 @ line 200, column 21
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:spanner-to-sourcedb:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 104, column 22
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] Detecting the operating system and CPU architecture
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] os.detected.name: linux
+[[1;34mINFO[m] os.detected.arch: x86_64
+[[1;34mINFO[m] os.detected.bitness: 64
+[[1;34mINFO[m] os.detected.version: 6.18
+[[1;34mINFO[m] os.detected.version.major: 6
+[[1;34mINFO[m] os.detected.version.minor: 18
+[[1;34mINFO[m] os.detected.release: debian
+[[1;34mINFO[m] os.detected.release.like.debian: true
+[[1;34mINFO[m] os.detected.classifier: linux-x86_64
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------< [0;36mcom.google.cloud.teleport.v2:spanner-to-sourcedb[0;1m >----------[m
+[[1;34mINFO[m] [1mBuilding spanner-to-sourcedb 1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[[1;34mINFO[m] Rule 1: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[[1;34mINFO[m] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce-banned-dependencies)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.13:prepare-agent[m [1m(default-prepare-agent)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/usr/local/google/home/pratick/.m2/repository/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar=destfile=/usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/target-cli/jacoco.exec,excludes=**/*AutoValue_*:**/*Exception.*:**/constants/**:**/CustomTransformationImplFetcher.*:**/JarFileReader.*:**/CustomTransformationWithShardFor*IT.*:**/CustomTransformationWithCassandraForIT.*:**/models/*:**/exceptions/*
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target-cli/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:compile[m [1m(default-compile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec:3.6.3:java[m [1m(default-cli)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+Jul 20, 2026 4:25:36 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+{"message":"org.apache.beam.sdk.extensions.gcp.options.GcpOptions$GcpTempLocationFactory - No tempLocation specified, attempting to use default bucket: dataflow-staging-us-central1-940149800767","severity":"INFO"}
+{"message":"org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer - Request failed with code 409, performed 0 retries due to IOExceptions, performed 0 retries due to unsuccessful status codes, HTTP framework says request can be retried, (caller responsible for retrying): https://storage.googleapis.com/storage/v1/b?predefinedAcl\u003dprojectPrivate\u0026predefinedDefaultObjectAcl\u003dprojectPrivate\u0026project\u003dspan-cloud-migrations-testing. ","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.options.DataflowPipelineOptions$StagingLocationFactory - No stagingLocation provided, falling back to gcpTempLocation","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - PipelineOptions.filesToStage was not specified. Defaulting to files from the classpath: will stage 499 files. Enable logging at DEBUG level to see which files will be staged.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Unbounded PCollection(s) found in a batch pipeline! You might consider using \u0027streaming\u003dtrue\u0027! Unbounded PCollection(s): [Generate Sequence/Read(UnboundedCountingSource)/ParDo(UnboundedSourceAsSDFWrapper)/ParMultiDo(UnboundedSourceAsSDFWrapper).output [PCollection@759169588], Generate Sequence/Read(UnboundedCountingSource)/ParDo(StripIds)/ParMultiDo(StripIds).output [PCollection@880825800], Reshuffle/Pair with random key/ParMultiDo(AssignShard).output [PCollection@1891589541], Reshuffle/Reshuffle/SetIdentityWindow/Window.Assign.out [PCollection@41351965], Reshuffle/Reshuffle/ReifyOriginalMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@445104605], Reshuffle/Reshuffle/GroupByKey.out [PCollection@1428613959], Reshuffle/Reshuffle/ExpandIterable/ParMultiDo(Anonymous).output [PCollection@1040070847], Reshuffle/Reshuffle/RestoreMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@1149440516], Reshuffle/Values/Values/Map/ParMultiDo(Anonymous).output [PCollection@1370115664], Write to Spanner/ParMultiDo(WriteMutations).output [PCollection@930648969]]","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Executing pipeline on the Dataflow Service, which will have billing implications related to Google Compute Engine usage and other Google Cloud Services.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading 498 files from PipelineOptions.filesToStage to staging location to prepare for execution.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading /tmp/classes18186768715665104517.zip to gs://dataflow-staging-us-central1-940149800767/temp/staging/classes-8quKDk3cGFOoBnnXgoyxqAKh5jb8WK981GWz67wMq8U.jar","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Staging files complete: 497 files cached, 1 files newly uploaded in 10 seconds","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Staging portable pipeline proto to gs://dataflow-staging-us-central1-940149800767/temp/staging/","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading \u003c208214 bytes, hash 58187ddb4ba100e4579a9bed02cb2ae3fa2b58c2bfd115be0258991781c216f0\u003e to gs://dataflow-staging-us-central1-940149800767/temp/staging/pipeline-WBh920uhAORXmpvtAssq4_orWMK_0RW-AliZF4HCFvA.pb","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds as step s1","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/StripIds as step s2","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Pair with random key as step s3","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/Window.Into()/Window.Assign as step s4","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/GroupByKey as step s5","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/ExpandIterable as step s6","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Values/Values/Map as step s7","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Write to Spanner as step s8","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Dataflow SDK version: 2.74.0","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To access the Dataflow monitoring console, please navigate to https://console.cloud.google.com/dataflow/jobs/us-central1/2026-07-20_09_26_04-14059414777381690652?project\u003dspan-cloud-migrations-testing","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Submitted job: 2026-07-20_09_26_04-14059414777381690652","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To cancel the job using the \u0027gcloud\u0027 tool, run:\n\u003e gcloud dataflow jobs --project\u003dspan-cloud-migrations-testing cancel --region\u003dus-central1 2026-07-20_09_26_04-14059414777381690652","severity":"INFO"}
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  37.041 s
+[[1;34mINFO[m] Finished at: 2026-07-20T16:26:05Z
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+Load generator submitted. Waiting exactly 5 minutes for it to generate load...
+Canceling load generator...
+`--region` not set; getting jobs from all available regions. Some jobs may be missing in the event of an outage. https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
+WARNING: `--region` not set; defaulting to 'us-central1'. In an upcoming release, users must specify a region explicitly. See https://cloud.google.com/dataflow/docs/concepts/regional-endpoints for additional details.
+Cancelled job [2026-07-20_09_26_04-14059414777381690652]
+Cancelled job 2026-07-20_09_26_04-14059414777381690652. Waiting for dataflow to catch up...
+Running DataValidator at Mon Jul 20 04:32:08 PM UTC 2026...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+Jul 20, 2026 4:32:19 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@7b234f09]
+SLF4J(W): Found provider [org.slf4j.simple.SimpleServiceProvider@68b5d8c3]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@7b234f09]
+Jul 20, 2026 4:32:20 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-1: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:32:20 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-2: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:32:20 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-3: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:32:20 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-migrations-testing
+Host: https://spanner.googleapis.com
+Num gRPC channels: 8
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 20, 2026 4:32:20 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+Data validation succeeded with 0 mismatches!
+Test run 2 completed successfully at Mon Jul 20 04:32:24 PM UTC 2026!
+
+======================================
+Starting test run 3 at Mon Jul 20 04:32:24 PM UTC 2026...
+======================================
+Submitting load generator...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] Loaded 1 groupId for remote repository splunk-artifactory
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:gcs-spanner-dv:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 68, column 16
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:sourcedb-to-spanner:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.codahale.metrics:metrics-core:jar -> duplicate declaration of version 3.0.2 @ line 200, column 21
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:spanner-to-sourcedb:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 104, column 22
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] Detecting the operating system and CPU architecture
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] os.detected.name: linux
+[[1;34mINFO[m] os.detected.arch: x86_64
+[[1;34mINFO[m] os.detected.bitness: 64
+[[1;34mINFO[m] os.detected.version: 6.18
+[[1;34mINFO[m] os.detected.version.major: 6
+[[1;34mINFO[m] os.detected.version.minor: 18
+[[1;34mINFO[m] os.detected.release: debian
+[[1;34mINFO[m] os.detected.release.like.debian: true
+[[1;34mINFO[m] os.detected.classifier: linux-x86_64
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------< [0;36mcom.google.cloud.teleport.v2:spanner-to-sourcedb[0;1m >----------[m
+[[1;34mINFO[m] [1mBuilding spanner-to-sourcedb 1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[[1;34mINFO[m] Rule 1: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[[1;34mINFO[m] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce-banned-dependencies)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.13:prepare-agent[m [1m(default-prepare-agent)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/usr/local/google/home/pratick/.m2/repository/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar=destfile=/usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/target-cli/jacoco.exec,excludes=**/*AutoValue_*:**/*Exception.*:**/constants/**:**/CustomTransformationImplFetcher.*:**/JarFileReader.*:**/CustomTransformationWithShardFor*IT.*:**/CustomTransformationWithCassandraForIT.*:**/models/*:**/exceptions/*
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target-cli/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:compile[m [1m(default-compile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec:3.6.3:java[m [1m(default-cli)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+Jul 20, 2026 4:32:37 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+{"message":"org.apache.beam.sdk.extensions.gcp.options.GcpOptions$GcpTempLocationFactory - No tempLocation specified, attempting to use default bucket: dataflow-staging-us-central1-940149800767","severity":"INFO"}
+{"message":"org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer - Request failed with code 409, performed 0 retries due to IOExceptions, performed 0 retries due to unsuccessful status codes, HTTP framework says request can be retried, (caller responsible for retrying): https://storage.googleapis.com/storage/v1/b?predefinedAcl\u003dprojectPrivate\u0026predefinedDefaultObjectAcl\u003dprojectPrivate\u0026project\u003dspan-cloud-migrations-testing. ","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.options.DataflowPipelineOptions$StagingLocationFactory - No stagingLocation provided, falling back to gcpTempLocation","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - PipelineOptions.filesToStage was not specified. Defaulting to files from the classpath: will stage 499 files. Enable logging at DEBUG level to see which files will be staged.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Unbounded PCollection(s) found in a batch pipeline! You might consider using \u0027streaming\u003dtrue\u0027! Unbounded PCollection(s): [Generate Sequence/Read(UnboundedCountingSource)/ParDo(UnboundedSourceAsSDFWrapper)/ParMultiDo(UnboundedSourceAsSDFWrapper).output [PCollection@643333789], Generate Sequence/Read(UnboundedCountingSource)/ParDo(StripIds)/ParMultiDo(StripIds).output [PCollection@2132227205], Reshuffle/Pair with random key/ParMultiDo(AssignShard).output [PCollection@412194287], Reshuffle/Reshuffle/SetIdentityWindow/Window.Assign.out [PCollection@1897126158], Reshuffle/Reshuffle/ReifyOriginalMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@1077868540], Reshuffle/Reshuffle/GroupByKey.out [PCollection@980090301], Reshuffle/Reshuffle/ExpandIterable/ParMultiDo(Anonymous).output [PCollection@2028593160], Reshuffle/Reshuffle/RestoreMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@1469939466], Reshuffle/Values/Values/Map/ParMultiDo(Anonymous).output [PCollection@1982991390], Write to Spanner/ParMultiDo(WriteMutations).output [PCollection@1931485493]]","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Executing pipeline on the Dataflow Service, which will have billing implications related to Google Compute Engine usage and other Google Cloud Services.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading 498 files from PipelineOptions.filesToStage to staging location to prepare for execution.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Staging files complete: 498 files cached, 0 files newly uploaded in 11 seconds","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Staging portable pipeline proto to gs://dataflow-staging-us-central1-940149800767/temp/staging/","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading \u003c208214 bytes, hash d78d35a74feaacffed18f630cf72a087729e75beec891aa7cd1f3f1a523f60b0\u003e to gs://dataflow-staging-us-central1-940149800767/temp/staging/pipeline-1401p0_qrP_tGPYwz3Kgh3Kedb7siRqnzR8_GlI_YLA.pb","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds as step s1","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/StripIds as step s2","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Pair with random key as step s3","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/Window.Into()/Window.Assign as step s4","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/GroupByKey as step s5","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/ExpandIterable as step s6","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Values/Values/Map as step s7","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Write to Spanner as step s8","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Dataflow SDK version: 2.74.0","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To access the Dataflow monitoring console, please navigate to https://console.cloud.google.com/dataflow/jobs/us-central1/2026-07-20_09_33_06-8854955985641882483?project\u003dspan-cloud-migrations-testing","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Submitted job: 2026-07-20_09_33_06-8854955985641882483","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To cancel the job using the \u0027gcloud\u0027 tool, run:\n\u003e gcloud dataflow jobs --project\u003dspan-cloud-migrations-testing cancel --region\u003dus-central1 2026-07-20_09_33_06-8854955985641882483","severity":"INFO"}
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  39.089 s
+[[1;34mINFO[m] Finished at: 2026-07-20T16:33:07Z
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+Load generator submitted. Waiting exactly 5 minutes for it to generate load...
+Canceling load generator...
+`--region` not set; getting jobs from all available regions. Some jobs may be missing in the event of an outage. https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
+WARNING: `--region` not set; defaulting to 'us-central1'. In an upcoming release, users must specify a region explicitly. See https://cloud.google.com/dataflow/docs/concepts/regional-endpoints for additional details.
+Cancelled job [2026-07-20_09_33_06-8854955985641882483]
+Cancelled job 2026-07-20_09_33_06-8854955985641882483. Waiting for dataflow to catch up...
+Running DataValidator at Mon Jul 20 04:39:11 PM UTC 2026...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+Jul 20, 2026 4:39:21 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@20d5f91e]
+SLF4J(W): Found provider [org.slf4j.simple.SimpleServiceProvider@5cdb74dc]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@20d5f91e]
+Jul 20, 2026 4:39:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-1: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:39:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-2: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:39:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-3: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:39:22 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-migrations-testing
+Host: https://spanner.googleapis.com
+Num gRPC channels: 8
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 20, 2026 4:39:22 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+Data validation succeeded with 0 mismatches!
+Test run 3 completed successfully at Mon Jul 20 04:39:27 PM UTC 2026!
+
+======================================
+Starting test run 4 at Mon Jul 20 04:39:27 PM UTC 2026...
+======================================
+Submitting load generator...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] Loaded 1 groupId for remote repository splunk-artifactory
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:gcs-spanner-dv:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 68, column 16
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:sourcedb-to-spanner:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.codahale.metrics:metrics-core:jar -> duplicate declaration of version 3.0.2 @ line 200, column 21
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:spanner-to-sourcedb:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 104, column 22
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] Detecting the operating system and CPU architecture
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] os.detected.name: linux
+[[1;34mINFO[m] os.detected.arch: x86_64
+[[1;34mINFO[m] os.detected.bitness: 64
+[[1;34mINFO[m] os.detected.version: 6.18
+[[1;34mINFO[m] os.detected.version.major: 6
+[[1;34mINFO[m] os.detected.version.minor: 18
+[[1;34mINFO[m] os.detected.release: debian
+[[1;34mINFO[m] os.detected.release.like.debian: true
+[[1;34mINFO[m] os.detected.classifier: linux-x86_64
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------< [0;36mcom.google.cloud.teleport.v2:spanner-to-sourcedb[0;1m >----------[m
+[[1;34mINFO[m] [1mBuilding spanner-to-sourcedb 1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[[1;34mINFO[m] Rule 1: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[[1;34mINFO[m] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce-banned-dependencies)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.13:prepare-agent[m [1m(default-prepare-agent)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/usr/local/google/home/pratick/.m2/repository/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar=destfile=/usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/target-cli/jacoco.exec,excludes=**/*AutoValue_*:**/*Exception.*:**/constants/**:**/CustomTransformationImplFetcher.*:**/JarFileReader.*:**/CustomTransformationWithShardFor*IT.*:**/CustomTransformationWithCassandraForIT.*:**/models/*:**/exceptions/*
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target-cli/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:compile[m [1m(default-compile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec:3.6.3:java[m [1m(default-cli)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+Jul 20, 2026 4:39:38 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+{"message":"org.apache.beam.sdk.extensions.gcp.options.GcpOptions$GcpTempLocationFactory - No tempLocation specified, attempting to use default bucket: dataflow-staging-us-central1-940149800767","severity":"INFO"}
+{"message":"org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer - Request failed with code 409, performed 0 retries due to IOExceptions, performed 0 retries due to unsuccessful status codes, HTTP framework says request can be retried, (caller responsible for retrying): https://storage.googleapis.com/storage/v1/b?predefinedAcl\u003dprojectPrivate\u0026predefinedDefaultObjectAcl\u003dprojectPrivate\u0026project\u003dspan-cloud-migrations-testing. ","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.options.DataflowPipelineOptions$StagingLocationFactory - No stagingLocation provided, falling back to gcpTempLocation","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - PipelineOptions.filesToStage was not specified. Defaulting to files from the classpath: will stage 499 files. Enable logging at DEBUG level to see which files will be staged.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Unbounded PCollection(s) found in a batch pipeline! You might consider using \u0027streaming\u003dtrue\u0027! Unbounded PCollection(s): [Generate Sequence/Read(UnboundedCountingSource)/ParDo(UnboundedSourceAsSDFWrapper)/ParMultiDo(UnboundedSourceAsSDFWrapper).output [PCollection@78883040], Generate Sequence/Read(UnboundedCountingSource)/ParDo(StripIds)/ParMultiDo(StripIds).output [PCollection@32082717], Reshuffle/Pair with random key/ParMultiDo(AssignShard).output [PCollection@1204263143], Reshuffle/Reshuffle/SetIdentityWindow/Window.Assign.out [PCollection@472077106], Reshuffle/Reshuffle/ReifyOriginalMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@220352180], Reshuffle/Reshuffle/GroupByKey.out [PCollection@1450106391], Reshuffle/Reshuffle/ExpandIterable/ParMultiDo(Anonymous).output [PCollection@1955921393], Reshuffle/Reshuffle/RestoreMetadata/ParDo(Anonymous)/ParMultiDo(Anonymous).output [PCollection@518360259], Reshuffle/Values/Values/Map/ParMultiDo(Anonymous).output [PCollection@504503859], Write to Spanner/ParMultiDo(WriteMutations).output [PCollection@2001328436]]","severity":"WARN"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Executing pipeline on the Dataflow Service, which will have billing implications related to Google Compute Engine usage and other Google Cloud Services.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading 498 files from PipelineOptions.filesToStage to staging location to prepare for execution.","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Staging files complete: 498 files cached, 0 files newly uploaded in 10 seconds","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Staging portable pipeline proto to gs://dataflow-staging-us-central1-940149800767/temp/staging/","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.util.PackageUtil - Uploading \u003c208214 bytes, hash f0e114eda8a21a981278a8c14054d4ac9328504bb6a96701cbb359e3dfe0d6b0\u003e to gs://dataflow-staging-us-central1-940149800767/temp/staging/pipeline-8OEU7aiiGpgSeKjBQFTUrJMoUEu2qWcBy7NZ49_g1rA.pb","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds as step s1","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Generate Sequence/Read(UnboundedCountingSource)/StripIds as step s2","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Pair with random key as step s3","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/Window.Into()/Window.Assign as step s4","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/GroupByKey as step s5","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Reshuffle/ExpandIterable as step s6","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Reshuffle/Values/Values/Map as step s7","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowPipelineTranslator - Adding Write to Spanner as step s8","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Dataflow SDK version: 2.74.0","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To access the Dataflow monitoring console, please navigate to https://console.cloud.google.com/dataflow/jobs/us-central1/2026-07-20_09_40_05-10473106499602447886?project\u003dspan-cloud-migrations-testing","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - Submitted job: 2026-07-20_09_40_05-10473106499602447886","severity":"INFO"}
+{"message":"org.apache.beam.runners.dataflow.DataflowRunner - To cancel the job using the \u0027gcloud\u0027 tool, run:\n\u003e gcloud dataflow jobs --project\u003dspan-cloud-migrations-testing cancel --region\u003dus-central1 2026-07-20_09_40_05-10473106499602447886","severity":"INFO"}
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  36.762 s
+[[1;34mINFO[m] Finished at: 2026-07-20T16:40:06Z
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+Load generator submitted. Waiting exactly 5 minutes for it to generate load...
+Canceling load generator...
+`--region` not set; getting jobs from all available regions. Some jobs may be missing in the event of an outage. https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
+WARNING: `--region` not set; defaulting to 'us-central1'. In an upcoming release, users must specify a region explicitly. See https://cloud.google.com/dataflow/docs/concepts/regional-endpoints for additional details.
+Cancelled job [2026-07-20_09_40_05-10473106499602447886]
+Cancelled job 2026-07-20_09_40_05-10473106499602447886. Waiting for dataflow to catch up...
+Running DataValidator at Mon Jul 20 04:46:10 PM UTC 2026...
+*** gpkg: Maven is using Corp Airlock (go/corp-airlock) by default!
+*** gpkg: Check package availability at http://airlock/
+Jul 20, 2026 4:46:21 PM com.google.auth.oauth2.DefaultCredentialsProvider warnAboutProblematicCredentials
+WARNING: You are authenticating using user credentials. For production, we recommend using service account credentials.
+
+To learn more about service account credentials, see http://cloud.google.com/docs/authentication/external/set-up-adc-on-cloud
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@79fd793a]
+SLF4J(W): Found provider [org.slf4j.simple.SimpleServiceProvider@4ee2be67]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@79fd793a]
+Jul 20, 2026 4:46:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-1: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:46:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-2: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:46:22 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-3: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 20, 2026 4:46:22 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-migrations-testing
+Host: https://spanner.googleapis.com
+Num gRPC channels: 8
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 20, 2026 4:46:22 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+Data validation succeeded with 0 mismatches!
+Test run 4 completed successfully at Mon Jul 20 04:46:25 PM UTC 2026!
+
+All 4 test runs completed successfully!

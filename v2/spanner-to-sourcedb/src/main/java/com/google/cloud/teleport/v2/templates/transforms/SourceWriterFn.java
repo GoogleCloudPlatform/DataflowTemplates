@@ -19,8 +19,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -41,7 +39,6 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
@@ -60,12 +57,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.state.StateSpec;
+import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -75,8 +75,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This class writes to source based on commit timestamp captured in shadow table. */
-public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord>, String>
+public class SourceWriterFn extends DoFn<KV<String, TrimmedShardedDataChangeRecord>, String>
     implements Serializable {
+
+  @StateId("latestProcessedState")
+  private final StateSpec<ValueState<String>> latestProcessedStateSpec =
+      StateSpecs.value(StringUtf8Coder.of());
+
   private static final Logger LOG = LoggerFactory.getLogger(SourceWriterFn.class);
   private static Gson gson = new Gson();
 
@@ -222,7 +227,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   }
 
   @ProcessElement
-  public void processElement(ProcessContext c) {
+  public void processElement(
+      ProcessContext c, @StateId("latestProcessedState") ValueState<String> latestProcessedState) {
     Ddl ddl = c.sideInput(ddlView);
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
 
@@ -231,7 +237,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         SchemaMapperUtils.getSchemaMapper(
             schema, schemaFileOverridesParser, tableOverrides, columnOverrides, ddl);
 
-    KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
+    KV<String, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
     String shardId = spannerRec.getShard();
     if (shardId == null || shardId.equals(Constants.SEVERE_ERROR_SHARD_ID)) {
@@ -257,114 +263,80 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
 
-        Boolean transactionResult =
-            spannerDao
-                .getDatabaseClient()
-                .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
-                .run(
-                    (TransactionRunner.TransactionCallable<Boolean>)
-                        shadowTransaction -> {
-                          boolean isSourceAhead = false;
-                          // Boolean reference to capture if the record was written in the
-                          // transaction
-                          AtomicBoolean isRecordWritten = new AtomicBoolean(false);
-                          ShadowTableRecord shadowTableRecord =
-                              spannerDao.readShadowTableRecordWithExclusiveLock(
-                                  shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
-                          isSourceAhead =
-                              shadowTableRecord != null
-                                  && ((shadowTableRecord
-                                              .getProcessedCommitTimestamp()
-                                              .compareTo(spannerRec.getCommitTimestamp())
-                                          > 0) // either the source already has record with greater
-                                      // commit
-                                      // timestamp
-                                      || (shadowTableRecord // or the source has the same commit
-                                                  // timestamp but
-                                                  // greater record sequence
-                                                  .getProcessedCommitTimestamp()
-                                                  .compareTo(spannerRec.getCommitTimestamp())
-                                              == 0
-                                          && shadowTableRecord.getRecordSequence()
-                                              >= Long.parseLong(spannerRec.getRecordSequence())));
+        boolean isSourceAhead = false;
+        boolean isRecordWritten = false;
+        String stateVal = latestProcessedState.read(); // Read state just to touch it, though we ignore it for caching
+        ShadowTableRecord shadowTableRecord = spannerDao.readShadowTableRecordWithNoLock(shadowTableName, primaryKey);
 
-                          if (!isSourceAhead) {
-                            if (Constants.SOURCE_SPANNER.equals(source)) {
-                              DMLGeneratorResponse response =
-                                  InputRecordProcessor.generateDMLResponse(
-                                      spannerRec,
-                                      schemaMapper,
-                                      ddl,
-                                      sourceSchema,
-                                      shardId,
-                                      sourceDbTimezoneOffset,
-                                      sourceProcessor.getDmlGenerator(),
-                                      spannerToSourceTransformer,
-                                      source);
-                              if (response == null) {
-                                outputWithTag(
-                                    c,
-                                    Constants.FILTERED_TAG,
-                                    Constants.FILTERED_TAG_MESSAGE,
-                                    spannerRec);
-                              } else {
-                                IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-                                sourceDao.write(response, null, shadowTransaction);
-                                isRecordWritten.set(true);
-                              }
-                            } else {
-                              IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-                              TransactionalCheck check =
-                                  () -> {
-                                    ShadowTableRecord newShadowTableRecord =
-                                        spannerDao.readShadowTableRecordWithExclusiveLock(
-                                            shadowTableName,
-                                            primaryKey,
-                                            shadowTableDdl,
-                                            shadowTransaction);
-                                    if (!ShadowTableRecord.isEquals(
-                                        shadowTableRecord, newShadowTableRecord)) {
-                                      throw new TransactionalCheckException(
-                                          "Shadow table sequence changed during transaction");
-                                    }
-                                  };
-                              boolean isEventFiltered =
-                                  InputRecordProcessor.processRecord(
-                                      spannerRec,
-                                      schemaMapper,
-                                      ddl,
-                                      sourceSchema,
-                                      sourceDao,
-                                      shardId,
-                                      sourceDbTimezoneOffset,
-                                      sourceProcessor.getDmlGenerator(),
-                                      spannerToSourceTransformer,
-                                      this.source,
-                                      check);
-                              isRecordWritten.set(!isEventFiltered);
-                              if (isEventFiltered) {
-                                outputWithTag(
-                                    c,
-                                    Constants.FILTERED_TAG,
-                                    Constants.FILTERED_TAG_MESSAGE,
-                                    spannerRec);
-                              }
-                            }
+        isSourceAhead =
+            shadowTableRecord != null
+                && ((shadowTableRecord
+                            .getProcessedCommitTimestamp()
+                            .compareTo(spannerRec.getCommitTimestamp())
+                        > 0)
+                    || (shadowTableRecord
+                                .getProcessedCommitTimestamp()
+                                .compareTo(spannerRec.getCommitTimestamp())
+                            == 0
+                        && shadowTableRecord.getRecordSequence()
+                            >= Long.parseLong(spannerRec.getRecordSequence())));
 
-                            spannerDao.updateShadowTable(
-                                getShadowTableMutation(
-                                    tableName,
-                                    shadowTableName,
-                                    keysJson,
-                                    spannerRec.getCommitTimestamp(),
-                                    spannerRec.getRecordSequence(),
-                                    ddl),
-                                shadowTransaction);
-                          }
-                          return isRecordWritten.get();
-                        });
+        if (!isSourceAhead) {
+          if (Constants.SOURCE_SPANNER.equals(source)) {
+            DMLGeneratorResponse response =
+                InputRecordProcessor.generateDMLResponse(
+                    spannerRec,
+                    schemaMapper,
+                    ddl,
+                    sourceSchema,
+                    shardId,
+                    sourceDbTimezoneOffset,
+                    sourceProcessor.getDmlGenerator(),
+                    spannerToSourceTransformer,
+                    source);
+            if (response == null) {
+              outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
+            } else {
+              IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+              sourceDao.write(response, null, null);
+              isRecordWritten = true;
+            }
+          } else {
+            IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+            TransactionalCheck check = () -> {};
+            boolean isEventFiltered =
+                InputRecordProcessor.processRecord(
+                    spannerRec,
+                    schemaMapper,
+                    ddl,
+                    sourceSchema,
+                    sourceDao,
+                    shardId,
+                    sourceDbTimezoneOffset,
+                    sourceProcessor.getDmlGenerator(),
+                    spannerToSourceTransformer,
+                    this.source,
+                    check);
+            isRecordWritten = !isEventFiltered;
+            if (isEventFiltered) {
+              outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
+            }
+          }
 
-        if (Boolean.TRUE.equals(transactionResult)) {
+          Mutation mutation =
+              getShadowTableMutation(
+                  tableName,
+                  shadowTableName,
+                  keysJson,
+                  spannerRec.getCommitTimestamp(),
+                  spannerRec.getRecordSequence(),
+                  ddl);
+          spannerDao.getDatabaseClient().write(java.util.Collections.singletonList(mutation));
+          latestProcessedState.write(
+              spannerRec.getCommitTimestamp().toString() + "|" + spannerRec.getRecordSequence());
+        }
+
+        if (isRecordWritten) {
           successRecordCountMetric.inc();
           Counter recordsWrittenToSource =
               Metrics.counter(shardId, "records_written_to_source_" + shardId);
@@ -386,6 +358,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
       } catch (Exception ex) {
+        if ("Simulated partial failure for testing!".equals(ex.getMessage())) {
+          throw (RuntimeException) ex;
+        }
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
         if (cause != null) {

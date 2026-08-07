@@ -45,7 +45,9 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorF
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
+import com.google.cloud.teleport.v2.templates.transforms.ExtractPrimaryKeyFn;
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
+import com.google.cloud.teleport.v2.templates.transforms.LatestRecordCombineFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
 import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchemaProcessorTransform;
@@ -73,15 +75,21 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -846,6 +854,14 @@ public class SpannerToSourceDb {
                     .withSideInputs(ddlView))
             .setCoder(
                 KvCoder.of(VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
+            .apply("ExtractValues", Values.create())
+            .apply("ExtractPrimaryKey", ParDo.of(new ExtractPrimaryKeyFn()))
+            // .apply("WindowInto1Sec", Window.into(FixedWindows.of(Duration.standardSeconds(1))))
+            // .apply(
+            //     "CompactHotKeys",
+            //     Combine
+            //         .<String, TrimmedShardedDataChangeRecord, TrimmedShardedDataChangeRecord>perKey(
+            //             new LatestRecordCombineFn()))
             .apply("Reshuffle2", Reshuffle.of())
             .apply(
                 "Write to source",
@@ -875,6 +891,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .permanentErrors()
             .setCoder(StringUtf8Coder.of())
+            .apply("ResetToGlobalWindow", Window.into(new GlobalWindows()))
             .apply(
                 "Reshuffle3", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
@@ -906,6 +923,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .retryableErrors()
             .setCoder(StringUtf8Coder.of())
+            .apply("ResetToGlobalWindowRetry", Window.into(new GlobalWindows()))
             .apply(
                 "Reshuffle4", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(
@@ -930,6 +948,7 @@ public class SpannerToSourceDb {
         sourceWriterOutput
             .skippedSourceWrites()
             .setCoder(StringUtf8Coder.of())
+            .apply("ResetToGlobalWindowSkipped", Window.into(new GlobalWindows()))
             .apply(
                 "Reshuffle5", Reshuffle.<String>viaRandomKey().withNumBuckets(reshuffleBucketSize))
             .apply(

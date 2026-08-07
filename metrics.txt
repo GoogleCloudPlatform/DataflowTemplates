@@ -1,0 +1,4049 @@
+---
+name:
+  context:
+    original_name: Service-cpu_num_seconds
+  name: TotalVcpuTime
+  origin: dataflow/v1b3
+scalar: 45680
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-mem_mb_seconds
+  name: TotalMemoryUsage
+  origin: dataflow/v1b3
+scalar: 175411610
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-pd_gb_seconds
+  name: TotalPdUsage
+  origin: dataflow/v1b3
+scalar: 342600
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-pd_ssd_gb_seconds
+  name: TotalSsdUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_gb_seconds
+  name: TotalHyperdiskBalancedUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_iops_seconds
+  name: TotalHyperdiskBalancedIopsUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_throughput_mibps_seconds
+  name: TotalHyperdiskBalancedThroughputUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-shuffle_service_actual_gb
+  name: TotalShuffleDataProcessed
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-shuffle_service_chargeable_gb
+  name: BillableShuffleDataProcessed
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-streaming_service_gb
+  name: TotalStreamingDataProcessed
+  origin: dataflow/v1b3
+scalar: 0.077205
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: ServiceExperiment-micro-dcu-billing-v15
+  name: TotalDcuUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-gpu_num_seconds
+  name: TotalGpuTime
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-streaming_engine_compute_unit
+  name: TotalSeCuUsage
+  origin: dataflow/v1b3
+scalar: 0.0345247
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-cpu_num
+  name: CurrentVcpuCount
+  origin: dataflow/v1b3
+scalar: 400
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-mem_mb
+  name: CurrentMemoryUsage
+  origin: dataflow/v1b3
+scalar: 1536000
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-pd_gb
+  name: CurrentPdUsage
+  origin: dataflow/v1b3
+scalar: 3000
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-pd_ssd_gb
+  name: CurrentSsdUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_gb
+  name: CurrentHyperdiskBalancedCapacityUsage
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_iops
+  name: CurrentHyperdiskBalancedIops
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-hyperdisk_balanced_throughput_mibps
+  name: CurrentHyperdiskBalancedThroughput
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Service-gpu_num
+  name: CurrentGpuCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+    original_name: dataflow_backlog_size-F207
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+    original_name: dataflow_backlog_size-F208
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+    original_name: dataflow_backlog_size-F209
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+    original_name: dataflow_backlog_size-F210
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+    original_name: dataflow_backlog_size-F211
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+    original_name: dataflow_backlog_size-F212
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+    original_name: dataflow_backlog_size-F213
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+    original_name: dataflow_backlog_size-F214
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+    original_name: dataflow_backlog_size-F215
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+    original_name: dataflow_backlog_size-F216
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+    original_name: dataflow_backlog_size-F217
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+    original_name: dataflow_backlog_size-F218
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+    original_name: dataflow_backlog_size-F219
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+    original_name: dataflow_backlog_size-F220
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+    original_name: dataflow_backlog_size-F221
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+    original_name: dataflow_backlog_size-F222
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+    original_name: dataflow_backlog_size-F223
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+    original_name: dataflow_backlog_size-F224
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+    original_name: dataflow_backlog_size-F225
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+    original_name: dataflow_backlog_size-F226
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+    original_name: dataflow_backlog_size-F227
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+    original_name: dataflow_backlog_size-F228
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+    original_name: dataflow_backlog_size-F229
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+    original_name: dataflow_backlog_size-F230
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+    original_name: dataflow_backlog_size-F231
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+    original_name: dataflow_backlog_size-F232
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+    original_name: dataflow_backlog_size-F233
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 18203
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+    original_name: dataflow_backlog_size-F234
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+    original_name: dataflow_backlog_size-F235
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+    original_name: dataflow_backlog_size-F236
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+    original_name: dataflow_backlog_size-F237
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+    original_name: dataflow_backlog_size-F238
+  name: BacklogBytes
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: SystemWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+    original_name: dataflow_backlog_elements-F234
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+    original_name: dataflow_backlog_elements-F225
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+    original_name: dataflow_backlog_elements-F220
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+    original_name: dataflow_backlog_elements-F236
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+    original_name: dataflow_backlog_elements-F228
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+    original_name: dataflow_backlog_elements-F216
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+    original_name: dataflow_backlog_elements-F223
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+    original_name: dataflow_backlog_elements-F237
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+    original_name: dataflow_backlog_elements-F229
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+    original_name: dataflow_backlog_elements-F231
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+    original_name: dataflow_backlog_elements-F230
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+    original_name: dataflow_backlog_elements-F207
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+    original_name: dataflow_backlog_elements-F238
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+    original_name: dataflow_backlog_elements-F219
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+    original_name: dataflow_backlog_elements-F217
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+    original_name: dataflow_backlog_elements-F215
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+    original_name: dataflow_backlog_elements-F214
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+    original_name: dataflow_backlog_elements-F226
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+    original_name: dataflow_backlog_elements-F232
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+    original_name: dataflow_backlog_elements-F224
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+    original_name: dataflow_backlog_elements-F208
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+    original_name: dataflow_backlog_elements-F209
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+    original_name: dataflow_backlog_elements-F227
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+    original_name: dataflow_backlog_elements-F211
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+    original_name: dataflow_backlog_elements-F218
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+    original_name: dataflow_backlog_elements-F222
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+    original_name: dataflow_backlog_elements-F221
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+    original_name: dataflow_backlog_elements-F213
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+    original_name: dataflow_backlog_elements-F233
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 30
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+    original_name: dataflow_backlog_elements-F210
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+    original_name: dataflow_backlog_elements-F212
+  name: BacklogElements
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 2697
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 15919
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 1003
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 400
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: BottleneckKeyCount
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: MaxInputShuffleAgeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: MaxActiveProcessingTimeMs
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: CurrentKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: RecommendedKeyParallelism
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: LikelyCauses
+  origin: dataflow/v1b3
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: BottleneckKind
+  origin: dataflow/v1b3
+set:
+- BOTTLENECK_KIND_UNKNOWN
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F207
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F212
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F213
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F214
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F215
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F216
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F217
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F218
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F219
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F220
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F221
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 7333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F208
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F222
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F223
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F224
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F225
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F226
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F227
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 7333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F228
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 5333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F229
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F209
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 2333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F230
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 2333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F231
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F232
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F233
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F234
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 8333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F235
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F236
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 1.78456e+15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 253333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F237
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: 9.22337e+18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: DataLag
+  origin: dataflow/v1b3
+scalar: 0
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F238
+  name: SystemLag
+  origin: dataflow/v1b3
+scalar: 1333291
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F210
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    execution_step: F211
+  name: DataWatermark
+  origin: dataflow/v1b3
+scalar: -1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s18
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 10520527
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s21
+  name: ExecutionTime_ProcessTimers
+  origin: dataflow/v1b3
+scalar: 603
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    namespace: source
+    step: s18
+  name: elements_read
+  origin: user
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-MeanByteCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 15
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0-MeanByteCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 66
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-ElementCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0-MeanByteCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 14
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0-ElementCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/TriggerConsumeDLQ/Read(UnboundedCountingSource)/StripIds-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0-ElementCount
+    output_user_name: FileBasedDeadLetterQueueReconsumer/AsFilePattern/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s21
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 400
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s19
+  name: ExecutionTime_ProcessTimers
+  origin: dataflow/v1b3
+scalar: 2605
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s20
+  name: ExecutionTime_ProcessTimers
+  origin: dataflow/v1b3
+scalar: 602
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s24
+  name: ExecutionTime_FinishBundle
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s21
+  name: ExecutionTime_StartBundle
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Impulse-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Impulse-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Impulse-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Impulse-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 14
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s42
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 8006
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 14
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps.out0/FromValue/ReadStream-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Initialize the connector-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Initialize the connector-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 73
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split
+      restriction-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split
+      restriction-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 308
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign
+      unique key/AddKeys/Map-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign
+      unique key/AddKeys/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair
+      with initial restriction-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair
+      with initial restriction-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Initialize the connector-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Initialize the connector-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode
+      windows-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode
+      windows-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair
+      with initial restriction-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Pair
+      with initial restriction-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 308
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split
+      restriction-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Split
+      restriction-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign
+      unique key/AddKeys/Map-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Assign
+      unique key/AddKeys/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 438
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode
+      windows-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Detect new partitions/ParMultiDo(DetectNewPartitions)/Explode
+      windows-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 308
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/WithTimestamps/AddTimestamps-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 14
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s47
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 1201
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s19
+  name: ExecutionTime_FinishBundle
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    namespace: org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics
+    step: s48
+  name: active_partition_read_count
+  origin: user
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split
+      restriction-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split
+      restriction-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 467
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode
+      windows-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode
+      windows-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 454
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split
+      restriction-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Split
+      restriction-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign
+      unique key/AddKeys/Map-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign
+      unique key/AddKeys/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s47/GroupByKeyRaw/ReadStream-out0-MeanByteCount
+    output_user_name: s47/GroupByKeyRaw/ReadStream-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 274
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign
+      unique key/AddKeys/Map-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Assign
+      unique key/AddKeys/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 598
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s47/GroupByKeyRaw/ReadStream-out0-ElementCount
+    output_user_name: s47/GroupByKeyRaw/ReadStream-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 16
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair
+      with initial restriction-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair
+      with initial restriction-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode
+      windows-out0-ElementCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Explode
+      windows-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s47/SplittableProcess-out0-ElementCount
+    output_user_name: s47/SplittableProcess-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 31
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair
+      with initial restriction-out0-MeanByteCount
+    output_user_name: SpannerIO.ReadChangeStream/Read change stream partition/ParMultiDo(ReadChangeStreamPartition)/Pair
+      with initial restriction-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 473
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s47/SplittableProcess-out0-MeanByteCount
+    output_user_name: s47/SplittableProcess-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 233
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s48
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 601
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s20
+  name: ExecutionTime_StartBundle
+  origin: dataflow/v1b3
+scalar: 201
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s5
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    namespace: org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics
+    step: s52
+  name: query_count
+  origin: user
+scalar: 18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s52/GroupByKeyRaw/ReadStream-out0-ElementCount
+    output_user_name: s52/GroupByKeyRaw/ReadStream-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 18
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: s52/GroupByKeyRaw/ReadStream-out0-MeanByteCount
+    output_user_name: s52/GroupByKeyRaw/ReadStream-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 683
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s52
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 45231
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s52
+  name: ExecutionTime_StartBundle
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    namespace: org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics
+    step: s52
+  name: active_partition_read_count
+  origin: user
+scalar: -4
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s23
+  name: ExecutionTime_StartBundle
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-ElementCount
+    output_user_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23349
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0-MeanByteCount
+    output_user_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/DataflowRunner.StreamingUnboundedRead.ReadWithIds-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 14
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-ElementCount
+    output_user_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out1-ElementCount
+    output_user_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out1
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out0-MeanByteCount
+    output_user_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 21665
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out1-MeanByteCount
+    output_user_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out1
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23348
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0-ElementCount
+    output_user_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-ElementCount
+    output_user_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0-MeanByteCount
+    output_user_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey+View
+      Main DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Partial-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 21666
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0-MeanByteCount
+    output_user_name: Process Information Schema/Pulse/Read(CreateSource)/Read(CreateSource)/Read(BoundedToUnboundedSourceAdapter)/StripIds-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 13
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-MeanByteCount
+    output_user_name: View Main DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 21665
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out0-ElementCount
+    output_user_name: Process Information Schema/Create Shadow tables and return Information
+      Schemas-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/WithKeys/AddKeys/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23348
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s1
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 1000
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23348
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23352
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 2
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23348
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CreatePCollectionView/ParDo(Anonymous)-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 23349
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Values/Values/Map-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0-MeanByteCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/GroupByKey/ReadStream-out0
+  name: MeanByteCount
+  origin: dataflow/v1b3
+scalar: 11791
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    original_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0-ElementCount
+    output_user_name: View Shadow DDL/Combine.GloballyAsSingletonView/CombineValues/Combine.perKey(Singleton)/Combine.GroupedValues/Extract-out0
+  name: ElementCount
+  origin: dataflow/v1b3
+scalar: 1
+updateTime: '2026-07-20T15:56:28.743Z'
+---
+name:
+  context:
+    step: s12
+  name: ExecutionTime_ProcessElement
+  origin: dataflow/v1b3
+scalar: 200
+updateTime: '2026-07-20T15:56:28.743Z'

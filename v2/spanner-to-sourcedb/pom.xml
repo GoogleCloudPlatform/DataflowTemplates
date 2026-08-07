@@ -184,6 +184,9 @@
                 </dependency>
             </dependencies>
         </profile>
-    </profiles>
+</profiles>
 
+    <build>
+        <directory>${project.basedir}/target-cli</directory>
+    </build>
 </project>
