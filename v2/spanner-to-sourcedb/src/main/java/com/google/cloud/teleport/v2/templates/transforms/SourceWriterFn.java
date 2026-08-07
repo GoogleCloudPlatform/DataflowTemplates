@@ -47,7 +47,6 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProce
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
-import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
@@ -289,66 +288,41 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                               >= Long.parseLong(spannerRec.getRecordSequence())));
 
                           if (!isSourceAhead) {
-                            if (Constants.SOURCE_SPANNER.equals(source)) {
-                              DMLGeneratorResponse response =
-                                  InputRecordProcessor.generateDMLResponse(
-                                      spannerRec,
-                                      schemaMapper,
-                                      ddl,
-                                      sourceSchema,
-                                      shardId,
-                                      sourceDbTimezoneOffset,
-                                      sourceProcessor.getDmlGenerator(),
-                                      spannerToSourceTransformer,
-                                      source);
-                              if (response == null) {
-                                outputWithTag(
-                                    c,
-                                    Constants.FILTERED_TAG,
-                                    Constants.FILTERED_TAG_MESSAGE,
-                                    spannerRec);
-                              } else {
-                                IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-                                sourceDao.write(response, null, shadowTransaction);
-                                isRecordWritten.set(true);
-                              }
-                            } else {
-                              IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-                              TransactionalCheck check =
-                                  () -> {
-                                    ShadowTableRecord newShadowTableRecord =
-                                        spannerDao.readShadowTableRecordWithExclusiveLock(
-                                            shadowTableName,
-                                            primaryKey,
-                                            shadowTableDdl,
-                                            shadowTransaction);
-                                    if (!ShadowTableRecord.isEquals(
-                                        shadowTableRecord, newShadowTableRecord)) {
-                                      throw new TransactionalCheckException(
-                                          "Shadow table sequence changed during transaction");
-                                    }
-                                  };
-                              boolean isEventFiltered =
-                                  InputRecordProcessor.processRecord(
-                                      spannerRec,
-                                      schemaMapper,
-                                      ddl,
-                                      sourceSchema,
-                                      sourceDao,
-                                      shardId,
-                                      sourceDbTimezoneOffset,
-                                      sourceProcessor.getDmlGenerator(),
-                                      spannerToSourceTransformer,
-                                      this.source,
-                                      check);
-                              isRecordWritten.set(!isEventFiltered);
-                              if (isEventFiltered) {
-                                outputWithTag(
-                                    c,
-                                    Constants.FILTERED_TAG,
-                                    Constants.FILTERED_TAG_MESSAGE,
-                                    spannerRec);
-                              }
+                            IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+                            TransactionalCheck check =
+                                () -> {
+                                  ShadowTableRecord newShadowTableRecord =
+                                      spannerDao.readShadowTableRecordWithExclusiveLock(
+                                          shadowTableName,
+                                          primaryKey,
+                                          shadowTableDdl,
+                                          shadowTransaction);
+                                  if (!ShadowTableRecord.isEquals(
+                                      shadowTableRecord, newShadowTableRecord)) {
+                                    throw new TransactionalCheckException(
+                                        "Shadow table sequence changed during transaction");
+                                  }
+                                };
+                            boolean isEventFiltered =
+                                InputRecordProcessor.processRecord(
+                                    spannerRec,
+                                    schemaMapper,
+                                    ddl,
+                                    sourceSchema,
+                                    sourceDao,
+                                    shardId,
+                                    sourceDbTimezoneOffset,
+                                    sourceProcessor.getDmlGenerator(),
+                                    spannerToSourceTransformer,
+                                    this.source,
+                                    check);
+                            isRecordWritten.set(!isEventFiltered);
+                            if (isEventFiltered) {
+                              outputWithTag(
+                                  c,
+                                  Constants.FILTERED_TAG,
+                                  Constants.FILTERED_TAG_MESSAGE,
+                                  spannerRec);
                             }
 
                             spannerDao.updateShadowTable(

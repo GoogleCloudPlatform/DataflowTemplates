@@ -94,22 +94,6 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
       throw new IllegalArgumentException(
           "Expected SpannerShard but got: " + shards.get(0).getClass());
     }
-    SpannerShard spannerShard = (SpannerShard) shards.get(0);
-
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options spannerOptions =
-        options.as(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    if (spannerOptions != null
-        && spannerOptions.getSpannerProjectId() != null
-        && spannerOptions.getMetadataInstance() != null
-        && spannerOptions.getMetadataDatabase() != null) {
-      if (!spannerOptions.getSpannerProjectId().equals(spannerShard.getProjectId())
-          || !spannerOptions.getMetadataInstance().equals(spannerShard.getInstanceId())
-          || !spannerOptions.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
-        throw new IllegalArgumentException(
-            "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
-      }
-      // TODO check for read only as well ?
-    }
   }
 
   @Override

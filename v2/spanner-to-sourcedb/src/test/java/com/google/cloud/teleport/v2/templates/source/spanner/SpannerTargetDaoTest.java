@@ -53,14 +53,22 @@ public class SpannerTargetDaoTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  public void transactionalCheckNotSupportedThrows() {
+  public void transactionalCheckIsExecuted() throws Exception {
     IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
-    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    DatabaseClient mockClient = mock(DatabaseClient.class);
+    when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
 
     Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
     SpannerMutationResponse response = new SpannerMutationResponse(mutation);
 
-    assertThrows(UnsupportedOperationException.class, () -> dao.write(response, () -> {}));
+    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck mockCheck =
+        mock(com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck.class);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    dao.write(response, mockCheck);
+
+    verify(mockCheck).check();
+    verify(mockClient).writeAtLeastOnce(anyIterable());
   }
 
   @Test
@@ -86,33 +94,13 @@ public class SpannerTargetDaoTest {
     Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
     SpannerMutationResponse response = new SpannerMutationResponse(mutation);
 
-    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
-    dao.write(response, null, mockTxnContext);
+    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck mockCheck =
+        mock(com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck.class);
 
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    dao.write(response, mockCheck, mockTxnContext);
+
+    verify(mockCheck).check();
     verify(mockTxnContext).buffer(mutation);
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  public void testWriteThrowsOnTransactionalCheck() {
-    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
-    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
-    assertThrows(
-        UnsupportedOperationException.class,
-        () ->
-            dao.write(
-                new SpannerMutationResponse(null),
-                mock(
-                    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck
-                        .class)));
-    assertThrows(
-        UnsupportedOperationException.class,
-        () ->
-            dao.write(
-                new SpannerMutationResponse(null),
-                mock(
-                    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck
-                        .class),
-                new Object()));
   }
 }

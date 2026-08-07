@@ -51,11 +51,6 @@ public class SpannerTargetDao implements IDao {
   public void write(
       DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
       throws Exception {
-    if (transactionalCheck != null) {
-      throw new UnsupportedOperationException(
-          "TransactionalCheck is not supported for the Spanner target DAO.");
-    }
-
     if (!(dmlGeneratorResponse instanceof SpannerMutationResponse)) {
       throw new IllegalArgumentException(
           "Expected SpannerMutationResponse but received: "
@@ -65,6 +60,10 @@ public class SpannerTargetDao implements IDao {
     DatabaseClient client = connectionHelper.getConnection(connectionKey);
     if (client == null) {
       throw new ConnectionException("DatabaseClient is null for connection key: " + connectionKey);
+    }
+
+    if (transactionalCheck != null) {
+      transactionalCheck.check();
     }
 
     Mutation mutation = ((SpannerMutationResponse) dmlGeneratorResponse).getMutation();
@@ -84,8 +83,7 @@ public class SpannerTargetDao implements IDao {
     }
 
     if (transactionalCheck != null) {
-      throw new UnsupportedOperationException(
-          "TransactionalCheck is not supported for the Spanner target DAO.");
+      transactionalCheck.check();
     }
 
     if (!(dmlGeneratorResponse instanceof SpannerMutationResponse)) {

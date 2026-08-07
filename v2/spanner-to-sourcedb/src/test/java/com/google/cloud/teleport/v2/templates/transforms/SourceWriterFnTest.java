@@ -370,8 +370,7 @@ public class SourceWriterFnTest {
 
     sourceWriterFn.processElement(processContext);
 
-    // Verify that IDao.write was called with a TransactionContext
-    verify(mockSpannerTargetDao).write(any(), any(), any());
+    verify(mockSpannerTargetDao).write(any(), any());
   }
 
   @Test
@@ -431,7 +430,7 @@ public class SourceWriterFnTest {
 
     sourceWriterFn.processElement(processContext);
 
-    verify(mockSpannerTargetDao).write(any(), any(), any());
+    verify(mockSpannerTargetDao).write(any(), any());
   }
 
   @Test
