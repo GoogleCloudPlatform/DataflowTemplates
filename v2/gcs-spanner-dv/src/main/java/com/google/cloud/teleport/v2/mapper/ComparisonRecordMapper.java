@@ -93,11 +93,11 @@ public class ComparisonRecordMapper implements Serializable {
 
   public ComparisonRecord mapFrom(Struct spannerStruct) {
     TreeMap<String, Value> values = new TreeMap<>();
+    String tableName = spannerStruct.getString(GCSSpannerDVConstants.TABLE_NAME_COLUMN);
     spannerStruct.getType().getStructFields().stream()
         .filter(field -> !field.getName().equals(GCSSpannerDVConstants.TABLE_NAME_COLUMN))
+        .filter(field -> !schemaMapper.isGeneratedColumn("", tableName, field.getName()))
         .forEach(field -> values.put(field.getName(), spannerStruct.getValue(field.getName())));
-
-    String tableName = spannerStruct.getString(GCSSpannerDVConstants.TABLE_NAME_COLUMN);
     String cleanTableName = getCleanTableName(tableName);
     Table table = ddl.table(cleanTableName);
     if (table == null) {
@@ -145,6 +145,7 @@ public class ComparisonRecordMapper implements Serializable {
     // Add the tableName to the hasher at the end
     hasher.putString(tableName, StandardCharsets.UTF_8);
     String hash = hasher.hash().toString();
+    LOG.info("Hash for {}: {} with data: {}", tableName, hash, data);
 
     // 2. Use the pk column names to form the full primary keys from the record data
     UnifiedStringVisitor stringVisitor = new UnifiedStringVisitor();
