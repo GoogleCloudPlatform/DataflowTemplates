@@ -19,6 +19,9 @@ on:
 permissions:
   contents: read
 
+permissions:
+  contents: read
+
 jobs:
   verify-terraform-samples:
     runs-on: ubuntu-latest
