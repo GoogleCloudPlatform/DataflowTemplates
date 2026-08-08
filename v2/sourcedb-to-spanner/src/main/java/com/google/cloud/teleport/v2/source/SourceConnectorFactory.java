@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.neo4j.Neo4jSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 
@@ -43,6 +44,8 @@ public class SourceConnectorFactory {
       return new MySqlSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
       return new PostgresSrcToSpSourceConnector();
+    } else if (SourceDbToSpannerOptions.NEO4J_SOURCE_DIALECT.equals(dialect)) {
+      return new Neo4jSrcToSpSourceConnector();
     }
     /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
     throw new IllegalArgumentException("Unsupported source database dialect: " + dialect);
@@ -66,6 +69,8 @@ public class SourceConnectorFactory {
         return new PostgresSrcToSpSourceConnector();
       case Constants.CASSANDRA_SOURCE_TYPE:
         return new CassandraSrcToSpSourceConnector();
+      case Constants.NEO4J_SOURCE_TYPE:
+        return new Neo4jSrcToSpSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }

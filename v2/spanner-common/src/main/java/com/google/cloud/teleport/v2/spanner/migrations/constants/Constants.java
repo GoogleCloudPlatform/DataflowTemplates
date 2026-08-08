@@ -30,6 +30,9 @@ public class Constants {
   /* The value for Postgres databases in the source type key */
   public static final String POSTGRES_SOURCE_TYPE = "postgresql";
 
+  /* The value for Neo4j databases in the source type key */
+  public static final String NEO4J_SOURCE_TYPE = "neo4j";
+
   /* The value for Spanner databases in the source type key */
   public static final String SPANNER_SOURCE_TYPE = "spanner";
 
