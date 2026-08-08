@@ -50,6 +50,7 @@ CUSTOM_TRANSFORMATION_JAR_PATH=
 
 ## Global Agent Rules
 * **Fail-Fast Protocol**: If any executed terminal command returns an error or non-zero exit code, STOP IMMEDIATELY. Output the error to the user and ask for intervention. Do not attempt autonomous retries.
+* **Worker Machine Type Directive & Fallback Rule**: When submitting or staging Dataflow jobs (via Terraform, gcloud, or flex template run), you MUST explicitly specify a worker machine type with at least 4 vCPUs. If `WORKER_MACHINE_TYPE` is not specified by the user or `.env.testing`, **you MUST ALWAYS default to `WORKER_MACHINE_TYPE="n2-standard-4"`**. Omitting this parameter or leaving it blank will cause Dataflow template launch validation to fail with a machine specification policy violation.
 * **Syntax Strictness**:
     * Spanner DDL: Ensure absolute accuracy. Rigorously verify that WHERE clauses in partial indexes are syntactically valid for Cloud Spanner because Cloud Spanner enforces a strict subset of SQL functions in WHERE clauses for partial indexes, and invalid functions will cause DDL execution to fail.
 * **Configuration Files**: Ensure any `shardingContextFilePath` or similar configuration strictly adheres to a valid JSON map structure to avoid parsing issues during pipeline runtime.
