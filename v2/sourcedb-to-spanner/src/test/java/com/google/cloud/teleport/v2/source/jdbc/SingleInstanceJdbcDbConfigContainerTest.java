@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.io.Resources;
 import java.nio.file.Paths;
 import java.util.List;
@@ -55,8 +56,6 @@ public class SingleInstanceJdbcDbConfigContainerTest {
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     String sessionFilePath =
         Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
             .toString();
@@ -64,8 +63,16 @@ public class SingleInstanceJdbcDbConfigContainerTest {
 
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
+
+    Shard shard = new Shard();
+    shard.setHost("localhost");
+    shard.setPort("3306");
+    shard.setDbName("testDB");
+    shard.setUser(testUser);
+    shard.setPassword(testPassword);
+
     SingleInstanceJdbcDbConfigContainer dbConfigContainer =
-        new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions);
+        new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions, shard);
     JdbcIoWrapperConfigGroup configGroup =
         dbConfigContainer.getJdbcIoWrapperConfigGroup(
             List.of("table1", "table2"), Wait.on(dummyPCollection));

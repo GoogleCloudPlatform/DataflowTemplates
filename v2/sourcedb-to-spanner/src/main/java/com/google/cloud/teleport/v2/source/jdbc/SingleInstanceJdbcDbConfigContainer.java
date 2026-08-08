@@ -18,15 +18,18 @@ package com.google.cloud.teleport.v2.source.jdbc;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Wait;
 
 /** Implementation of {@link JdbcDbConfigContainer} for single instance JDBC migration. */
 public class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
   private SourceDbToSpannerOptions options;
+  private Shard shard;
 
-  public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options) {
+  public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options, Shard shard) {
     this.options = options;
+    this.shard = shard;
   }
 
   @Override
@@ -35,7 +38,7 @@ public class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContaine
     return JdbcIoWrapperConfigGroup.builder()
         .addShardConfig(
             OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                options, sourceTables, null, waitOnSignal))
+                options, shard, sourceTables, waitOnSignal))
         .build();
   }
 }
