@@ -410,7 +410,12 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 /* mismatchType= */ "MISSING_IN_SOURCE")));
   }
 
-  /** Tests pipeline resilience when columns present in the source are generated in Spanner. */
+  /**
+   * Tests pipeline resilience when columns present in the source are generated in Spanner. The
+   * generated column value can differ in source, but while writing to Spanner, it will follow the
+   * Spanner generated column logic. So the validation pipeline should MATCH even if source value is
+   * different.
+   */
   @Test
   @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
   public void testGeneratedColumnInSpanner() throws Exception {
@@ -427,29 +432,32 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
             new GCSSpannerDVAvroSetupHelper.RecordBuilder(tableDef, null)
                 .set("user_id", 1L)
                 .set("event_id", "E1")
-                .set("full_name", "1E1")
+                .set("full_name", "1E1") // 1E1 matches Spanner generated value
                 .set("age", 30)
                 .set("created_at", t1)
-                .build(), // Match scenario (1E1 matches Spanner generated value)
+                .build(),
             new GCSSpannerDVAvroSetupHelper.RecordBuilder(tableDef, null)
                 .set("user_id", 2L)
                 .set("event_id", "E2")
-                .set("full_name", "Bob")
+                .set(
+                    "full_name",
+                    "Bob") // Bob does not match Spanner generated value 2E2 - but this should NOT
+                // result in MISMATCH
                 .set("age", 35)
                 .set("created_at", t1)
-                .build() // Mismatch scenario (Bob does not match Spanner generated value 2E2)
-            );
+                .build());
 
     String gcsInputDirectory = getGcsPath("input");
     uploadAvroFileToGcs("input/users_generated_column.avro", tableDef.schema, sourceRecords);
 
+    // full_name is a generated column in Spanner: (CAST(user_id AS STRING) || event_id)
     spannerResourceManager.write(
         Arrays.asList(
             Mutation.newInsertOrUpdateBuilder("Users_GeneratedColumn")
                 .set("user_id")
                 .to(1L)
                 .set("event_id")
-                .to("E1")
+                .to("E1") // resulting in full_name=1E1
                 .set("age")
                 .to(30L)
                 .set("created_at")
@@ -459,7 +467,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 .set("user_id")
                 .to(2L)
                 .set("event_id")
-                .to("E2")
+                .to("E2") // resulting in full_name=2E2
                 .set("age")
                 .to(35L)
                 .set("created_at")

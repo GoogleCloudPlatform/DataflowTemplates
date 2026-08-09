@@ -145,7 +145,6 @@ public class ComparisonRecordMapper implements Serializable {
     // Add the tableName to the hasher at the end
     hasher.putString(tableName, StandardCharsets.UTF_8);
     String hash = hasher.hash().toString();
-    LOG.info("Hash for {}: {} with data: {}", tableName, hash, data);
 
     // 2. Use the pk column names to form the full primary keys from the record data
     UnifiedStringVisitor stringVisitor = new UnifiedStringVisitor();
