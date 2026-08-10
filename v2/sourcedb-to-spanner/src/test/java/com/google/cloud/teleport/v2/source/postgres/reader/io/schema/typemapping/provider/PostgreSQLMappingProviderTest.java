@@ -55,12 +55,14 @@ public class PostgreSQLMappingProviderTest {
         .put("CHAR", "\"string\"")
         .put("CHARACTER", "\"string\"")
         .put("CHARACTER VARYING", "\"string\"")
+        .put("CIDR", "\"string\"")
         .put("CITEXT", "\"string\"")
         .put("DATE", "{\"type\":\"int\",\"logicalType\":\"date\"}")
         .put("DECIMAL", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("DOUBLE PRECISION", "\"double\"")
         .put("FLOAT4", "\"float\"")
         .put("FLOAT8", "\"double\"")
+        .put("INET", "\"string\"")
         .put("INT", "\"int\"")
         .put("INTEGER", "\"int\"")
         .put("INT2", "\"int\"")
@@ -68,7 +70,7 @@ public class PostgreSQLMappingProviderTest {
         .put("INT8", "\"long\"")
         .put("JSON", "{\"type\":\"string\",\"logicalType\":\"json\"}")
         .put("JSONB", "{\"type\":\"string\",\"logicalType\":\"json\"}")
-        .put("MONEY", "\"double\"")
+        .put("MONEY", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("NUMERIC", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("OID", "\"long\"")
         .put("REAL", "\"float\"")
@@ -79,6 +81,14 @@ public class PostgreSQLMappingProviderTest {
         .put("SMALLINT", "\"int\"")
         .put("SMALLSERIAL", "\"int\"")
         .put("TEXT", "\"string\"")
+        .put("TIME", "{\"type\":\"long\",\"logicalType\":\"time-micros\"}")
+        .put("TIME WITHOUT TIME ZONE", "{\"type\":\"long\",\"logicalType\":\"time-micros\"}")
+        .put(
+            "TIMETZ",
+            "{\"type\":\"record\",\"name\":\"timeTz\",\"fields\":[{\"name\":\"time\",\"type\":{\"type\":\"long\",\"logicalType\":\"time-micros\"}},{\"name\":\"offset\",\"type\":{\"type\":\"int\",\"logicalType\":\"time-millis\"}}]}")
+        .put(
+            "TIME WITH TIME ZONE",
+            "{\"type\":\"record\",\"name\":\"timeTz\",\"fields\":[{\"name\":\"time\",\"type\":{\"type\":\"long\",\"logicalType\":\"time-micros\"}},{\"name\":\"offset\",\"type\":{\"type\":\"int\",\"logicalType\":\"time-millis\"}}]}")
         .put("TIMESTAMP", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
         .put(
             "TIMESTAMPTZ",
@@ -92,6 +102,9 @@ public class PostgreSQLMappingProviderTest {
         .put("UUID", "\"string\"")
         .put("VARBIT", "\"bytes\"")
         .put("VARCHAR", "\"string\"")
+        .put(
+            "INTERVAL",
+            "{\"type\":\"record\",\"name\":\"interval\",\"fields\":[{\"name\":\"months\",\"type\":\"int\"},{\"name\":\"hours\",\"type\":\"int\"},{\"name\":\"micros\",\"type\":\"long\"}]}")
         .put("UNSUPPORTED", "{\"type\":\"null\",\"logicalType\":\"unsupported\"}")
         .build()
         .entrySet()

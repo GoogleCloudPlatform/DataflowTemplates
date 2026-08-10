@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -84,7 +85,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_circle_to_float64_array",
           "t_datemultirange",
           "t_daterange",
-          "t_enum",
           "t_float_array_to_float64_array",
           "t_float_array_to_string",
           "t_int_array_to_int64_array",
@@ -93,7 +93,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_int4range",
           "t_int8multirange",
           "t_int8range",
-          "t_interval",
           "t_interval_to_int64",
           "t_line_to_float64_array",
           "t_lseg_to_float64_array",
@@ -110,17 +109,10 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_real_array_to_string",
           "t_smallint_array_to_int64_array",
           "t_smallint_array_to_string",
-          "t_time",
-          "t_time_with_time_zone",
-          "t_time_without_time_zone",
-          "t_timetz",
           "t_tsmultirange",
-          "t_tsquery",
           "t_tsrange",
           "t_tstzmultirange",
           "t_tstzrange",
-          "t_tsvector",
-          "t_txid_snapshot",
           "t_varbit_to_bool_array");
   private static CloudPostgresResourceManager.ReplicationInfo replicationInfo;
   private static CloudPostgresResourceManager.ReplicationInfo pgDialectReplicationInfo;
@@ -297,18 +289,11 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // These types are not mapped as expected, ignore them to avoid failing the test.
     Set<String> ignoredTypeMappings =
         Set.of(
-            "bit",
-            "bit_to_string",
-            "bit_varying",
-            "bit_varying_to_string",
-            "bytea",
-            "json",
-            "json_to_string",
-            "macaddr",
-            "macaddr8",
+            "time",
+            "time_with_time_zone",
+            "time_without_time_zone",
+            "timetz",
             "uuid_to_bytes",
-            "varbit",
-            "varbit_to_string",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
             "t_bit_to_bool_array",
@@ -322,6 +307,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_float_array_to_string",
             "t_int_array_to_int64_array",
             "t_int_array_to_string",
+            "t_interval_to_int64",
             "t_line_to_float64_array",
             "t_lseg_to_float64_array",
             "t_money_to_int64",
@@ -411,6 +397,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // for the timeout.
     Set<String> ignoredTables =
         Set.of(
+            "uuid_to_bytes",
             "t_bigint_array_to_int64_array",
             "t_bigint_array_to_string",
             "t_bit_to_bool_array",
@@ -473,26 +460,32 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put(
         "bigint_to_string",
         createRows("-9223372036854775808", "9223372036854775807", "42", "NULL"));
+    result.put(
+        "bigint_to_numeric",
+        createRows("-9223372036854775808", "9223372036854775807", "42", "NULL"));
     result.put("bigserial", createRows("-9223372036854775808", "9223372036854775807", "42"));
     result.put(
         "bigserial_to_string", createRows("-9223372036854775808", "9223372036854775807", "42"));
-    result.put("bit", createRows("AA==", "gA==", "NULL"));
-    result.put("bit_to_string", createRows("AA==", "gA==", "NULL"));
-    result.put("bit_varying", createRows("UA==", "NULL"));
-    result.put("bit_varying_to_string", createRows("UA==", "NULL"));
+    result.put(
+        "bigserial_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "42"));
+    result.put(
+        "bit",
+        createRows(ByteArray.copyFrom("0").toBase64(), ByteArray.copyFrom("1").toBase64(), "NULL"));
+    result.put("bit_varying", createRows(ByteArray.copyFrom("0101").toBase64(), "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
     result.put("boolean_to_string", createRows("false", "true", "NULL"));
-    result.put("bytea", createRows("YWJj", "NULL"));
-    result.put("bytea_to_string", createRows("YWJj", "NULL"));
+    result.put("bytea", createRows(ByteArray.copyFrom("abc").toBase64(), "NULL"));
     result.put("char", createRows("a", "Θ", "NULL"));
+    result.put("char_n", createRows("a         ", "test      ", "NULL"));
     result.put("character", createRows("a", "Ξ", "NULL"));
+    result.put("character_n", createRows("a         ", "test      ", "NULL"));
     result.put("character_varying", createRows("testing character varying", "NULL"));
+    result.put("character_varying_n", createRows("testing", "NULL"));
     result.put("cidr", createRows("192.168.100.128/25", "NULL"));
     result.put("date", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("date_to_string", createRows("0001-01-01", "9999-12-31", "NULL"));
-    result.put("decimal", createRows("0.12", "NULL"));
     result.put("decimal_to_string", createRows("0.12", "NULL"));
     result.put(
         "double_precision",
@@ -502,6 +495,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         "double_precision_to_string",
         createRows(
             "-1.9876542E+307", "1.9876542E+307", "NaN", "-Infinity", "Infinity", "1.23", "NULL"));
+    result.put("enum", createRows("enum1", "NULL"));
     result.put(
         "float_to_float64",
         createRows(
@@ -533,26 +527,35 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("inet", createRows("192.168.1.0/24", "NULL"));
     result.put("int", createRows("-2147483648", "2147483647", "1", "NULL"));
     result.put("int_to_string", createRows("-2147483648", "2147483647", "1", "NULL"));
+    result.put("int_to_numeric", createRows("-2147483648", "2147483647", "1", "NULL"));
+    result.put("int_to_float64", createRows("-2.147483648E9", "2.147483647E9", "1.0", "NULL"));
     result.put("integer", createRows("-2147483648", "2147483647", "2", "NULL"));
     result.put("integer_to_string", createRows("-2147483648", "2147483647", "2", "NULL"));
+    result.put("integer_to_numeric", createRows("-2147483648", "2147483647", "2", "NULL"));
+    result.put("integer_to_float64", createRows("-2.147483648E9", "2.147483647E9", "2.0", "NULL"));
     result.put("int2", createRows("-32768", "32767", "3", "NULL"));
     result.put("int2_to_string", createRows("-32768", "32767", "3", "NULL"));
+    result.put("int2_to_numeric", createRows("-32768", "32767", "3", "NULL"));
+    result.put("int2_to_float32", createRows("-32768.0", "32767.0", "3.0", "NULL"));
+    result.put("int2_to_float64", createRows("-32768.0", "32767.0", "3.0", "NULL"));
     result.put("int4", createRows("-2147483648", "2147483647", "4", "NULL"));
     result.put("int4_to_string", createRows("-2147483648", "2147483647", "4", "NULL"));
+    result.put("int4_to_numeric", createRows("-2147483648", "2147483647", "4", "NULL"));
+    result.put("int4_to_float64", createRows("-2.147483648E9", "2.147483647E9", "4.0", "NULL"));
     result.put("int8", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put(
         "int8_to_string", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
-    result.put("json", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
-        "json_to_string", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
+        "int8_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
+    result.put(
+        "interval", createRows("P1Y2M3DT4H5M6.789S", "PT0S", "P3M-2DT-2H-16M-13.210988S", "NULL"));
+    result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
+    result.put(
+        "json_to_string",
+        createRows("{\"duplicate_key\": 1, \"duplicate_k...", "{\"null_key\": null}", "NULL"));
     result.put("jsonb", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
         "jsonb_to_string", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
-    result.put(
-        "large_decimal_to_numeric",
-        createRows(
-            // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
     result.put(
         "large_decimal_to_string",
         createRows(
@@ -560,11 +563,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "99999999999999999999999.9999999999",
             "123456789012345678901234567890.12...",
             "NULL"));
-    result.put(
-        "large_numeric_to_numeric",
-        createRows(
-            // Decimals with scale larger than supported in Spanner are rounded
-            "0.12", "100000000000000000000000", "12345678901234567890.123456789", "NULL"));
     result.put(
         "large_numeric_to_string",
         createRows(
@@ -575,9 +573,12 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("macaddr", createRows("08:00:2b:01:02:03", "NULL"));
     result.put("macaddr8", createRows("08:00:2b:01:02:03:04:05", "NULL"));
     result.put("money", createRows("123.45", "NULL"));
-    result.put("numeric", createRows("4.56", "NULL"));
+    result.put("money_to_numeric", createRows("123.45", "NULL"));
     result.put("numeric_to_string", createRows("4.56", "NULL"));
     result.put("oid", createRows("1000", "NULL"));
+    result.put("oid_to_string", createRows("1000", "NULL"));
+    result.put("oid_to_numeric", createRows("1000", "NULL"));
+    result.put("oid_to_float64", createRows("1000.0", "NULL"));
     result.put(
         "real",
         createRows(
@@ -592,17 +593,40 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "-1.9876542E+38", "1.9876542E+38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
     result.put("serial", createRows("-2147483648", "2147483647", "6"));
     result.put("serial_to_string", createRows("-2147483648", "2147483647", "6"));
+    result.put("serial_to_numeric", createRows("-2147483648", "2147483647", "6"));
+    result.put("serial_to_float64", createRows("-2.147483648E9", "2.147483647E9", "6.0"));
     result.put("serial2", createRows("-32768", "32767", "7"));
     result.put("serial2_to_string", createRows("-32768", "32767", "7"));
+    result.put("serial2_to_numeric", createRows("-32768", "32767", "7"));
+    result.put("serial2_to_float32", createRows("-32768.0", "32767.0", "7.0"));
+    result.put("serial2_to_float64", createRows("-32768.0", "32767.0", "7.0"));
     result.put("serial4", createRows("-2147483648", "2147483647", "8"));
     result.put("serial4_to_string", createRows("-2147483648", "2147483647", "8"));
+    result.put("serial4_to_numeric", createRows("-2147483648", "2147483647", "8"));
+    result.put("serial4_to_float64", createRows("-2.147483648E9", "2.147483647E9", "8.0"));
     result.put("serial8", createRows("-9223372036854775808", "9223372036854775807", "9"));
     result.put("serial8_to_string", createRows("-9223372036854775808", "9223372036854775807", "9"));
+    result.put(
+        "serial8_to_numeric", createRows("-9223372036854775808", "9223372036854775807", "9"));
     result.put("smallint", createRows("-32768", "32767", "10", "NULL"));
     result.put("smallint_to_string", createRows("-32768", "32767", "10", "NULL"));
+    result.put("smallint_to_numeric", createRows("-32768", "32767", "10", "NULL"));
+    result.put("smallint_to_float32", createRows("-32768.0", "32767.0", "10.0", "NULL"));
+    result.put("smallint_to_float64", createRows("-32768.0", "32767.0", "10.0", "NULL"));
     result.put("smallserial", createRows("-32768", "32767", "11"));
     result.put("smallserial_to_string", createRows("-32768", "32767", "11"));
+    result.put("smallserial_to_numeric", createRows("-32768", "32767", "11"));
+    result.put("smallserial_to_float32", createRows("-32768.0", "32767.0", "11.0"));
+    result.put("smallserial_to_float64", createRows("-32768.0", "32767.0", "11.0"));
     result.put("text", createRows("testing text", "NULL"));
+    // Datastream incorrectly wraps 24:00:00 to 0 microseconds during extraction.
+    // This causes 24:00:00 to be silently rewritten to Spanner as 'PT0S' instead of 'PT24H',
+    // and '24:00:00+10:00' as '00:00:00+10:00' instead of '24:00:00+10:00'.
+    // Ignored in ignoredTypeMappings until the Datastream bug is resolved.
+    result.put("time", createRows("PT24H", "NULL"));
+    result.put("time_without_time_zone", createRows("PT24H", "NULL"));
+    result.put("time_with_time_zone", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
+    result.put("timetz", createRows("23:59:59+10:00", "24:00:00+10:00", "NULL"));
     result.put("timestamp", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
     result.put("timestamp_to_timestamp", createRows("1970-01-02T03:04:05.123456000Z", "NULL"));
     result.put(
@@ -618,15 +642,22 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         "timestamp_with_timezone_to_string",
         createRows("1970-02-02T18:05:06.123456Z", "1970-02-03T05:05:06.123456Z", "NULL"));
     result.put("timestamp_without_time_zone", createRows("1970-01-02T03:04:05.123456Z", "NULL"));
+    result.put(
+        "timestamp_without_time_zone_to_timestamp",
+        createRows("1970-01-02T03:04:05.123456000Z", "NULL"));
+    result.put("tsquery", createRows("'fat' & 'rat'", "NULL"));
+    result.put("tsvector", createRows("'a' 'cat' 'fat' 'mat' 'on' 'sat'", "NULL"));
+    result.put("txid_snapshot", createRows("10:20:10,14,15", "NULL"));
     result.put("uuid", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     result.put(
         "uuid_pk",
         createUuidPkRows(
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     result.put("uuid_to_bytes", createRows("oO68mZwLTvi7bWu5vTgKEQ==", "NULL"));
-    result.put("varbit", createRows("wA==", "NULL"));
-    result.put("varbit_to_string", createRows("wA==", "NULL"));
+    result.put("uuid_to_string", createRows("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+    result.put("varbit", createRows(ByteArray.copyFrom("1100").toBase64(), "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
+    result.put("varchar_n", createRows("testing", "NULL"));
     result.put("xml", createRows("<test>123</test>", "NULL"));
     return result;
   }
@@ -636,26 +667,58 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // differences. Notably, some data types like numeric have slightly different behaviour.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    expectedData.put("decimal", createRows("0.120000000", "NULL"));
     expectedData.put("json", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     expectedData.put("jsonb", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     expectedData.put(
-        "large_decimal_to_numeric",
+        "bigint_to_numeric",
         createRows(
-            // Decimals with scale larger than supported in Spanner are rounded
-            "0.120000000",
-            "100000000000000000000000.000000000",
-            "12345678901234567890.123456789",
+            "-9223372036854775808.000000000",
+            "9223372036854775807.000000000",
+            "42.000000000",
             "NULL"));
     expectedData.put(
-        "large_numeric_to_numeric",
+        "bigserial_to_numeric",
         createRows(
-            // Decimals with scale larger than supported in Spanner are rounded
-            "0.120000000",
-            "100000000000000000000000.000000000",
-            "12345678901234567890.123456789",
+            "-9223372036854775808.000000000", "9223372036854775807.000000000", "42.000000000"));
+    expectedData.put(
+        "int2_to_numeric",
+        createRows("-32768.000000000", "32767.000000000", "3.000000000", "NULL"));
+    expectedData.put(
+        "int4_to_numeric",
+        createRows("-2147483648.000000000", "2147483647.000000000", "4.000000000", "NULL"));
+    expectedData.put(
+        "int8_to_numeric",
+        createRows(
+            "-9223372036854775808.000000000",
+            "9223372036854775807.000000000",
+            "5.000000000",
             "NULL"));
-    expectedData.put("numeric", createRows("4.560000000", "NULL"));
+    expectedData.put(
+        "int_to_numeric",
+        createRows("-2147483648.000000000", "2147483647.000000000", "1.000000000", "NULL"));
+    expectedData.put(
+        "integer_to_numeric",
+        createRows("-2147483648.000000000", "2147483647.000000000", "2.000000000", "NULL"));
+    expectedData.put("money_to_numeric", createRows("123.450000000", "NULL"));
+    expectedData.put("oid_to_numeric", createRows("1000.000000000", "NULL"));
+    expectedData.put(
+        "serial2_to_numeric", createRows("-32768.000000000", "32767.000000000", "7.000000000"));
+    expectedData.put(
+        "serial4_to_numeric",
+        createRows("-2147483648.000000000", "2147483647.000000000", "8.000000000"));
+    expectedData.put(
+        "serial8_to_numeric",
+        createRows(
+            "-9223372036854775808.000000000", "9223372036854775807.000000000", "9.000000000"));
+    expectedData.put(
+        "serial_to_numeric",
+        createRows("-2147483648.000000000", "2147483647.000000000", "6.000000000"));
+    expectedData.put(
+        "smallint_to_numeric",
+        createRows("-32768.000000000", "32767.000000000", "10.000000000", "NULL"));
+    expectedData.put(
+        "smallserial_to_numeric",
+        createRows("-32768.000000000", "32767.000000000", "11.000000000"));
 
     return expectedData;
   }

@@ -79,6 +79,8 @@ public class ProcessChangeEventFn
       Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries");
   private final Counter outOfOrderSkips =
       Metrics.counter(ProcessChangeEventFn.class, "outOfOrderSkips");
+  private final Counter nullDataUpdateSkips =
+      Metrics.counter(ProcessChangeEventFn.class, "nullDataUpdateSkips");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -124,6 +126,7 @@ public class ProcessChangeEventFn
         Document shadowDoc = shadowCollection.find(session, lookupById).first();
 
         if (isEventNewerThanShadowDoc(element, shadowDoc)) {
+          boolean writeSucceeded = false;
           if (element.isDeleteEvent()) {
             // This is a delete event - delete the document from data collection
             dataCollection.deleteOne(session, lookupById);
@@ -133,20 +136,46 @@ public class ProcessChangeEventFn
                 lookupById,
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
+            writeSucceeded = true;
           } else {
             // Regular insert or update.
-            dataCollection.replaceOne(
-                session,
-                lookupById,
-                Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId()),
-                new ReplaceOptions().upsert(true));
-            shadowCollection.replaceOne(
-                session,
-                lookupById,
-                element.getShadowDocument(),
-                new ReplaceOptions().upsert(true));
+            Document docToWrite =
+                Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId());
+            if (docToWrite == null) {
+              if (element.isUpdateEvent()) {
+                LOG.info(
+                    "Skipping update event for document ID: {} because 'data' field is null"
+                        + " (document may have been deleted immediately after update in MongoDB).",
+                    element.getDocumentId());
+                nullDataUpdateSkips.inc();
+                Metrics.counter(
+                        ProcessChangeEventFn.class,
+                        "nullDataUpdateSkips_" + element.getChangeType())
+                    .inc();
+              } else {
+                throw new IllegalArgumentException(
+                    "Event payload has missing or null 'data' field for non-UPDATE event (type: "
+                        + element.getChangeType()
+                        + "), document ID: "
+                        + element.getDocumentId());
+              }
+            } else {
+              dataCollection.replaceOne(
+                  session, lookupById, docToWrite, new ReplaceOptions().upsert(true));
+              shadowCollection.replaceOne(
+                  session,
+                  lookupById,
+                  element.getShadowDocument(),
+                  new ReplaceOptions().upsert(true));
+              writeSucceeded = true;
+            }
           }
-          successfulWrites.inc();
+          if (writeSucceeded) {
+            successfulWrites.inc();
+            Metrics.counter(
+                    ProcessChangeEventFn.class, "successfulWrites_" + element.getChangeType())
+                .inc();
+          }
         } else {
           // Existing document has a later timestamp, skip this event
           outOfOrderSkips.inc();
@@ -172,24 +201,18 @@ public class ProcessChangeEventFn
           }
         }
 
-        // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
-        // limit)
-        boolean isPermanent = false;
-        if (e instanceof MongoWriteException writeException) {
-          if (writeException.getError().getCode() == INVALID_ARGUMENT) {
-            isPermanent = true;
-          }
-        }
-
-        // Check if the error is transient and safe to retry
-        boolean isTransient = isTransientTransactionError(e);
-
-        // If it's a permanent error or not transient, fail fast and route to severe DLQ
-        if (isPermanent || !isTransient) {
+        // Check if the error is transient and safe to retry.
+        // Non-transient errors (including permanent schema/argument errors such as code 2
+        // INVALID_ARGUMENT when exceeding nesting limits, but excluding transient errors like
+        // "Transaction number ... is unknown") fail fast and are routed to the severe DLQ.
+        if (!isTransientTransactionError(e)) {
           LOG.error(
-              "Permanent or non-retryable error for document ID: {}: {}",
+              "Permanent or non-retryable error on attempt {} (not retried in-memory) for document"
+                  + " ID: {}: {}",
+              retryCount + 1,
               element.getDocumentId(),
-              e.getMessage());
+              e.getMessage(),
+              e);
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
@@ -248,7 +271,9 @@ public class ProcessChangeEventFn
           retryCount++;
         } else {
           LOG.error(
-              "Transaction failed after {} attempts for document ID: {}: {}",
+              "Transient transaction error exceeded maxRetries ({}) after {} attempts for document"
+                  + " ID: {}: {}",
+              maxRetries,
               retryCount + 1,
               element.getDocumentId(),
               e.getMessage(),
@@ -259,7 +284,10 @@ public class ProcessChangeEventFn
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
           retriableFailedWrites.inc();
-          LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
+          LOG.info(
+              "Failed element of id {} sent to retry DLQ after {} attempts",
+              element.getDocumentId(),
+              retryCount + 1);
           break; // Exit the retry loop on non-transient error or max retries
         }
       } finally {
@@ -268,11 +296,12 @@ public class ProcessChangeEventFn
         }
       }
     }
-    if (lastException != null && retryCount > maxRetries) {
-      LOG.error(
-          "Transaction failed after max retries ({}) for document ID: {}: {}",
-          maxRetries,
+    if (lastException != null && retryCount >= maxRetries) {
+      LOG.warn(
+          "Transaction for document ID: {} exceeded maxRetries ({}) and has been routed to the"
+              + " Automatic Retry DLQ (/retry/) for background reconsumption. Last exception: {}",
           element.getDocumentId(),
+          maxRetries,
           lastException.getMessage(),
           lastException);
     }
@@ -319,7 +348,60 @@ public class ProcessChangeEventFn
   }
 
   public static boolean isTransientTransactionError(Exception e) {
-    return e instanceof MongoException
-        && ((MongoException) e).getErrorLabels().contains("TransientTransactionError");
+    Throwable t = e;
+    while (t != null) {
+      if (t instanceof MongoException mongoException) {
+        if (mongoException.getErrorLabels().contains("TransientTransactionError")) {
+          return true;
+        }
+        int errorCode = getErrorCode(t, mongoException);
+        boolean isUnknownTxn = isUnknownTransactionError(errorCode, mongoException.getMessage());
+
+        // Error 112 (WriteConflict/Aborted), Error 91 (ShutdownInProgress), and unknown
+        // transaction errors are transient server aborts that succeed when retried with
+        // exponential backoff.
+        if (errorCode == 112 || errorCode == 91 || isUnknownTxn) {
+          return true;
+        }
+      }
+      t = t.getCause();
+    }
+    return false;
+  }
+
+  // Extract the server error code across different MongoDB exception wrappers:
+  // - MongoWriteException: getError().getCode()
+  // - MongoCommandException: getErrorCode()
+  // - Standard MongoException: getCode()
+  private static int getErrorCode(Throwable t, MongoException mongoException) {
+    if (t instanceof MongoWriteException writeEx && writeEx.getError() != null) {
+      return writeEx.getError().getCode();
+    }
+    if (t instanceof com.mongodb.MongoCommandException cmdEx) {
+      return cmdEx.getErrorCode();
+    }
+    return mongoException.getCode();
+  }
+
+  // Check for unknown/expired transaction errors:
+  private static boolean isUnknownTransactionError(int errorCode, String msg) {
+    // Standard MongoDB code 251 (NoSuchTransaction)
+    if (errorCode == 251) {
+      return true;
+    }
+    if (errorCode != 2 || msg == null) {
+      return false;
+    }
+    // Firestore compatibility code 2 (BadValue) with messages mentioning a
+    // missing/unknown
+    // transaction (case-insensitive to be resilient against server rephrasing).
+    String lowerMsg = msg.toLowerCase();
+    if (!lowerMsg.contains("transaction")) {
+      return false;
+    }
+    return lowerMsg.contains("unknown")
+        || lowerMsg.contains("not found")
+        || lowerMsg.contains("expired")
+        || lowerMsg.contains("no such");
   }
 }

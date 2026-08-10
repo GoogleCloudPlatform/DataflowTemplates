@@ -38,8 +38,8 @@ public class CollationIndexTest {
         CollationIndex.builder()
             .setCollationReference(testCollationReference)
             .setIndexType(CollationIndexType.TRAILING_POSITION_PAD_SPACE)
-            .addCharacter('a', 'A', 0L)
-            .addCharacter('A', 'A', 0L)
+            .addCharacter("a", "A", 0L)
+            .addCharacter("A", "A", 0L)
             .build();
 
     assertThat(collationIndex.indexType())
@@ -47,8 +47,8 @@ public class CollationIndexTest {
     assertThat(collationIndex.collationReference()).isEqualTo(testCollationReference);
     assertThat(collationIndex.getCharsetSize()).isEqualTo(1);
     assertThat(collationIndex.characterToIndex().size()).isEqualTo(2);
-    assertThat(collationIndex.getCharacterFromPosition(0L)).isEqualTo('A');
-    assertThat(collationIndex.getOrdinalPosition('a')).isEqualTo(0L);
+    assertThat(collationIndex.getCharacterFromPosition(0L)).isEqualTo("A");
+    assertThat(collationIndex.getOrdinalPosition("a")).isEqualTo(0L);
   }
 
   @Test
@@ -60,6 +60,32 @@ public class CollationIndexTest {
             .setPadSpace(true)
             .build();
 
+    // Null arguments
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter(null, "A", 0L)
+                .build());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter("a", null, 0L)
+                .build());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            CollationIndex.builder()
+                .setIndexType(CollationIndexType.ALL_POSITIONS)
+                .setCollationReference(testCollationReference)
+                .addCharacter("a", "A", null)
+                .build());
+
     // Duplicate Characters
     assertThrows(
         IllegalStateException.class,
@@ -67,8 +93,8 @@ public class CollationIndexTest {
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'A', 0L)
-                .addCharacter('a', 'A', 0L)
+                .addCharacter("a", "A", 0L)
+                .addCharacter("a", "A", 0L)
                 .build());
     // Duplicate Index
     assertThrows(
@@ -77,16 +103,16 @@ public class CollationIndexTest {
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'A', 0L)
-                .addCharacter('A', 'A', 2L));
+                .addCharacter("a", "A", 0L)
+                .addCharacter("A", "A", 2L));
     assertThrows(
         IllegalStateException.class,
         () ->
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'A', 0L)
-                .addCharacter('z', 'Z', 0L));
+                .addCharacter("a", "A", 0L)
+                .addCharacter("z", "Z", 0L));
     // Index with Holes.
     assertThrows(
         IllegalStateException.class,
@@ -94,10 +120,10 @@ public class CollationIndexTest {
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'A', 0L)
-                .addCharacter('A', 'A', 0L)
-                .addCharacter('z', 'Z', 10L)
-                .addCharacter('Z', 'Z', 10L)
+                .addCharacter("a", "A", 0L)
+                .addCharacter("A", "A", 0L)
+                .addCharacter("z", "Z", 10L)
+                .addCharacter("Z", "Z", 10L)
                 .build());
     // Index Character not part of basic character set.
     assertThrows(
@@ -106,10 +132,10 @@ public class CollationIndexTest {
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'M', 0L)
-                .addCharacter('A', 'A', 5L)
-                .addCharacter('z', 'Z', 10L)
-                .addCharacter('Z', 'Z', 10L)
+                .addCharacter("a", "M", 0L)
+                .addCharacter("A", "A", 5L)
+                .addCharacter("z", "Z", 10L)
+                .addCharacter("Z", "Z", 10L)
                 .build());
     // Index Character does not map to itself
     assertThrows(
@@ -118,11 +144,11 @@ public class CollationIndexTest {
             CollationIndex.builder()
                 .setIndexType(CollationIndexType.ALL_POSITIONS)
                 .setCollationReference(testCollationReference)
-                .addCharacter('a', 'A', 0L)
-                .addCharacter('A', 'M', 5L)
-                .addCharacter('M', 'M', 5L)
-                .addCharacter('z', 'Z', 10L)
-                .addCharacter('Z', 'Z', 10L)
+                .addCharacter("a", "A", 0L)
+                .addCharacter("A", "M", 5L)
+                .addCharacter("M", "M", 5L)
+                .addCharacter("z", "Z", 10L)
+                .addCharacter("Z", "Z", 10L)
                 .build());
   }
 }

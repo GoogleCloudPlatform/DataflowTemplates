@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -27,6 +28,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
@@ -34,6 +38,8 @@ public class BoundarySplitterFactory {
 
   private static final BigInteger SECONDS_TO_NANOS =
       BigInteger.valueOf(Duration.ofSeconds(1).toNanos());
+
+  @VisibleForTesting protected static final int MAX_STRING_PARTITION_PAD_LENGTH = 300;
 
   private static final ImmutableMap<Class, BoundarySplitter<?>> splittermap =
       ImmutableMap.<Class, BoundarySplitter<?>>builder()
@@ -57,6 +63,16 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<BigDecimal>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitBigDecimals(start, end, partitionColumn))
+          .put(
+              LocalTime.class,
+              (BoundarySplitter<LocalTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitLocalTimes(start, end))
+          .put(
+              OffsetTime.class,
+              (BoundarySplitter<OffsetTime>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitOffsetTimes(start, end))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
@@ -105,6 +121,25 @@ public class BoundarySplitterFactory {
       throw new UnsupportedOperationException("Range Splitter not implemented for class " + c);
     }
     return splitter;
+  }
+
+  public static BoundarySplitter<String> createBitSplitter() {
+    return (start, end, partitionColumn, boundaryTypeMapper, processContext) -> {
+      if (start == null && end == null) {
+        return null;
+      }
+      BigInteger startInt = start == null ? null : new BigInteger(start, 2);
+      BigInteger endInt = end == null ? null : new BigInteger(end, 2);
+
+      BigInteger midpoint = splitBigIntegers(startInt, endInt);
+
+      String midString = midpoint.toString(2);
+
+      int targetLength = start != null ? start.length() : (end != null ? end.length() : 0);
+      midString = Strings.padStart(midString, targetLength, '0');
+
+      return midString;
+    };
   }
 
   private BoundarySplitterFactory() {}
@@ -181,6 +216,73 @@ public class BoundarySplitterFactory {
      * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
+  }
+
+  private static LocalTime splitLocalTimes(LocalTime start, LocalTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = LocalTime.MIN;
+    }
+    if (end == null) {
+      end = LocalTime.MAX;
+    }
+
+    Long midNanos = splitLongs(start.toNanoOfDay(), end.toNanoOfDay());
+    if (midNanos == null) {
+      return null;
+    }
+    return LocalTime.ofNanoOfDay(midNanos);
+  }
+
+  private static OffsetTime splitOffsetTimes(OffsetTime start, OffsetTime end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = OffsetTime.of(LocalTime.MIN, end.getOffset());
+    }
+    if (end == null) {
+      end = OffsetTime.of(LocalTime.MAX, start.getOffset());
+    }
+
+    long nanosPerDay = 86_400_000_000_000L;
+
+    // Java cannot represent 24:00:00, so the pipeline uses LocalTime.MAX as a proxy.
+    long startClockNanos =
+        start.toLocalTime().equals(LocalTime.MAX) ? nanosPerDay : start.toLocalTime().toNanoOfDay();
+    long endClockNanos =
+        end.toLocalTime().equals(LocalTime.MAX) ? nanosPerDay : end.toLocalTime().toNanoOfDay();
+
+    // Calculate the raw UTC nanoseconds without wrapping to a 24-hour clock.
+    // This allows the time to go negative (previous day) or exceed 24 hours (next day)
+    long startOffsetNanos = start.getOffset().getTotalSeconds() * 1_000_000_000L;
+    long startNanos = startClockNanos - startOffsetNanos;
+
+    long endOffsetNanos = end.getOffset().getTotalSeconds() * 1_000_000_000L;
+    long endNanos = endClockNanos - endOffsetNanos;
+
+    Long midNanos = splitLongs(startNanos, endNanos);
+    if (midNanos == null) {
+      return null;
+    }
+
+    if (midNanos < 0) {
+      // For negative underflow, use the offset of the start value.
+      long localMidNanos = midNanos + (start.getOffset().getTotalSeconds() * 1_000_000_000L);
+      return OffsetTime.of(LocalTime.ofNanoOfDay(localMidNanos), start.getOffset());
+    } else if (midNanos >= nanosPerDay) {
+      // For positive overflow, use the offset of the end value.
+      long localMidNanos = midNanos + (end.getOffset().getTotalSeconds() * 1_000_000_000L);
+      if (localMidNanos >= nanosPerDay) {
+        return OffsetTime.of(LocalTime.MAX, end.getOffset());
+      }
+      return OffsetTime.of(LocalTime.ofNanoOfDay(localMidNanos), end.getOffset());
+    } else {
+      // Normal range, use 0 offset.
+      return OffsetTime.of(LocalTime.ofNanoOfDay(midNanos), ZoneOffset.UTC);
+    }
   }
 
   @VisibleForTesting
@@ -288,7 +390,8 @@ public class BoundarySplitterFactory {
     return result;
   }
 
-  private static String splitStrings(
+  @VisibleForTesting
+  protected static String splitStrings(
       String start,
       String end,
       PartitionColumn partitionColumn,
@@ -313,15 +416,33 @@ public class BoundarySplitterFactory {
     // during a run.
     // To avoid undefined behaviour in the padding logic, we take the max of the input strings and
     // the partition column width.
+    int commonPrefixLength = 0;
+    while (commonPrefixLength < start.length() && commonPrefixLength < end.length()) {
+      int cpStart = start.codePointAt(commonPrefixLength);
+      int cpEnd = end.codePointAt(commonPrefixLength);
+      if (cpStart != cpEnd) {
+        break;
+      }
+      commonPrefixLength += Character.charCount(cpStart);
+    }
+    String commonPrefix = start.substring(0, commonPrefixLength);
+    String suffixStart = start.substring(commonPrefixLength);
+    String suffixEnd = end.substring(commonPrefixLength);
+
     int lengthToPad =
         Math.max(
-            Math.max(start.length(), end.length()), partitionColumn.stringMaxLength().intValue());
+            Math.max(suffixStart.length(), suffixEnd.length()),
+            Math.min(
+                Math.max(0, partitionColumn.stringMaxLength().intValue() - commonPrefixLength),
+                MAX_STRING_PARTITION_PAD_LENGTH));
     BigInteger bigIntegerStart =
-        (BigInteger) typeMapper.mapStringToBigInteger(start, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(suffixStart, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerEnd =
-        (BigInteger) typeMapper.mapStringToBigInteger(end, lengthToPad, partitionColumn, c);
+        (BigInteger) typeMapper.mapStringToBigInteger(suffixEnd, lengthToPad, partitionColumn, c);
     BigInteger bigIntegerSplit = splitBigIntegers(bigIntegerStart, bigIntegerEnd);
-    return (String) typeMapper.unMapStringFromBigInteger(bigIntegerSplit, partitionColumn, c);
+    String suffixMid =
+        (String) typeMapper.unMapStringFromBigInteger(bigIntegerSplit, partitionColumn, c);
+    return commonPrefix + suffixMid;
   }
 
   @VisibleForTesting

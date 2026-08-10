@@ -599,14 +599,12 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
-        // Tokenlist columns do not have ordering.
-        if (spannerType != null
-            && (spannerType.equals(tokenlistType)
-                || spannerType.startsWith("ARRAY")
-                || spannerType.contains("vector length"))) {
-          indexColumnsBuilder.none();
-        } else if (ordering == null) {
+        boolean isStoring = resultSet.isNull(7);
+        if (isStoring) {
           indexColumnsBuilder.storing();
+        } else if (ordering == null) {
+          // Unordered keys (like Vector ARRAYs and Search TOKENLISTs) have no column ordering
+          indexColumnsBuilder.none();
         } else {
           ordering = ordering.toUpperCase();
           if (ordering.startsWith("ASC")) {
@@ -633,7 +631,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type "
+                + " t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -641,7 +639,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type "
+                + " t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "

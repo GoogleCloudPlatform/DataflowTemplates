@@ -8,10 +8,13 @@ Currently, this template works for tables of any size on the follow sources
   including unsigned) and Binary/VarBinary primary keys.
 * MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
   Binary/VarBinary primary keys.
-* PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
-  BigInteger including unsigned) primary keys.
+* PostgreSQL 13+ - String (`VARCHAR` and `TEXT` only, upto 3 byte characters; `CHAR` is not supported), Integer like (up to
+  BigInteger including unsigned), Float, Double, Numeric/Decimal, Date, Time,
+  Timetz, Timestamp, Timestamptz, Bit, and UUID primary keys.
 
 Tables without primary keys or primary keys not mentioned above are not supported.
+
+For detailed information regarding PostgreSQL-specific features and limitations, please refer to the [PostgreSQL Supported Features and Limitations](#postgresql-supported-features-and-limitations) section.
 
 ## Getting Started
 
@@ -147,3 +150,57 @@ However, because the continuous reader watches the `retry/` directory indefinite
     * All shards have same dialect (mixed dialect migration will cause pipeline failure during initialization)
     * For tables with string primary key, all shards have the same weights for a given collation (the collection weight detection
       is queried on available shards for efficient parallel discovery).
+
+#### PostgreSQL Supported Features and Limitations
+* **Table Inheritance:** When migrating databases utilizing table inheritance, the pipeline queries parent tables using the `ONLY` keyword. This ensures data is not duplicated from child tables into the parent table in Spanner. Instead, child tables are discovered and migrated as their own separate, independent tables in Spanner.
+* **Declarative Partitioning:** Fully supported. When migrating partitioned tables, provision only the parent table in your target Spanner schema. The pipeline will automatically read records from all underlying source partitions and seamlessly consolidate them into the single parent table in Spanner. **Do not provision the individual child partitions in Spanner, as doing so will cause the pipeline to migrate them separately and result in data duplication.**
+* **Custom Namespaces:** Custom namespaces (schemas other than the default schema i.e. `public`) are not supported.
+* **Supported Data Types:**
+  * **`SMALLINT` / `SMALLSERIAL`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `FLOAT32`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `REAL`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`INTEGER` / `SERIAL` / `OID`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`BIGINT` / `BIGSERIAL`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `VARCHAR` / `TEXT`
+  * **`REAL` (`FLOAT4`):**
+    * *Spanner GoogleSQL:* `FLOAT32`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `REAL`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`DOUBLE PRECISION` (`FLOAT8`):**
+    * *Spanner GoogleSQL:* `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`DECIMAL` / `NUMERIC`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`MONEY`:**
+    * *Spanner GoogleSQL:* `NUMERIC`, `STRING`
+    * *Spanner PostgreSQL:* `NUMERIC`, `VARCHAR` / `TEXT`
+  * **`CHAR`, `VARCHAR`, `TEXT`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`DATE`:**
+    * *Spanner GoogleSQL:* `DATE`, `STRING`
+    * *Spanner PostgreSQL:* `DATE`, `VARCHAR` / `TEXT`
+  * **`TIMESTAMP` , `TIMESTAMPTZ`:**
+    * *Spanner GoogleSQL:* `TIMESTAMP`, `STRING`
+    * *Spanner PostgreSQL:* `TIMESTAMPTZ`, `VARCHAR` / `TEXT`
+  * **`TIME`, `TIMETZ`, `INTERVAL`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`BOOL` / `BOOLEAN`:**
+    * *Spanner GoogleSQL:* `BOOL`, `STRING`
+    * *Spanner PostgreSQL:* `BOOLEAN`, `VARCHAR` / `TEXT`
+  * **`BYTEA`, `BIT`, `VARBIT`:**
+    * *Spanner GoogleSQL:* `BYTES`
+    * *Spanner PostgreSQL:* `BYTEA`
+  * **`UUID`:**
+    * *Spanner GoogleSQL:* `UUID`, `STRING`
+    * *Spanner PostgreSQL:* `UUID`, `VARCHAR` / `TEXT`
+  * **`CIDR`, `INET`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`JSON` / `JSONB`:**
+    * *Spanner GoogleSQL:* `JSON`, `STRING`
+    * *Spanner PostgreSQL:* `JSONB`, `VARCHAR` / `TEXT`

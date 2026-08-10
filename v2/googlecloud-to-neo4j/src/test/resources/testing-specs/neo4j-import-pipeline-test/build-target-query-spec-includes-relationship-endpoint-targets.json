@@ -1,0 +1,69 @@
+{
+  "version": "1",
+  "sources": [
+    {
+      "type": "text",
+      "name": "inline-source",
+      "format": "excel",
+      "header": ["start_id", "end_id"],
+      "data": [["a", "b"]]
+    }
+  ],
+  "targets": {
+    "nodes": [
+      {
+        "name": "a-node-target",
+        "source": "inline-source",
+        "write_mode": "merge",
+        "labels": ["Start"],
+        "properties": [
+          {
+            "source_field": "start_id",
+            "target_property": "id"
+          }
+        ],
+        "schema": {
+          "key_constraints": [
+            {
+              "name": "start_key",
+              "label": "Start",
+              "properties": ["id"]
+            }
+          ]
+        }
+      },
+      {
+        "name": "b-node-target",
+        "source": "inline-source",
+        "write_mode": "merge",
+        "labels": ["End"],
+        "properties": [
+          {
+            "source_field": "end_id",
+            "target_property": "id"
+          }
+        ],
+        "schema": {
+          "key_constraints": [
+            {
+              "name": "end_key",
+              "label": "End",
+              "properties": ["id"]
+            }
+          ]
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "name": "a-target",
+        "source": "inline-source",
+        "type": "LINKS_TO",
+        "write_mode": "create",
+        "node_match_mode": "match",
+        "start_node_reference": "a-node-target",
+        "end_node_reference": "b-node-target"
+      }
+    ]
+  }
+}

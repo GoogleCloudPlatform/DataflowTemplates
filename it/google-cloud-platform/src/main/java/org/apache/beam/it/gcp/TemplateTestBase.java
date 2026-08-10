@@ -48,12 +48,13 @@ import java.nio.channels.ReadableByteChannel;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -105,11 +106,13 @@ public abstract class TemplateTestBase {
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
   public String testName;
+  protected Description testDescription;
 
   @Rule
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
+          testDescription = description;
           testName = description.getMethodName();
           // In case of parameterization the testName can contain subscript like testName[paramName]
           // Converting testName from testName[paramName] to testNameParamName since it is used to
@@ -187,18 +190,29 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
-    try {
-      Method testMethod = getClass().getMethod(testName);
-      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-      Category category = testMethod.getAnnotation(Category.class);
-      if (category != null) {
-        usingDirectRunner =
-            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
-        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
-      }
-    } catch (NoSuchMethodException e) {
-      // ignore error
+
+    Set<Class<?>> categories = new HashSet<>();
+
+    Category classCategory = getClass().getAnnotation(Category.class);
+    if (classCategory != null) {
+      Collections.addAll(categories, classCategory.value());
     }
+
+    if (testDescription != null) {
+      annotation = testDescription.getAnnotation(TemplateIntegrationTest.class);
+      Category methodCategory = testDescription.getAnnotation(Category.class);
+      if (methodCategory != null) {
+        Collections.addAll(categories, methodCategory.value());
+      }
+    }
+
+    if (categories.contains(DirectRunnerTest.class)) {
+      usingDirectRunner = true;
+    }
+    if (categories.contains(SkipRunnerV2Test.class)) {
+      skipRunnerV2 = true;
+    }
+
     if (annotation == null) {
       annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
     }
