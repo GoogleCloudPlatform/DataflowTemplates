@@ -85,7 +85,7 @@ public class SpannerTargetDao implements IDao {
     Mutation mutation = spannerMutationResponse.getMutation();
     Key primaryKey = spannerMutationResponse.getPrimaryKey();
 
-    //TODO - optimize this flow to avoid the nested transaction if the shadow transaction
+    // TODO - optimize this flow to avoid the nested transaction if the shadow transaction
     // (in the transaction check) and the main transaction are on the same database
     client
         .readWriteTransaction(Options.priority(RpcPriority.HIGH))
@@ -99,7 +99,8 @@ public class SpannerTargetDao implements IDao {
                   if (transactionalCheck != null) {
                     transactionalCheck.check();
                   }
-                  //TODO- add support for delete where PK has changed - similar to data dml in live flow
+                  // TODO- add support for delete where PK has changed - similar to data dml in live
+                  // flow
                   mainTxn.buffer(ImmutableList.of(mutation));
                   return null;
                 });
