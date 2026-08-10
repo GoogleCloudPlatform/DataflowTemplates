@@ -21,11 +21,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,34 +53,105 @@ public final class Utils {
     return s1 > s2 || (s1 == s2 && n1 > n2);
   }
 
+  public static long getTimestampNanos(Document timestampDoc) {
+    if (timestampDoc == null) {
+      return 0L;
+    }
+    long seconds = 0L;
+    if (timestampDoc.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = timestampDoc.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        seconds = ((Number) s).longValue();
+      }
+    }
+    long nanos = 0L;
+    if (timestampDoc.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = timestampDoc.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        nanos = ((Number) n).longValue();
+      }
+    }
+    return (seconds * 1_000_000_000L) + nanos;
+  }
+
   public static Document jsonToDocument(String jsonString, Object documentId) {
-    Document rawDoc;
+    if (jsonString == null) {
+      return null;
+    }
+    Document rawDoc = null;
     try {
-      rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
+      Document parsed = Document.parse(jsonString);
+      if (parsed.containsKey(DATA_COL)) {
+        Object dataObj = parsed.get(DATA_COL);
+        if (dataObj instanceof Document) {
+          rawDoc = (Document) dataObj;
+        } else if (dataObj instanceof String) {
+          rawDoc = Document.parse((String) dataObj);
+        } else if (dataObj != null) {
+          rawDoc = Document.parse(dataObj.toString());
+        }
+      } else {
+        // No 'data' wrapper field; the parsed document itself is the payload
+        rawDoc = parsed;
+      }
     } catch (Exception ex) {
-      LOG.info(
-          "Document parsing for {} failed due to {}, try casting.", jsonString, ex.getMessage());
-      rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
+      LOG.debug("Document parsing for {} failed due to {}.", jsonString, ex.getMessage());
     }
     if (rawDoc == null) {
       return null;
     }
+    removeTableRowFields(
+        rawDoc,
+        com.google.cloud.teleport.v2.templates.DataStreamMongoDBToFirestore.MAPPER_IGNORE_FIELDS);
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }
 
+  /**
+   * Converts a MongoDB document ID into a type-tagged, collision-free string representation.
+   *
+   * <p><b>NOTE:</b> This method does NOT generate a semantically equivalent string for database
+   * writes, and must NEVER be used as the destination document's {@code _id} value (which should
+   * retain native BSON types such as {@link org.bson.types.ObjectId}, {@link Document}, or {@link
+   * org.bson.types.Binary}).
+   *
+   * <p><b>Use Case:</b> This method is strictly intended for generating internal Apache Beam
+   * grouping and shuffling keys (e.g. {@code collection + "#" + documentIdToString(docId)}) and
+   * diagnostic string logs. The type prefix (e.g. {@code str_}, {@code i64_}, {@code bin_<type>_})
+   * ensures distinct BSON types with identical string forms (such as string {@code "123"} vs Long
+   * {@code 123L}) never collide in Beam's stateful deduplication and windowing operations.
+   *
+   * @param documentId the raw BSON document ID object
+   * @return a type-tagged string representation suitable for pipeline routing keys
+   */
   public static String documentIdToString(Object documentId) {
     if (documentId == null) {
       return "null";
     }
     if (documentId instanceof Binary) {
       Binary binary = (Binary) documentId;
-      return Base64.getEncoder().encodeToString(binary.getData());
+      return "bin_" + binary.getType() + "_" + Base64.getEncoder().encodeToString(binary.getData());
     }
     if (documentId instanceof Document) {
-      return ((Document) documentId).toJson();
+      return "doc_" + ((Document) documentId).toJson(CANONICAL_JSON_SETTINGS);
     }
-    return documentId.toString();
+    if (documentId instanceof List) {
+      Document wrapper = new Document("arr", documentId);
+      return "list_" + wrapper.toJson(CANONICAL_JSON_SETTINGS);
+    }
+    if (documentId instanceof ObjectId) {
+      return "oid_" + ((ObjectId) documentId).toHexString();
+    }
+    if (documentId instanceof Long) {
+      return "i64_" + documentId;
+    }
+    if (documentId instanceof Integer) {
+      return "i32_" + documentId;
+    }
+    if (documentId instanceof Double) {
+      return "f64_" + documentId;
+    }
+    return "str_" + documentId.toString();
   }
 
   public static String getCanonicalJsonOfDataField(Document fullEvent) {

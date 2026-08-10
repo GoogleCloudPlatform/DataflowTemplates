@@ -37,18 +37,19 @@ import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.LatestChangeEventCombineFn;
+import com.google.cloud.teleport.v2.transforms.MongoDbBulkTransforms;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
+import com.google.cloud.teleport.v2.transforms.StatefulDeduplicationFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.mongodb.MongoBulkWriteException;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
@@ -76,20 +77,31 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.AfterFirst;
+import org.apache.beam.sdk.transforms.windowing.AfterPane;
+import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.transforms.windowing.Repeatedly;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -114,20 +126,10 @@ import org.slf4j.LoggerFactory;
           + " Storage bucket and writes them to a Firestore with MongoDB compatibility database. It"
           + " is intended for data migration from Datastream sources to Firestore with MongoDB"
           + " compatibility.\n",
-      "Data consistency is guaranteed only at the end of migration when all data has been written"
-          + " to the destination database. To store ordering information for each record written to"
-          + " the destination database, this template creates an additional collection (called a"
-          + " shadow collection) for each collection in the source database. This is used to ensure"
-          + " consistency at the end of migration. By default the shadow collection is used only on"
-          + " cdc events, it is configurable to be used on backfill events via setting"
-          + " `useShadowTablesForBackfill` to true. The shadow collections by default uses prefix"
-          + " `shadow_`, if it can cause collection name collision with the source database, please"
-          + " configure that by setting `shadowCollectionPrefix`. The shadow collections are not"
-          + " deleted after migration and can be used for validation purposes at the end of the"
-          + " migration.\n",
-      "The pipeline by default processes backfill events first with batch write, which is"
-          + " optimized for performance, followed by cdc events. This is configurable via setting"
-          + " `processBackfillFirst` to false to process backfill and cdc events together.\n",
+      "By default, the template runs in high-throughput shadowless mode without shadow collections"
+          + " or distributed multi-document transactions. When legacy mode is explicitly selected by"
+          + " setting `useShadowTables` to true, the template creates an additional shadow collection"
+          + " for each collection to track event ordering.\n",
       "Any errors that occur during operation are recorded in error queues. The error"
           + " queue is a Cloud Storage folder which stores all the Datastream events that had"
           + " encountered errors."
@@ -179,8 +181,89 @@ public class DataStreamMongoDBToFirestore {
       extends StreamingOptions,
           DataflowPipelineWorkerPoolOptions,
           JavascriptTextTransformerOptions {
-    @TemplateParameter.Text(
+
+    @TemplateParameter.Boolean(
         order = 10,
+        optional = true,
+        description = "Use shadow tables for tracking event ordering",
+        helpText =
+            "When false (default), runs in high-throughput shadowless mode without shadow"
+                + " collections.")
+    @Default.Boolean(false)
+    Boolean getUseShadowTables();
+
+    void setUseShadowTables(Boolean value);
+
+    @TemplateParameter.Enum(
+        order = 11,
+        optional = true,
+        description = "Ordering and deduplication strategy for shadowless mode",
+        enumOptions = {@TemplateEnumOption("stateful"), @TemplateEnumOption("none")},
+        helpText =
+            "Ordering strategy: 'stateful' uses Beam stateful processing by doc ID; 'none' bypasses"
+                + " state for max throughput. Default: stateful.")
+    @Default.String("stateful")
+    String getOrderingStrategy();
+
+    void setOrderingStrategy(String value);
+
+    @TemplateParameter.Integer(
+        order = 12,
+        optional = true,
+        description = "Batch size for bulk database writes",
+        helpText =
+            "Number of documents per bulkWrite RPC. For Firestore MongoDB compatibility, max 500."
+                + " Default: 500.")
+    @Default.Integer(500)
+    Integer getBatchSize();
+
+    void setBatchSize(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 13,
+        optional = true,
+        description = "Maximum concurrent asynchronous writes per worker",
+        helpText =
+            "Maximum concurrent in-flight bulk write operations per worker thread pool. Default: 10.")
+    @Default.Integer(10)
+    Integer getMaxConcurrentAsyncWrites();
+
+    void setMaxConcurrentAsyncWrites(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 14,
+        optional = true,
+        description = "Initial write rate per worker (docs/sec)",
+        helpText =
+            "Initial maximum write rate per worker during warm-up. Set <= 0 to disable. Default: 500.")
+    @Default.Integer(500)
+    Integer getInitialWriteRatePerWorker();
+
+    void setInitialWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "Write rate ramp-up duration in minutes",
+        helpText =
+            "Duration in minutes over which the write rate ramps up to target throughput. Default: 5.")
+    @Default.Integer(5)
+    Integer getWriteRateRampUpMinutes();
+
+    void setWriteRateRampUpMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 16,
+        optional = true,
+        description = "Max write rate per worker after ramp-up",
+        helpText = "Target maximum write rate per worker after completing ramp-up. Default: 2500.")
+    @Default.Integer(2500)
+    Integer getMaxWriteRatePerWorker();
+
+    void setMaxWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Text(
+        order = 17,
         optional = true,
         description = "Shadow collection prefix",
         helpText = "The prefix used to name shadow collections. Default: `shadow_`.")
@@ -391,16 +474,6 @@ public class DataStreamMongoDBToFirestore {
     String getDatabaseCollection();
 
     void setDatabaseCollection(String value);
-
-    @TemplateParameter.Integer(
-        order = 11,
-        optional = true,
-        description = "Batch size",
-        helpText = "The batch size for writing to Database.")
-    @Default.Integer(500)
-    Integer getBatchSize();
-
-    void setBatchSize(Integer value);
   }
 
   /**
@@ -425,20 +498,58 @@ public class DataStreamMongoDBToFirestore {
     run(options);
   }
 
-  private static void validateOptions(Options options) {
+  public static void validateOptions(Options options) {
     String inputFileFormat = options.getInputFileFormat();
-    if (!(inputFileFormat.equals(AVRO_SUFFIX) || inputFileFormat.equals(JSON_SUFFIX))) {
+    if (inputFileFormat != null
+        && !inputFileFormat.isEmpty()
+        && !(inputFileFormat.equals(AVRO_SUFFIX) || inputFileFormat.equals(JSON_SUFFIX))) {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
+    }
+
+    String orderingStrategy = options.getOrderingStrategy();
+    if (orderingStrategy != null
+        && !orderingStrategy.isEmpty()
+        && !("stateful".equalsIgnoreCase(orderingStrategy)
+            || "none".equalsIgnoreCase(orderingStrategy))) {
+      throw new IllegalArgumentException(
+          "Ordering strategy must be one of: stateful, none - found " + orderingStrategy);
+    }
+
+    if (options.getBatchSize() != null && options.getBatchSize() <= 0) {
+      throw new IllegalArgumentException(
+          "Batch size must be a positive integer - found " + options.getBatchSize());
+    }
+
+    if (options.getMaxConcurrentAsyncWrites() != null
+        && options.getMaxConcurrentAsyncWrites() <= 0) {
+      throw new IllegalArgumentException(
+          "Max concurrent async writes must be a positive integer - found "
+              + options.getMaxConcurrentAsyncWrites());
+    }
+
+    if (options.getInitialWriteRatePerWorker() != null
+        && options.getMaxWriteRatePerWorker() != null
+        && options.getInitialWriteRatePerWorker() > 0
+        && options.getMaxWriteRatePerWorker() > 0
+        && options.getInitialWriteRatePerWorker() > options.getMaxWriteRatePerWorker()) {
+      throw new IllegalArgumentException(
+          "Initial write rate per worker ("
+              + options.getInitialWriteRatePerWorker()
+              + ") cannot exceed max write rate per worker ("
+              + options.getMaxWriteRatePerWorker()
+              + ")");
+    }
+
+    if (options.getWriteRateRampUpMinutes() != null && options.getWriteRateRampUpMinutes() < 0) {
+      throw new IllegalArgumentException(
+          "Write rate ramp up minutes cannot be negative - found "
+              + options.getWriteRateRampUpMinutes());
     }
   }
 
   /**
    * Runs the pipeline with the supplied options.
-   *
-   * <p>This pipeline processes all events (backfill/CDC) together, ordered by the timestamp field
-   * from the datastream records. Shadow collections are used to track event ordering and prevent
-   * duplicate processing.
    *
    * @param options The execution parameters to the pipeline.
    */
@@ -446,14 +557,16 @@ public class DataStreamMongoDBToFirestore {
     try {
       LOG.info(
           "Starting pipeline execution with options: inputFilePattern={}, fileType={},"
-              + " databaseName={}",
+              + " databaseName={}, useShadowTables={}",
           options.getInputFilePattern(),
           options.getInputFileFormat(),
-          options.getDatabaseName());
+          options.getDatabaseName(),
+          options.getUseShadowTables());
 
       // Decode the connection string
       String connectionString = options.getConnectionUri();
-      if (!connectionString.startsWith("mongodb://")
+      if (connectionString != null
+          && !connectionString.startsWith("mongodb://")
           && !connectionString.startsWith("mongodb+srv://")) {
         LOG.error(
             "Invalid URL: {}, Must be in pattern of"
@@ -462,40 +575,26 @@ public class DataStreamMongoDBToFirestore {
             connectionString);
         throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
       }
-      if (connectionString.contains("MONGODB-OIDC")
+      if (connectionString != null
+          && connectionString.contains("MONGODB-OIDC")
           && !connectionString.contains("TOKEN_RESOURCE")) {
         connectionString += ",TOKEN_RESOURCE:FIRESTORE";
       }
-      LOG.info("Creating MongoDB client with connection string: {}", connectionString);
-      MongoClientSettings settings =
-          MongoClientSettings.builder()
-              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
-              .applyToSocketSettings(
-                  builder -> {
-                    // How long the driver will wait to establish a connection
-                    builder.connectTimeout(60, TimeUnit.SECONDS);
-                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
-                  })
-              .applyToClusterSettings(
-                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .uuidRepresentation(UuidRepresentation.STANDARD)
-              .build();
-      MongoClient mongoClient = MongoClients.create(settings);
-      LOG.info("MongoDB client created successfully");
 
       // Choose processing mode based on options
       LOG.info("Starting pipeline execution");
-      PipelineResult result;
-      if (options.getProcessBackfillFirst()) {
-        LOG.info("Using backfill-first processing mode");
-        runWithBackfillFirst(options, connectionString);
+      if (Boolean.TRUE.equals(options.getUseShadowTables())) {
+        if (Boolean.TRUE.equals(options.getProcessBackfillFirst())) {
+          LOG.info("Using legacy backfill-first processing mode with shadow tables");
+          runLegacyWithBackfillFirst(options, connectionString);
+        } else {
+          LOG.info("Using legacy unified processing mode with shadow tables");
+          runLegacyAllEventsTogether(options, connectionString);
+        }
       } else {
-        LOG.info("Using unified processing mode");
-        runAllEventsTogether(options, connectionString);
+        LOG.info("Using high-throughput shadowless processing mode");
+        runShadowless(options, connectionString);
       }
-
-      mongoClient.close();
-      LOG.info("MongoDB client closed");
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
@@ -503,24 +602,265 @@ public class DataStreamMongoDBToFirestore {
   }
 
   /**
-   * Runs the pipeline with backfill events processed before CDC events.
+   * Runs the pipeline in high-throughput shadowless mode with hierarchical stages.
    *
-   * <p>This pipeline first processes all backfill events, then processes CDC events. This ensures
-   * that the initial state of the database is established before any changes are applied. Failures
-   * in backfill will be sent over to dlq and be processed with conflict resolving.
+   * @param options The execution parameters to the pipeline.
+   * @param connectionString The MongoDB/Firestore connection URI.
+   * @return The result of the pipeline execution.
+   */
+  public static PipelineResult runShadowless(Options options, String connectionString) {
+    LOG.info("Creating shadowless pipeline DAG");
+    Pipeline pipeline = Pipeline.create(options);
+    DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
+    /*
+     * Stage 1: Read/
+     *   - Read/DataStreamIO
+     *   - Read/IngestAndNormalizeJson
+     *   - Read/MergeWithReconsumedDlq
+     */
+    LOG.info("Setting up Read/ stage");
+    PCollection<FailsafeElement<String, String>> jsonRecords =
+        ingestAndNormalizeJsonShadowless(options, dlqManager, pipeline)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    /*
+     * Stage 2: Process/
+     *   - Process/ApplyUdfToDataField (optional)
+     *   - Process/CreateMongoDbChangeEventContext
+     *   - Process/KeyByCollectionAndDocId
+     *   - Process/GlobalWindows
+     *   - Process/StatefulDeduplication
+     */
+    LOG.info("Setting up Process/ stage");
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      LOG.info("Applying Javascript UDF in Process/ApplyUdfToDataField");
+      jsonRecords =
+          jsonRecords.apply(
+              "Process/ApplyUdfToDataField", new ApplyUdfToDataField(options, dlqManager));
+    }
+
+    PCollectionTuple changeEventContexts =
+        jsonRecords.apply(
+            "Process/CreateMongoDbChangeEventContext",
+            ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
+                .withOutputTags(
+                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    writeFailedJsonToDlq(
+        options,
+        changeEventContexts,
+        dlqManager,
+        CreateMongoDbChangeEventContextFn.failedCreationTag);
+
+    PCollection<MongoDbChangeEventContext> contexts =
+        changeEventContexts.get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
+
+    PCollection<MongoDbChangeEventContext> dedupedEvents;
+    if ("stateful".equalsIgnoreCase(options.getOrderingStrategy())) {
+      LOG.info(
+          "Configuring stateful deduplication with micro-batch pre-compaction by collection and doc ID");
+      PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
+          contexts.apply(
+              "Process/KeyByCollectionAndDocId",
+              WithKeys.of(
+                      (MongoDbChangeEventContext event) ->
+                          event.getDataCollection()
+                              + "#"
+                              + Utils.documentIdToString(event.getDocumentId()))
+                  .withKeyType(TypeDescriptors.strings()));
+
+      // Compact rapid bursts on hot documents into the latest monotonic event before state
+      // evaluation
+      PCollection<KV<String, MongoDbChangeEventContext>> compactedEvents =
+          keyedEvents
+              .apply(
+                  "Process/MicroBatchWindow",
+                  Window.<KV<String, MongoDbChangeEventContext>>into(
+                          FixedWindows.of(Duration.millis(500)))
+                      .triggering(
+                          Repeatedly.forever(
+                              AfterFirst.of(
+                                  AfterPane.elementCountAtLeast(50),
+                                  AfterProcessingTime.pastFirstElementInPane()
+                                      .plusDelayOf(Duration.millis(100)))))
+                      .discardingFiredPanes()
+                      .withAllowedLateness(Duration.standardHours(24)))
+              .apply("Process/CombineHotKeys", Combine.perKey(new LatestChangeEventCombineFn()));
+
+      PCollection<KV<String, MongoDbChangeEventContext>> windowedEvents =
+          compactedEvents.apply(
+              "Process/GlobalWindows",
+              Window.<KV<String, MongoDbChangeEventContext>>into(new GlobalWindows()));
+
+      dedupedEvents =
+          windowedEvents.apply(
+              "Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
+    } else {
+      LOG.info("Bypassing stateful deduplication for max throughput");
+      dedupedEvents = contexts;
+    }
+
+    /*
+     * Stage 3: Write/
+     *   - Write/AsyncBulkWriteToFirestore (MongoDbBulkTransforms.BulkWriteWithDlq)
+     *   - Write/WriteToDlq_Retryable
+     *   - Write/WriteToDlq_Severe
+     */
+    LOG.info("Setting up Write/ stage");
+    PCollectionTuple writeResult =
+        dedupedEvents.apply(
+            "Write/AsyncBulkWriteToFirestore",
+            MongoDbBulkTransforms.bulkWriteWithDlq()
+                .withUri(connectionString)
+                .withDatabase(options.getDatabaseName())
+                .withBatchSize(options.getBatchSize())
+                .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
+                .withInitialWriteRatePerWorker(options.getInitialWriteRatePerWorker())
+                .withWriteRateRampUpMinutes(options.getWriteRateRampUpMinutes())
+                .withMaxWriteRatePerWorker(options.getMaxWriteRatePerWorker()));
+
+    writeResult
+        .get(MongoDbBulkTransforms.SUCCESSFUL_WRITE_TAG)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    writeResult
+        .get(MongoDbBulkTransforms.FAILED_WRITE_TAG)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
+    writeResult
+        .get(MongoDbBulkTransforms.SEVERE_FAILED_WRITE_TAG)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
+
+    writeFailedEventsToDlq(
+        options,
+        writeResult,
+        dlqManager,
+        MongoDbBulkTransforms.FAILED_WRITE_TAG,
+        "Write/WriteToDlq_Retryable");
+
+    writeSevereEventsToDlq(
+        options,
+        writeResult,
+        dlqManager,
+        MongoDbBulkTransforms.SEVERE_FAILED_WRITE_TAG,
+        "Write/WriteToDlq_Severe");
+
+    LOG.info("Executing shadowless pipeline");
+    return pipeline.run();
+  }
+
+  /** Read from input path and dlq to collect objects to process without reshuffle. */
+  private static PCollection<FailsafeElement<String, String>> ingestAndNormalizeJsonShadowless(
+      Options options, DeadLetterQueueManager dlqManager, Pipeline pipeline) {
+    LOG.info("Starting Read/ ingestion for shadowless mode");
+    boolean isRegularMode = "regular".equals(options.getRunMode());
+    PCollectionTuple reconsumedElements =
+        pipeline.apply("Read/PollAndReconsumeDLQ", new ReconsumeDlqTransform(options, dlqManager));
+
+    PCollection<FailsafeElement<String, String>> dlqJsonRecords =
+        reconsumedElements
+            .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+            .apply(
+                "Read/Count DLQ Retries",
+                ParDo.of(
+                    new DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>>() {
+                      private final Counter dlqRetries =
+                          Metrics.counter(DataStreamMongoDBToFirestore.class, "dlqRetries");
+
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        dlqRetries.inc();
+                        c.output(c.element());
+                      }
+                    }));
+
+    reconsumedElements
+        .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            "Read/Count Permanent Failures",
+            ParDo.of(
+                new DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>>() {
+                  private final Counter permanentFailures =
+                      Metrics.counter(DataStreamMongoDBToFirestore.class, "permanentFailures");
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    permanentFailures.inc();
+                    c.output(c.element());
+                  }
+                }))
+        .apply(
+            "Read/Write Permanent Failures To DLQ - Sanitize",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Read/Write Permanent Failures To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp_severe/")
+                .setIncludePaneInfo(true)
+                .build());
+
+    if (isRegularMode) {
+      PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
+          pipeline.apply(
+              "Read/DataStreamIO",
+              new DataStreamIO(
+                      options.getStreamName(),
+                      options.getInputFilePattern(),
+                      options.getInputFileFormat(),
+                      options.getGcsPubSubSubscription(),
+                      options.getRfcStartDateTime())
+                  .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle()
+                  .withDirectoryWatchDuration(
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+
+      return PCollectionList.of(datastreamJsonRecords)
+          .and(dlqJsonRecords)
+          .apply("Read/MergeWithReconsumedDlq", Flatten.pCollections())
+          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    } else {
+      return PCollectionList.of(dlqJsonRecords)
+          .apply("Read/MergeWithReconsumedDlq", Flatten.pCollections())
+          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    }
+  }
+
+  /** Legacy execution path: backfill events processed before CDC events with shadow tables. */
+  public static PipelineResult runLegacyWithBackfillFirst(
+      Options options, String connectionString) {
+    return runWithBackfillFirst(options, connectionString);
+  }
+
+  /** Legacy execution path: all events processed together with shadow tables. */
+  public static PipelineResult runLegacyAllEventsTogether(
+      Options options, String connectionString) {
+    return runAllEventsTogether(options, connectionString);
+  }
+
+  /**
+   * Runs the pipeline with backfill events processed before CDC events.
    *
    * @param options The execution parameters to the pipeline.
    * @return The result of the pipeline execution.
    */
   private static PipelineResult runWithBackfillFirst(Options options, String connectionString) {
-    /*
-     * Stages:
-     *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
-     *   2) Convert json strings to MongoDbChangeEventContext
-     *   3) Split the MongoDbChangeEventContext into backfill and cdc events
-     *   4) Process backfill events with bulk writes, failed backfill will be sent to dlq and later processed with transactions and conflict resolving.
-     *   5) Process the cdc events with transactions
-     */
     LOG.info("Creating pipeline with backfill-first processing");
     Pipeline pipeline = Pipeline.create(options);
 
@@ -705,42 +1045,23 @@ public class DataStreamMongoDBToFirestore {
   }
 
   /**
-   * Runs the pipeline with all events processed together.
-   *
-   * <p>This pipeline processes both backfill and CDC events in a unified flow, ordered primarily by
-   * their timestamps. Events with the same timestamp are ordered by type, with backfill events
-   * processed before CDC events. Shadow collections are used to track event ordering and prevent
-   * duplicate processing.
+   * Runs the pipeline with all events processed together using shadow tables.
    *
    * @param options The execution parameters to the pipeline.
    * @return The result of the pipeline execution.
    */
   private static PipelineResult runAllEventsTogether(Options options, String connectionString) {
-    /*
-     * Stages:
-     *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
-     *   2) Convert json strings to MongoDbChangeEvents
-     *   3) Write the change events with transactions
-     */
-
     LOG.info("Creating pipeline");
     Pipeline pipeline = Pipeline.create(options);
 
     LOG.info("Building Dead Letter Queue manager");
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
-    /*
-     * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
-     *   a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
-     */
     LOG.info("Stage 1: Starting ingestion of data from GCS");
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    /*
-     * Optional Stage 1.5: Apply Javascript UDF to transform JSON strings
-     */
     if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
       jsonRecords =
           jsonRecords.apply(
@@ -749,9 +1070,6 @@ public class DataStreamMongoDBToFirestore {
 
     LOG.info("Stage 1: Completed ingestion of data from GCS");
 
-    /*
-     * Stage 2: Create MongoDbChangeEventContext objects with error handling
-     */
     LOG.info("Stage 2: Creating MongoDbChangeEventContext objects");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
@@ -761,17 +1079,14 @@ public class DataStreamMongoDBToFirestore {
                     CreateMongoDbChangeEventContextFn.successfulCreationTag,
                     TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
 
-    /* Set coder for successful creation */
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
         .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
 
-    /* Set coder for failed creation */
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    // Handle failed creation with DLQ
     LOG.info("Setting up DLQ handling for failed event creation");
     writeFailedJsonToDlq(
         options,
@@ -779,7 +1094,6 @@ public class DataStreamMongoDBToFirestore {
         dlqManager,
         CreateMongoDbChangeEventContextFn.failedCreationTag);
 
-    /* Stage 3: Iterate through the success events and write with transactions */
     LOG.info("Stage 3: Processing change events and writing to the destination database");
     PCollectionTuple writeResult =
         changeEventContexts
@@ -793,12 +1107,10 @@ public class DataStreamMongoDBToFirestore {
                         TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
                             .and(ProcessChangeEventFn.severeFailedWriteTag)));
 
-    /* Set coder for successful writes */
     writeResult
         .get(ProcessChangeEventFn.successfulWriteTag)
         .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
 
-    /* Set coder for failed writes */
     writeResult
         .get(ProcessChangeEventFn.failedWriteTag)
         .setCoder(
@@ -813,14 +1125,11 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)));
 
-    /* Handle failed writes with DLQ */
     LOG.info("Setting up DLQ handling for failed writes");
     writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
-    // Write severe failures directly to severe DLQ
     writeSevereEventsToDlq(
         options, writeResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
 
-    // Execute the pipeline and return the result.
     LOG.info("Executing pipeline");
     return pipeline.run();
   }
@@ -834,12 +1143,10 @@ public class DataStreamMongoDBToFirestore {
         tempLocation = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
         LOG.info("Using temp location from pipeline options: {}", tempLocation);
       } else {
-        // If tempLocation is null, use a default location
         tempLocation = "/tmp/";
         LOG.warn("TempLocation is null, using default location: {}", tempLocation);
       }
     } catch (Exception e) {
-      // If we can't get the temp location, use a default
       tempLocation = "/tmp/";
       LOG.warn("Error getting tempLocation, using default location: {}", tempLocation, e);
     }
@@ -869,36 +1176,12 @@ public class DataStreamMongoDBToFirestore {
       Options options, DeadLetterQueueManager dlqManager, Pipeline pipeline) {
     LOG.info("Starting ingestion and normalization of JSON data");
     PCollection<FailsafeElement<String, String>> jsonRecords;
-    // Elements sent to the Dead Letter Queue are to be reconsumed.
-    // A DLQManager is to be created using PipelineOptions, and it is in charge
-    // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements;
     boolean isRegularMode = "regular".equals(options.getRunMode());
 
     LOG.info("Setting up DLQ reconsumption, mode: {}", isRegularMode ? "regular" : "retry");
-    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
-      LOG.info(
-          "Using PubSub notification for DLQ reconsumption with subscription: {}",
-          options.getDlqGcsPubSubSubscription());
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransformForFiles(
-              pipeline.apply(
-                  "Read retry from PubSub",
-                  new PubSubNotifiedDlqIO(
-                      options.getDlqGcsPubSubSubscription(),
-                      // file paths to ignore when re-consuming for retry
-                      new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
-    } else {
-      LOG.info(
-          "Using periodic polling for DLQ reconsumption with retry minutes: {}",
-          options.getDlqRetryMinutes());
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(
-                  "Periodically polling from DLQ",
-                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-    }
+    reconsumedElements =
+        pipeline.apply("PollAndReconsumeDLQ", new ReconsumeDlqTransform(options, dlqManager));
 
     LOG.info("Processing retryable errors from DLQ");
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
@@ -997,7 +1280,6 @@ public class DataStreamMongoDBToFirestore {
       DeadLetterQueueManager dlqManager,
       TupleTag<FailsafeElement<String, String>> failedTag) {
     LOG.info("Setting up DLQ for failed JSON processing");
-    // Write failed writes to DLQ
     results
         .get(failedTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
@@ -1020,8 +1302,16 @@ public class DataStreamMongoDBToFirestore {
       PCollectionTuple results,
       DeadLetterQueueManager dlqManager,
       TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag) {
-    LOG.info("Setting up DLQ for failed MongoDB event processing");
-    // Write failed writes to DLQ
+    writeFailedEventsToDlq(options, results, dlqManager, failedTag, "Write Events Failures To DLQ");
+  }
+
+  private static void writeFailedEventsToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag,
+      String stageName) {
+    LOG.info("Setting up DLQ for failed MongoDB event processing: {}", stageName);
     results
         .get(failedTag)
         .setCoder(
@@ -1029,11 +1319,10 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)))
         .apply(
-            "DLQ: Write Retryable Events Failures to GCS",
-            MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
+            stageName + " - Sanitize", MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply(
-            "Write Events Failures To DLQ",
+            stageName,
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_mongo_event/")
@@ -1047,7 +1336,17 @@ public class DataStreamMongoDBToFirestore {
       PCollectionTuple results,
       DeadLetterQueueManager dlqManager,
       TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag) {
-    LOG.info("Setting up Severe DLQ for failed MongoDB event processing");
+    writeSevereEventsToDlq(
+        options, results, dlqManager, failedTag, "Write Severe Events Failures To DLQ");
+  }
+
+  private static void writeSevereEventsToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag,
+      String stageName) {
+    LOG.info("Setting up Severe DLQ for failed MongoDB event processing: {}", stageName);
     results
         .get(failedTag)
         .setCoder(
@@ -1055,11 +1354,10 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)))
         .apply(
-            "DLQ: Write Severe Events Failures to GCS",
-            MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
+            stageName + " - Sanitize", MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply(
-            "Write Severe Events Failures To DLQ",
+            stageName,
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
                 .withTmpDirectory(
@@ -1097,7 +1395,6 @@ public class DataStreamMongoDBToFirestore {
       }
       JsonNode jsonNode = event.getChangeEvent();
 
-      // Check for CDC-specific fields
       boolean hasCdcFields =
           jsonNode.has("_metadata_log_file")
               || jsonNode.has("_metadata_log_position")
@@ -1105,13 +1402,11 @@ public class DataStreamMongoDBToFirestore {
               || jsonNode.has("_metadata_ssn")
               || jsonNode.has("_metadata_rs_id");
 
-      // Check for change type
       String changeType = null;
       if (jsonNode.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)) {
         changeType = jsonNode.get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY).asText();
       }
 
-      // If it has CDC fields or a specific change type (not READ), it's a CDC event
       return !hasCdcFields && (changeType == null || "READ".equals(changeType));
     }
   }
@@ -1133,7 +1428,6 @@ public class DataStreamMongoDBToFirestore {
     private final String targetDatabaseName;
     private final int batchSize;
 
-    // Maps to store buffered operations by collection
     private transient Map<String, List<MongoDbChangeEventContext>> bufferedEvents;
     private transient Map<String, MongoCollection<Document>> collectionMap;
     private transient MongoClient client;
@@ -1169,9 +1463,8 @@ public class DataStreamMongoDBToFirestore {
                 .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
                 .applyToSocketSettings(
                     builder -> {
-                      // How long the driver will wait to establish a connection
                       builder.connectTimeout(60, TimeUnit.SECONDS);
-                      builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
+                      builder.readTimeout(60, TimeUnit.SECONDS);
                     })
                 .applyToClusterSettings(
                     builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
@@ -1194,12 +1487,10 @@ public class DataStreamMongoDBToFirestore {
       MongoDbChangeEventContext element = context.element();
       String collectionName = element.getDataCollection();
 
-      // Buffer the event
       if (!bufferedEvents.containsKey(collectionName)) {
         LOG.debug("Creating new buffer for collection: {}", collectionName);
         bufferedEvents.put(collectionName, new ArrayList<>());
 
-        // Initialize collection reference if needed
         if (!collectionMap.containsKey(collectionName)) {
           MongoDatabase database = client.getDatabase(targetDatabaseName);
           collectionMap.put(collectionName, database.getCollection(collectionName));
@@ -1208,7 +1499,6 @@ public class DataStreamMongoDBToFirestore {
 
       bufferedEvents.get(collectionName).add(element);
 
-      // If we've reached batch size for this collection, process the batch
       if (bufferedEvents.get(collectionName).size() >= batchSize) {
         LOG.debug(
             "Batch size reached for collection {}, processing {} events",
@@ -1220,7 +1510,6 @@ public class DataStreamMongoDBToFirestore {
 
     @FinishBundle
     public void finishBundle(FinishBundleContext context) {
-      // Process any remaining batches
       for (String collectionName : bufferedEvents.keySet()) {
         if (!bufferedEvents.get(collectionName).isEmpty()) {
           LOG.debug(
@@ -1241,19 +1530,15 @@ public class DataStreamMongoDBToFirestore {
       }
 
       try {
-        // Create bulk operation
         List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
 
-        // Add operations to bulk
         for (MongoDbChangeEventContext event : events) {
           Object docId = event.getDocumentId();
           Bson lookupById = eq("_id", docId);
 
           if (event.isDeleteEvent()) {
-            // Add delete operation
             bulkOperations.add(new DeleteOneModel<>(lookupById));
           } else {
-            // Add upsert operation
             bulkOperations.add(
                 new ReplaceOneModel<>(
                     lookupById,
@@ -1262,7 +1547,6 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write with ordered(false) to isolate failed documents
         BulkWriteResult result =
             collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
@@ -1271,7 +1555,6 @@ public class DataStreamMongoDBToFirestore {
             result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size(),
             result.getDeletedCount());
 
-        // Output successful events
         for (MongoDbChangeEventContext event : events) {
           out.get(successfulWriteTag).output(event);
           successfulWrites.inc();
@@ -1280,7 +1563,6 @@ public class DataStreamMongoDBToFirestore {
         LOG.warn(
             "Bulk write partially failed for collection {}: {}", collectionName, e.getMessage());
 
-        // Identify failed documents and route them to appropriate tag
         Set<Integer> failedIndices = new HashSet<>();
         for (BulkWriteError error : e.getWriteErrors()) {
           failedIndices.add(error.getIndex());
@@ -1290,8 +1572,6 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setErrorMessage(error.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
 
-          // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
-          // limit)
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             out.get(severeFailedWriteTag).output(failedElement);
             severeFailedWrites.inc();
@@ -1301,7 +1581,6 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Output successful events that were not part of the failed indices
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             out.get(successfulWriteTag).output(events.get(i));
@@ -1315,7 +1594,6 @@ public class DataStreamMongoDBToFirestore {
             e.getMessage(),
             e);
 
-        // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
@@ -1326,7 +1604,6 @@ public class DataStreamMongoDBToFirestore {
         }
       }
 
-      // Clear the processed batch
       events.clear();
     }
 
@@ -1339,19 +1616,15 @@ public class DataStreamMongoDBToFirestore {
       }
 
       try {
-        // Create bulk operation
         List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
 
-        // Add operations to bulk
         for (MongoDbChangeEventContext event : events) {
           Object docId = event.getDocumentId();
           Bson lookupById = eq("_id", docId);
 
           if (event.isDeleteEvent()) {
-            // Add delete operation
             bulkOperations.add(new DeleteOneModel<>(lookupById));
           } else {
-            // Add upsert operation
             bulkOperations.add(
                 new ReplaceOneModel<>(
                     lookupById,
@@ -1360,7 +1633,6 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write with ordered(false) to isolate failed documents
         BulkWriteResult result =
             collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
@@ -1369,7 +1641,6 @@ public class DataStreamMongoDBToFirestore {
             result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size(),
             result.getDeletedCount());
 
-        // Output successful events
         for (MongoDbChangeEventContext event : events) {
           context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
           successfulWrites.inc();
@@ -1378,7 +1649,6 @@ public class DataStreamMongoDBToFirestore {
         LOG.warn(
             "Bulk write partially failed for collection {}: {}", collectionName, e.getMessage());
 
-        // Identify failed documents and route them to appropriate tag
         Set<Integer> failedIndices = new HashSet<>();
         for (BulkWriteError error : e.getWriteErrors()) {
           failedIndices.add(error.getIndex());
@@ -1388,8 +1658,6 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setErrorMessage(error.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
 
-          // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
-          // limit)
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             context.output(
                 severeFailedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
@@ -1400,7 +1668,6 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Output successful events that were not part of the failed indices
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             context.output(successfulWriteTag, events.get(i), Instant.now(), GlobalWindow.INSTANCE);
@@ -1414,7 +1681,6 @@ public class DataStreamMongoDBToFirestore {
             e.getMessage(),
             e);
 
-        // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
@@ -1425,7 +1691,6 @@ public class DataStreamMongoDBToFirestore {
         }
       }
 
-      // Clear the processed batch
       events.clear();
     }
 
@@ -1453,7 +1718,6 @@ public class DataStreamMongoDBToFirestore {
       try {
         String fullEventJson = element.getPayload();
         Document doc = Document.parse(fullEventJson);
-        // Handle events wrapped in a changeEvent field (common for reconsumed DLQ records)
         Document innerDoc = Utils.extractInnerEvent(doc);
 
         String changeType = innerDoc.getString(DatastreamConstants.EVENT_CHANGE_TYPE_KEY);
@@ -1463,20 +1727,16 @@ public class DataStreamMongoDBToFirestore {
 
         Object dataVal = innerDoc.get(MongoDbChangeEventContext.DATA_COL);
 
-        // Delete events don't have a 'data' field to transform, so we bypass the UDF.
         if ("DELETE".equalsIgnoreCase(changeType)) {
           c.output(BYPASS_UDF_TAG, element);
           return;
         }
 
-        // Update events with null data occurs when an updated document is later
-        // deleted. In this case, we skip the UDF transformation.
         if ("UPDATE".equalsIgnoreCase(changeType) && dataVal == null) {
           skippedUpdates.inc();
-          return; // Skip by not outputting anything
+          return;
         }
 
-        // Extract and canonicalize the 'data' field for UDF input.
         String canonicalJson = Utils.getCanonicalJsonOfDataField(innerDoc);
         if (canonicalJson == null) {
           throw new IllegalArgumentException(
@@ -1505,20 +1765,12 @@ public class DataStreamMongoDBToFirestore {
 
       try {
         JsonNode fullEventNode = OBJECT_MAPPER.readTree(fullEventJson);
-        // Validate that the UDF output is a valid BSON document before proceeding.
-        // This ensures we don't write invalid data to the destination.
         Document.parse(transformedData);
 
-        // Merge the transformed data back into the full event JSON.
-        // The payload of the output FailsafeElement will contain this modified event JSON,
-        // which is used by downstream steps (like writing to Firestore) to process the update.
-        // The originalPayload remains the raw event for safety and DLQ purposes.
         JsonNode targetNode = Utils.extractInnerEvent(fullEventNode);
         ((ObjectNode) targetNode).put(MongoDbChangeEventContext.DATA_COL, transformedData);
 
         String modifiedEventJson = OBJECT_MAPPER.writeValueAsString(fullEventNode);
-        // Output the element with the preserved original payload and the modified event JSON
-        // containing UDF output.
         c.output(FailsafeElement.of(element.getOriginalPayload(), modifiedEventJson));
       } catch (Exception e) {
         LOG.error("Error restoring UDF output, exception: {}", e.getMessage(), e);
@@ -1554,7 +1806,6 @@ public class DataStreamMongoDBToFirestore {
                   .withOutputTags(
                       UDF_SUCCESS_TAG, TupleTagList.of(PREPARE_FAILURE_TAG).and(BYPASS_UDF_TAG)));
 
-      // Handle failed preparation
       writeFailedJsonToDlq(options, preparedResult, dlqManager, PREPARE_FAILURE_TAG);
 
       PCollection<FailsafeElement<String, String>> preparedInput =
@@ -1597,11 +1848,42 @@ public class DataStreamMongoDBToFirestore {
               .get(UDF_SUCCESS_TAG)
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-      // Merge the restored UDF output with the events that bypassed the UDF.
-      // Both streams now contain the full event JSON in the required format for downstream steps.
       return PCollectionList.of(restoredOutput)
           .and(bypassedElements)
           .apply("Merge Streams", Flatten.pCollections());
+    }
+  }
+
+  /**
+   * Composite PTransform that encapsulates DLQ polling and reconsumption logic under the Read/
+   * stage.
+   */
+  public static class ReconsumeDlqTransform extends PTransform<PBegin, PCollectionTuple> {
+    private final Options options;
+    private final DeadLetterQueueManager dlqManager;
+
+    public ReconsumeDlqTransform(Options options, DeadLetterQueueManager dlqManager) {
+      this.options = options;
+      this.dlqManager = dlqManager;
+    }
+
+    @Override
+    public PCollectionTuple expand(PBegin input) {
+      boolean isRegularMode = "regular".equals(options.getRunMode());
+      if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
+        return dlqManager.getReconsumerDataTransformForFiles(
+            input.apply(
+                "Read retry from PubSub",
+                new PubSubNotifiedDlqIO(
+                    options.getDlqGcsPubSubSubscription(),
+                    new ArrayList<String>(
+                        Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+      } else {
+        return dlqManager.getReconsumerDataTransform(
+            input.apply(
+                "Periodically polling from DLQ",
+                dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      }
     }
   }
 }

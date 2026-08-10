@@ -57,6 +57,142 @@ public final class DataStreamMongoDBToFirestoreTest {
       new TupleTag<FailsafeElement<String, String>>() {};
 
   @Test
+  public void inputArgs_shadowlessDefaults() {
+    String[] args = new String[] {"--inputFilePattern=gs://test-bkt/"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertFalse(options.getUseShadowTables());
+    assertEquals("stateful", options.getOrderingStrategy());
+    assertEquals(Integer.valueOf(500), options.getBatchSize());
+    assertEquals(Integer.valueOf(10), options.getMaxConcurrentAsyncWrites());
+    assertEquals(Integer.valueOf(500), options.getInitialWriteRatePerWorker());
+    assertEquals(Integer.valueOf(5), options.getWriteRateRampUpMinutes());
+    assertEquals(Integer.valueOf(2500), options.getMaxWriteRatePerWorker());
+  }
+
+  @Test
+  public void inputArgs_customShadowlessOptions() {
+    String[] args =
+        new String[] {
+          "--useShadowTables=false",
+          "--orderingStrategy=none",
+          "--batchSize=200",
+          "--maxConcurrentAsyncWrites=20",
+          "--initialWriteRatePerWorker=1000",
+          "--writeRateRampUpMinutes=10",
+          "--maxWriteRatePerWorker=5000"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertFalse(options.getUseShadowTables());
+    assertEquals("none", options.getOrderingStrategy());
+    assertEquals(Integer.valueOf(200), options.getBatchSize());
+    assertEquals(Integer.valueOf(20), options.getMaxConcurrentAsyncWrites());
+    assertEquals(Integer.valueOf(1000), options.getInitialWriteRatePerWorker());
+    assertEquals(Integer.valueOf(10), options.getWriteRateRampUpMinutes());
+    assertEquals(Integer.valueOf(5000), options.getMaxWriteRatePerWorker());
+  }
+
+  @Test
+  public void validateOptions_validShadowlessOptions() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--orderingStrategy=stateful",
+          "--batchSize=500",
+          "--maxConcurrentAsyncWrites=10",
+          "--initialWriteRatePerWorker=500",
+          "--writeRateRampUpMinutes=5",
+          "--maxWriteRatePerWorker=2500"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DataStreamMongoDBToFirestore.validateOptions(options);
+  }
+
+  @Test
+  public void validateOptions_invalidOrderingStrategy_throwsException() {
+    String[] args =
+        new String[] {"--inputFilePattern=gs://test-bkt/", "--orderingStrategy=invalid_strategy"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamMongoDBToFirestore.validateOptions(options));
+  }
+
+  @Test
+  public void validateOptions_invalidBatchSize_throwsException() {
+    String[] args = new String[] {"--inputFilePattern=gs://test-bkt/", "--batchSize=0"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamMongoDBToFirestore.validateOptions(options));
+  }
+
+  @Test
+  public void validateOptions_invalidMaxConcurrentAsyncWrites_throwsException() {
+    String[] args =
+        new String[] {"--inputFilePattern=gs://test-bkt/", "--maxConcurrentAsyncWrites=-1"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamMongoDBToFirestore.validateOptions(options));
+  }
+
+  @Test
+  public void validateOptions_invalidRateRampUpBounds_throwsException() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--initialWriteRatePerWorker=5000",
+          "--maxWriteRatePerWorker=2000"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamMongoDBToFirestore.validateOptions(options));
+  }
+
+  @Test
+  public void validateOptions_invalidRampUpMinutes_throwsException() {
+    String[] args =
+        new String[] {"--inputFilePattern=gs://test-bkt/", "--writeRateRampUpMinutes=-1"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamMongoDBToFirestore.validateOptions(options));
+  }
+
+  @Test
   public void inputArgs_inputFilePattern() {
     String[] args = new String[] {"--inputFilePattern=gs://test-bkt/"};
     DataStreamMongoDBToFirestore.Options options =

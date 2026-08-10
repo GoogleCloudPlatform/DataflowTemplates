@@ -94,6 +94,9 @@ public class MongoDbChangeEventContext implements Serializable {
           .asText()
           .equalsIgnoreCase("true");
     }
+    if (changeEvent.has("_metadata_dlq_reconsumed")) {
+      return changeEvent.get("_metadata_dlq_reconsumed").asText().equalsIgnoreCase("true");
+    }
     return false;
   }
 
@@ -143,11 +146,13 @@ public class MongoDbChangeEventContext implements Serializable {
         this.documentId = docIdVal.asDouble();
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
-      } else if (docIdVal.isObject()) {
-        if (docIdVal.has(OID_FIELD_NAME) && docIdVal.get(OID_FIELD_NAME).isTextual()) {
+      } else if (docIdVal.isObject() || docIdVal.isArray()) {
+        if (docIdVal.isObject()
+            && docIdVal.has(OID_FIELD_NAME)
+            && docIdVal.get(OID_FIELD_NAME).isTextual()) {
           this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
         } else {
-          // Support for generic Object-typed IDs or other complex BSON types (e.g., Binary)
+          // Support for generic Document (Map), Array (List), Binary, and composite BSON _id types
           Document wrapper = Document.parse("{ \"val\": " + docIdVal.toString() + " }");
           this.documentId = wrapper.get("val");
         }
@@ -182,7 +187,7 @@ public class MongoDbChangeEventContext implements Serializable {
     this.isUpdateEvent = isUpdateEvent(changeEvent);
 
     this.jsonStringData = dataAsJsonString();
-    this.shadowDocument = generateShadowDocument();
+    this.shadowDocument = null;
     this.isDlqReconsumed = isDlqReconsumed(changeEvent);
   }
 
@@ -245,6 +250,13 @@ public class MongoDbChangeEventContext implements Serializable {
   }
 
   public Document getShadowDocument() {
+    if (this.shadowDocument == null && this.shadowCollection != null) {
+      try {
+        return generateShadowDocument();
+      } catch (JsonProcessingException e) {
+        LOG.warn("Failed to generate shadow document: {}", e.getMessage());
+      }
+    }
     return shadowDocument;
   }
 
@@ -317,10 +329,35 @@ public class MongoDbChangeEventContext implements Serializable {
     }
   }
 
+  @Override
   public boolean equals(Object other) {
+    if (this == other) {
+      return true;
+    }
     if (other instanceof MongoDbChangeEventContext) {
-      return Objects.equals(this.toString(), other.toString());
+      MongoDbChangeEventContext o = (MongoDbChangeEventContext) other;
+      return Objects.equals(this.dataCollection, o.dataCollection)
+          && Objects.equals(this.documentId, o.documentId)
+          && Objects.equals(this.timestampDoc, o.timestampDoc)
+          && this.isDeleteEvent == o.isDeleteEvent
+          && this.isUpdateEvent == o.isUpdateEvent
+          && this.isDlqReconsumed == o.isDlqReconsumed
+          && this.retryCount == o.retryCount
+          && Objects.equals(this.changeEvent, o.changeEvent);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        dataCollection,
+        documentId,
+        timestampDoc,
+        isDeleteEvent,
+        isUpdateEvent,
+        isDlqReconsumed,
+        retryCount,
+        changeEvent);
   }
 }

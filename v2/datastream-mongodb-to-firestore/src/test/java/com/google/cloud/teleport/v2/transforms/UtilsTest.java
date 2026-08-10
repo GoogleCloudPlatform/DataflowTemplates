@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.bson.Document;
 import org.bson.types.Binary;
@@ -172,20 +173,26 @@ public class UtilsTest {
 
   @Test
   public void testDocumentIdToString() {
-    assertEquals("test_id", Utils.documentIdToString("test_id"));
-    assertEquals("123", Utils.documentIdToString(123L));
-    assertEquals("123.456", Utils.documentIdToString(123.456));
-    assertEquals("true", Utils.documentIdToString(true));
+    assertEquals("str_test_id", Utils.documentIdToString("test_id"));
+    assertEquals("i64_123", Utils.documentIdToString(123L));
+    assertEquals("f64_123.456", Utils.documentIdToString(123.456));
+    assertEquals("str_true", Utils.documentIdToString(true));
     assertEquals("null", Utils.documentIdToString(null));
 
     ObjectId objectId = new ObjectId("645c9a7e7b8b1a0e9c0f8b3a");
-    assertEquals("645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
+    assertEquals("oid_645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
 
     Binary binary = new Binary(new byte[] {1, 2, 3});
-    assertEquals("AQID", Utils.documentIdToString(binary));
+    assertEquals("bin_0_AQID", Utils.documentIdToString(binary));
 
     Document doc = new Document("a", 1).append("b", "test");
-    assertEquals("{\"a\": 1, \"b\": \"test\"}", Utils.documentIdToString(doc));
+    assertEquals(
+        "doc_{\"a\": {\"$numberInt\": \"1\"}, \"b\": \"test\"}", Utils.documentIdToString(doc));
+
+    List<Object> list = java.util.Arrays.asList(1, "partA", 2);
+    assertEquals(
+        "list_{\"arr\": [{\"$numberInt\": \"1\"}, \"partA\", {\"$numberInt\": \"2\"}]}",
+        Utils.documentIdToString(list));
   }
 
   @Test
