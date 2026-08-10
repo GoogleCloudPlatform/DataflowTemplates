@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -78,10 +79,12 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
       "BulkMigrationAndValidationMySQLAllDataTypesE2EIT/mysql-schema.sql";
 
   private CloudMySQLResourceManager mySQLResourceManager;
+  private TimeZone originalTimeZone;
 
   @Before
   public void setUp() throws IOException {
-    java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+    originalTimeZone = TimeZone.getDefault();
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     mySQLResourceManager = CloudMySQLResourceManager.builder(testName).build();
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
@@ -91,6 +94,9 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
 
   @After
   public void tearDown() {
+    if (originalTimeZone != null) {
+      TimeZone.setDefault(originalTimeZone);
+    }
     ResourceManagerUtils.cleanResources(
         mySQLResourceManager, flexTemplateDataflowJobResourceManager);
     // Spanner and BigQuery are automatically cleaned up in tearDownBase()
@@ -183,11 +189,6 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
     minValues.put("blob_col", new byte[0]);
     minValues.put("mediumblob_col", new byte[0]);
     minValues.put("longblob_col", new byte[0]);
-    minValues.put("varbinary_col", "");
-    minValues.put("tinyblob_col", "");
-    minValues.put("blob_col", "");
-    minValues.put("mediumblob_col", "");
-    minValues.put("longblob_col", "");
     minValues.put("tinytext_col", "");
     minValues.put("text_col", "");
     minValues.put("mediumtext_col", "");
