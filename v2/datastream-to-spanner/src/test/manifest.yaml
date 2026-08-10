@@ -1,0 +1,176 @@
+scenarios:
+  # ==================================================================
+  # Live CDC Replication (v2/datastream-to-spanner)
+  # ==================================================================
+  - id: live-it
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerIT
+    description: "Main functional integration test for standard datastream-to-spanner live streaming CDC migrations."
+
+  - id: live-events
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerEventsIT
+    description: "Validates event processing, filtering, and delivery semantics under streaming CDC replication."
+
+  - id: live-dlq-all
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerMySQLRetryAllDLQIT
+    description: "Validates standard MySQL live replication DLQ retry operations under message parsing or constraint failures."
+
+  - id: live-dlq-single
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerMySQLRetryDLQIT
+    description: "Validates DLQ processing and single-message retry delivery for non-sharded MySQL live replication pipelines."
+
+  - id: live-sharded-dlq-all
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerShardedMySQLRetryAllDLQIT
+    description: "Validates DLQ retry and dead-letter queue recovery behavior for sharded MySQL live replication databases."
+
+  - id: live-sharded-dlq-single
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerShardedMySQLRetryDLQIT
+    description: "Validates DLQ processing and single-message retry delivery for sharded MySQL live replication pipelines."
+
+  - id: live-widerow-maxcolumns
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMaxColumnsPerTablesIT
+    description: "Validates live replication stability when tables contain the maximum column widths supported by the database engine."
+
+  - id: live-widerow-maxrowsize
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
+    description: "Tests throughput and streaming limits when migrating single wide rows containing payloads near the maximum size limits (approx 9MB)."
+
+  - id: live-widerow-maxname
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
+    description: "Validates handling of extremely long table and column identifiers under target-native limits."
+
+  - id: live-widerow-max16key
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
+    description: "Validates live streaming replication handling table structures containing a maximum of 16-column primary keys."
+
+  - id: live-datatypes
+    type: datatypes
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDatastreamToSpannerDataTypesAndExpressionIT
+    description: "Validates streaming replication of standard MySQL data types and expression mappings into Spanner."
+
+  - id: live-tableindex-limits
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDatastreamToSpannerTableAndIndexLimitsIT
+    description: "Validates live replication table and index propagation limits under heavy schema load."
+
+  - id: live-reservedkeywords
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DatastreamToSpannerReservedKeywordsMySqlIT
+    description: "Validates CDC live replication when dealing with database reserved keywords as column or table names."
+
+  - id: live-fileoverrides
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerFileOverridesIT
+    description: "CDC migration test verifying custom file override configuration properties."
+
+  - id: live-timezone
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerTimezoneIT
+    description: "Verifies timezone conversions and uniformization under real-time streaming CDC ingestion."
+
+  - id: live-session
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerSessionIT
+    description: "Validates custom session mappings under datastream-to-spanner CDC replication."
+
+  - id: live-singledf-sharded
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DatastreamToSpannerSingleDFShardedMigrationIT
+    description: "Validates sharded migration using a single Dataflow pipeline."
+
+  - id: live-ddl
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerDDLIT
+    description: "Asserts DDL synchronization and schema modification propagation from MySQL to Spanner."
+
+  - id: live-stringoverrides
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerStringOverridesIT
+    description: "Verifies string overrides and modifications during CDC streaming."
+
+  - id: live-mixed
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerMixedIT
+    description: "Validates mixed DDL and data migrations under heavy parallel CDC load."
+
+  - id: live-shadow-fileoverrides
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseFileOverridesIT
+    description: "Validates CDC migration using separate shadow table databases with file overrides."
+
+  - id: live-shadow-session
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseSessionIT
+    description: "Validates shadow table isolation with custom session mapping."
+
+  - id: live-shadow-pkfocused
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabasePKFocusedIT
+    description: "Validates shadow table database mappings focused specifically on primary keys."
+
+  - id: live-shadow-ddl
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseDDLIT
+    description: "Validates shadow table database schema DDL creations and syncs."
+
+  - id: live-shadow-events
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseEventsIT
+    description: "Validates event stream replication inside separate shadow table databases."
+
+  - id: live-shadow-mixed
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseMixedIT
+    description: "Validates mixed DDL operations inside isolated shadow database setups."
+
+  - id: live-shadow-stringoverrides
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseStringOverridesIT
+    description: "Verifies string type override modifications inside isolated shadow database environments."
+
+  - id: live-shadow-singledf-sharded
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseSingleDFShardedMigrationIT
+    description: "Validates shadow database isolation in a single Dataflow pipeline."
+
+  - id: live-shadow-sharded-with-shardid
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColumnIT
+    description: "Sharded migration targeting isolated shadow databases using a migration shard ID column."
+
+  - id: live-shadow-sharded-without-shardid
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdColumnIT
+    description: "Sharded migration targeting isolated shadow databases without a migration shard ID column."
+
+  - id: live-sharded-with-shardid
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
+    description: "Validates sharded live CDC migration where the source table explicitly includes a migration shard ID column."
+
+  - id: live-sharded-without-shardid
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
+    description: "Validates sharded live CDC migration where the pipeline dynamically routes shards without a dedicated shard ID column."
+
+  - id: live-tableindex-limits-pg
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates live replication table and index propagation limits targeting a PostgreSQL-dialect Spanner database."
+
+  - id: live-widerow-maxtablename
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMaxTableNameIT
+    description: "Validates live streaming replication when table names hit the maximum allowed length."
+
