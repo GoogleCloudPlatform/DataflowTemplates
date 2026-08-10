@@ -72,6 +72,12 @@ public class SpannerSpToSrcSourceConnectorTest {
     when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");
     when(mockSpannerShard.getDatabaseId()).thenReturn("my-database");
 
+    com.google.cloud.teleport.v2.spanner.ddl.Ddl ddl =
+        com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder().build();
+    connector.setTargetDdl(ddl);
+
+    assertEquals(ddl, connector.getTargetDdl());
+
     IDao dao = connector.getDao(mockSpannerShard);
     assertNotNull(dao);
     assertTrue(dao instanceof SpannerTargetDao);

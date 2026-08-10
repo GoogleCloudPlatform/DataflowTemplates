@@ -63,15 +63,15 @@ public class SourceProcessorFactory {
    * @param shards the list of shards for the source
    * @param maxConnections the maximum number of connections
    * @return a configured SourceProcessor instance
-   * @throws Exception if the source type is invalid
+   * @throws UnsupportedSourceException if the source type is invalid
    */
   public static SourceProcessor createSourceProcessor(
       String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
-    ISpToSrcSourceConnector sourceInstance = getSource(source);
+    ISpToSrcSourceConnector sourceConnector = getSource(source);
 
-    IDMLGenerator dmlGenerator = sourceInstance.getDmlGenerator();
-    sourceInstance.initConnectionHelper(shards, maxConnections);
-    Map<String, IDao> sourceDaoMap = createSourceDaoMap(sourceInstance, shards);
+    IDMLGenerator dmlGenerator = sourceConnector.getDmlGenerator();
+    sourceConnector.initConnectionHelper(shards, maxConnections);
+    Map<String, IDao> sourceDaoMap = createSourceDaoMap(sourceConnector, shards);
 
     return SourceProcessor.builder().dmlGenerator(dmlGenerator).sourceDaoMap(sourceDaoMap).build();
   }
@@ -82,10 +82,10 @@ public class SourceProcessorFactory {
   }
 
   private static Map<String, IDao> createSourceDaoMap(
-      ISpToSrcSourceConnector sourceInstance, List<Shard> shards) {
+      ISpToSrcSourceConnector sourceConnector, List<Shard> shards) {
     Map<String, IDao> sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
-      sourceDaoMap.put(shard.getLogicalShardId(), sourceInstance.getDao(shard));
+      sourceDaoMap.put(shard.getLogicalShardId(), sourceConnector.getDao(shard));
     }
     return sourceDaoMap;
   }

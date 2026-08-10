@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
@@ -32,6 +33,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
+  private Ddl targetDdl;
 
   public SpannerSpToSrcSourceConnector() {
     this.connectionHelper = new SpannerConnectionHelper();
@@ -40,6 +42,14 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   @VisibleForTesting
   SpannerSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
+  }
+
+  public void setTargetDdl(Ddl targetDdl) {
+    this.targetDdl = targetDdl;
+  }
+
+  public Ddl getTargetDdl() {
+    return targetDdl;
   }
 
   @Override
@@ -64,9 +74,24 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   @Override
   public IDao getDao(Shard shard) {
+    SpannerShard spannerShard = (SpannerShard) shard;
+    checkAndInitTargetDdl(spannerShard);
     return new SpannerTargetDao(
-        SpannerConnectionHelper.connectionKey((SpannerShard) shard),
-        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper());
+        SpannerConnectionHelper.connectionKey(spannerShard),
+        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper(),
+        targetDdl);
+  }
+
+  private synchronized Ddl checkAndInitTargetDdl(SpannerShard spannerShard) {
+    if (targetDdl == null) {
+      SpannerConfig targetSpannerConfig =
+          SpannerConfig.create()
+              .withProjectId(spannerShard.getProjectId())
+              .withInstanceId(spannerShard.getInstanceId())
+              .withDatabaseId(spannerShard.getDatabaseId());
+      targetDdl = new SpannerInformationSchemaScanner(targetSpannerConfig).scanDdl();
+    }
+    return targetDdl;
   }
 
   @Override
@@ -104,7 +129,10 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
             .withProjectId(spannerShard.getProjectId())
             .withInstanceId(spannerShard.getInstanceId())
             .withDatabaseId(spannerShard.getDatabaseId());
-    return new SpannerInformationSchemaScanner(targetSpannerConfig).scan();
+    SpannerInformationSchemaScanner scanner =
+        new SpannerInformationSchemaScanner(targetSpannerConfig);
+    targetDdl = scanner.scanDdl();
+    return scanner.convertDdlToSourceSchema(targetDdl);
   }
 
   @Override

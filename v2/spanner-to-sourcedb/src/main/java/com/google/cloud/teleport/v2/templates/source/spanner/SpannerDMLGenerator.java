@@ -169,7 +169,24 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       }
     }
 
-    return new SpannerMutationResponse(builder.build());
+    Key.Builder keyBuilder = Key.newBuilder();
+    for (IndexColumn pkIndexCol : sourceSpannerTable.primaryKeys()) {
+      String sourceColName = pkIndexCol.name();
+      Column sourceCol = sourceSpannerTable.column(sourceColName);
+      Object customVal = null;
+      if (request.getCustomTransformationResponse() != null
+          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
+        customVal = request.getCustomTransformationResponse().get(sourceColName);
+      }
+      JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
+      if (customVal != null) {
+        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
+      } else if (valuesJson.has(sourceColName)) {
+        appendKeyComponent(keyBuilder, sourceCol, valuesJson, sourceColName);
+      }
+    }
+
+    return new SpannerMutationResponse(builder.build(), keyBuilder.build());
   }
 
   private static DMLGeneratorResponse buildDeleteMutation(
@@ -220,8 +237,9 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       }
     }
 
-    Mutation mutation = Mutation.delete(targetTableName, keyBuilder.build());
-    return new SpannerMutationResponse(mutation);
+    Key primaryKey = keyBuilder.build();
+    Mutation mutation = Mutation.delete(targetTableName, primaryKey);
+    return new SpannerMutationResponse(mutation, primaryKey);
   }
 
   private static void setColumnValue(

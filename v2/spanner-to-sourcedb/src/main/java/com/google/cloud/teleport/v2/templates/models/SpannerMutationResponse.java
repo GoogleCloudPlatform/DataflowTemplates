@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.models;
 
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 
 /**
@@ -24,14 +25,24 @@ import com.google.cloud.spanner.Mutation;
 public class SpannerMutationResponse extends DMLGeneratorResponse {
 
   private final Mutation mutation;
+  private final Key primaryKey;
 
   public SpannerMutationResponse(Mutation mutation) {
+    this(mutation, null);
+  }
+
+  public SpannerMutationResponse(Mutation mutation, Key primaryKey) {
     super("");
     this.mutation = mutation;
+    this.primaryKey = primaryKey;
   }
 
   public Mutation getMutation() {
     return mutation;
+  }
+
+  public Key getPrimaryKey() {
+    return primaryKey;
   }
 
   @Override

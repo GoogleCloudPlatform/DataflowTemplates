@@ -54,8 +54,7 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
     this.spannerConfig = spannerConfig;
   }
 
-  @Override
-  public SourceSchema scan() {
+  public Ddl scanDdl() {
     SpannerAccessor accessor = SpannerAccessor.getOrCreate(spannerConfig);
     try {
       BatchClient batchClient = accessor.getBatchClient();
@@ -63,13 +62,19 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
       InformationSchemaScanner scanner = new InformationSchemaScanner(txn);
       Ddl ddl = scanner.scan();
       LOG.info("Scanned Spanner schema for database '{}'", spannerConfig.getDatabaseId().get());
-      return convertDdlToSourceSchema(ddl);
+      return ddl;
     } finally {
       accessor.close();
     }
   }
 
-  SourceSchema convertDdlToSourceSchema(Ddl ddl) {
+  @Override
+  public SourceSchema scan() {
+    Ddl ddl = scanDdl();
+    return convertDdlToSourceSchema(ddl);
+  }
+
+  public SourceSchema convertDdlToSourceSchema(Ddl ddl) {
     Map<String, SourceTable> tables = new HashMap<>();
     for (Table spannerTable : ddl.allTables()) {
       SourceTable sourceTable = convertTable(spannerTable);
