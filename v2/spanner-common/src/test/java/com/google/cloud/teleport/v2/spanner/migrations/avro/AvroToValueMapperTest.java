@@ -269,7 +269,7 @@ public class AvroToValueMapperTest {
             + "}";
     Value valueJson =
         getGsqlMap().get(Type.json()).apply(fruitJson, SchemaBuilder.builder().stringType());
-    assertEquals("Test json input", Value.string(fruitJson), valueJson);
+    assertEquals("Test json input", Value.json(fruitJson), valueJson);
 
     result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
     assertEquals("", result);
