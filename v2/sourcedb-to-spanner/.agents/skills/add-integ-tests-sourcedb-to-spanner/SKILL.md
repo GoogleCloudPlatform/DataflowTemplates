@@ -23,10 +23,10 @@ You must immediately load and execute the `v2/spanner-common/.agents/skills/meta
 3. **Testing Environment Setup Path:** Extract from the user prompt and assert its presence.
 4. **Manifest File Path:** `v2/sourcedb-to-spanner/src/test/manifest.yaml`.
 5. **Target Template Path:** `v2/sourcedb-to-spanner`
-6. **Phase 1 Smoke Scenarios:** `bulk-simple`
-7. **Phase 2 Baseline Datatype Scenarios:** `bulk-datatypes`, `bulk-datatypes-pg`
+6. **Smoke Test Scenarios:** `bulk-simple`
+7. **Datatype Test Scenarios:** `bulk-datatypes`, `bulk-datatypes-pg`
 
-Yield execution completely to the `meta-test-orchestrator`. Instruct the Orchestrator to begin Phase 1 using these parameters.
+Yield execution completely to the `meta-test-orchestrator`. Instruct the Orchestrator to begin using these parameters.
 
 ## Example User Prompt
 ```text

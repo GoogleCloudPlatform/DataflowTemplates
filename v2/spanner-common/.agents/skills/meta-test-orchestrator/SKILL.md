@@ -10,7 +10,7 @@ This skill instructs an AI Agent to act as the "Project Manager" for onboarding 
 ---
 
 ## 1. Goal
-Orchestrate a fully automated, 3-Phase pipeline to build, test, and verify every single scenario defined in the template's `src/test/manifest.yaml`. 
+Orchestrate a fully automated, pipeline to build, test, and verify every single scenario defined in the template's `src/test/manifest.yaml`. 
 
 You MUST execute all spawned subagents **sequentially**. Do NOT run subagents concurrently, to prevent Maven staging conflicts.
 
@@ -33,8 +33,8 @@ When a user begins a session with this Meta-Skill, ensure you have the following
 2. **Reference Mapping Matrix File Path:**
 3. **Testing Environment Setup Path:** Confirm that `testing_execution.env` is populated in the workspace root.
 4. **Target Template Path:**
-5. **Phase 1 Smoke Scenarios:** (comma-separated list of scenario IDs)
-6. **Phase 2 Baseline Datatype Scenarios:** (comma-separated list of scenario IDs)
+5. **Smoke Test Scenarios:** (comma-separated list of scenario IDs)
+6. **Datatype Test Scenarios:** (comma-separated list of scenario IDs)
 7. **Manifest File Path:**
 
 > [!IMPORTANT]
@@ -64,23 +64,23 @@ If ANY of the prompt inputs are missing, or if the `testing_execution.env` file 
 
 ---
 
-## 5. The 3-Phase Execution Pipeline
+## 5. The Execution Pipeline
 
-You must guide the workflow through these phases sequentially, waiting for one subagent to complete successfully before advancing or spinning up the next.
+You must guide the workflow through these steps sequentially, waiting for one subagent to complete successfully before advancing or spinning up the next.
 
-### Phase 1: Infrastructure Smoke Tests
+### Infrastructure Smoke Tests
 **Goal:** Prove the infrastructure and `testing_execution.env` works before adding complex data types.
-**Action:** Spawn a subagent using **Prompt Template A** targeting only the scenarios provided in the **Phase 1 Smoke Scenarios** input list (e.g., `bulk-simple`).
+**Action:** Spawn a subagent using **Prompt Template A** targeting only the scenarios provided in the **Smoke Test Scenarios** input list (e.g., `bulk-simple`).
 
-### Phase 2: Complete Datatypes Validation
+### Complete Datatypes Validation
 **Goal:** Validate all datatypes for the template (including alternate dialects like PostgreSQL Spanner deployments) using the provided reference mapping file.
-**Action:** Spawn subagents sequentially using **Prompt Template B** for the explicit scenarios provided in the **Phase 2 Baseline Datatype Scenarios** input list.
+**Action:** Spawn subagents sequentially using **Prompt Template B** for the explicit scenarios provided in the **Datatype Test Scenarios** input list.
 
 Once those are complete, aggressively scan the provided **Manifest File Path** for any **additional** scenarios tagged with `type: datatypes` (that you haven't executed yet) and spawn subagents for them one at a time. Wait for each subagent to complete before spawning the next.
 
-### Phase 3: Functional Scenarios Scale-Out
+### Functional Scenarios Scale-Out
 **Goal:** Translate the remaining complex features (e.g., sharding, foreign keys, limits).
-**Action:** Scan the provided **Manifest File Path** for all remaining functional scenarios (not covered in Phases 1-2).
+**Action:** Scan the provided **Manifest File Path** for all remaining functional scenarios (not covered in the previous steps).
 - Spawn subagents for each scenario **one at a time** using **Prompt Template A**.
 - **Crucial Rule:** As soon as one subagent completes successfully, instantly capture its logs and reports, update your tracker, and proactively move linearly to spawn the next subagent scenario. Do absolutely NOT halt the pipeline or wait for user input/confirmation between scenarios!
 
@@ -98,7 +98,7 @@ Once those are complete, aggressively scan the provided **Manifest File Path** f
 ## 6. Subagent Prompt Templates
 
 ### Prompt Template A (Functional Worker)
-Use this prompt when invoking subagents for Phases 1 and 4.
+Use this prompt when invoking subagents for Smoke Tests and Functional Scenarios.
 **Skill to load:** `v2/spanner-common/.agents/skills/add-source-functional-integ-test/SKILL.md`
 ```text
 Please load and execute the `v2/spanner-common/.agents/skills/add-source-functional-integ-test/SKILL.md` skill to generate a functional integration test.
@@ -120,7 +120,7 @@ CRITICAL CONSTRAINTS:
 ```
 
 ### Prompt Template B (Datatype Worker)
-Use this prompt when invoking subagents for Phases 2 and 3.
+Use this prompt when invoking subagents for Datatypes Validation.
 **Skill to load:** `v2/spanner-common/.agents/skills/add-source-datatype-integ-test/SKILL.md`
 ```text
 Please load and execute the `v2/spanner-common/.agents/skills/add-source-datatype-integ-test/SKILL.md` skill to generate a datatype integration test.
