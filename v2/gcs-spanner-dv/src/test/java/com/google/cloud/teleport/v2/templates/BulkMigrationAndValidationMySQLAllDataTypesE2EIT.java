@@ -40,7 +40,33 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** End-to-End Integration test for all supported data types mapping from MySQL to Spanner. */
+/**
+ * End-to-End Integration test validating the migration and validation of all supported data types
+ * from MySQL to Spanner.
+ *
+ * <p>This test verifies the entire lifecycle of data types across two pipelines (Bulk Migration and
+ * Data Validation). Specifically, it evaluates how the bulk migration pipeline maps each MySQL data
+ * type to Avro and Spanner, and subsequently, how the validation pipeline uses those Avro files to
+ * perform end-to-end data validation.
+ *
+ * <p>The test is driven by schemas that reflect real-world mappings:
+ *
+ * <ul>
+ *   <li>The MySQL schema contains all supported MySQL data types.
+ *   <li>The Spanner schema utilizes the default data type mapping provided by Spanner Migration
+ *       Tool (SMT).
+ * </ul>
+ *
+ * <p>To ensure comprehensive boundary coverage, the test injects and validates four distinct rows
+ * of data:
+ *
+ * <ul>
+ *   <li><b>Standard Row:</b> Typical, everyday values.
+ *   <li><b>Null Row:</b> Tests NULL value handling across all nullable columns.
+ *   <li><b>Minimum Row:</b> Tests lower bounds, negative limits, and minimum string lengths.
+ *   <li><b>Maximum Row:</b> Tests upper bounds, large text/blob limits, and maximum string sizes.
+ * </ul>
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
@@ -151,12 +177,12 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
     minValues.put("year_col", 0);
     minValues.put("char_col", "");
     minValues.put("varchar_col", "");
-    minValues.put("binary_col", "0x" + "00".repeat(255));
-    minValues.put("varbinary_col", "0x" + "00".repeat(2000));
-    minValues.put("tinyblob_col", "0x" + "00".repeat(255));
-    minValues.put("blob_col", "0x" + "00".repeat(65535));
-    minValues.put("mediumblob_col", "0x" + "00".repeat(2 * 1024 * 1024));
-    minValues.put("longblob_col", "0x" + "00".repeat(2 * 1024 * 1024));
+    minValues.put("binary_col", new byte[0]);
+    minValues.put("varbinary_col", new byte[0]);
+    minValues.put("tinyblob_col", new byte[0]);
+    minValues.put("blob_col", new byte[0]);
+    minValues.put("mediumblob_col", new byte[0]);
+    minValues.put("longblob_col", new byte[0]);
     minValues.put("varbinary_col", "");
     minValues.put("tinyblob_col", "");
     minValues.put("blob_col", "");
@@ -197,29 +223,34 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
     maxValues.put("timestamp_col", "2038-01-19 03:14:07.999999");
     maxValues.put("year_col", 2155);
     maxValues.put("char_col", "Z".repeat(255));
+    // Note on VARCHAR and VARBINARY limits: While their theoretical maximum length is 65,535 bytes,
+    // MySQL enforces a strict 65,535-byte limit on the total size of a single row across all
+    // columns.
+    // Consequently, testing their absolute maximum bounds alongside other columns in this table is
+    // not possible.
     maxValues.put("varchar_col", "Z".repeat(2000));
     maxValues.put("binary_col", "0x" + "FF".repeat(255));
     maxValues.put("varbinary_col", "0x" + "FF".repeat(2000));
     maxValues.put("tinyblob_col", "0x" + "FF".repeat(255));
     maxValues.put("blob_col", "0x" + "FF".repeat(65535));
 
-    // Testing large limits. Kept exactly below 10 MiB accounting for Spanner's internal
-    // serialization overhead.
-    // Cloud Spanner's absolute hard limit for a single column value (STRING/BYTES) is 10 MiB.
-    // We use (10 MiB - 1024 bytes) to safely avoid Dataflow SpannerIO mutation serialization
-    // limits.
-    // Additionally, MySQL max_allowed_packet would reject this if > 64MB by default.
+    // Testing large limits for MEDIUMBLOB, LONGBLOB, MEDIUMTEXT, LONGTEXT, and JSON:
+    // While MySQL supports much larger capacities for these types (up to 4GB for
+    // LONGBLOB/LONGTEXT),
+    // Cloud Spanner enforces a strict hard limit of 10 MiB per individual cell (STRING/BYTES).
+    // Testing their true maximums would exceed Spanner's mutation size limits. Here, values are
+    // safely capped at ~2 MiB to accommodate Dataflow SpannerIO serialization overhead and to
+    // stay well within MySQL's default max_allowed_packet size (64MB).
     final int safeBlobSize = (2 * 1024 * 1024);
     maxValues.put("mediumblob_col", "0x" + "FF".repeat(safeBlobSize));
     maxValues.put("longblob_col", "0x" + "FF".repeat(safeBlobSize));
-    maxValues.put("tinytext_col", "Z".repeat(255));
-    maxValues.put("text_col", "Z".repeat(65535));
     maxValues.put("mediumtext_col", "Z".repeat(safeBlobSize));
     maxValues.put("longtext_col", "Z".repeat(safeBlobSize));
-    maxValues.put("enum_col", "v65535");
+
+    maxValues.put("tinytext_col", "Z".repeat(255));
+    maxValues.put("text_col", "Z".repeat(65535));
     maxValues.put("enum_col", "v3");
     maxValues.put("set_col", "v1,v2,v3");
-    // maxValues.put("json_col", "{\"max\": \"" + "Z".repeat(safeBlobSize - 11) + "\"}");
     records.add(maxValues);
 
     mySQLResourceManager.write("AllDatatypes", records);
