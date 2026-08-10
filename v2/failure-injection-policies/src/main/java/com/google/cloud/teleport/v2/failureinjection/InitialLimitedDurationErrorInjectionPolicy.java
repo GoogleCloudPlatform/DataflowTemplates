@@ -22,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +38,12 @@ public class InitialLimitedDurationErrorInjectionPolicy
       LoggerFactory.getLogger(InitialLimitedDurationErrorInjectionPolicy.class);
   private static final long serialVersionUID = 1L;
 
-  private Instant startTime;
+  private static Instant startTime;
   private final Duration injectionDuration;
   private final String effectiveDurationParameter;
   private String errorCodeToBeInjected;
   private Clock clock;
-  private long callCount;
+  private static final AtomicLong callCount = new AtomicLong(0);
 
   private static final String DEFAULT_DURATION = "PT10M";
   private static final String DURATION_FIELD_IN_OBJECT = "duration";
@@ -124,22 +125,20 @@ public class InitialLimitedDurationErrorInjectionPolicy
    */
   @Override
   public boolean shouldInjectionError() {
-    if (this.startTime == null) {
+    if (startTime == null) {
       synchronized (this) {
-        if (this.startTime == null) {
-          this.startTime = Instant.now(clock);
+        if (startTime == null) {
+          startTime = Instant.now(clock);
           LOG.info(
               "First call detected. Errors will be injected for {} starting from {}.",
               this.injectionDuration,
-              this.startTime);
+              startTime);
         }
       }
     }
-    synchronized (this) {
-      ++callCount;
-    }
+    long currentCallCount = callCount.incrementAndGet();
 
-    if (callCount < INITIAL_ALLOWED_CALLS_COUNT) {
+    if (currentCallCount < INITIAL_ALLOWED_CALLS_COUNT) {
       return false;
     }
 
