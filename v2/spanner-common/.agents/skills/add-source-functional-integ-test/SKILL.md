@@ -20,8 +20,13 @@ Before you begin parsing or executing any core steps, you MUST verify the follow
 3. **Target Source Database Name**
 4. **Reference Datatype Mapping Matrix File Path**
 5. **Testing Environment Setup Path**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
+6. **Mapping Matrix Schema Validation**: 
+   You must dynamically validate the `.csv` mapping file against the canonical schema.
+   1. Use the `read_url_content` tool to fetch the canonical reference: `https://raw.githubusercontent.com/GoogleCloudPlatform/spanner-migration-tool/master/.agents/skills/source_research_helper/sampleOutput/mysql_datatype_mapping_matrix.csv`
+   2. Parse the headers (first line) of both the fetched sample and the local file at `Reference Datatype Mapping Matrix File Path`.
+   3. Verify that *every* column header present in the fetched sample is also present in the local provided matrix (a subset match; the local matrix may contain extra columns).
 
-If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed without the environment variables. Output a direct question asking the user to provide the missing inputs or create the file.
+If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist, or if the provided mapping matrix is missing any canonical headers, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed. Output a direct question asking for the missing inputs, missing file, or reporting the explicitly missing columns.
 
 ---
 

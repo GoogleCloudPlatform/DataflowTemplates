@@ -20,8 +20,13 @@ Before you begin parsing or executing any core steps, you MUST verify the follow
 3. **Target Source Database Name**
 4. **Reference Datatype Mapping Matrix File Path**
 5. **Testing Environment Setup Path**: You MUST proactively check the workspace root directory for a `.env` file named `testing_execution.env`.
+6. **Mapping Matrix Schema Validation**: 
+   You must dynamically validate the `.csv` mapping file against the canonical schema.
+   1. Use the `read_url_content` tool to fetch the canonical reference: `https://raw.githubusercontent.com/GoogleCloudPlatform/spanner-migration-tool/master/.agents/skills/source_research_helper/sampleOutput/mysql_datatype_mapping_matrix.csv`
+   2. Parse the headers (first line) of both the fetched sample and the local file at `Reference Datatype Mapping Matrix File Path`.
+   3. Verify that *every* column header present in the fetched sample is also present in the local provided matrix (a subset match; the local matrix may contain extra columns).
 
-If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed without the environment variables. Output a direct question asking for the missing inputs or complaining about the missing file.
+If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist, or if the provided mapping matrix is missing any canonical headers, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed. Output a direct question asking for the missing inputs, missing file, or reporting the explicitly missing columns.
 
 ---
 
@@ -110,13 +115,14 @@ Instead of researching the database dialect from scratch, this skill assumes a c
 1. **Ingest the Mapping File**:
    - Read the provided mapping `.csv` file. 
    - Parse the matrix into memory.
+   - Use the `"Source Database Type / Alias"` column to identify the native source database type.
 2. **Identify Dialect Validations**:
    - Check the `spanner_dialect` determined in Step 1 (`GOOGLE_STANDARD_SQL` vs `POSTGRESQL`). 
-   - Fetch the mapping strictly from the corresponding Spanner Dialect column in the CSV (e.g., `Spanner GoogleSQL Default Datatype` vs `Spanner PostgreSQL Default Datatype`).
+   - Fetch the mapping strictly from the corresponding Spanner Dialect column in the CSV (e.g., `"Spanner GoogleSQL Default Datatype"`, `"Spanner GoogleSQL Alternative Datatypes"`, `"Spanner PostgreSQL Default Datatype"`, `"Spanner PostgreSQL Alternative Datatypes"`).
 3. **Identify Validation Targets**:
    - Extract every row that is intended for Default or Alternative mapping (Scenarios A and B).
-   - **Primary Keys (Scenario C):** You MUST explicitly read the matrix column defining PK support (e.g., `Is the datatype supported as a PK in the source?`). If supported, you MUST apply the specific mapped type provided in the `If Column is a PK` column for that dialect, as some types must be shortened or converted to binary for PK compatibility.
-   - Extract every row marked as Unsupported or Complex (Scenario D).
+   - **Primary Keys (Scenario C):** You MUST explicitly read the `"Is Source Datatype Supported as PK?"` column in the matrix. If supported (`Yes` or similar), you MUST apply the specific mapped type provided in the `"Spanner GoogleSQL Default Datatype If Column is PK"` or `"Spanner PostgreSQL Default Datatype If Column is PK"` column depending on the target dialect.
+   - **Unsupported/Complex Types (Scenario D):** Extract every row marked as Unsupported or Complex. To identify rows for Scenario D, filter for any rows where `"Datastream Support Status"` is marked as unsupported (or equivalent phrasing like 'No' or 'Unsupported').
 4. **No User Approval Required**:
    - Because this mapping file was vetted in a prior phase, do **NOT** ask the user for approval. Proceed immediately to Step 4.
 

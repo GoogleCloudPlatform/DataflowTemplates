@@ -37,7 +37,14 @@ When a user begins a session with this Meta-Skill, ensure you have the following
 6. **Phase 2 Baseline Datatype Scenarios:** (comma-separated list of scenario IDs)
 7. **Manifest File Path:**
 
-If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed. Output a direct question asking the user to provide the missing inputs or create the missing environment file.
+> [!IMPORTANT]
+> **Mapping Matrix Schema Validation**: 
+> You must dynamically validate the user's provided `.csv` mapping file against the canonical schema before proceeding with any orchestration or code generation. 
+> 1. Use the `read_url_content` tool to fetch the raw canonical reference from: `https://raw.githubusercontent.com/GoogleCloudPlatform/spanner-migration-tool/master/.agents/skills/source_research_helper/sampleOutput/mysql_datatype_mapping_matrix.csv`
+> 2. Parse the headers (first line) of both the fetched sample matrix and the local file at `Reference Datatype Mapping Matrix File Path`.
+> 3. Verify that *every* column header present in the fetched sample is also present in the local provided matrix (a subset match; the local matrix may contain extra custom columns, which is fine).
+
+If ANY of the prompt inputs are missing, or if the `testing_execution.env` file does not exist in the root directory, or if the provided matrix is missing canonical headers, you **MUST HALT EXECUTION IMMEDIATELY**. Do not attempt to guess, hallucinate paths, or proceed. Output a direct question asking the user to provide the missing inputs, create the missing environment file, or fix the explicitly missing columns.
 
 ---
 
