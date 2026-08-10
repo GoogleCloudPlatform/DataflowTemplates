@@ -59,7 +59,7 @@ public abstract class GCSSpannerDVFTBase extends GCSSpannerDVITBase {
       throws IOException {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName)
+        FlexTemplateDataflowJobResourceManager.builder(testId)
             .withTemplateName("GCS_Spanner_Data_Validator")
             .withTemplateModulePath("v2/gcs-spanner-dv")
             .withAdditionalMavenProfile("failureInjectionTest")

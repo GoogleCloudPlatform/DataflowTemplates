@@ -126,7 +126,7 @@ public class InitialLimitedDurationErrorInjectionPolicy
   @Override
   public boolean shouldInjectionError() {
     if (startTime == null) {
-      synchronized (this) {
+      synchronized (InitialLimitedDurationErrorInjectionPolicy.class) {
         if (startTime == null) {
           startTime = Instant.now(clock);
           LOG.info(
