@@ -75,8 +75,8 @@ import org.slf4j.LoggerFactory;
 public class MongoDbTransforms {
 
   /**
-   * Helper method to create a MongoClient with default UuidRepresentation.STANDARD if not explicitly
-   * specified in the connection string.
+   * Helper method to create a MongoClient with default UuidRepresentation.STANDARD if not
+   * explicitly specified in the connection string.
    */
   public static MongoClient createMongoClient(String uri) {
     ConnectionString connectionString = new ConnectionString(uri);
@@ -256,9 +256,7 @@ public class MongoDbTransforms {
                   }))
           .apply(
               "WriteDlq_Retryable",
-              TextIO.write()
-                  .to(retryablePath + "/error")
-                  .withSuffix(".json"));
+              TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
 
       permanent
           .apply(
@@ -275,9 +273,7 @@ public class MongoDbTransforms {
                   }))
           .apply(
               "WriteDlq_Permanent",
-              TextIO.write()
-                  .to(permanentPath + "/error")
-                  .withSuffix(".json"));
+              TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
 
       return PDone.in(input.getPipeline());
     }

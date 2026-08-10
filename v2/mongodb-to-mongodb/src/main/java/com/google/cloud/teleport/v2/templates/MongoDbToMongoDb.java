@@ -432,8 +432,7 @@ public class MongoDbToMongoDb {
             .get(udfFailureTag)
             .apply(
                 "WriteToDlq_UDF",
-                new MongoDbTransforms.WriteToDlq(
-                    retryableDlqPath, permanentDlqPath, tmpDirectory));
+                new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents =
             udfProcessed
@@ -481,8 +480,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new MongoDbTransforms.WriteToDlq(
-                  retryableDlqPath, permanentDlqPath, tmpDirectory));
+              new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       // Write Stage with DLQ
       PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
@@ -516,8 +514,7 @@ public class MongoDbToMongoDb {
 
       writeFailures.apply(
           "WriteToDlq_Write",
-          new MongoDbTransforms.WriteToDlq(
-              retryableDlqPath, permanentDlqPath, tmpDirectory));
+          new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(input.getPipeline());
     }
