@@ -64,12 +64,12 @@ public class ThrottledLogger implements Serializable {
   }
 
   private void init() {
-    this.totalErrors = new AtomicLong(0);
     this.totalRetryable = new AtomicLong(0);
     this.totalSevere = new AtomicLong(0);
     this.errorCategories = new ConcurrentHashMap<>();
     this.logStates = new ConcurrentHashMap<>();
     this.lastLogTimestamp = new AtomicLong(System.currentTimeMillis());
+    this.totalErrors = new AtomicLong(0);
   }
 
   private void ensureInitialized() {
@@ -109,8 +109,10 @@ public class ThrottledLogger implements Serializable {
   }
 
   private void incrementCategory(String category) {
-    if (errorCategories.size() < MAX_ERROR_CATEGORIES || errorCategories.containsKey(category)) {
-      errorCategories.computeIfAbsent(category, k -> new AtomicLong(0)).incrementAndGet();
+    String safeCategory = category != null ? category : "UNKNOWN";
+    if (errorCategories.size() < MAX_ERROR_CATEGORIES
+        || errorCategories.containsKey(safeCategory)) {
+      errorCategories.computeIfAbsent(safeCategory, k -> new AtomicLong(0)).incrementAndGet();
     }
   }
 
@@ -171,11 +173,12 @@ public class ThrottledLogger implements Serializable {
   /** Evaluates if a log message should be emitted for the key in this window. */
   public boolean shouldLog(String key) {
     ensureInitialized();
+    String safeKey = key != null ? key : "DEFAULT";
     long now = System.currentTimeMillis();
     if (logStates.size() >= MAX_ERROR_CATEGORIES) {
       logStates.clear();
     }
-    LogEntryState state = logStates.computeIfAbsent(key, k -> new LogEntryState(0));
+    LogEntryState state = logStates.computeIfAbsent(safeKey, k -> new LogEntryState(0));
     long lastTime = state.lastLoggedTimeMs.get();
     if (now - lastTime >= throttleIntervalMs) {
       if (state.lastLoggedTimeMs.compareAndSet(lastTime, now)) {
@@ -188,7 +191,8 @@ public class ThrottledLogger implements Serializable {
 
   public long getAndResetSuppressedCount(String key) {
     ensureInitialized();
-    LogEntryState state = logStates.get(key);
+    String safeKey = key != null ? key : "DEFAULT";
+    LogEntryState state = logStates.get(safeKey);
     return state != null ? state.suppressedCount.getAndSet(0) : 0;
   }
 

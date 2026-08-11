@@ -79,14 +79,15 @@ public class TimestampSortKey implements Serializable, Comparable<TimestampSortK
     if (this.seconds != other.seconds) {
       return Long.compare(this.seconds, other.seconds);
     }
-    // 2. Fix 2: Live CDC ALWAYS supersedes Backfill snapshot within the same second
+    // 2. Stream type precedence: Live CDC strictly supersedes Backfill snapshot within the same
+    // second
     if (this.isCdc && !other.isCdc) {
       return 1;
     }
     if (!this.isCdc && other.isCdc) {
       return -1;
     }
-    // 3. Fix 1: Same stream type - compare sub-seconds (nanos for backfill, oplog inc for CDC)
+    // 3. Sub-second ordering within the same stream type (nanos for backfill, oplog inc for CDC)
     return Long.compare(this.subSeconds, other.subSeconds);
   }
 

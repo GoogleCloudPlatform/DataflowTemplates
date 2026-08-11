@@ -46,6 +46,7 @@ import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableSet;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
@@ -147,30 +148,29 @@ public class DataStreamMongoDBToFirestore {
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
   public static final Set<String> MAPPER_IGNORE_FIELDS =
-      new HashSet<String>(
-          Arrays.asList(
-              "_metadata_stream",
-              "_metadata_schema",
-              "_metadata_table",
-              "_metadata_source",
-              "_metadata_ssn",
-              "_metadata_rs_id",
-              "_metadata_tx_id",
-              "_metadata_uuid",
-              "_metadata_dlq_reconsumed",
-              "_metadata_error",
-              "_metadata_retry_count",
-              "_metadata_timestamp",
-              "_metadata_read_timestamp",
-              "_metadata_read_method",
-              "_metadata_deleted",
-              "_metadata_primary_keys",
-              "_metadata_log_file",
-              "_metadata_log_position",
-              "_metadata_dataflow_timestamp",
-              "data",
-              "_metadata_timestamp_seconds",
-              "_metadata_timestamp_nanos"));
+      ImmutableSet.of(
+          "_metadata_stream",
+          "_metadata_schema",
+          "_metadata_table",
+          "_metadata_source",
+          "_metadata_ssn",
+          "_metadata_rs_id",
+          "_metadata_tx_id",
+          "_metadata_uuid",
+          "_metadata_dlq_reconsumed",
+          "_metadata_error",
+          "_metadata_retry_count",
+          "_metadata_timestamp",
+          "_metadata_read_timestamp",
+          "_metadata_read_method",
+          "_metadata_deleted",
+          "_metadata_primary_keys",
+          "_metadata_log_file",
+          "_metadata_log_position",
+          "_metadata_dataflow_timestamp",
+          "data",
+          "_metadata_timestamp_seconds",
+          "_metadata_timestamp_nanos");
 
   /**
    * Options supported by the pipeline.

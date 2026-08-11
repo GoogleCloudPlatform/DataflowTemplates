@@ -60,7 +60,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.BackOffUtils;
@@ -74,6 +73,7 @@ import org.bson.Document;
 import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,8 +136,8 @@ public class MongoDbBulkTransforms {
     builder.applyToConnectionPoolSettings(
         b -> {
           b.minSize(10);
-          b.maxSize(50);
-          b.maxWaitTime(5, TimeUnit.SECONDS);
+          b.maxSize(200);
+          b.maxWaitTime(15, TimeUnit.SECONDS);
         });
     builder.applyToClusterSettings(b -> b.serverSelectionTimeout(10, TimeUnit.MINUTES));
     return MongoClients.create(builder.build());
@@ -643,16 +643,22 @@ public class MongoDbBulkTransforms {
         throw new RuntimeException("Interrupted acquiring semaphore permit", e);
       }
 
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
-                try {
-                  executeBatch(collectionName, batchToExecute);
-                } finally {
-                  semaphore.release();
-                }
-              },
-              executorService);
+      CompletableFuture<Void> future;
+      try {
+        future =
+            CompletableFuture.runAsync(
+                () -> {
+                  try {
+                    executeBatch(collectionName, batchToExecute);
+                  } finally {
+                    semaphore.release();
+                  }
+                },
+                executorService);
+      } catch (Throwable t) {
+        semaphore.release();
+        throw t;
+      }
 
       inFlightFutures.add(future);
     }
@@ -1080,19 +1086,25 @@ public class MongoDbBulkTransforms {
 
     private void drainQueuesFinishBundle(FinishBundleContext context) {
       drainToOutput(
-          (tag, value) ->
-              context.output(
-                  (TupleTag<MongoDbChangeEventContext>) tag,
-                  value,
-                  BoundedWindow.TIMESTAMP_MIN_VALUE,
-                  GlobalWindow.INSTANCE),
-          (tag, value) ->
-              context.output(
-                  (TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>)
-                      tag,
-                  value,
-                  BoundedWindow.TIMESTAMP_MIN_VALUE,
-                  GlobalWindow.INSTANCE));
+          (tag, value) -> {
+            long tsSeconds = value.getTimestampSeconds();
+            Instant timestamp =
+                tsSeconds > 0 ? Instant.ofEpochMilli(tsSeconds * 1000L) : Instant.now();
+            context.output(
+                (TupleTag<MongoDbChangeEventContext>) tag, value, timestamp, GlobalWindow.INSTANCE);
+          },
+          (tag, value) -> {
+            MongoDbChangeEventContext orig = value.getOriginalPayload();
+            long tsSeconds = (orig != null) ? orig.getTimestampSeconds() : 0;
+            Instant timestamp =
+                tsSeconds > 0 ? Instant.ofEpochMilli(tsSeconds * 1000L) : Instant.now();
+            context.output(
+                (TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>)
+                    tag,
+                value,
+                timestamp,
+                GlobalWindow.INSTANCE);
+          });
     }
 
     private void drainToOutput(

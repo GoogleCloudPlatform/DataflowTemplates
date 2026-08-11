@@ -520,4 +520,50 @@ public class MongoDbBulkTransformsTest {
 
     pipeline.run();
   }
+
+  @Test
+  public void testPartialBatchFailure_transientErrorRetriedAndSucceeds() throws Exception {
+    MongoDbChangeEventContext docA = createEventContextWithTimestamp("docA", 1000L, 0, "INSERT");
+    MongoDbChangeEventContext docB = createEventContextWithTimestamp("docB", 1000L, 0, "INSERT");
+
+    // First call: docB fails with transient WriteConflict (Code 112), docA succeeds
+    // Second call (retry): docB succeeds
+    BulkWriteError transientError =
+        new BulkWriteError(
+            MongoDbBulkTransforms.ERR_WRITE_CONFLICT,
+            "WriteConflict",
+            new org.bson.BsonDocument(),
+            1);
+    MongoBulkWriteException partialException =
+        new MongoBulkWriteException(
+            mock(BulkWriteResult.class),
+            Collections.singletonList(transientError),
+            null,
+            new com.mongodb.ServerAddress("localhost", 27017),
+            Collections.emptySet());
+
+    when(mockCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenThrow(partialException)
+        .thenReturn(mock(BulkWriteResult.class));
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                Create.of(docA, docB)
+                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(
+                MongoDbBulkTransforms.bulkWriteWithDlq()
+                    .withConnectionString("mongodb://localhost:27017")
+                    .withDatabase("test_db")
+                    .withBatchSize(2)
+                    .withClientFactory(new MockClientFactory()));
+
+    // Both should ultimately succeed without routing to DLQ
+    PAssert.that(result.get(MongoDbBulkTransforms.SUCCESSFUL_WRITE_TAG))
+        .containsInAnyOrder(docA, docB);
+    PAssert.that(result.get(MongoDbBulkTransforms.FAILED_WRITE_TAG)).empty();
+    PAssert.that(result.get(MongoDbBulkTransforms.SEVERE_FAILED_WRITE_TAG)).empty();
+
+    pipeline.run();
+  }
 }

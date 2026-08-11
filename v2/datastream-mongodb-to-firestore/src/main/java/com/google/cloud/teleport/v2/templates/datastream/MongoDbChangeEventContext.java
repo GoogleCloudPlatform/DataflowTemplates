@@ -59,8 +59,8 @@ public class MongoDbChangeEventContext implements Serializable {
   private final boolean isDeleteEvent;
   private final boolean isUpdateEvent;
   private final Document timestampDoc;
-  private boolean isDlqReconsumed;
-  private int retryCount;
+  private final boolean isDlqReconsumed;
+  private final int retryCount;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -340,8 +340,8 @@ public class MongoDbChangeEventContext implements Serializable {
       // Convert timestamp document to JSON
       if (this.timestampDoc != null) {
         ObjectNode timestampNode = OBJECT_MAPPER.createObjectNode();
-        timestampNode.put(TIMESTAMP_SECONDS_COL, this.timestampDoc.getLong(TIMESTAMP_SECONDS_COL));
-        timestampNode.put(TIMESTAMP_NANOS_COL, this.timestampDoc.getInteger(TIMESTAMP_NANOS_COL));
+        timestampNode.put(TIMESTAMP_SECONDS_COL, getTimestampSeconds());
+        timestampNode.put(TIMESTAMP_NANOS_COL, getTimestampSubSeconds());
         jsonNode.set(TIMESTAMP_COL, timestampNode);
       }
 

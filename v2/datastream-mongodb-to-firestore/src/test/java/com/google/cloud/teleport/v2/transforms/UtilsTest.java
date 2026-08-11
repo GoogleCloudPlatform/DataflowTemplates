@@ -137,6 +137,34 @@ public class UtilsTest {
   }
 
   @Test
+  public void testIsNewerTimestamp_nullSafety() {
+    Document ts1 =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 1L)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 100);
+
+    assertTrue(Utils.isNewerTimestamp(ts1, null));
+    assertFalse(Utils.isNewerTimestamp(null, ts1));
+    assertFalse(Utils.isNewerTimestamp(null, null));
+  }
+
+  @Test
+  public void testGetTimestampNanos() {
+    assertEquals(0L, Utils.getTimestampNanos(null));
+    assertEquals(0L, Utils.getTimestampNanos(new Document()));
+
+    Document validTs =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 1700000000L)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 500);
+    assertEquals(1700000000000000500L, Utils.getTimestampNanos(validTs));
+
+    // Number types as Integer / Double
+    Document intTs =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 100)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 20);
+    assertEquals(100000000020L, Utils.getTimestampNanos(intTs));
+  }
+
+  @Test
   public void testJsonToDocument() {
     String jsonString =
         "{\"_id\":\"{\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"}\",\"data\":\"{\\\"_id\\\":"

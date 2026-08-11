@@ -120,4 +120,37 @@ public class ThrottledLoggerTest {
     assertEquals(expectedTotal / 2, deserialized.getTotalRetryable());
     assertEquals(expectedTotal / 2, deserialized.getTotalSevere());
   }
+
+  @Test
+  public void testNullCategoryAndKeySafety() {
+    ThrottledLogger logger = new ThrottledLogger("NullSafetyLogger", 5000L);
+    logger.recordRetryableError(null, "Null category message");
+    logger.recordSevereError(null, "Null category severe message");
+
+    assertEquals(2L, logger.getTotalErrors());
+    assertTrue(logger.shouldLog(null));
+    assertFalse(logger.shouldLog(null));
+    assertEquals(1L, logger.getAndResetSuppressedCount(null));
+  }
+
+  @Test
+  public void testLogInfoWarnErrorMethods() {
+    ThrottledLogger logger = new ThrottledLogger("LogMethodsLogger", 5000L);
+    org.slf4j.Logger mockLogger = org.mockito.Mockito.mock(org.slf4j.Logger.class);
+
+    logger.logInfo(mockLogger, "infoKey", "info message");
+    logger.logInfo(mockLogger, "infoKey", "info message 2");
+    org.mockito.Mockito.verify(mockLogger, org.mockito.Mockito.times(1))
+        .info("info message", new Object[] {});
+
+    logger.logWarn(mockLogger, "warnKey", "warn message");
+    logger.logWarn(mockLogger, "warnKey", "warn message 2");
+    org.mockito.Mockito.verify(mockLogger, org.mockito.Mockito.times(1))
+        .warn("warn message", new Object[] {});
+
+    logger.logError(mockLogger, "errorKey", "error message");
+    logger.logError(mockLogger, "errorKey", "error message 2");
+    org.mockito.Mockito.verify(mockLogger, org.mockito.Mockito.times(1))
+        .error("error message", new Object[] {});
+  }
 }

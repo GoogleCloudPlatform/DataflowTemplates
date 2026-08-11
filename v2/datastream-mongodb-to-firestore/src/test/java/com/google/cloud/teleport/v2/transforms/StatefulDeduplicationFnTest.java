@@ -367,4 +367,29 @@ public class StatefulDeduplicationFnTest {
     PAssert.that(result).containsInAnyOrder(backfillRead, cdcUpdate);
     pipeline.run();
   }
+
+  @Test
+  public void testDeleteAndRecreate_allowsNewerInsert() throws Exception {
+    MongoDbChangeEventContext insertV1 = createEventContext("doc1", 1000L, 100, "INSERT", false);
+    MongoDbChangeEventContext deleteV2 = createEventContext("doc1", 1000L, 200, "DELETE", false);
+    MongoDbChangeEventContext insertV3 = createEventContext("doc1", 1001L, 50, "INSERT", false);
+
+    TestStream<KV<String, MongoDbChangeEventContext>> stream =
+        TestStream.create(
+                KvCoder.of(
+                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", insertV1), new Instant(100)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", deleteV2), new Instant(200)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", insertV3), new Instant(300)))
+            .advanceWatermarkToInfinity();
+
+    PCollection<MongoDbChangeEventContext> result =
+        pipeline
+            .apply(stream)
+            .apply(Window.into(new GlobalWindows()))
+            .apply(ParDo.of(new StatefulDeduplicationFn()));
+
+    PAssert.that(result).containsInAnyOrder(insertV1, deleteV2, insertV3);
+    pipeline.run();
+  }
 }

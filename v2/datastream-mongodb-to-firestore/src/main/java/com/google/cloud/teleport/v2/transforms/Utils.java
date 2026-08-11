@@ -31,12 +31,14 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Utils used by the Datastream-mongodb-to-mongodb pipeline. */
+/** Utils used by the Datastream-mongodb-to-firestore pipeline. */
 public final class Utils {
   private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+
+  private Utils() {}
 
   public static void removeTableRowFields(Document doc, Set<String> ignoreFields) {
     for (String ignoreField : ignoreFields) {
@@ -46,10 +48,40 @@ public final class Utils {
 
   /* Whether the first timestamp is later than the second timestamp. */
   public static boolean isNewerTimestamp(Document ts1, Document ts2) {
-    long s1 = ts1.getLong(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
-    int n1 = ts1.getInteger(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
-    long s2 = ts2.getLong(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
-    int n2 = ts2.getInteger(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+    if (ts1 == null) {
+      return false;
+    }
+    if (ts2 == null) {
+      return true;
+    }
+    long s1 = 0L;
+    int n1 = 0;
+    if (ts1.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = ts1.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        s1 = ((Number) s).longValue();
+      }
+    }
+    if (ts1.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = ts1.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        n1 = ((Number) n).intValue();
+      }
+    }
+    long s2 = 0L;
+    int n2 = 0;
+    if (ts2.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = ts2.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        s2 = ((Number) s).longValue();
+      }
+    }
+    if (ts2.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = ts2.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        n2 = ((Number) n).intValue();
+      }
+    }
     return s1 > s2 || (s1 == s2 && n1 > n2);
   }
 
