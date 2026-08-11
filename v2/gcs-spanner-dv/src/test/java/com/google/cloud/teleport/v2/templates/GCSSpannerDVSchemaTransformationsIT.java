@@ -411,10 +411,10 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
   }
 
   /**
-   * Tests pipeline resilience when columns present in the source are generated in Spanner. The
-   * generated column value can differ in source, but while writing to Spanner, it will follow the
-   * Spanner generated column logic. So the validation pipeline should MATCH even if source value is
-   * different.
+   * Tests pipeline resilience when a source column is both renamed and generated in Spanner
+   * (full_name -> event_user). Validates that the pipeline ignores the generated column during
+   * matching. Expectation: the validation pipeline should MATCH even if source value is different
+   * for a generated column.
    */
   @Test
   @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
@@ -457,7 +457,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 .set("user_id")
                 .to(1L)
                 .set("event_id")
-                .to("E1") // resulting in full_name=1E1
+                .to("E1") // resulting in event_user=1E1
                 .set("age")
                 .to(30L)
                 .set("created_at")
@@ -467,7 +467,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
                 .set("user_id")
                 .to(2L)
                 .set("event_id")
-                .to("E2") // resulting in full_name=2E2
+                .to("E2") // resulting in event_user=2E2
                 .set("age")
                 .to(35L)
                 .set("created_at")
@@ -489,7 +489,7 @@ public class GCSSpannerDVSchemaTransformationsIT extends GCSSpannerDVITBase {
             null,
             null,
             null,
-            null,
+            "[{Users_GeneratedColumn.full_name, Users_GeneratedColumn.event_user}]",
             null,
             null);
 
