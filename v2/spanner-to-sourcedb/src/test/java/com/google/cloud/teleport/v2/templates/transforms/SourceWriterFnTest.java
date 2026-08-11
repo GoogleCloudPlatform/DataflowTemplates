@@ -343,7 +343,8 @@ public class SourceWriterFnTest {
     when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
     when(mockDMLGenerator.getDMLStatement(any()))
         .thenReturn(
-            new SpannerMutationResponse(Mockito.mock(com.google.cloud.spanner.Mutation.class)));
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
 
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
@@ -404,7 +405,8 @@ public class SourceWriterFnTest {
     when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
     when(mockDMLGenerator.getDMLStatement(any()))
         .thenReturn(
-            new SpannerMutationResponse(Mockito.mock(com.google.cloud.spanner.Mutation.class)));
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
 
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
