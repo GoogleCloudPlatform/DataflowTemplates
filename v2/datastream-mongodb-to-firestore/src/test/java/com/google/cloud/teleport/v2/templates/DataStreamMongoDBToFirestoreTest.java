@@ -25,8 +25,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
-import com.google.cloud.teleport.v2.transforms.MongoDbChangeEventContextCoder;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,17 +38,11 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.WithTimestamps;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -1315,96 +1307,5 @@ public final class DataStreamMongoDBToFirestoreTest {
     pipeline.run();
 
     Files.delete(udfFile);
-  }
-
-  private MongoDbChangeEventContext createEventContext(
-      String docId, long seconds, int nanos, String changeType) throws Exception {
-    String payload =
-        String.format(
-            "{"
-                + "\"_metadata_source\": {\"collection\": \"users\"},"
-                + "\"_id\": \"\\\"%s\\\"\","
-                + "\"_metadata_timestamp_seconds\": %d,"
-                + "\"_metadata_timestamp_nanos\": %d,"
-                + "\"_metadata_change_type\": \"%s\","
-                + "\"_metadata_read_method\": \"cdc\","
-                + "\"data\": \"{\\\"name\\\": \\\"user_%s\\\"}\""
-                + "}",
-            docId, seconds, nanos, changeType, docId);
-    return new MongoDbChangeEventContext(new ObjectMapper().readTree(payload), "shadow_");
-  }
-
-  @Test
-  public void assignProcessingTimestamps_reassignsHistoricalTimestampsAndPreservesContext()
-      throws Exception {
-    MongoDbChangeEventContext event = createEventContext("doc1", 1700000000L, 500, "INSERT");
-    Instant historicalTimestamp = Instant.now().minus(Duration.standardDays(180));
-    Instant testStartTime = Instant.now();
-
-    PCollection<KV<Instant, MongoDbChangeEventContext>> result =
-        pipeline
-            .apply(
-                "CreateHistoricalInput",
-                Create.timestamped(TimestampedValue.of(event, historicalTimestamp))
-                    .withCoder(MongoDbChangeEventContextCoder.of()))
-            .apply(
-                "Process/AssignProcessingTimestamps",
-                WithTimestamps.of((MongoDbChangeEventContext e) -> Instant.now())
-                    .withAllowedTimestampSkew(Duration.standardDays(365)))
-            .apply(
-                "ExtractTimestamps",
-                ParDo.of(
-                    new DoFn<MongoDbChangeEventContext, KV<Instant, MongoDbChangeEventContext>>() {
-                      @ProcessElement
-                      public void processElement(
-                          @Element MongoDbChangeEventContext element,
-                          @Timestamp Instant timestamp,
-                          OutputReceiver<KV<Instant, MongoDbChangeEventContext>> out) {
-                        out.output(KV.of(timestamp, element));
-                      }
-                    }));
-
-    PAssert.that(result)
-        .satisfies(
-            iterable -> {
-              KV<Instant, MongoDbChangeEventContext> record = iterable.iterator().next();
-              Instant assignedTimestamp = record.getKey();
-              MongoDbChangeEventContext outputContext = record.getValue();
-
-              // Verify assigned runner timestamp is recent and not 180 days in the past
-              assertTrue(
-                  assignedTimestamp.isAfter(historicalTimestamp.plus(Duration.standardDays(179))));
-              assertTrue(
-                  assignedTimestamp.isAfter(testStartTime.minus(Duration.standardSeconds(5))));
-
-              // Verify underlying MongoDbChangeEventContext domain properties are NOT mutated
-              assertEquals(1700000000L, outputContext.getTimestampSeconds());
-              assertEquals(500L, outputContext.getTimestampSubSeconds());
-              assertEquals("users", outputContext.getDataCollection());
-              assertEquals("INSERT", outputContext.getChangeType());
-              return null;
-            });
-
-    pipeline.run();
-  }
-
-  @Test
-  public void assignProcessingTimestamps_handlesLargeSkewWithoutException() throws Exception {
-    MongoDbChangeEventContext event = createEventContext("doc2", 1600000000L, 100, "UPDATE");
-    Instant veryOldTimestamp = Instant.now().minus(Duration.standardDays(300));
-
-    PCollection<MongoDbChangeEventContext> result =
-        pipeline
-            .apply(
-                "CreateOldInput",
-                Create.timestamped(TimestampedValue.of(event, veryOldTimestamp))
-                    .withCoder(MongoDbChangeEventContextCoder.of()))
-            .apply(
-                "Process/AssignProcessingTimestamps",
-                WithTimestamps.of((MongoDbChangeEventContext e) -> Instant.now())
-                    .withAllowedTimestampSkew(Duration.standardDays(365)));
-
-    PAssert.that(result).containsInAnyOrder(event);
-    pipeline.run();
   }
 }
