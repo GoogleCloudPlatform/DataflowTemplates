@@ -27,10 +27,6 @@ public class SpannerMutationResponse extends DMLGeneratorResponse {
   private final Mutation mutation;
   private final Key primaryKey;
 
-  public SpannerMutationResponse(Mutation mutation) {
-    this(mutation, null);
-  }
-
   public SpannerMutationResponse(Mutation mutation, Key primaryKey) {
     super("");
     this.mutation = mutation;

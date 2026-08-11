@@ -31,7 +31,7 @@ public final class SpannerMutationResponseTest {
 
   @Test
   public void isEmptyReturnsTrueForNullMutation() {
-    SpannerMutationResponse response = new SpannerMutationResponse(null);
+    SpannerMutationResponse response = new SpannerMutationResponse(null, null);
     assertTrue(response.isEmpty());
     assertNull(response.getMutation());
     assertNull(response.getPrimaryKey());
@@ -46,7 +46,7 @@ public final class SpannerMutationResponseTest {
             .set("Name")
             .to("John")
             .build();
-    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, null);
     assertFalse(response.isEmpty());
     assertEquals(mutation, response.getMutation());
     assertNull(response.getPrimaryKey());

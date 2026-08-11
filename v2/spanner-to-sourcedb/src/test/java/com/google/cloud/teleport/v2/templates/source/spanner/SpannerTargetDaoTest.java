@@ -70,7 +70,7 @@ public class SpannerTargetDaoTest {
             });
 
     Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
-    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, null);
 
     SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
     dao.write(response, null);
@@ -129,7 +129,7 @@ public class SpannerTargetDaoTest {
             });
 
     Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
-    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, null);
 
     com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck mockCheck =
         mock(com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck.class);
@@ -161,7 +161,7 @@ public class SpannerTargetDaoTest {
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(null);
 
     Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
-    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, null);
 
     SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
     assertThrows(
