@@ -52,6 +52,17 @@ public class StatefulDeduplicationFnTest {
   private MongoDbChangeEventContext createEventContext(
       String docId, long seconds, int nanos, String changeType, boolean isDlqReconsumed)
       throws Exception {
+    return createEventContext(docId, seconds, nanos, changeType, isDlqReconsumed, "cdc");
+  }
+
+  private MongoDbChangeEventContext createEventContext(
+      String docId,
+      long seconds,
+      int nanos,
+      String changeType,
+      boolean isDlqReconsumed,
+      String readMethod)
+      throws Exception {
     String payload =
         String.format(
             "{"
@@ -59,7 +70,8 @@ public class StatefulDeduplicationFnTest {
                 + "\"_id\": \"\\\"%s\\\"\","
                 + "\"_metadata_timestamp_seconds\": %d,"
                 + "\"_metadata_timestamp_nanos\": %d,"
-                + "\"_metadata_change_type\": \"%s\""
+                + "\"_metadata_change_type\": \"%s\","
+                + "\"_metadata_read_method\": \"%s\""
                 + (isDlqReconsumed ? ",\"_metadata_dlq_reconsumed\": \"true\"" : "")
                 + ",\"data\": \"{\\\"name\\\": \\\"user_%s\\\"}\""
                 + "}",
@@ -67,6 +79,7 @@ public class StatefulDeduplicationFnTest {
             seconds,
             nanos,
             changeType,
+            readMethod,
             docId);
     return new MongoDbChangeEventContext(OBJECT_MAPPER.readTree(payload), "shadow_");
   }
@@ -283,6 +296,75 @@ public class StatefulDeduplicationFnTest {
             .apply(ParDo.of(new StatefulDeduplicationFn()));
 
     PAssert.that(result).containsInAnyOrder(mapEvent, arrayEvent);
+    pipeline.run();
+  }
+
+  @Test
+  public void testBackfillSnapshotDoesNotResurrectCdcDelete() throws Exception {
+    // Exact 30-orphan scenario: CDC DELETE at ts=1786382543:4752 followed by Backfill READ at
+    // ts=1786382543:967669000
+    MongoDbChangeEventContext cdcDelete =
+        createEventContext("orphanDoc", 1786382543L, 4752, "DELETE", false, "cdc");
+    MongoDbChangeEventContext backfillRead =
+        createEventContext("orphanDoc", 1786382543L, 967669000, "READ", false, "backfill");
+
+    TestStream<KV<String, MongoDbChangeEventContext>> stream =
+        TestStream.create(
+                KvCoder.of(
+                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .addElements(TimestampedValue.of(KV.of("users#orphanDoc", cdcDelete), new Instant(100)))
+            .addElements(
+                TimestampedValue.of(KV.of("users#orphanDoc", backfillRead), new Instant(200)))
+            .advanceWatermarkToInfinity();
+
+    PCollection<MongoDbChangeEventContext> result =
+        pipeline
+            .apply(stream)
+            .apply(Window.into(new GlobalWindows()))
+            .apply(ParDo.of(new StatefulDeduplicationFn()));
+
+    // Only the CDC delete should be emitted; the backfill read snapshot must be dropped as stale
+    PAssert.that(result).containsInAnyOrder(cdcDelete);
+    PipelineResult pipelineResult = pipeline.run();
+
+    MetricQueryResults metrics =
+        pipelineResult
+            .metrics()
+            .queryMetrics(
+                MetricsFilter.builder()
+                    .addNameFilter(
+                        MetricNameFilter.named(StatefulDeduplicationFn.class, "outOfOrderSkips"))
+                    .build());
+
+    long skips = 0;
+    if (metrics.getCounters().iterator().hasNext()) {
+      skips = metrics.getCounters().iterator().next().getAttempted();
+    }
+    assertEquals(1L, skips);
+  }
+
+  @Test
+  public void testCdcUpdateSupersedesConcurrentBackfillRead() throws Exception {
+    MongoDbChangeEventContext backfillRead =
+        createEventContext("doc1", 1786382543L, 967669000, "READ", false, "backfill");
+    MongoDbChangeEventContext cdcUpdate =
+        createEventContext("doc1", 1786382543L, 100, "UPDATE", false, "cdc");
+
+    TestStream<KV<String, MongoDbChangeEventContext>> stream =
+        TestStream.create(
+                KvCoder.of(
+                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", backfillRead), new Instant(100)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", cdcUpdate), new Instant(200)))
+            .advanceWatermarkToInfinity();
+
+    PCollection<MongoDbChangeEventContext> result =
+        pipeline
+            .apply(stream)
+            .apply(Window.into(new GlobalWindows()))
+            .apply(ParDo.of(new StatefulDeduplicationFn()));
+
+    PAssert.that(result).containsInAnyOrder(backfillRead, cdcUpdate);
     pipeline.run();
   }
 }

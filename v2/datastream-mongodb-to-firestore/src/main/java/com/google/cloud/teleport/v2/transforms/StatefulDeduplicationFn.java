@@ -23,7 +23,6 @@ import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public class StatefulDeduplicationFn
   private static final Logger LOG = LoggerFactory.getLogger(StatefulDeduplicationFn.class);
 
   @StateId("latestTimestamp")
-  private final StateSpec<ValueState<Long>> latestTimestampSpec = StateSpecs.value();
+  private final StateSpec<ValueState<TimestampSortKey>> latestTimestampSpec = StateSpecs.value();
 
   private final Counter outOfOrderSkips =
       Metrics.counter(StatefulDeduplicationFn.class, "outOfOrderSkips");
@@ -47,7 +46,7 @@ public class StatefulDeduplicationFn
       Metrics.counter(StatefulDeduplicationFn.class, "dlqEqualTimestampPassThrough");
 
   private final ThrottledLogger throttledLogger = new ThrottledLogger(30000L);
-  private transient java.util.Map<String, Long> bundleStateCache;
+  private transient java.util.Map<String, TimestampSortKey> bundleStateCache;
 
   @StartBundle
   public void startBundle() {
@@ -64,7 +63,7 @@ public class StatefulDeduplicationFn
   @ProcessElement
   public void processElement(
       ProcessContext context,
-      @StateId("latestTimestamp") ValueState<Long> latestTimestampState,
+      @StateId("latestTimestamp") ValueState<TimestampSortKey> latestTimestampState,
       OutputReceiver<MongoDbChangeEventContext> out) {
     KV<String, MongoDbChangeEventContext> element = context.element();
     if (element == null || element.getValue() == null) {
@@ -72,41 +71,42 @@ public class StatefulDeduplicationFn
     }
 
     MongoDbChangeEventContext event = element.getValue();
-    Document timestampDoc = event.getTimestampDoc();
-    long currentTimestampNanos = Utils.getTimestampNanos(timestampDoc);
+    TimestampSortKey currentSortKey = TimestampSortKey.of(event);
 
     String key = element.getKey();
-    Long latestTimestampNanos =
+    TimestampSortKey latestSortKey =
         (bundleStateCache != null && key != null) ? bundleStateCache.get(key) : null;
-    if (latestTimestampNanos == null) {
-      latestTimestampNanos = latestTimestampState.read();
+    if (latestSortKey == null) {
+      latestSortKey = latestTimestampState.read();
     }
 
-    if (latestTimestampNanos == null || currentTimestampNanos > latestTimestampNanos) {
-      latestTimestampState.write(currentTimestampNanos);
+    int cmp = (latestSortKey == null) ? 1 : currentSortKey.compareTo(latestSortKey);
+
+    if (cmp > 0) {
+      latestTimestampState.write(currentSortKey);
       if (bundleStateCache != null && key != null) {
-        bundleStateCache.put(key, currentTimestampNanos);
+        bundleStateCache.put(key, currentSortKey);
       }
       out.output(event);
       dedupOutputs.inc();
-    } else if (currentTimestampNanos == latestTimestampNanos && event.getIsDlqReconsumed()) {
+    } else if (cmp == 0 && event.getIsDlqReconsumed()) {
       // Reconsumed DLQ events with identical timestamp are allowed to pass through
       out.output(event);
       dedupOutputs.inc();
       dlqEqualTimestampPassThrough.inc();
     } else {
       // Stale / out-of-order event - drop immediately without database RPCs
-      if (bundleStateCache != null && key != null && latestTimestampNanos != null) {
-        bundleStateCache.put(key, latestTimestampNanos);
+      if (bundleStateCache != null && key != null && latestSortKey != null) {
+        bundleStateCache.put(key, latestSortKey);
       }
       outOfOrderSkips.inc();
       throttledLogger.logInfo(
           LOG,
           event.getDataCollection(),
-          "Dropped out-of-order event for docId: {}, currentTimestampNanos: {}, latestTimestampNanos: {}",
+          "Dropped out-of-order event for docId: {}, currentSortKey: {}, latestSortKey: {}",
           event.getDocumentId(),
-          currentTimestampNanos,
-          latestTimestampNanos);
+          currentSortKey,
+          latestSortKey);
     }
   }
 }

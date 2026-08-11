@@ -104,6 +104,7 @@ public final class DataStreamMongoDBToFirestoreTest {
     String[] args =
         new String[] {
           "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
           "--orderingStrategy=stateful",
           "--batchSize=500",
           "--maxConcurrentAsyncWrites=10",
@@ -120,9 +121,92 @@ public final class DataStreamMongoDBToFirestoreTest {
   }
 
   @Test
+  public void validateOptions_missingConnectionUri_throwsException() {
+    String[] args = new String[] {"--inputFilePattern=gs://test-bkt/"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataStreamMongoDBToFirestore.validateOptions(options));
+    assertTrue(thrown.getMessage().contains("Connection URI (connectionUri) must be specified"));
+  }
+
+  @Test
+  public void validateOptions_emptyConnectionUri_throwsException() {
+    String[] args =
+        new String[] {"--inputFilePattern=gs://test-bkt/", "--connectionUri=   "};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataStreamMongoDBToFirestore.validateOptions(options));
+    assertTrue(thrown.getMessage().contains("Connection URI (connectionUri) must be specified"));
+  }
+
+  @Test
+  public void validateOptions_invalidScheme_throwsException() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/", "--connectionUri=http://localhost:27017"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataStreamMongoDBToFirestore.validateOptions(options));
+    assertTrue(thrown.getMessage().contains("Must start with 'mongodb://' or 'mongodb+srv://'"));
+  }
+
+  @Test
+  public void validateOptions_validConnectionUri_mongodb_success() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://user:pass@localhost:27017/db"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DataStreamMongoDBToFirestore.validateOptions(options);
+  }
+
+  @Test
+  public void validateOptions_validConnectionUri_mongodbSrv_success() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb+srv://cluster.example.com/db"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DataStreamMongoDBToFirestore.validateOptions(options);
+  }
+
+  @Test
   public void validateOptions_invalidOrderingStrategy_throwsException() {
     String[] args =
-        new String[] {"--inputFilePattern=gs://test-bkt/", "--orderingStrategy=invalid_strategy"};
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
+          "--orderingStrategy=invalid_strategy"
+        };
     DataStreamMongoDBToFirestore.Options options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -135,7 +219,12 @@ public final class DataStreamMongoDBToFirestoreTest {
 
   @Test
   public void validateOptions_invalidBatchSize_throwsException() {
-    String[] args = new String[] {"--inputFilePattern=gs://test-bkt/", "--batchSize=0"};
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
+          "--batchSize=0"
+        };
     DataStreamMongoDBToFirestore.Options options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -149,7 +238,11 @@ public final class DataStreamMongoDBToFirestoreTest {
   @Test
   public void validateOptions_invalidMaxConcurrentAsyncWrites_throwsException() {
     String[] args =
-        new String[] {"--inputFilePattern=gs://test-bkt/", "--maxConcurrentAsyncWrites=-1"};
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
+          "--maxConcurrentAsyncWrites=-1"
+        };
     DataStreamMongoDBToFirestore.Options options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -165,6 +258,7 @@ public final class DataStreamMongoDBToFirestoreTest {
     String[] args =
         new String[] {
           "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
           "--initialWriteRatePerWorker=5000",
           "--maxWriteRatePerWorker=2000"
         };
@@ -181,7 +275,11 @@ public final class DataStreamMongoDBToFirestoreTest {
   @Test
   public void validateOptions_invalidRampUpMinutes_throwsException() {
     String[] args =
-        new String[] {"--inputFilePattern=gs://test-bkt/", "--writeRateRampUpMinutes=-1"};
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
+          "--writeRateRampUpMinutes=-1"
+        };
     DataStreamMongoDBToFirestore.Options options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

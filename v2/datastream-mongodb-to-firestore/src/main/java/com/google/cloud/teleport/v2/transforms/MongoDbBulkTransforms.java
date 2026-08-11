@@ -42,6 +42,7 @@ import com.mongodb.client.model.WriteModel;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,8 +99,10 @@ public class MongoDbBulkTransforms {
   public static final Set<Integer> PERMANENT_ERROR_CODES =
       ImmutableSet.of(
           ERR_BAD_VALUE,
+          ERR_UNAUTHORIZED,
           ERR_TYPE_MISMATCH,
           ERR_INVALID_LENGTH,
+          ERR_NAMESPACE_NOT_FOUND,
           ERR_IMMUTABLE_FIELD,
           ERR_DOCUMENT_VALIDATION_FAILURE,
           ERR_KEY_TOO_LONG);
@@ -682,90 +685,112 @@ public class MongoDbBulkTransforms {
     }
 
     private void executeBatch(String collectionName, List<MongoDbChangeEventContext> batch) {
-      if (batch.isEmpty()) {
+      if (batch == null || batch.isEmpty()) {
         return;
       }
 
-      applyRateLimiter(batch.size());
-
-      // Intra-batch coalescing: coalesce operations per document ID within the batch to ensure only
-      // the latest state is written
-      Map<Object, MongoDbChangeEventContext> latestPerDoc = new java.util.LinkedHashMap<>();
-      for (MongoDbChangeEventContext event : batch) {
-        Object docId = event.getDocumentId();
-        MongoDbChangeEventContext existing = latestPerDoc.get(docId);
-        if (existing == null) {
-          latestPerDoc.put(docId, event);
-        } else {
-          long eventTs = Utils.getTimestampNanos(event.getTimestampDoc());
-          long existingTs = Utils.getTimestampNanos(existing.getTimestampDoc());
-          if (eventTs > existingTs || (eventTs == existingTs && event.getIsDlqReconsumed())) {
-            // Count coalesced older event as resolved/superseded
-            successQueue.add(existing);
-            successfulWrites.inc();
-            latestPerDoc.put(docId, event);
-          } else {
-            // Drop current event as superseded by earlier in-batch event
-            successQueue.add(event);
-            successfulWrites.inc();
-          }
-        }
-      }
-
-      MongoCollection<Document> collection = getCollection(collectionName);
-      List<WriteModel<Document>> operations = new ArrayList<>(latestPerDoc.size());
-      List<MongoDbChangeEventContext> activeBatch = new ArrayList<>(latestPerDoc.size());
-
-      for (MongoDbChangeEventContext event : latestPerDoc.values()) {
-        Object docId = event.getDocumentId();
-        Bson lookupById = eq("_id", docId);
-        if (event.isDeleteEvent()) {
-          operations.add(new DeleteOneModel<>(lookupById));
-          activeBatch.add(event);
-        } else {
-          Document doc = Utils.jsonToDocument(event.getDataAsJsonString(), docId);
-          if (doc == null) {
-            if (event.isUpdateEvent()) {
-              // Null data on update event occurs when doc was deleted right after update; skip
-              LOG.info(
-                  "Skipping update event for document ID: {} because 'data' field is null", docId);
-              successQueue.add(event);
-              successfulWrites.inc();
-            } else {
-              // Missing document data for non-delete/non-update event -> send to severe DLQ
-              FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> severeElement =
-                  FailsafeElement.of(event, event);
-              severeElement.setErrorMessage("Missing or null document data for docId: " + docId);
-              severeFailureQueue.add(severeElement);
-              severeFailedWrites.inc();
-            }
-          } else {
-            operations.add(
-                new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
-            activeBatch.add(event);
-          }
-        }
-      }
-
-      if (operations.isEmpty()) {
-        return;
-      }
+      List<MongoDbChangeEventContext> activeBatch = new ArrayList<>();
+      Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc = new LinkedHashMap<>();
 
       try {
+        applyRateLimiter(batch.size());
+
+        // Intra-batch coalescing: coalesce operations per document ID within the batch to ensure only
+        // the latest state is written
+        Map<Object, MongoDbChangeEventContext> latestPerDoc = new LinkedHashMap<>();
+        for (MongoDbChangeEventContext event : batch) {
+          if (event == null) {
+            continue;
+          }
+          Object docId = event.getDocumentId();
+          MongoDbChangeEventContext existing = latestPerDoc.get(docId);
+          if (existing == null) {
+            latestPerDoc.put(docId, event);
+          } else {
+            TimestampSortKey eventKey = TimestampSortKey.of(event);
+            TimestampSortKey existingKey = TimestampSortKey.of(existing);
+            int cmp =
+                (existingKey == null)
+                    ? 1
+                    : (eventKey == null ? -1 : eventKey.compareTo(existingKey));
+            if (cmp > 0 || (cmp == 0 && event.getIsDlqReconsumed())) {
+              supersededPerDoc.computeIfAbsent(docId, k -> new ArrayList<>()).add(existing);
+              latestPerDoc.put(docId, event);
+            } else {
+              supersededPerDoc.computeIfAbsent(docId, k -> new ArrayList<>()).add(event);
+            }
+          }
+        }
+
+        MongoCollection<Document> collection = getCollection(collectionName);
+        List<WriteModel<Document>> operations = new ArrayList<>(latestPerDoc.size());
+
+        for (MongoDbChangeEventContext event : latestPerDoc.values()) {
+          Object docId = event.getDocumentId();
+          Bson lookupById = eq("_id", docId);
+          if (event.isDeleteEvent()) {
+            operations.add(new DeleteOneModel<>(lookupById));
+            activeBatch.add(event);
+          } else {
+            Document doc = Utils.jsonToDocument(event.getDataAsJsonString(), docId);
+            if (doc == null) {
+              if (event.isUpdateEvent()) {
+                // Null data on update event occurs when doc was deleted right after update; skip
+                LOG.info(
+                    "Skipping update event for document ID: {} because 'data' field is null", docId);
+                successQueue.add(event);
+                successfulWrites.inc();
+                List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docId);
+                if (superseded != null && !superseded.isEmpty()) {
+                  successQueue.addAll(superseded);
+                  successfulWrites.inc(superseded.size());
+                }
+              } else {
+                // Missing document data for non-delete/non-update event -> send to severe DLQ
+                FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> severeElement =
+                    FailsafeElement.of(event, event);
+                severeElement.setErrorMessage("Missing or null document data for docId: " + docId);
+                severeFailureQueue.add(severeElement);
+                severeFailedWrites.inc();
+                supersededPerDoc.remove(docId);
+              }
+            } else {
+              operations.add(
+                  new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
+              activeBatch.add(event);
+            }
+          }
+        }
+
+        if (operations.isEmpty()) {
+          return;
+        }
+
         BulkWriteResult result =
             collection.bulkWrite(operations, new BulkWriteOptions().ordered(false));
-        successQueue.addAll(activeBatch);
-        successfulWrites.inc(activeBatch.size());
+        for (MongoDbChangeEventContext event : activeBatch) {
+          successQueue.add(event);
+          successfulWrites.inc();
+          List<MongoDbChangeEventContext> superseded =
+              supersededPerDoc.remove(event.getDocumentId());
+          if (superseded != null && !superseded.isEmpty()) {
+            successQueue.addAll(superseded);
+            successfulWrites.inc(superseded.size());
+          }
+        }
       } catch (MongoBulkWriteException mbwe) {
-        handleBulkWriteException(collectionName, activeBatch, mbwe);
+        handleBulkWriteException(collectionName, activeBatch, supersededPerDoc, mbwe);
       } catch (Exception e) {
-        handleGeneralBatchException(collectionName, activeBatch, e);
+        List<MongoDbChangeEventContext> eventsToHandle =
+            (!activeBatch.isEmpty()) ? activeBatch : batch;
+        handleGeneralBatchException(collectionName, eventsToHandle, supersededPerDoc, e);
       }
     }
 
     private void handleBulkWriteException(
         String collectionName,
         List<MongoDbChangeEventContext> batch,
+        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc,
         MongoBulkWriteException mbwe) {
       Set<Integer> failedIndices = new HashSet<>();
       List<MongoDbChangeEventContext> transientEvents = new ArrayList<>();
@@ -785,6 +810,9 @@ public class MongoDbBulkTransforms {
             severeElement.setStacktrace(Throwables.getStackTraceAsString(mbwe));
             severeFailureQueue.add(severeElement);
             severeFailedWrites.inc();
+            if (supersededPerDoc != null) {
+              supersededPerDoc.remove(event.getDocumentId());
+            }
           } else {
             transientEvents.add(event);
           }
@@ -807,20 +835,32 @@ public class MongoDbBulkTransforms {
         // Output successful documents only when no write concern error occurred
         for (int i = 0; i < batch.size(); i++) {
           if (!failedIndices.contains(i)) {
-            successQueue.add(batch.get(i));
+            MongoDbChangeEventContext successfulEvent = batch.get(i);
+            successQueue.add(successfulEvent);
             successfulWrites.inc();
+            if (supersededPerDoc != null) {
+              List<MongoDbChangeEventContext> superseded =
+                  supersededPerDoc.remove(successfulEvent.getDocumentId());
+              if (superseded != null && !superseded.isEmpty()) {
+                successQueue.addAll(superseded);
+                successfulWrites.inc(superseded.size());
+              }
+            }
           }
         }
       }
 
       // Retry transient documents with backoff
       if (!transientEvents.isEmpty()) {
-        retryTransientEvents(collectionName, transientEvents);
+        retryTransientEvents(collectionName, transientEvents, supersededPerDoc);
       }
     }
 
     private void handleGeneralBatchException(
-        String collectionName, List<MongoDbChangeEventContext> batch, Exception e) {
+        String collectionName,
+        List<MongoDbChangeEventContext> batch,
+        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc,
+        Exception e) {
       int code = 0;
       if (e instanceof MongoException me) {
         code = me.getCode();
@@ -840,6 +880,9 @@ public class MongoDbBulkTransforms {
           severeElement.setStacktrace(Throwables.getStackTraceAsString(e));
           severeFailureQueue.add(severeElement);
           severeFailedWrites.inc();
+          if (supersededPerDoc != null) {
+            supersededPerDoc.remove(event.getDocumentId());
+          }
         }
         return;
       }
@@ -850,11 +893,13 @@ public class MongoDbBulkTransforms {
           "Batch write encountered retryable error for collection {}: {}",
           collectionName,
           e.getMessage());
-      retryTransientEvents(collectionName, batch);
+      retryTransientEvents(collectionName, batch, supersededPerDoc);
     }
 
     private void retryTransientEvents(
-        String collectionName, List<MongoDbChangeEventContext> events) {
+        String collectionName,
+        List<MongoDbChangeEventContext> events,
+        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc) {
       FluentBackoff backoff =
           FluentBackoff.DEFAULT
               .withInitialBackoff(Duration.standardSeconds(2))
@@ -881,6 +926,14 @@ public class MongoDbBulkTransforms {
                 if (event.isUpdateEvent()) {
                   successQueue.add(event);
                   successfulWrites.inc();
+                  if (supersededPerDoc != null) {
+                    List<MongoDbChangeEventContext> superseded =
+                        supersededPerDoc.remove(docId);
+                    if (superseded != null && !superseded.isEmpty()) {
+                      successQueue.addAll(superseded);
+                      successfulWrites.inc(superseded.size());
+                    }
+                  }
                 } else {
                   FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>
                       severeElement = FailsafeElement.of(event, event);
@@ -888,6 +941,9 @@ public class MongoDbBulkTransforms {
                       "Missing or null document data on retry for docId: " + docId);
                   severeFailureQueue.add(severeElement);
                   severeFailedWrites.inc();
+                  if (supersededPerDoc != null) {
+                    supersededPerDoc.remove(docId);
+                  }
                 }
               } else {
                 operations.add(
@@ -906,6 +962,14 @@ public class MongoDbBulkTransforms {
           for (MongoDbChangeEventContext event : activeRetryBatch) {
             successQueue.add(event);
             successfulWrites.inc();
+            if (supersededPerDoc != null) {
+              List<MongoDbChangeEventContext> superseded =
+                  supersededPerDoc.remove(event.getDocumentId());
+              if (superseded != null && !superseded.isEmpty()) {
+                successQueue.addAll(superseded);
+                successfulWrites.inc(superseded.size());
+              }
+            }
           }
           currentRemaining.clear();
           break;
@@ -928,6 +992,9 @@ public class MongoDbBulkTransforms {
                 severeElement.setStacktrace(Throwables.getStackTraceAsString(mbwe));
                 severeFailureQueue.add(severeElement);
                 severeFailedWrites.inc();
+                if (supersededPerDoc != null) {
+                  supersededPerDoc.remove(ev.getDocumentId());
+                }
               } else {
                 nextRetry.add(ev);
               }
@@ -935,8 +1002,17 @@ public class MongoDbBulkTransforms {
           }
           for (int i = 0; i < activeRetryBatch.size(); i++) {
             if (!failedIndices.contains(i)) {
-              successQueue.add(activeRetryBatch.get(i));
+              MongoDbChangeEventContext successfulEvent = activeRetryBatch.get(i);
+              successQueue.add(successfulEvent);
               successfulWrites.inc();
+              if (supersededPerDoc != null) {
+                List<MongoDbChangeEventContext> superseded =
+                    supersededPerDoc.remove(successfulEvent.getDocumentId());
+                if (superseded != null && !superseded.isEmpty()) {
+                  successQueue.addAll(superseded);
+                  successfulWrites.inc(superseded.size());
+                }
+              }
             }
           }
           currentRemaining = nextRetry;
@@ -962,6 +1038,9 @@ public class MongoDbBulkTransforms {
                         + " attempts");
                 failureQueue.add(failedElement);
                 retriableFailedWrites.inc();
+                if (supersededPerDoc != null) {
+                  supersededPerDoc.remove(ev.getDocumentId());
+                }
               }
               break;
             }
@@ -973,6 +1052,9 @@ public class MongoDbBulkTransforms {
               failedElement.setErrorMessage("Retry interrupted: " + ie.getMessage());
               failureQueue.add(failedElement);
               retriableFailedWrites.inc();
+              if (supersededPerDoc != null) {
+                supersededPerDoc.remove(ev.getDocumentId());
+              }
             }
             break;
           }

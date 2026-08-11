@@ -41,6 +41,17 @@ public class LatestChangeEventCombineFnTest {
   private MongoDbChangeEventContext createEventContext(
       String docId, long seconds, int nanos, String changeType, boolean isDlqReconsumed)
       throws Exception {
+    return createEventContext(docId, seconds, nanos, changeType, isDlqReconsumed, "cdc");
+  }
+
+  private MongoDbChangeEventContext createEventContext(
+      String docId,
+      long seconds,
+      int nanos,
+      String changeType,
+      boolean isDlqReconsumed,
+      String readMethod)
+      throws Exception {
     String payload =
         String.format(
             "{"
@@ -49,10 +60,11 @@ public class LatestChangeEventCombineFnTest {
                 + "\"_metadata_timestamp_seconds\": %d,"
                 + "\"_metadata_timestamp_nanos\": %d,"
                 + "\"_metadata_change_type\": \"%s\","
+                + "\"_metadata_read_method\": \"%s\","
                 + "\"_metadata_dlq_reconsumed\": \"%s\","
                 + "\"data\": \"{\\\"field1\\\": \\\"val1\\\"}\""
                 + "}",
-            docId, seconds, nanos, changeType, isDlqReconsumed ? "true" : "false");
+            docId, seconds, nanos, changeType, readMethod, isDlqReconsumed ? "true" : "false");
     return new MongoDbChangeEventContext(OBJECT_MAPPER.readTree(payload), "shadow_");
   }
 
@@ -95,5 +107,19 @@ public class LatestChangeEventCombineFnTest {
 
     MongoDbChangeEventContext acc = combineFn.addInput(standard, dlq);
     assertEquals(dlq, acc);
+  }
+
+  @Test
+  public void testBackfillVsCdc_cdcWinsOnSameSecond() throws Exception {
+    MongoDbChangeEventContext backfill =
+        createEventContext("doc1", 1000L, 999000000, "READ", false, "backfill");
+    MongoDbChangeEventContext cdc = createEventContext("doc1", 1000L, 100, "UPDATE", false, "cdc");
+
+    // Even though backfill has 999M nanos and cdc has 100 oplog inc, CDC must win
+    MongoDbChangeEventContext acc = combineFn.addInput(backfill, cdc);
+    assertEquals(cdc, acc);
+
+    MongoDbChangeEventContext acc2 = combineFn.addInput(cdc, backfill);
+    assertEquals(cdc, acc2);
   }
 }

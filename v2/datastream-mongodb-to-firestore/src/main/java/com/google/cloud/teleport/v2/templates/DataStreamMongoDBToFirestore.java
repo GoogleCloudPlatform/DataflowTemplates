@@ -499,6 +499,19 @@ public class DataStreamMongoDBToFirestore {
   }
 
   public static void validateOptions(Options options) {
+    String connectionUri = options.getConnectionUri();
+    if (connectionUri == null || connectionUri.trim().isEmpty()) {
+      throw new IllegalArgumentException(
+          "Connection URI (connectionUri) must be specified and non-empty. "
+              + "Expected 'mongodb://...' or 'mongodb+srv://...'");
+    }
+    if (!connectionUri.startsWith("mongodb://") && !connectionUri.startsWith("mongodb+srv://")) {
+      throw new IllegalArgumentException(
+          "Invalid connectionUri: "
+              + connectionUri
+              + ". Must start with 'mongodb://' or 'mongodb+srv://'");
+    }
+
     String inputFileFormat = options.getInputFileFormat();
     if (inputFileFormat != null
         && !inputFileFormat.isEmpty()
@@ -555,6 +568,8 @@ public class DataStreamMongoDBToFirestore {
    */
   public static void run(Options options) {
     try {
+      validateOptions(options);
+
       LOG.info(
           "Starting pipeline execution with options: inputFilePattern={}, fileType={},"
               + " databaseName={}, useShadowTables={}",
@@ -565,16 +580,6 @@ public class DataStreamMongoDBToFirestore {
 
       // Decode the connection string
       String connectionString = options.getConnectionUri();
-      if (connectionString != null
-          && !connectionString.startsWith("mongodb://")
-          && !connectionString.startsWith("mongodb+srv://")) {
-        LOG.error(
-            "Invalid URL: {}, Must be in pattern of"
-                + " 'mongodb://<host1>:<port1>,<host2>:<port2>/database?options', or"
-                + " 'mongodb+srv://<host>/database?options'",
-            connectionString);
-        throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
-      }
       if (connectionString != null
           && connectionString.contains("MONGODB-OIDC")
           && !connectionString.contains("TOKEN_RESOURCE")) {
@@ -659,7 +664,8 @@ public class DataStreamMongoDBToFirestore {
         options,
         changeEventContexts,
         dlqManager,
-        CreateMongoDbChangeEventContextFn.failedCreationTag);
+        CreateMongoDbChangeEventContextFn.failedCreationTag,
+        "Process/WriteFailedContextCreationToDlq");
 
     PCollection<MongoDbChangeEventContext> contexts =
         changeEventContexts.get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
@@ -1279,16 +1285,24 @@ public class DataStreamMongoDBToFirestore {
       PCollectionTuple results,
       DeadLetterQueueManager dlqManager,
       TupleTag<FailsafeElement<String, String>> failedTag) {
-    LOG.info("Setting up DLQ for failed JSON processing");
+    writeFailedJsonToDlq(
+        options, results, dlqManager, failedTag, "Write Failed Json To DLQ - " + failedTag.getId());
+  }
+
+  private static void writeFailedJsonToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<FailsafeElement<String, String>> failedTag,
+      String stageName) {
+    LOG.info("Setting up DLQ for failed JSON processing: {}", stageName);
     results
         .get(failedTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-        .apply(
-            "DLQ: Write Retryable Json Failures to GCS - " + failedTag.getId(),
-            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .apply(stageName + " - Sanitize", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply(
-            "Write Failed Json To DLQ - " + failedTag.getId(),
+            stageName,
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_non_retry_json/")

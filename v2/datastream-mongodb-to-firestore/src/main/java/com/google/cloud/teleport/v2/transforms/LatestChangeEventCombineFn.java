@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
-import org.bson.Document;
 
 /**
  * High-performance CombineFn that compacts bursts of change events for the same document key into
@@ -42,14 +41,13 @@ public class LatestChangeEventCombineFn
       return accumulator;
     }
 
-    Document accTsDoc = accumulator.getTimestampDoc();
-    Document inputTsDoc = input.getTimestampDoc();
+    TimestampSortKey accKey = TimestampSortKey.of(accumulator);
+    TimestampSortKey inputKey = TimestampSortKey.of(input);
 
-    long accTs = Utils.getTimestampNanos(accTsDoc);
-    long inputTs = Utils.getTimestampNanos(inputTsDoc);
+    int cmp = (accKey == null) ? 1 : inputKey.compareTo(accKey);
 
     // If input is strictly newer, or equal with DLQ reconsumption, prefer input
-    if (inputTs > accTs || (inputTs == accTs && input.getIsDlqReconsumed())) {
+    if (cmp > 0 || (cmp == 0 && input.getIsDlqReconsumed())) {
       return input;
     }
     return accumulator;
@@ -59,13 +57,15 @@ public class LatestChangeEventCombineFn
   public MongoDbChangeEventContext mergeAccumulators(
       Iterable<MongoDbChangeEventContext> accumulators) {
     MongoDbChangeEventContext winner = null;
-    long maxTs = Long.MIN_VALUE;
+    TimestampSortKey maxKey = null;
 
     for (MongoDbChangeEventContext acc : accumulators) {
       if (acc != null) {
-        long ts = Utils.getTimestampNanos(acc.getTimestampDoc());
-        if (winner == null || ts > maxTs || (ts == maxTs && acc.getIsDlqReconsumed())) {
-          maxTs = ts;
+        TimestampSortKey key = TimestampSortKey.of(acc);
+        if (winner == null
+            || key.compareTo(maxKey) > 0
+            || (key.compareTo(maxKey) == 0 && acc.getIsDlqReconsumed())) {
+          maxKey = key;
           winner = acc;
         }
       }

@@ -74,6 +74,52 @@ public class MongoDbChangeEventContext implements Serializable {
     return getChangeType(this.changeEvent);
   }
 
+  /** Determines if the event is a backfill snapshot event. */
+  public boolean isBackfillEvent() {
+    if (changeEvent.has(DatastreamConstants.EVENT_READ_METHOD_KEY)) {
+      String readMethod = changeEvent.get(DatastreamConstants.EVENT_READ_METHOD_KEY).asText();
+      if (DatastreamConstants.READ_METHOD_BACKFILL.equalsIgnoreCase(readMethod)) {
+        return true;
+      }
+    }
+    if (changeEvent.has("read_method")) {
+      String readMethod = changeEvent.get("read_method").asText();
+      if (DatastreamConstants.READ_METHOD_BACKFILL.equalsIgnoreCase(readMethod)) {
+        return true;
+      }
+    }
+    String changeType = getChangeType();
+    return DatastreamConstants.READ_EVENT.equalsIgnoreCase(changeType)
+        || "BACKFILL".equalsIgnoreCase(changeType);
+  }
+
+  /** Determines if the event is a live CDC event. */
+  public boolean isCdcEvent() {
+    return !isBackfillEvent();
+  }
+
+  /** Gets epoch timestamp seconds. */
+  public long getTimestampSeconds() {
+    if (timestampDoc != null && timestampDoc.containsKey(TIMESTAMP_SECONDS_COL)) {
+      Object val = timestampDoc.get(TIMESTAMP_SECONDS_COL);
+      if (val instanceof Number) {
+        return ((Number) val).longValue();
+      }
+    }
+    return 0L;
+  }
+
+  /** Gets sub-second timestamp (wall nanoseconds for backfill, oplog increment for CDC). */
+  public long getTimestampSubSeconds() {
+    if (timestampDoc != null && timestampDoc.containsKey(TIMESTAMP_NANOS_COL)) {
+      Object val = timestampDoc.get(TIMESTAMP_NANOS_COL);
+      if (val instanceof Number) {
+        return ((Number) val).longValue();
+      }
+    }
+    return 0L;
+  }
+
   /** Determines if the event is a delete event based on metadata. */
   private boolean isDeleteEvent(JsonNode changeEvent) {
     String changeType = getChangeType(changeEvent);

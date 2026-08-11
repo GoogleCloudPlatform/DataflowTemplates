@@ -37,7 +37,13 @@ public class DatastreamConstants {
   // Event types
   public static final String DELETE_EVENT = "DELETE";
   public static final String UPDATE_EVENT = "UPDATE";
+  public static final String READ_EVENT = "READ";
   public static final String EMPTY_EVENT = "";
+
+  // Read method metadata
+  public static final String EVENT_READ_METHOD_KEY = "_metadata_read_method";
+  public static final String READ_METHOD_BACKFILL = "backfill";
+  public static final String READ_METHOD_CDC = "cdc";
 
   // Default shadow collection prefix
   public static final String DEFAULT_SHADOW_COLLECTION_PREFIX = "shadow_";

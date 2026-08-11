@@ -37,12 +37,12 @@ public class ThrottledLogger implements Serializable {
 
   private final String componentName;
   private final long throttleIntervalMs;
-  private transient AtomicLong totalErrors;
-  private transient AtomicLong totalRetryable;
-  private transient AtomicLong totalSevere;
-  private transient ConcurrentHashMap<String, AtomicLong> errorCategories;
-  private transient ConcurrentHashMap<String, LogEntryState> logStates;
-  private transient AtomicLong lastLogTimestamp;
+  private transient volatile AtomicLong totalErrors;
+  private transient volatile AtomicLong totalRetryable;
+  private transient volatile AtomicLong totalSevere;
+  private transient volatile ConcurrentHashMap<String, AtomicLong> errorCategories;
+  private transient volatile ConcurrentHashMap<String, LogEntryState> logStates;
+  private transient volatile AtomicLong lastLogTimestamp;
 
   public ThrottledLogger() {
     this("ThrottledLogger", DEFAULT_THROTTLE_INTERVAL_MS);
@@ -69,13 +69,23 @@ public class ThrottledLogger implements Serializable {
     this.totalSevere = new AtomicLong(0);
     this.errorCategories = new ConcurrentHashMap<>();
     this.logStates = new ConcurrentHashMap<>();
-    this.lastLogTimestamp = new AtomicLong(0);
+    this.lastLogTimestamp = new AtomicLong(System.currentTimeMillis());
   }
 
   private void ensureInitialized() {
     if (this.totalErrors == null) {
-      init();
+      synchronized (this) {
+        if (this.totalErrors == null) {
+          init();
+        }
+      }
     }
+  }
+
+  private void readObject(java.io.ObjectInputStream in)
+      throws java.io.IOException, ClassNotFoundException {
+    in.defaultReadObject();
+    init();
   }
 
   public void recordRetryableError(String category, String message) {
@@ -107,7 +117,7 @@ public class ThrottledLogger implements Serializable {
   private void checkAndFlush() {
     long now = System.currentTimeMillis();
     long last = lastLogTimestamp.get();
-    if (now - last >= throttleIntervalMs || last == 0) {
+    if (now - last >= throttleIntervalMs) {
       if (lastLogTimestamp.compareAndSet(last, now)) {
         flushSummary();
       }
@@ -146,6 +156,16 @@ public class ThrottledLogger implements Serializable {
   public long getTotalErrors() {
     ensureInitialized();
     return totalErrors.get();
+  }
+
+  public long getTotalRetryable() {
+    ensureInitialized();
+    return totalRetryable.get();
+  }
+
+  public long getTotalSevere() {
+    ensureInitialized();
+    return totalSevere.get();
   }
 
   /** Evaluates if a log message should be emitted for the key in this window. */
