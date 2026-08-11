@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.models;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,6 +33,8 @@ public final class SpannerMutationResponseTest {
   public void isEmptyReturnsTrueForNullMutation() {
     SpannerMutationResponse response = new SpannerMutationResponse(null);
     assertTrue(response.isEmpty());
+    assertNull(response.getMutation());
+    assertNull(response.getPrimaryKey());
   }
 
   @Test
@@ -43,5 +48,32 @@ public final class SpannerMutationResponseTest {
             .build();
     SpannerMutationResponse response = new SpannerMutationResponse(mutation);
     assertFalse(response.isEmpty());
+    assertEquals(mutation, response.getMutation());
+    assertNull(response.getPrimaryKey());
+  }
+
+  @Test
+  public void twoArgumentConstructorStoresMutationAndPrimaryKey() {
+    Mutation mutation =
+        Mutation.newInsertOrUpdateBuilder("Singers")
+            .set("SingerId")
+            .to(12)
+            .set("Name")
+            .to("John")
+            .build();
+    Key key = Key.of(12L);
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, key);
+    assertFalse(response.isEmpty());
+    assertEquals(mutation, response.getMutation());
+    assertEquals(key, response.getPrimaryKey());
+  }
+
+  @Test
+  public void isEmptyReturnsTrueWhenMutationNullEvenIfKeyProvided() {
+    Key key = Key.of(12L);
+    SpannerMutationResponse response = new SpannerMutationResponse(null, key);
+    assertTrue(response.isEmpty());
+    assertNull(response.getMutation());
+    assertEquals(key, response.getPrimaryKey());
   }
 }

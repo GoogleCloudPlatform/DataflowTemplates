@@ -140,4 +140,40 @@ public class SpannerSpToSrcSourceConnectorTest {
   public void testValidate_InvalidShardType_Failure() throws Exception {
     connector.validate(List.of(mockGenericShard), null);
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_EmptyShards_Failure() throws Exception {
+    connector.validate(List.of(), null);
+  }
+
+  @Test
+  public void testDefaultConstructor() {
+    SpannerSpToSrcSourceConnector defaultConnector = new SpannerSpToSrcSourceConnector();
+    assertNotNull(defaultConnector.getConnectionHelper());
+    assertNotNull(defaultConnector.getDmlGenerator());
+  }
+
+  @Test
+  public void testGetConnectionUrl_Success() {
+    when(mockSpannerShard.getProjectId()).thenReturn("p");
+    when(mockSpannerShard.getInstanceId()).thenReturn("i");
+    when(mockSpannerShard.getDatabaseId()).thenReturn("d");
+
+    assertEquals("p/i/d", connector.getConnectionUrl(mockSpannerShard));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetConnectionUrl_InvalidShardTypeThrows() {
+    connector.getConnectionUrl(mockGenericShard);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetConnectionUrl_NullShardThrows() {
+    connector.getConnectionUrl(null);
+  }
+
+  @Test
+  public void testClassifyExceptionReturnsNull() {
+    org.junit.Assert.assertNull(connector.classifyException(new RuntimeException("test")));
+  }
 }

@@ -153,4 +153,81 @@ public class SpannerTargetDaoTest {
     SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
     assertThrows(IllegalArgumentException.class, () -> dao.write(wrongResponse, null));
   }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeThrowsWhenDatabaseClientIsNull() throws Exception {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(null);
+
+    Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    assertThrows(
+        com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException.class,
+        () -> dao.write(response, null));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeSkipsExclusiveLockReadWhenTableNotInDdl() throws Exception {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    DatabaseClient mockClient = mock(DatabaseClient.class);
+    TransactionRunner mockRunner = mock(TransactionRunner.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+
+    when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
+    when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(mockTxnContext);
+            });
+
+    Ddl emptyDdl = Ddl.builder().build();
+    Key key = Key.of(1L);
+    Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, key);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, emptyDdl);
+    dao.write(response, null);
+
+    verify(mockTxnContext, org.mockito.Mockito.never()).executeQuery(any(Statement.class));
+    verify(mockTxnContext).buffer(ImmutableList.of(mutation));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeHandlesEmptyResultSetInExclusiveLockRead() throws Exception {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    DatabaseClient mockClient = mock(DatabaseClient.class);
+    TransactionRunner mockRunner = mock(TransactionRunner.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+
+    when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
+    when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(mockTxnContext);
+            });
+    when(mockTxnContext.executeQuery(any(Statement.class))).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(false);
+
+    Ddl ddl = buildTestDdl();
+    Key key = Key.of(1L);
+    Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation, key);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, ddl);
+    dao.write(response, null);
+
+    verify(mockTxnContext).executeQuery(any(Statement.class));
+    verify(mockResultSet, org.mockito.Mockito.never()).getCurrentRowAsStruct();
+    verify(mockTxnContext).buffer(ImmutableList.of(mutation));
+  }
 }
