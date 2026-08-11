@@ -68,20 +68,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
-      optional = true,
-      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*|^$)"},
       groupName = "Source",
-      description = "Source database connection URL or shard config path.",
+      description = "Source connection config file URL.",
       helpText =
-          "The URL to connect to the source database host. This can be either:"
-              + " 1. A JDBC connection URL for a single source database, which"
-              + " must contain the  host, port and source db name and can"
-              + " optionally contain properties like  autoReconnect,"
-              + " maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`."
-              + " For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
-              + " 2. A Cloud Storage path to a shard config file for sharded"
-              + " migrations. For example, `gs://my-bucket/my-shard-config.yaml`."
-              + " This parameter is required except for ASTRA_DB source.")
+          "The URL of the source connection config file. The file format is dependent on the source type."
+              + " For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json))."
+              + " For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json))."
+              + " For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf))."
+              + " This parameter is required.",
+      example = "gs://your-bucket/source-config.json")
   @Default.String("")
   String getSourceConfigURL();
 
@@ -89,27 +84,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 5,
-      optional = true,
-      regexes = {"^.+$"},
-      description = "JDBC connection username.",
-      helpText = "The username to be used for the JDBC connection.")
-  @Default.String("")
-  String getUsername(); // Make optional
-
-  void setUsername(String username);
-
-  @TemplateParameter.Password(
-      order = 6,
-      optional = true,
-      description = "JDBC connection password.",
-      helpText = "The password to be used for the JDBC connection.")
-  @Default.String("")
-  String getPassword(); // make optional
-
-  void setPassword(String password);
-
-  @TemplateParameter.Text(
-      order = 7,
       optional = true,
       description = "colon-separated names of the tables in the source database.",
       helpText = "Tables to migrate from source.")
@@ -120,7 +94,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   /* TODO(pipelineController) allow per table NumPartitions. */
   @TemplateParameter.Integer(
-      order = 8,
+      order = 6,
       optional = true,
       description = "The number of partitions.",
       helpText =
@@ -133,7 +107,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setNumPartitions(Integer value);
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 7,
       optional = true,
       description = "The number of rows to fetch per page read for JDBC source.",
       helpText =
@@ -146,7 +120,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setFetchSize(Integer value);
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 8,
       groupName = "Target",
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
@@ -155,7 +129,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setInstanceId(String value);
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 9,
       groupName = "Target",
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
@@ -165,7 +139,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setDatabaseId(String value);
 
   @TemplateParameter.ProjectId(
-      order = 12,
+      order = 10,
       groupName = "Target",
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
@@ -174,7 +148,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setProjectId(String projectId);
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 11,
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template.",
@@ -185,7 +159,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSpannerHost(String value);
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 12,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
       helpText =
@@ -197,7 +171,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setMaxConnections(Integer value);
 
   @TemplateParameter.GcsReadFile(
-      order = 15,
+      order = 13,
       optional = true,
       description =
           "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
@@ -210,7 +184,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSessionFilePath(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 16,
+      order = 14,
       description = "Output directory for failed/skipped/filtered events",
       helpText =
           "This directory is used to dump the failed/skipped/filtered records in a migration.")
@@ -219,7 +193,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setOutputDirectory(String value);
 
   @TemplateParameter.GcsReadFile(
-      order = 17,
+      order = 15,
       optional = true,
       description = "Custom jar location in Cloud Storage",
       helpText =
@@ -230,7 +204,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationJarPath(String value);
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 16,
       optional = true,
       description = "Custom class name",
       helpText =
@@ -242,7 +216,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationClassName(String value);
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 17,
       optional = true,
       description = "Custom parameters for transformation",
       helpText =
@@ -253,18 +227,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationCustomParameters(String value);
 
   @TemplateParameter.Text(
-      order = 20,
-      optional = true,
-      description = "Namespace",
-      helpText =
-          "Namespace to be exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Note: Custom non-public namespaces are currently unsupported for PostgreSQL and will cause the job to fail immediately.")
-  @Default.String("")
-  String getNamespace();
-
-  void setNamespace(String value);
-
-  @TemplateParameter.Text(
-      order = 21,
+      order = 18,
       optional = true,
       description = "Use Inserts instead of Upserts for spanner mutations.",
       helpText =
@@ -275,7 +238,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setInsertOnlyModeForSpannerMutations(Boolean value);
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 19,
       optional = true,
       description = "BatchSize for Spanner Mutation.",
       helpText =
@@ -286,7 +249,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setBatchSizeForSpannerMutations(Long value);
 
   @TemplateParameter.Enum(
-      order = 23,
+      order = 20,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("LOW"),
         @TemplateParameter.TemplateEnumOption("MEDIUM"),
@@ -303,7 +266,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSpannerPriority(Options.RpcPriority value);
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 21,
       optional = true,
       description = "Table name overrides from source to spanner",
       regexes =
@@ -319,7 +282,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTableOverrides(String value);
 
   @TemplateParameter.Text(
-      order = 25,
+      order = 22,
       optional = true,
       regexes =
           "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
@@ -336,7 +299,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setColumnOverrides(String value);
 
   @TemplateParameter.Text(
-      order = 26,
+      order = 23,
       optional = true,
       description = "File based overrides from source to spanner",
       helpText =
@@ -347,7 +310,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSchemaOverridesFilePath(String value);
 
   @TemplateParameter.Text(
-      order = 27,
+      order = 24,
       optional = true,
       description =
           "Hint for number of uniformization stages. Currently Applicable only for jdc based sources like MySql or PG. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages.",
@@ -366,48 +329,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setUniformizationStageCountHint(Long value);
 
   @TemplateParameter.Text(
-      order = 28,
-      optional = true,
-      description = "Astra DB token",
-      helpText =
-          "AstraDB token, ignored for non-AstraDB dialects. This token is used to automatically download the securebundle by the tempalte.")
-  @Default.String("")
-  String getAstraDBToken();
-
-  void setAstraDBToken(String value);
-
-  @TemplateParameter.Text(
-      order = 29,
-      optional = true,
-      description = "Astra DB databaseID",
-      helpText = "AstraDB databaseID, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBDatabaseId();
-
-  void setAstraDBDatabaseId(String value);
-
-  @TemplateParameter.Text(
-      order = 30,
-      optional = true,
-      description = "Astra DB keySpace",
-      helpText = "AstraDB keySpace, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBKeySpace();
-
-  void setAstraDBKeySpace(String value);
-
-  @TemplateParameter.Text(
-      order = 31,
-      optional = true,
-      description = "Astra DB Region",
-      helpText = "AstraDB region, ignored for non-AstraDB dialects")
-  @Default.String("")
-  String getAstraDBRegion();
-
-  void setAstraDBRegion(String value);
-
-  @TemplateParameter.Text(
-      order = 32,
+      order = 25,
       optional = true,
       description = "Failure injection parameter",
       helpText = "Failure injection parameter. Only used for testing.")
@@ -417,7 +339,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setFailureInjectionParameter(String value);
 
   @TemplateParameter.Text(
-      order = 33,
+      order = 26,
       optional = true,
       description =
           "Maximum commit delay time (in milliseconds) to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes",
@@ -431,7 +353,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setMaxCommitDelay(Long value);
 
   @TemplateParameter.GcsWriteFolder(
-      order = 34,
+      order = 27,
       optional = true,
       description = "GCS directory for AVRO files",
       helpText = "This directory is used to write the AVRO files of the records read from source.",
