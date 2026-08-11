@@ -37,7 +37,6 @@ import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
-import com.google.cloud.teleport.v2.transforms.LatestChangeEventCombineFn;
 import com.google.cloud.teleport.v2.transforms.MongoDbBulkTransforms;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
@@ -78,7 +77,6 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
-import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -86,13 +84,8 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.WithKeys;
-import org.apache.beam.sdk.transforms.windowing.AfterFirst;
-import org.apache.beam.sdk.transforms.windowing.AfterPane;
-import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
-import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
@@ -672,8 +665,7 @@ public class DataStreamMongoDBToFirestore {
 
     PCollection<MongoDbChangeEventContext> dedupedEvents;
     if ("stateful".equalsIgnoreCase(options.getOrderingStrategy())) {
-      LOG.info(
-          "Configuring stateful deduplication with micro-batch pre-compaction by collection and doc ID");
+      LOG.info("Configuring stateful deduplication by collection and doc ID");
       PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
           contexts.apply(
               "Process/KeyByCollectionAndDocId",
@@ -684,32 +676,12 @@ public class DataStreamMongoDBToFirestore {
                               + Utils.documentIdToString(event.getDocumentId()))
                   .withKeyType(TypeDescriptors.strings()));
 
-      // Compact rapid bursts on hot documents into the latest monotonic event before state
-      // evaluation
-      PCollection<KV<String, MongoDbChangeEventContext>> compactedEvents =
+      dedupedEvents =
           keyedEvents
               .apply(
-                  "Process/MicroBatchWindow",
-                  Window.<KV<String, MongoDbChangeEventContext>>into(
-                          FixedWindows.of(Duration.millis(500)))
-                      .triggering(
-                          Repeatedly.forever(
-                              AfterFirst.of(
-                                  AfterPane.elementCountAtLeast(50),
-                                  AfterProcessingTime.pastFirstElementInPane()
-                                      .plusDelayOf(Duration.millis(100)))))
-                      .discardingFiredPanes()
-                      .withAllowedLateness(Duration.standardHours(24)))
-              .apply("Process/CombineHotKeys", Combine.perKey(new LatestChangeEventCombineFn()));
-
-      PCollection<KV<String, MongoDbChangeEventContext>> windowedEvents =
-          compactedEvents.apply(
-              "Process/GlobalWindows",
-              Window.<KV<String, MongoDbChangeEventContext>>into(new GlobalWindows()));
-
-      dedupedEvents =
-          windowedEvents.apply(
-              "Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
+                  "Process/GlobalWindows",
+                  Window.<KV<String, MongoDbChangeEventContext>>into(new GlobalWindows()))
+              .apply("Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
     } else {
       LOG.info("Bypassing stateful deduplication for max throughput");
       dedupedEvents = contexts;
