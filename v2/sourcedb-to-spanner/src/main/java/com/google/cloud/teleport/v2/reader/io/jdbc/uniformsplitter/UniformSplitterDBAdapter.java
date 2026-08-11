@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.ResultSet;
@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.util.List;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -84,6 +85,23 @@ public interface UniformSplitterDBAdapter extends Serializable {
 
   default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  }
+
+  default List<CollationOrderRow> processCollationResultSet(
+      ResultSet rs,
+      com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference
+          collationReference)
+      throws SQLException {
+    List<CollationOrderRow> list = new java.util.ArrayList<>();
+    while (rs.next()) {
+      String charsetChar =
+          rs.getString(CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      if (charsetChar == null || charsetChar.isEmpty()) {
+        continue;
+      }
+      list.add(CollationOrderRow.fromRS(rs));
+    }
+    return list;
   }
 
   default LocalTime extractBoundaryLocalTime(ResultSet rs, int index) throws SQLException {
