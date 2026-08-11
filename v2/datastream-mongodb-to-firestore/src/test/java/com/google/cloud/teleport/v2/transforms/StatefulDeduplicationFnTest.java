@@ -72,7 +72,7 @@ public class StatefulDeduplicationFnTest {
                 + "\"_metadata_timestamp_nanos\": %d,"
                 + "\"_metadata_change_type\": \"%s\","
                 + "\"_metadata_read_method\": \"%s\""
-                + (isDlqReconsumed ? ",\"_metadata_dlq_reconsumed\": \"true\"" : "")
+                + (isDlqReconsumed ? ",\"isDlqReconsumed\": \"true\"" : "")
                 + ",\"data\": \"{\\\"name\\\": \\\"user_%s\\\"}\""
                 + "}",
             docId,

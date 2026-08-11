@@ -82,12 +82,6 @@ public class MongoDbChangeEventContext implements Serializable {
         return true;
       }
     }
-    if (changeEvent.has("read_method")) {
-      String readMethod = changeEvent.get("read_method").asText();
-      if (DatastreamConstants.READ_METHOD_BACKFILL.equalsIgnoreCase(readMethod)) {
-        return true;
-      }
-    }
     String changeType = getChangeType();
     return DatastreamConstants.READ_EVENT.equalsIgnoreCase(changeType)
         || "BACKFILL".equalsIgnoreCase(changeType);
@@ -139,9 +133,6 @@ public class MongoDbChangeEventContext implements Serializable {
           .get(DatastreamConstants.IS_DLQ_RECONSUMED)
           .asText()
           .equalsIgnoreCase("true");
-    }
-    if (changeEvent.has("_metadata_dlq_reconsumed")) {
-      return changeEvent.get("_metadata_dlq_reconsumed").asText().equalsIgnoreCase("true");
     }
     return false;
   }

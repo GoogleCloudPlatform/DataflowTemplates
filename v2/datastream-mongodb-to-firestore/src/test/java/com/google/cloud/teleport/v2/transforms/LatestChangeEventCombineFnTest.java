@@ -61,7 +61,7 @@ public class LatestChangeEventCombineFnTest {
                 + "\"_metadata_timestamp_nanos\": %d,"
                 + "\"_metadata_change_type\": \"%s\","
                 + "\"_metadata_read_method\": \"%s\","
-                + "\"_metadata_dlq_reconsumed\": \"%s\","
+                + "\"isDlqReconsumed\": \"%s\","
                 + "\"data\": \"{\\\"field1\\\": \\\"val1\\\"}\""
                 + "}",
             docId, seconds, nanos, changeType, readMethod, isDlqReconsumed ? "true" : "false");
