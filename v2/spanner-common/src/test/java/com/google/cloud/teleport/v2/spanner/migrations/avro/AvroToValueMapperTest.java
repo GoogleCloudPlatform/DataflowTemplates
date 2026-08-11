@@ -271,6 +271,14 @@ public class AvroToValueMapperTest {
         getGsqlMap().get(Type.json()).apply(fruitJson, SchemaBuilder.builder().stringType());
     assertEquals("Test json input", Value.json(fruitJson), valueJson);
 
+    Value valuePgJsonb =
+        getPgMap().get(Type.pgJsonb()).apply(fruitJson, SchemaBuilder.builder().stringType());
+    assertEquals("Test pgJsonb input", Value.pgJsonb(fruitJson), valuePgJsonb);
+
+    Value valuePgText =
+        getPgMap().get(Type.pgText()).apply("Hello Text", SchemaBuilder.builder().stringType());
+    assertEquals("Test pgText input", Value.string("Hello Text"), valuePgText);
+
     result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
     assertEquals("", result);
 
