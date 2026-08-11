@@ -65,7 +65,6 @@ public final class DataStreamMongoDBToFirestoreTest {
             .as(DataStreamMongoDBToFirestore.Options.class);
 
     assertFalse(options.getUseShadowTables());
-    assertEquals("stateful", options.getOrderingStrategy());
     assertEquals(Integer.valueOf(500), options.getBatchSize());
     assertEquals(Integer.valueOf(10), options.getMaxConcurrentAsyncWrites());
     assertEquals(Integer.valueOf(500), options.getInitialWriteRatePerWorker());
@@ -78,7 +77,6 @@ public final class DataStreamMongoDBToFirestoreTest {
     String[] args =
         new String[] {
           "--useShadowTables=false",
-          "--orderingStrategy=none",
           "--batchSize=200",
           "--maxConcurrentAsyncWrites=20",
           "--initialWriteRatePerWorker=1000",
@@ -91,7 +89,6 @@ public final class DataStreamMongoDBToFirestoreTest {
             .as(DataStreamMongoDBToFirestore.Options.class);
 
     assertFalse(options.getUseShadowTables());
-    assertEquals("none", options.getOrderingStrategy());
     assertEquals(Integer.valueOf(200), options.getBatchSize());
     assertEquals(Integer.valueOf(20), options.getMaxConcurrentAsyncWrites());
     assertEquals(Integer.valueOf(1000), options.getInitialWriteRatePerWorker());
@@ -105,7 +102,6 @@ public final class DataStreamMongoDBToFirestoreTest {
         new String[] {
           "--inputFilePattern=gs://test-bkt/",
           "--connectionUri=mongodb://localhost:27017",
-          "--orderingStrategy=stateful",
           "--batchSize=500",
           "--maxConcurrentAsyncWrites=10",
           "--initialWriteRatePerWorker=500",
@@ -196,24 +192,6 @@ public final class DataStreamMongoDBToFirestoreTest {
             .as(DataStreamMongoDBToFirestore.Options.class);
 
     DataStreamMongoDBToFirestore.validateOptions(options);
-  }
-
-  @Test
-  public void validateOptions_invalidOrderingStrategy_throwsException() {
-    String[] args =
-        new String[] {
-          "--inputFilePattern=gs://test-bkt/",
-          "--connectionUri=mongodb://localhost:27017",
-          "--orderingStrategy=invalid_strategy"
-        };
-    DataStreamMongoDBToFirestore.Options options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataStreamMongoDBToFirestore.Options.class);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> DataStreamMongoDBToFirestore.validateOptions(options));
   }
 
   @Test

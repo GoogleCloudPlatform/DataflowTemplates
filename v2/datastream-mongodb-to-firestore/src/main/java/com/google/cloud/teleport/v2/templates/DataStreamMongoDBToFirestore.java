@@ -189,21 +189,8 @@ public class DataStreamMongoDBToFirestore {
 
     void setUseShadowTables(Boolean value);
 
-    @TemplateParameter.Enum(
-        order = 11,
-        optional = true,
-        description = "Ordering and deduplication strategy for shadowless mode",
-        enumOptions = {@TemplateEnumOption("stateful"), @TemplateEnumOption("none")},
-        helpText =
-            "Ordering strategy: 'stateful' uses Beam stateful processing by doc ID; 'none' bypasses"
-                + " state for max throughput. Default: stateful.")
-    @Default.String("stateful")
-    String getOrderingStrategy();
-
-    void setOrderingStrategy(String value);
-
     @TemplateParameter.Integer(
-        order = 12,
+        order = 11,
         optional = true,
         description = "Batch size for bulk database writes",
         helpText =
@@ -515,15 +502,6 @@ public class DataStreamMongoDBToFirestore {
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
     }
 
-    String orderingStrategy = options.getOrderingStrategy();
-    if (orderingStrategy != null
-        && !orderingStrategy.isEmpty()
-        && !("stateful".equalsIgnoreCase(orderingStrategy)
-            || "none".equalsIgnoreCase(orderingStrategy))) {
-      throw new IllegalArgumentException(
-          "Ordering strategy must be one of: stateful, none - found " + orderingStrategy);
-    }
-
     if (options.getBatchSize() != null && options.getBatchSize() <= 0) {
       throw new IllegalArgumentException(
           "Batch size must be a positive integer - found " + options.getBatchSize());
@@ -672,29 +650,23 @@ public class DataStreamMongoDBToFirestore {
     PCollection<MongoDbChangeEventContext> contexts =
         changeEventContexts.get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
 
-    PCollection<MongoDbChangeEventContext> dedupedEvents;
-    if ("stateful".equalsIgnoreCase(options.getOrderingStrategy())) {
-      LOG.info("Configuring stateful deduplication by collection and doc ID");
-      PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
-          contexts.apply(
-              "Process/KeyByCollectionAndDocId",
-              WithKeys.of(
-                      (MongoDbChangeEventContext event) ->
-                          event.getDataCollection()
-                              + "#"
-                              + Utils.documentIdToString(event.getDocumentId()))
-                  .withKeyType(TypeDescriptors.strings()));
+    LOG.info("Configuring shadowless stateful deduplication by collection and doc ID");
+    PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
+        contexts.apply(
+            "Process/KeyByCollectionAndDocId",
+            WithKeys.of(
+                    (MongoDbChangeEventContext event) ->
+                        event.getDataCollection()
+                            + "#"
+                            + Utils.documentIdToString(event.getDocumentId()))
+                .withKeyType(TypeDescriptors.strings()));
 
-      dedupedEvents =
-          keyedEvents
-              .apply(
-                  "Process/GlobalWindows",
-                  Window.<KV<String, MongoDbChangeEventContext>>into(new GlobalWindows()))
-              .apply("Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
-    } else {
-      LOG.info("Bypassing stateful deduplication for max throughput");
-      dedupedEvents = contexts;
-    }
+    PCollection<MongoDbChangeEventContext> dedupedEvents =
+        keyedEvents
+            .apply(
+                "Process/GlobalWindows",
+                Window.<KV<String, MongoDbChangeEventContext>>into(new GlobalWindows()))
+            .apply("Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
 
     /*
      * Stage 3: Write/
