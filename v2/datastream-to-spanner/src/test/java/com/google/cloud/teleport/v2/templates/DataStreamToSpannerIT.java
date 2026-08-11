@@ -322,7 +322,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
                                 DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
                             ? "avro"
                             : "json"))
-            .addParameter("workerMachineType", "n2-standard-4");
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

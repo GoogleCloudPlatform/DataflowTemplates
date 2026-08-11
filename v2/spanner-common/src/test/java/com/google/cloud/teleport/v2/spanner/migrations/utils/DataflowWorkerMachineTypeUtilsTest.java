@@ -66,12 +66,14 @@ public class DataflowWorkerMachineTypeUtilsTest {
 
   @Test
   public void testValidMachineType() {
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-4", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "n1-standard-4", 4, java.util.Optional.empty());
   }
 
   @Test
   public void testValidMachineTypeHighCpu() {
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-8", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "n1-standard-8", 4, java.util.Optional.empty());
   }
 
   @Test
@@ -79,8 +81,22 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-2", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+              "n1-standard-2", 4, java.util.Optional.empty());
         });
+  }
+
+  @Test
+  public void testInvalidMachineTypeWithValidResourceHint() {
+    // Even if machine type is low cpu, valid resource hint should make it pass
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "n1-standard-2", 4, java.util.Optional.of(4));
+  }
+
+  @Test
+  public void testInvalidCustomMachineTypeWithValidResourceHint() {
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "custom-2-12345", 4, java.util.Optional.of(8));
   }
 
   @Test
@@ -88,7 +104,7 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4, java.util.Optional.empty());
         });
   }
 
@@ -97,18 +113,20 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs(" ", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(" ", 4, java.util.Optional.empty());
         });
   }
 
   @Test
   public void testValidCustomMachineType() {
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-8-12345", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "custom-8-12345", 4, java.util.Optional.empty());
   }
 
   @Test
   public void testValidCustomMachineTypeMinCpu() {
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-4-12345", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+        "custom-4-12345", 4, java.util.Optional.empty());
   }
 
   @Test
@@ -116,7 +134,8 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-2-12345", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+              "custom-2-12345", 4, java.util.Optional.empty());
         });
   }
 
@@ -125,7 +144,8 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-2", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+              "custom-2", 4, java.util.Optional.empty());
         });
   }
 
@@ -134,7 +154,8 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-abc-12345", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+              "custom-abc-12345", 4, java.util.Optional.empty());
         });
   }
 
@@ -143,7 +164,8 @@ public class DataflowWorkerMachineTypeUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.validateMachineSpecs("unknown-machine-type", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+              "unknown-machine-type", 4, java.util.Optional.empty());
         });
   }
 
@@ -326,5 +348,26 @@ public class DataflowWorkerMachineTypeUtilsTest {
       assertNull(memoryBytes);
       assertNull(vCpus);
     }
+  }
+
+  @Test
+  public void testValidateMachineSpecsWithResourceHints() {
+    // Both missing -> exception
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4, java.util.Optional.empty());
+        });
+
+    // workerMachineType missing, but resourceHints minCpu meets requirement -> no exception
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4, java.util.Optional.of(4));
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs("", 4, java.util.Optional.of(8));
+
+    // workerMachineType missing, resourceHints minCpu fails requirement -> exception
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4, java.util.Optional.of(2));
+        });
   }
 }
