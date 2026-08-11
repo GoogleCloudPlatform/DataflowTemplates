@@ -239,10 +239,13 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
     // While MySQL supports much larger capacities for these types (up to 4GB for
     // LONGBLOB/LONGTEXT),
     // Cloud Spanner enforces a strict hard limit of 10 MiB per individual cell (STRING/BYTES).
-    // Testing their true maximums would exceed Spanner's mutation size limits. Here, values are
-    // safely capped at ~2 MiB to accommodate Dataflow SpannerIO serialization overhead and to
-    // stay well within MySQL's default max_allowed_packet size (64MB).
-    final int safeBlobSize = (2 * 1024 * 1024);
+    // Since we are not testing the true MySQL maximum anyway, and we already have dedicated
+    // wide-row
+    // integration tests to rigorously stress-test Spanner's 10 MiB cell limit, we have taken a call
+    // to keep this concise (50 KB). This also prevents the integration testing framework from
+    // dumping
+    // massive SQL queries into stdout, which can crash the GitHub Actions CI/CD log viewer.
+    final int safeBlobSize = 50000;
     maxValues.put("mediumblob_col", "0x" + "FF".repeat(safeBlobSize));
     maxValues.put("longblob_col", "0x" + "FF".repeat(safeBlobSize));
     maxValues.put("mediumtext_col", "Z".repeat(safeBlobSize));
