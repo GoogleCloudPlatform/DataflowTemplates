@@ -806,7 +806,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                   "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
                   "max_batching_rows=50"));
           assertEquals(udf3.definition(), "");
-          // assertEquals(udf3.security(), nullValue());
+          // assertEquals(udf3.security(), nullValue()); // Commenting this assert since the
+          // behaviour is different in different environments.
           assertThat(
               udf3.parameters(),
               hasItems(
@@ -2020,17 +2021,14 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
   @Test
   public void placementsAndPlacementTables() throws Exception {
     setupMultiRegionSpannerResourceManager(Dialect.GOOGLE_STANDARD_SQL);
-    String region = "nam6";
     String leader1 = "us-east1";
     String leader2 = "us-central1";
 
     if (spannerHost != null) {
       if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
-        region = "nam3";
         leader1 = "us-east4";
         leader2 = "us-east1";
       } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
-        region = "nam-private1";
         leader1 = "us-west1";
         leader2 = "us-west4";
       }
