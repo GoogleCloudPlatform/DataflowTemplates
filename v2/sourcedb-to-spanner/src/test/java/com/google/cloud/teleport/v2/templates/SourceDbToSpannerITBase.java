@@ -316,6 +316,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setHost(cloudRm.getHost());
       shard.setPort(String.valueOf(cloudRm.getPort()));
       shard.setDbName(cloudRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException(
           "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());

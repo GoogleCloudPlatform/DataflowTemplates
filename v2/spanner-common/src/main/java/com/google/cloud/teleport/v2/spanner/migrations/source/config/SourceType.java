@@ -25,6 +25,7 @@ public enum SourceType {
 
   /** MySQL source database type. */
   MYSQL(new String[] {"mysql"}),
+  ORACLE(new String[] {"oracle"}),
 
   /** PostgreSQL source database type. */
   PG(new String[] {"postgresql"});

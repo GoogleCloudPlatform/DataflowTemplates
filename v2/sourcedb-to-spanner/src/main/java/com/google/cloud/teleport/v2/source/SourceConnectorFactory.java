@@ -43,6 +43,8 @@ public class SourceConnectorFactory {
       return new MySqlSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(dialect)) {
       return new PostgresSrcToSpSourceConnector();
+    } else if (SourceDbToSpannerOptions.ORACLE_SOURCE_DIALECT.equals(dialect)) {
+      return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
     }
     /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
     throw new IllegalArgumentException("Unsupported source database dialect: " + dialect);
@@ -66,6 +68,8 @@ public class SourceConnectorFactory {
         return new PostgresSrcToSpSourceConnector();
       case Constants.CASSANDRA_SOURCE_TYPE:
         return new CassandraSrcToSpSourceConnector();
+      case Constants.ORACLE_SOURCE_TYPE:
+        return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }
@@ -84,6 +88,8 @@ public class SourceConnectorFactory {
       return new MySqlSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.POSTGRESQL) {
       return new PostgresSrcToSpSourceConnector();
+    } else if (dialect == SQLDialect.ORACLE) {
+      return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
     }
     throw new IllegalArgumentException("Unsupported SQL dialect: " + dialect);
   }
