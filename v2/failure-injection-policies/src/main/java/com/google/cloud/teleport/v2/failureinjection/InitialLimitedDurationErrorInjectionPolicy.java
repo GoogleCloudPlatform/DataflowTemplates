@@ -185,6 +185,11 @@ public class InitialLimitedDurationErrorInjectionPolicy
     this.clock = clock;
   }
 
+  static void resetForTest() {
+    startTime = null;
+    callCount.set(0);
+  }
+
   @Override
   public String toString() {
     return "InitialLimitedDurationErrorInjectionPolicy{"
