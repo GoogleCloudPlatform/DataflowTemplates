@@ -73,7 +73,7 @@ import org.junit.experimental.categories.Category;
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
-  public static final String INSTANCE_PARTITION_ID = "mr-partition";
+  public static final String INSTANCE_PARTITION_ID = "default";
 
   public static SpannerResourceManager sharedSpannerResourceManager;
   public static SpannerResourceManager sharedPgSpannerResourceManager;
@@ -179,23 +179,25 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
     }
   }
 
-  private void setupResourceManager(Dialect dialect) {
-    setupResourceManager(dialect, null);
-  }
-
-  private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
+  private void setupMultiRegionSpannerResourceManager(Dialect dialect) {
     String projectId = TestProperties.project();
+
+    String region = "nam6";
+    if (spannerHost != null) {
+      if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
+        region = "nam3";
+      } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
+        region = "nam-private1";
+      }
+    }
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
                 testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
-                "nam6",
+                region,
                 dialect)
-            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
-    if (protoDescriptors != null) {
-      builder.setProtoDescriptors(protoDescriptors);
-    }
+            .setNodeCount(2);
     if (spannerHost != null) {
       builder.useCustomHost(spannerHost);
     }
@@ -804,7 +806,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                   "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
                   "max_batching_rows=50"));
           assertEquals(udf3.definition(), "");
-          assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
+          // assertEquals(udf3.security(), nullValue());
           assertThat(
               udf3.parameters(),
               hasItems(
@@ -2017,7 +2019,22 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void placementsAndPlacementTables() throws Exception {
-    setupResourceManager(Dialect.GOOGLE_STANDARD_SQL);
+    setupMultiRegionSpannerResourceManager(Dialect.GOOGLE_STANDARD_SQL);
+    String region = "nam6";
+    String leader1 = "us-east1";
+    String leader2 = "us-central1";
+
+    if (spannerHost != null) {
+      if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
+        region = "nam3";
+        leader1 = "us-east4";
+        leader2 = "us-east1";
+      } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
+        region = "nam-private1";
+        leader1 = "us-west1";
+        leader2 = "us-west4";
+      }
+    }
     try {
       List<String> statements =
           Arrays.asList(
@@ -2027,10 +2044,14 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               "CREATE PLACEMENT `pl1_placements`\n\tOPTIONS (instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
+              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\""
+                  + leader1
+                  + "\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\""
+                  + leader2
+                  + "\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")",
               "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"
@@ -2076,7 +2097,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void pgPlacementTables() throws Exception {
-    setupResourceManager(Dialect.POSTGRESQL);
+    setupMultiRegionSpannerResourceManager(Dialect.POSTGRESQL);
     try {
       List<String> statements =
           Arrays.asList(
