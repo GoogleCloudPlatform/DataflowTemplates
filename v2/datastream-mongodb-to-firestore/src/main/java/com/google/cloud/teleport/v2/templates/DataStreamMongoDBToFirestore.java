@@ -86,6 +86,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.WithTimestamps;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -672,11 +673,21 @@ public class DataStreamMongoDBToFirestore {
     PCollection<MongoDbChangeEventContext> contexts =
         changeEventContexts.get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
 
+    // Decouple runner-level event timestamps from historical backfill timestamps before keyed
+    // shuffle
+    // to prevent Windmill watermark stalls across 14M keys while keeping domain TimestampSortKey
+    // intact.
+    PCollection<MongoDbChangeEventContext> contextsWithProcessingTimestamps =
+        contexts.apply(
+            "Process/AssignProcessingTimestamps",
+            WithTimestamps.of((MongoDbChangeEventContext event) -> Instant.now())
+                .withAllowedTimestampSkew(Duration.standardDays(365)));
+
     PCollection<MongoDbChangeEventContext> dedupedEvents;
     if ("stateful".equalsIgnoreCase(options.getOrderingStrategy())) {
       LOG.info("Configuring stateful deduplication by collection and doc ID");
       PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
-          contexts.apply(
+          contextsWithProcessingTimestamps.apply(
               "Process/KeyByCollectionAndDocId",
               WithKeys.of(
                       (MongoDbChangeEventContext event) ->
@@ -693,7 +704,7 @@ public class DataStreamMongoDBToFirestore {
               .apply("Process/StatefulDeduplication", ParDo.of(new StatefulDeduplicationFn()));
     } else {
       LOG.info("Bypassing stateful deduplication for max throughput");
-      dedupedEvents = contexts;
+      dedupedEvents = contextsWithProcessingTimestamps;
     }
 
     /*

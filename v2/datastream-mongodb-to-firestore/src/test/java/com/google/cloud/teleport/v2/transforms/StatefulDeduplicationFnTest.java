@@ -373,4 +373,88 @@ public class StatefulDeduplicationFnTest {
     PAssert.that(result).containsInAnyOrder(insertV1, deleteV2, insertV3);
     pipeline.run();
   }
+
+  @Test
+  public void testAdvancingProcessingTimestamps_monotonicDeduplicationGovernedByTimestampSortKey()
+      throws Exception {
+    MongoDbChangeEventContext cdcUpdate1 =
+        createEventContext("doc1", 2000L, 100, "UPDATE", false, "cdc");
+    MongoDbChangeEventContext staleBackfill =
+        createEventContext("doc1", 1500L, 50, "READ", false, "backfill");
+    MongoDbChangeEventContext cdcUpdate2 =
+        createEventContext("doc1", 2500L, 200, "UPDATE", false, "cdc");
+    MongoDbChangeEventContext staleCdc =
+        createEventContext("doc1", 1800L, 0, "UPDATE", false, "cdc");
+
+    TestStream<KV<String, MongoDbChangeEventContext>> stream =
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", cdcUpdate1), new Instant(1000)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", staleBackfill), new Instant(2000)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", cdcUpdate2), new Instant(3000)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", staleCdc), new Instant(4000)))
+            .advanceWatermarkToInfinity();
+
+    PCollection<MongoDbChangeEventContext> result =
+        pipeline
+            .apply(stream)
+            .apply(Window.into(new GlobalWindows()))
+            .apply(ParDo.of(new StatefulDeduplicationFn()));
+
+    PAssert.that(result).containsInAnyOrder(cdcUpdate1, cdcUpdate2);
+    PipelineResult pipelineResult = pipeline.run();
+
+    MetricQueryResults metrics =
+        pipelineResult
+            .metrics()
+            .queryMetrics(
+                MetricsFilter.builder()
+                    .addNameFilter(
+                        MetricNameFilter.named(StatefulDeduplicationFn.class, "outOfOrderSkips"))
+                    .build());
+
+    long skips = 0;
+    if (metrics.getCounters().iterator().hasNext()) {
+      skips = metrics.getCounters().iterator().next().getAttempted();
+    }
+    assertEquals(2L, skips);
+  }
+
+  @Test
+  public void testAdvancingProcessingTimestamps_cdcDeleteOverridesOlderBackfillRead()
+      throws Exception {
+    MongoDbChangeEventContext cdcDelete =
+        createEventContext("doc1", 1000L, 200, "DELETE", false, "cdc");
+    MongoDbChangeEventContext olderBackfill =
+        createEventContext("doc1", 1000L, 100, "READ", false, "backfill");
+
+    TestStream<KV<String, MongoDbChangeEventContext>> stream =
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", cdcDelete), new Instant(1000)))
+            .addElements(TimestampedValue.of(KV.of("users#doc1", olderBackfill), new Instant(2000)))
+            .advanceWatermarkToInfinity();
+
+    PCollection<MongoDbChangeEventContext> result =
+        pipeline
+            .apply(stream)
+            .apply(Window.into(new GlobalWindows()))
+            .apply(ParDo.of(new StatefulDeduplicationFn()));
+
+    PAssert.that(result).containsInAnyOrder(cdcDelete);
+    PipelineResult pipelineResult = pipeline.run();
+
+    MetricQueryResults metrics =
+        pipelineResult
+            .metrics()
+            .queryMetrics(
+                MetricsFilter.builder()
+                    .addNameFilter(
+                        MetricNameFilter.named(StatefulDeduplicationFn.class, "outOfOrderSkips"))
+                    .build());
+
+    long skips = 0;
+    if (metrics.getCounters().iterator().hasNext()) {
+      skips = metrics.getCounters().iterator().next().getAttempted();
+    }
+    assertEquals(1L, skips);
+  }
 }
