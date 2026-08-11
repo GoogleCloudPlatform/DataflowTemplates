@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import java.io.Serializable;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
 
 /**
  * Composite monotonic sort key for Datastream MongoDB change events.
@@ -37,7 +36,7 @@ import org.apache.beam.sdk.coders.SerializableCoder;
  *       </ul>
  * </ol>
  */
-@DefaultCoder(SerializableCoder.class)
+@DefaultCoder(TimestampSortKeyCoder.class)
 public class TimestampSortKey implements Serializable, Comparable<TimestampSortKey> {
 
   private final long seconds;
@@ -58,7 +57,15 @@ public class TimestampSortKey implements Serializable, Comparable<TimestampSortK
         event.getTimestampSeconds(), event.getTimestampSubSeconds(), event.isCdcEvent());
   }
 
+  public static TimestampSortKey of(long seconds, long subSeconds, boolean isCdc) {
+    return new TimestampSortKey(seconds, subSeconds, isCdc);
+  }
+
   public long getSeconds() {
+    return seconds;
+  }
+
+  public long getTimestampSeconds() {
     return seconds;
   }
 
@@ -66,7 +73,15 @@ public class TimestampSortKey implements Serializable, Comparable<TimestampSortK
     return subSeconds;
   }
 
+  public long getTimestampSubSeconds() {
+    return subSeconds;
+  }
+
   public boolean isCdc() {
+    return isCdc;
+  }
+
+  public boolean getIsCdc() {
     return isCdc;
   }
 

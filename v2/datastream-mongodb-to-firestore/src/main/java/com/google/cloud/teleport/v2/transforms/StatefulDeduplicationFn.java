@@ -36,7 +36,8 @@ public class StatefulDeduplicationFn
   private static final Logger LOG = LoggerFactory.getLogger(StatefulDeduplicationFn.class);
 
   @StateId("latestTimestamp")
-  private final StateSpec<ValueState<TimestampSortKey>> latestTimestampSpec = StateSpecs.value();
+  private final StateSpec<ValueState<TimestampSortKey>> latestTimestampSpec =
+      StateSpecs.value(TimestampSortKeyCoder.of());
 
   private final Counter outOfOrderSkips =
       Metrics.counter(StatefulDeduplicationFn.class, "outOfOrderSkips");

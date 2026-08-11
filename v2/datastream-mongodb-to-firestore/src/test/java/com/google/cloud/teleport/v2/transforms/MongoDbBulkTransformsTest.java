@@ -41,7 +41,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -112,8 +111,7 @@ public class MongoDbBulkTransformsTest {
     PCollectionTuple result =
         pipeline
             .apply(
-                Create.of(insertEvent, deleteEvent)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+                Create.of(insertEvent, deleteEvent).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -151,8 +149,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(badDoc).withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(badDoc).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -204,9 +201,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(invalidDoc)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(invalidDoc).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -258,9 +253,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(transientDoc)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(transientDoc).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -319,9 +312,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(v1, v2, v3)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(v1, v2, v3).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -365,8 +356,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(v1, v2).withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(v1, v2).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -437,7 +427,7 @@ public class MongoDbBulkTransformsTest {
         pipeline
             .apply(
                 Create.of(docAv1, docAv2, docBv1, docBv2)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+                    .withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -490,8 +480,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(event).withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(event).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -548,9 +537,7 @@ public class MongoDbBulkTransformsTest {
 
     PCollectionTuple result =
         pipeline
-            .apply(
-                Create.of(docA, docB)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+            .apply(Create.of(docA, docB).withCoder(MongoDbChangeEventContextCoder.of()))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")

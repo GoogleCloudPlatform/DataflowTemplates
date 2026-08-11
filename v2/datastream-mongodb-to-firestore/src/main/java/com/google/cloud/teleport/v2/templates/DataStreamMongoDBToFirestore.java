@@ -38,9 +38,12 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.MongoDbBulkTransforms;
+import com.google.cloud.teleport.v2.transforms.MongoDbChangeEventContextCoder;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.StatefulDeduplicationFn;
+import com.google.cloud.teleport.v2.transforms.TimestampSortKey;
+import com.google.cloud.teleport.v2.transforms.TimestampSortKeyCoder;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -69,7 +72,6 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.metrics.Counter;
@@ -609,6 +611,13 @@ public class DataStreamMongoDBToFirestore {
   public static PipelineResult runShadowless(Options options, String connectionString) {
     LOG.info("Creating shadowless pipeline DAG");
     Pipeline pipeline = Pipeline.create(options);
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(TimestampSortKey.class, TimestampSortKeyCoder.of());
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(
+            MongoDbChangeEventContext.class, MongoDbChangeEventContextCoder.of());
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
     /*
@@ -648,7 +657,7 @@ public class DataStreamMongoDBToFirestore {
 
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
@@ -708,19 +717,17 @@ public class DataStreamMongoDBToFirestore {
 
     writeResult
         .get(MongoDbBulkTransforms.SUCCESSFUL_WRITE_TAG)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     writeResult
         .get(MongoDbBulkTransforms.FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
     writeResult
         .get(MongoDbBulkTransforms.SEVERE_FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     writeFailedEventsToDlq(
         options,
@@ -841,6 +848,13 @@ public class DataStreamMongoDBToFirestore {
   private static PipelineResult runWithBackfillFirst(Options options, String connectionString) {
     LOG.info("Creating pipeline with backfill-first processing");
     Pipeline pipeline = Pipeline.create(options);
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(TimestampSortKey.class, TimestampSortKeyCoder.of());
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(
+            MongoDbChangeEventContext.class, MongoDbChangeEventContextCoder.of());
 
     LOG.info("Building Dead Letter Queue manager");
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -872,7 +886,7 @@ public class DataStreamMongoDBToFirestore {
     // Set coders
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
@@ -899,10 +913,10 @@ public class DataStreamMongoDBToFirestore {
     // Set coders for split events
     splitEvents
         .get(SplitBackfillAndCdcEventsFn.backfillTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     splitEvents
         .get(SplitBackfillAndCdcEventsFn.cdcTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
 
     // Stage 4: Process backfill events
     LOG.info("Processing backfill events");
@@ -941,7 +955,7 @@ public class DataStreamMongoDBToFirestore {
             options.getUseShadowTablesForBackfill()
                 ? ProcessChangeEventFn.successfulWriteTag
                 : ProcessBackfillEventFn.successfulWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     backfillResult
         .get(
             options.getUseShadowTablesForBackfill()
@@ -949,8 +963,7 @@ public class DataStreamMongoDBToFirestore {
                 : ProcessBackfillEventFn.failedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     backfillResult
         .get(
@@ -959,8 +972,7 @@ public class DataStreamMongoDBToFirestore {
                 : ProcessBackfillEventFn.severeFailedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     // Handle failed backfill writes with DLQ
     writeFailedEventsToDlq(
@@ -996,20 +1008,18 @@ public class DataStreamMongoDBToFirestore {
     // Set coders for CDC results
     cdcResult
         .get(ProcessChangeEventFn.successfulWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
     cdcResult
         .get(ProcessChangeEventFn.failedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     cdcResult
         .get(ProcessChangeEventFn.severeFailedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     // Handle failed CDC writes with DLQ
     writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
@@ -1031,6 +1041,13 @@ public class DataStreamMongoDBToFirestore {
   private static PipelineResult runAllEventsTogether(Options options, String connectionString) {
     LOG.info("Creating pipeline");
     Pipeline pipeline = Pipeline.create(options);
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(TimestampSortKey.class, TimestampSortKeyCoder.of());
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForClass(
+            MongoDbChangeEventContext.class, MongoDbChangeEventContextCoder.of());
 
     LOG.info("Building Dead Letter Queue manager");
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -1059,7 +1076,7 @@ public class DataStreamMongoDBToFirestore {
 
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
 
     changeEventContexts
         .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
@@ -1076,7 +1093,7 @@ public class DataStreamMongoDBToFirestore {
     PCollectionTuple writeResult =
         changeEventContexts
             .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
-            .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class))
+            .setCoder(MongoDbChangeEventContextCoder.of())
             .apply(
                 "Transactional write events",
                 ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
@@ -1087,21 +1104,19 @@ public class DataStreamMongoDBToFirestore {
 
     writeResult
         .get(ProcessChangeEventFn.successfulWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(MongoDbChangeEventContextCoder.of());
 
     writeResult
         .get(ProcessChangeEventFn.failedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     writeResult
         .get(ProcessChangeEventFn.severeFailedWriteTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)));
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     LOG.info("Setting up DLQ handling for failed writes");
     writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
@@ -1302,8 +1317,7 @@ public class DataStreamMongoDBToFirestore {
         .get(failedTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)))
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()))
         .apply(
             stageName + " - Sanitize", MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
@@ -1337,8 +1351,7 @@ public class DataStreamMongoDBToFirestore {
         .get(failedTag)
         .setCoder(
             FailsafeElementCoder.of(
-                SerializableCoder.of(MongoDbChangeEventContext.class),
-                SerializableCoder.of(MongoDbChangeEventContext.class)))
+                MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()))
         .apply(
             stageName + " - Sanitize", MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())

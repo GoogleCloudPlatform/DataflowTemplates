@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricNameFilter;
 import org.apache.beam.sdk.metrics.MetricQueryResults;
@@ -90,9 +89,7 @@ public class StatefulDeduplicationFnTest {
     MongoDbChangeEventContext event2 = createEventContext("doc1", 1000L, 200, "UPDATE", false);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(
                 TimestampedValue.of(KV.of("users#doc1", event1), new Instant(100)),
                 TimestampedValue.of(KV.of("users#doc1", event2), new Instant(200)))
@@ -114,9 +111,7 @@ public class StatefulDeduplicationFnTest {
     MongoDbChangeEventContext eventStale = createEventContext("doc1", 1000L, 100, "INSERT", false);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", eventNewer), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", eventStale), new Instant(200)))
             .advanceWatermarkToInfinity();
@@ -153,9 +148,7 @@ public class StatefulDeduplicationFnTest {
     MongoDbChangeEventContext staleUpdate = createEventContext("doc1", 1000L, 200, "UPDATE", false);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", insertEvent), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", deleteEvent), new Instant(200)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", staleUpdate), new Instant(300)))
@@ -194,9 +187,7 @@ public class StatefulDeduplicationFnTest {
         createEventContext("doc1", 1000L, 100, "INSERT", true);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", regularEvent), new Instant(100)))
             .addElements(
                 TimestampedValue.of(KV.of("users#doc1", dlqReconsumedEvent), new Instant(200)))
@@ -235,9 +226,7 @@ public class StatefulDeduplicationFnTest {
         createEventContext("doc1", 1000L, 100, "INSERT", false);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", event1), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", duplicateEvent), new Instant(200)))
             .advanceWatermarkToInfinity();
@@ -282,9 +271,7 @@ public class StatefulDeduplicationFnTest {
     String arrayKey = "items#" + Utils.documentIdToString(arrayEvent.getDocumentId());
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of(mapKey, mapEvent), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of(arrayKey, arrayEvent), new Instant(200)))
             .advanceWatermarkToInfinity();
@@ -309,9 +296,7 @@ public class StatefulDeduplicationFnTest {
         createEventContext("orphanDoc", 1786382543L, 967669000, "READ", false, "backfill");
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#orphanDoc", cdcDelete), new Instant(100)))
             .addElements(
                 TimestampedValue.of(KV.of("users#orphanDoc", backfillRead), new Instant(200)))
@@ -351,9 +336,7 @@ public class StatefulDeduplicationFnTest {
         createEventContext("doc1", 1786382543L, 100, "UPDATE", false, "cdc");
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", backfillRead), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", cdcUpdate), new Instant(200)))
             .advanceWatermarkToInfinity();
@@ -375,9 +358,7 @@ public class StatefulDeduplicationFnTest {
     MongoDbChangeEventContext insertV3 = createEventContext("doc1", 1001L, 50, "INSERT", false);
 
     TestStream<KV<String, MongoDbChangeEventContext>> stream =
-        TestStream.create(
-                KvCoder.of(
-                    StringUtf8Coder.of(), SerializableCoder.of(MongoDbChangeEventContext.class)))
+        TestStream.create(KvCoder.of(StringUtf8Coder.of(), MongoDbChangeEventContextCoder.of()))
             .addElements(TimestampedValue.of(KV.of("users#doc1", insertV1), new Instant(100)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", deleteV2), new Instant(200)))
             .addElements(TimestampedValue.of(KV.of("users#doc1", insertV3), new Instant(300)))
