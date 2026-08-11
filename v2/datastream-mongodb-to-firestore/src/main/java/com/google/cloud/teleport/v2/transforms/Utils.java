@@ -151,6 +151,9 @@ public final class Utils {
     if (documentId instanceof Double) {
       return "f64_" + documentId;
     }
+    if (documentId instanceof Boolean) {
+      return "bool_" + documentId;
+    }
     return "str_" + documentId.toString();
   }
 

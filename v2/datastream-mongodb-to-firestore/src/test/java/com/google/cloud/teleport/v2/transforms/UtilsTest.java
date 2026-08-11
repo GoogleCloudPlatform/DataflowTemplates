@@ -174,10 +174,18 @@ public class UtilsTest {
   @Test
   public void testDocumentIdToString() {
     assertEquals("str_test_id", Utils.documentIdToString("test_id"));
+    assertEquals("str_123", Utils.documentIdToString("123"));
     assertEquals("i64_123", Utils.documentIdToString(123L));
+    assertEquals("i32_123", Utils.documentIdToString(123));
     assertEquals("f64_123.456", Utils.documentIdToString(123.456));
-    assertEquals("str_true", Utils.documentIdToString(true));
+    assertEquals("bool_true", Utils.documentIdToString(true));
+    assertEquals("bool_false", Utils.documentIdToString(false));
     assertEquals("null", Utils.documentIdToString(null));
+
+    // Verify string "123" vs Long 123L vs Integer 123 are distinct and do not collide
+    assertFalse(Utils.documentIdToString("123").equals(Utils.documentIdToString(123L)));
+    assertFalse(Utils.documentIdToString("123").equals(Utils.documentIdToString(123)));
+    assertFalse(Utils.documentIdToString(123L).equals(Utils.documentIdToString(123)));
 
     ObjectId objectId = new ObjectId("645c9a7e7b8b1a0e9c0f8b3a");
     assertEquals("oid_645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
