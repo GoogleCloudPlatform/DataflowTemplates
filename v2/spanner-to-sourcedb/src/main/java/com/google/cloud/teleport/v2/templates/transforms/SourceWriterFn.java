@@ -260,6 +260,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             spannerDao
                 .getDatabaseClient()
                 .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
+                .allowNestedTransaction()
                 .run(
                     (TransactionRunner.TransactionCallable<Boolean>)
                         shadowTransaction -> {

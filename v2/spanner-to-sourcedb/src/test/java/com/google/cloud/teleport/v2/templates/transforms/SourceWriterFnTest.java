@@ -130,6 +130,7 @@ public class SourceWriterFnTest {
     when(mockDaoMap.get(any())).thenReturn(mockSqlDao);
     when(mockSpannerDao.getDatabaseClient()).thenReturn(mockDatabaseClient);
     when(mockDatabaseClient.readWriteTransaction(any())).thenReturn(mockTransactionRunner);
+    when(mockTransactionRunner.allowNestedTransaction()).thenReturn(mockTransactionRunner);
     when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
         .thenAnswer(
             new Answer<Void>() {
