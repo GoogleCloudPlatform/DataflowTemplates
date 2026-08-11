@@ -366,8 +366,7 @@ public class MongoDbBulkTransformsTest {
     PCollectionTuple result =
         pipeline
             .apply(
-                Create.of(v1, v2)
-                    .withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
+                Create.of(v1, v2).withCoder(SerializableCoder.of(MongoDbChangeEventContext.class)))
             .apply(
                 MongoDbBulkTransforms.bulkWriteWithDlq()
                     .withConnectionString("mongodb://localhost:27017")
@@ -401,9 +400,11 @@ public class MongoDbBulkTransformsTest {
   public void testPartialBatchFailure_emitsSupersededEventsOnlyForSuccessfulDocs()
       throws Exception {
     MongoDbChangeEventContext docAv1 = createEventContextWithTimestamp("docA", 1000L, 0, "INSERT");
-    MongoDbChangeEventContext docAv2 = createEventContextWithTimestamp("docA", 1000L, 100, "UPDATE");
+    MongoDbChangeEventContext docAv2 =
+        createEventContextWithTimestamp("docA", 1000L, 100, "UPDATE");
     MongoDbChangeEventContext docBv1 = createEventContextWithTimestamp("docB", 1000L, 0, "INSERT");
-    MongoDbChangeEventContext docBv2 = createEventContextWithTimestamp("docB", 1000L, 100, "UPDATE");
+    MongoDbChangeEventContext docBv2 =
+        createEventContextWithTimestamp("docB", 1000L, 100, "UPDATE");
 
     when(mockCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(

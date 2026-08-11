@@ -695,7 +695,8 @@ public class MongoDbBulkTransforms {
       try {
         applyRateLimiter(batch.size());
 
-        // Intra-batch coalescing: coalesce operations per document ID within the batch to ensure only
+        // Intra-batch coalescing: coalesce operations per document ID within the batch to ensure
+        // only
         // the latest state is written
         Map<Object, MongoDbChangeEventContext> latestPerDoc = new LinkedHashMap<>();
         for (MongoDbChangeEventContext event : batch) {
@@ -737,7 +738,8 @@ public class MongoDbBulkTransforms {
               if (event.isUpdateEvent()) {
                 // Null data on update event occurs when doc was deleted right after update; skip
                 LOG.info(
-                    "Skipping update event for document ID: {} because 'data' field is null", docId);
+                    "Skipping update event for document ID: {} because 'data' field is null",
+                    docId);
                 successQueue.add(event);
                 successfulWrites.inc();
                 List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docId);
@@ -747,8 +749,8 @@ public class MongoDbBulkTransforms {
                 }
               } else {
                 // Missing document data for non-delete/non-update event -> send to severe DLQ
-                FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> severeElement =
-                    FailsafeElement.of(event, event);
+                FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>
+                    severeElement = FailsafeElement.of(event, event);
                 severeElement.setErrorMessage("Missing or null document data for docId: " + docId);
                 severeFailureQueue.add(severeElement);
                 severeFailedWrites.inc();
@@ -927,8 +929,7 @@ public class MongoDbBulkTransforms {
                   successQueue.add(event);
                   successfulWrites.inc();
                   if (supersededPerDoc != null) {
-                    List<MongoDbChangeEventContext> superseded =
-                        supersededPerDoc.remove(docId);
+                    List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docId);
                     if (superseded != null && !superseded.isEmpty()) {
                       successQueue.addAll(superseded);
                       successfulWrites.inc(superseded.size());

@@ -137,8 +137,7 @@ public final class DataStreamMongoDBToFirestoreTest {
 
   @Test
   public void validateOptions_emptyConnectionUri_throwsException() {
-    String[] args =
-        new String[] {"--inputFilePattern=gs://test-bkt/", "--connectionUri=   "};
+    String[] args = new String[] {"--inputFilePattern=gs://test-bkt/", "--connectionUri=   "};
     DataStreamMongoDBToFirestore.Options options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

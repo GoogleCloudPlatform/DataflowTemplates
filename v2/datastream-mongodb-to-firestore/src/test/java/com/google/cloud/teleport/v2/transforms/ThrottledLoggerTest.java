@@ -76,7 +76,8 @@ public class ThrottledLoggerTest {
   public void testSerializationAndConcurrentAccess() throws Exception {
     ThrottledLogger original = new ThrottledLogger("ConcurrentLogger", 30_000L);
 
-    // Serialize and deserialize to simulate Beam worker distribution where transient fields start null
+    // Serialize and deserialize to simulate Beam worker distribution where transient fields start
+    // null
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
       oos.writeObject(original);
