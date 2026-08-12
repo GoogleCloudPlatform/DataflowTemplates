@@ -16,12 +16,15 @@
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;
@@ -37,6 +40,7 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 
 @RunWith(JUnit4.class)
 public class SpannerTargetDaoTest {
@@ -62,6 +66,7 @@ public class SpannerTargetDaoTest {
 
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
     when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.allowNestedTransaction()).thenReturn(mockRunner);
     when(mockRunner.run(any()))
         .thenAnswer(
             invocation -> {
@@ -89,6 +94,7 @@ public class SpannerTargetDaoTest {
 
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
     when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.allowNestedTransaction()).thenReturn(mockRunner);
     when(mockRunner.run(any()))
         .thenAnswer(
             invocation -> {
@@ -121,6 +127,7 @@ public class SpannerTargetDaoTest {
 
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
     when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.allowNestedTransaction()).thenReturn(mockRunner);
     when(mockRunner.run(any()))
         .thenAnswer(
             invocation -> {
@@ -179,6 +186,7 @@ public class SpannerTargetDaoTest {
 
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
     when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.allowNestedTransaction()).thenReturn(mockRunner);
     when(mockRunner.run(any()))
         .thenAnswer(
             invocation -> {
@@ -194,7 +202,7 @@ public class SpannerTargetDaoTest {
     SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, emptyDdl);
     dao.write(response, null);
 
-    verify(mockTxnContext, org.mockito.Mockito.never()).executeQuery(any(Statement.class));
+    verify(mockTxnContext, never()).executeQuery(any(Statement.class));
     verify(mockTxnContext).buffer(ImmutableList.of(mutation));
   }
 
@@ -209,6 +217,7 @@ public class SpannerTargetDaoTest {
 
     when(connectionHelper.getConnection(CONNECTION_KEY)).thenReturn(mockClient);
     when(mockClient.readWriteTransaction(any())).thenReturn(mockRunner);
+    when(mockRunner.allowNestedTransaction()).thenReturn(mockRunner);
     when(mockRunner.run(any()))
         .thenAnswer(
             invocation -> {
@@ -227,7 +236,137 @@ public class SpannerTargetDaoTest {
     dao.write(response, null);
 
     verify(mockTxnContext).executeQuery(any(Statement.class));
-    verify(mockResultSet, org.mockito.Mockito.never()).getCurrentRowAsStruct();
+    verify(mockResultSet, never()).getCurrentRowAsStruct();
     verify(mockTxnContext).buffer(ImmutableList.of(mutation));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReadDataTableRowWithExclusiveLock_tableNotFound() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+
+    Ddl ddl = buildTestDdl();
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, ddl);
+
+    dao.readDataTableRowWithExclusiveLock(mockTxnContext, "NonExistentTable", Key.of(1L), ddl);
+
+    verify(mockTxnContext, never()).executeQuery(any(Statement.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReadDataTableRowWithExclusiveLock_rowFound() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+
+    ArgumentCaptor<Statement> statementCaptor = ArgumentCaptor.forClass(Statement.class);
+    when(mockTxnContext.executeQuery(statementCaptor.capture())).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true);
+
+    Ddl ddl = buildTestDdl();
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, ddl);
+
+    dao.readDataTableRowWithExclusiveLock(mockTxnContext, "T", Key.of(1L), ddl);
+
+    Statement capturedStatement = statementCaptor.getValue();
+    assertTrue(capturedStatement.getSql().contains("LOCK_SCANNED_RANGES=exclusive"));
+    assertTrue(capturedStatement.getSql().contains("FROM T"));
+    verify(mockResultSet).getCurrentRowAsStruct();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReadDataTableRowWithExclusiveLock_rowNotFound() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+
+    when(mockTxnContext.executeQuery(any(Statement.class))).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(false);
+
+    Ddl ddl = buildTestDdl();
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, ddl);
+
+    dao.readDataTableRowWithExclusiveLock(mockTxnContext, "T", Key.of(1L), ddl);
+
+    verify(mockTxnContext).executeQuery(any(Statement.class));
+    verify(mockResultSet, never()).getCurrentRowAsStruct();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReadDataTableRowWithExclusiveLock_compositePrimaryKey() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+
+    Ddl compositeDdl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("UserId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("OrgId")
+            .string()
+            .size(50)
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("UserId")
+            .asc("OrgId")
+            .end()
+            .endTable()
+            .build();
+
+    ArgumentCaptor<Statement> statementCaptor = ArgumentCaptor.forClass(Statement.class);
+    when(mockTxnContext.executeQuery(statementCaptor.capture())).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, compositeDdl);
+
+    dao.readDataTableRowWithExclusiveLock(
+        mockTxnContext, "Users", Key.of(100L, "org-1"), compositeDdl);
+
+    Statement capturedStatement = statementCaptor.getValue();
+    assertTrue(capturedStatement.getSql().contains("UserId=@UserId"));
+    assertTrue(capturedStatement.getSql().contains("OrgId=@OrgId"));
+    verify(mockResultSet).getCurrentRowAsStruct();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReadDataTableRowWithExclusiveLock_postgresDialect() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    TransactionContext mockTxnContext = mock(TransactionContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+
+    Ddl pgDdl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ArgumentCaptor<Statement> statementCaptor = ArgumentCaptor.forClass(Statement.class);
+    when(mockTxnContext.executeQuery(statementCaptor.capture())).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper, pgDdl);
+
+    dao.readDataTableRowWithExclusiveLock(mockTxnContext, "Users", Key.of(42L), pgDdl);
+
+    Statement capturedStatement = statementCaptor.getValue();
+    assertTrue(capturedStatement.getSql().contains("/*@ LOCK_SCANNED_RANGES=exclusive */"));
+    assertTrue(capturedStatement.getSql().contains("FROM \"Users\""));
+    verify(mockResultSet).getCurrentRowAsStruct();
   }
 }

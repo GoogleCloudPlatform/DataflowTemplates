@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -89,6 +90,7 @@ public class SpannerTargetDao implements IDao {
     // (in the transaction check) and the main transaction are on the same database
     client
         .readWriteTransaction(Options.priority(RpcPriority.HIGH))
+        .allowNestedTransaction()
         .run(
             (TransactionRunner.TransactionCallable<Void>)
                 mainTxn -> {
@@ -106,7 +108,8 @@ public class SpannerTargetDao implements IDao {
                 });
   }
 
-  private void readDataTableRowWithExclusiveLock(
+  @VisibleForTesting
+  void readDataTableRowWithExclusiveLock(
       TransactionContext transactionContext, String tableName, Key primaryKey, Ddl ddl) {
     Table table = ddl.table(tableName);
     if (table == null) {
