@@ -20,6 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
+* **sourceConfigURL**: The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. For example, `gs://your-bucket/source-config.json`. Defaults to empty.
 * **instanceId**: The destination Cloud Spanner instance.
 * **databaseId**: The destination Cloud Spanner database.
 * **projectId**: This is the name of the Cloud Spanner project.
@@ -30,7 +31,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sourceDbDialect**: Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
 * **jdbcDriverJars**: The comma-separated list of driver JAR files. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`. Defaults to empty.
 * **jdbcDriverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **sourceConfigURL**: The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. Defaults to empty.
 * **tables**: Tables to migrate from source. Defaults to empty.
 * **numPartitions**: The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
 * **fetchSize**: The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below. This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors.Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties.In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default.
@@ -40,7 +40,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
-* **namespace**: Namespace to be exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Note: Custom non-public namespaces are currently unsupported for PostgreSQL and will cause the job to fail immediately. Defaults to empty.
 * **insertOnlyModeForSpannerMutations**: By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.
 * **batchSizeForSpannerMutations**: BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
@@ -145,6 +144,7 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
 ### Required
+export SOURCE_CONFIG_URL=""
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -154,7 +154,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export SOURCE_CONFIG_URL=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export FETCH_SIZE=<fetchSize>
@@ -228,6 +227,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export SOURCE_CONFIG_URL=""
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -237,7 +237,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export SOURCE_CONFIG_URL=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export FETCH_SIZE=<fetchSize>
@@ -312,6 +311,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
   name              = "sourcedb-to-spanner-flex"
   region            = var.region
   parameters        = {
+    sourceConfigURL = ""
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
@@ -319,7 +319,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # sourceDbDialect = "MYSQL"
     # jdbcDriverJars = ""
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
-    # sourceConfigURL = ""
     # tables = ""
     # numPartitions = "0"
     # fetchSize = "<fetchSize>"
