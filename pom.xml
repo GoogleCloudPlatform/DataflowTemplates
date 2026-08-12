@@ -99,7 +99,7 @@
     <sqladmin-api.version>v1beta4-rev20240115-2.0.0</sqladmin-api.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
-    <plexus-archiver.version>4.8.0</plexus-archiver.version>
+    <plexus-archiver.version>4.12.0</plexus-archiver.version>
 
     <!-- JDBC driver / Connector versions -->
     <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
