@@ -149,6 +149,11 @@
             <version>3.27.7</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>23.26.1.0.0</version>
+        </dependency>
     </dependencies>
 
     <profiles>

@@ -156,6 +156,12 @@ public class SourceProcessorFactoryTest {
 
     ISpToSrcSourceConnector spannerSource = SourceProcessorFactory.getSource("spanner");
     Assert.assertTrue(spannerSource instanceof SpannerSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector oracleSource = SourceProcessorFactory.getSource("oracle");
+    Assert.assertTrue(
+        oracleSource
+            instanceof
+            com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector);
   }
 
   @Test(expected = UnsupportedSourceException.class)

@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -73,7 +72,7 @@ public class DMLGeneratorUtils {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
       ColumnValueMapper columnValueMapper) {
-    Map<String, String> response = new HashMap<>();
+    Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
@@ -139,7 +138,7 @@ public class DMLGeneratorUtils {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
       ColumnValueMapper columnValueMapper) {
-    Map<String, String> response = new HashMap<>();
+    Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;

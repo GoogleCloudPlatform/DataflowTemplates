@@ -52,8 +52,24 @@ public class JdbcDao implements IDao {
         throw new ConnectionException("Connection is null");
       }
       connObj.setAutoCommit(false);
-      statement = connObj.createStatement();
-      statement.executeUpdate(dmlStatement);
+      java.util.List<Object> params = dmlGeneratorResponse.getPreparedStatementParameters();
+      if (params != null && !params.isEmpty()) {
+        java.sql.PreparedStatement pstmt = connObj.prepareStatement(dmlStatement);
+        statement = pstmt;
+        int paramIdx = 1;
+        for (Object param : params) {
+          if (param instanceof byte[]) {
+            byte[] bytes = (byte[]) param;
+            pstmt.setBlob(paramIdx++, new java.io.ByteArrayInputStream(bytes), bytes.length);
+          } else {
+            pstmt.setObject(paramIdx++, param);
+          }
+        }
+        pstmt.executeUpdate();
+      } else {
+        statement = connObj.createStatement();
+        statement.executeUpdate(dmlStatement);
+      }
 
       if (transactionalCheck != null) {
         transactionalCheck.check();
