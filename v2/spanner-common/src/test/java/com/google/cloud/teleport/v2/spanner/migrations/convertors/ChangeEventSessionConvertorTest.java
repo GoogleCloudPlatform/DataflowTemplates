@@ -433,7 +433,7 @@ public class ChangeEventSessionConvertorTest {
     ShardingContext shardingContext = getShardingContext();
     ChangeEventSessionConvertor changeEventSessionConvertor =
         new ChangeEventSessionConvertor(
-            schema, null, new TransformationContext(), shardingContext, "oracle", false);
+            schema, null, new TransformationContext(), shardingContext, "sqlserver", false);
 
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");

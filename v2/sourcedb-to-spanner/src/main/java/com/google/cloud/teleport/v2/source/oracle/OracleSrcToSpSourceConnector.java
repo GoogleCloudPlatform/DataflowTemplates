@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.source.oracle;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
@@ -38,7 +53,9 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
           .put("DATE", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP)
           .put("TIMESTAMP WITH TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
-          .put("TIMESTAMP WITH LOCAL TIME ZONE", UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
+          .put(
+              "TIMESTAMP WITH LOCAL TIME ZONE",
+              UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
           .put("RAW", UnifiedMappingProvider.Type.BYTES)
           .put("BOOLEAN", UnifiedMappingProvider.Type.BOOLEAN)
           .put("CLOB", UnifiedMappingProvider.Type.STRING)
@@ -80,7 +97,8 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
         .setMaxPartitions(null)
         .setWaitOn(null)
         .setDbParallelizationForReads(null)
-        .setDbParallelizationForSplitProcess(JdbcIOWrapperConfig.DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
+        .setDbParallelizationForSplitProcess(
+            JdbcIOWrapperConfig.DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
         .setTestOnBorrow(JdbcIOWrapperConfig.DEFAULT_TEST_ON_BORROW)
         .setTestOnCreate(JdbcIOWrapperConfig.DEFAULT_TEST_ON_CREATE)
         .setTestOnReturn(JdbcIOWrapperConfig.DEFAULT_TEST_ON_RETURN)
@@ -88,7 +106,8 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
         .setValidationQuery("SELECT 1 FROM DUAL")
         .setRemoveAbandonedTimeout(JdbcIOWrapperConfig.DEFAULT_REMOVE_ABANDONED_TIMEOUT)
         .setMinEvictableIdleTimeMillis(JdbcIOWrapperConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
-        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(JdbcIOWrapperConfig.DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
+        .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
+            JdbcIOWrapperConfig.DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
         .setWorkerMemoryBytes(null)
         .setWorkerCores(null);
@@ -96,11 +115,18 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
 
   @Override
   public SourceSchemaReference getSourceSchemaReference(String dbName, String namespace) {
-    return SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName(dbName).setNamespace(namespace).build());
+    return SourceSchemaReference.ofJdbc(
+        JdbcSchemaReference.builder().setDbName(dbName).setNamespace(namespace).build());
   }
 
   @Override
-  public String getJdbcUrl(String host, int port, String dbName, String connectionProperties, String namespace, Integer fetchSize) {
+  public String getJdbcUrl(
+      String host,
+      int port,
+      String dbName,
+      String connectionProperties,
+      String namespace,
+      Integer fetchSize) {
     String url = "jdbc:oracle:thin:@" + host + ":" + port + "/" + dbName;
     if (StringUtils.isNotBlank(connectionProperties)) {
       url = url + "?" + connectionProperties;

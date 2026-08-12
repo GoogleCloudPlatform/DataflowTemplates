@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.source.oracle.reader.io.jdbc.dialectadapter.oracle;
 
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
@@ -14,25 +29,34 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+
 public class OracleDialectAdapter implements DialectAdapter {
   private String quote(String identifier) {
-    if (identifier == null) { return null; }
+    if (identifier == null) {
+      return null;
+    }
     if (identifier.startsWith("\"") && identifier.endsWith("\"")) {
       return identifier; // Already quoted
     }
     return "\"" + identifier + "\"";
   }
+
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {
     if (partitionColumns.isEmpty()) {
-       return query;
+      return query;
     }
     StringBuilder queryBuilder = new StringBuilder(query + " WHERE ");
     boolean firstDone = false;
     for (String partitionColumn : partitionColumns) {
-      if (firstDone) { queryBuilder.append(" AND "); }
-      queryBuilder.append("((TO_CHAR(?) IN ('0', 'false', 'FALSE')) OR "); 
+      if (firstDone) {
+        queryBuilder.append(" AND ");
+      }
+      queryBuilder.append("((TO_CHAR(?) IN ('0', 'false', 'FALSE')) OR ");
       String quotedPart = quote(partitionColumn);
-      queryBuilder.append(String.format("(%1$s >= ? AND (%1$s < ? OR (TO_CHAR(?) IN ('1', 'true', 'TRUE') AND %1$s = ?)))", quotedPart));
+      queryBuilder.append(
+          String.format(
+              "(%1$s >= ? AND (%1$s < ? OR (TO_CHAR(?) IN ('1', 'true', 'TRUE') AND %1$s = ?)))",
+              quotedPart));
       queryBuilder.append(")");
       firstDone = true;
     }
@@ -45,15 +69,18 @@ public class OracleDialectAdapter implements DialectAdapter {
   }
 
   @Override
-  public String getCountQuery(String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
+  public String getCountQuery(
+      String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
     return addWhereClause("SELECT COUNT(*) FROM " + quote(tableName), partitionColumns);
   }
 
   @Override
-  public String getBoundaryQuery(String tableName, ImmutableList<String> partitionColumns, String colName) {
-    return addWhereClause("SELECT MIN(" + quote(colName) + "), MAX(" + quote(colName) + ") FROM " + quote(tableName), partitionColumns);
+  public String getBoundaryQuery(
+      String tableName, ImmutableList<String> partitionColumns, String colName) {
+    return addWhereClause(
+        "SELECT MIN(" + quote(colName) + "), MAX(" + quote(colName) + ") FROM " + quote(tableName),
+        partitionColumns);
   }
-
 
   @Override
   public boolean checkForTimeout(SQLException exception) {
@@ -72,9 +99,12 @@ public class OracleDialectAdapter implements DialectAdapter {
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (Connection conn = dataSource.getConnection()) {
       DatabaseMetaData metaData = conn.getMetaData();
-      String schemaPattern = sourceSchemaReference.namespace() != null ? sourceSchemaReference.namespace() : metaData.getUserName();
+      String schemaPattern =
+          sourceSchemaReference.namespace() != null
+              ? sourceSchemaReference.namespace()
+              : metaData.getUserName();
       if (schemaPattern != null) {
-          schemaPattern = null;
+        schemaPattern = null;
       }
       try (ResultSet rs = metaData.getTables(null, schemaPattern, null, new String[] {"TABLE"})) {
         while (rs.next()) {
@@ -85,7 +115,8 @@ public class OracleDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     }
     ImmutableList<String> tables = tablesBuilder.build();
-    org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class).info("Discovered Oracle Tables: {}", tables);
+    org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class)
+        .info("Discovered Oracle Tables: {}", tables);
     return tables;
   }
 
@@ -97,12 +128,15 @@ public class OracleDialectAdapter implements DialectAdapter {
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
-    
+
     try (Connection conn = dataSource.getConnection()) {
       DatabaseMetaData metaData = conn.getMetaData();
-      String schemaPattern = schemaReference.namespace() != null ? schemaReference.namespace() : metaData.getUserName();
+      String schemaPattern =
+          schemaReference.namespace() != null
+              ? schemaReference.namespace()
+              : metaData.getUserName();
       if (schemaPattern != null) {
-          schemaPattern = null;
+        schemaPattern = null;
       }
       for (String table : tables) {
         try (ResultSet rs = metaData.getColumns(null, schemaPattern, table, null)) {
@@ -114,14 +148,12 @@ public class OracleDialectAdapter implements DialectAdapter {
             }
             long colSize = rs.getLong("COLUMN_SIZE");
             long descinalDigits = rs.getLong("DECIMAL_DIGITS"); // May be 0 if null
-            SourceColumnType record = new SourceColumnType(
-                typeName,
-                new Long[] {colSize},
-                null);
+            SourceColumnType record = new SourceColumnType(typeName, new Long[] {colSize}, null);
             builders.get(table).put(colName, record);
           }
         }
-          org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class).info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
+        org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class)
+            .info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
       }
     } catch (SQLException e) {
       throw new SchemaDiscoveryException(e);
@@ -134,10 +166,12 @@ public class OracleDialectAdapter implements DialectAdapter {
 
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
-      javax.sql.DataSource dataSource, JdbcSchemaReference sourceSchemaReference, ImmutableList<String> tables) {
+      javax.sql.DataSource dataSource,
+      JdbcSchemaReference sourceSchemaReference,
+      ImmutableList<String> tables) {
     Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableList.builder()));
-    
+
     try (Connection conn = dataSource.getConnection()) {
       DatabaseMetaData metaData = conn.getMetaData();
       for (String table : tables) {
@@ -146,38 +180,46 @@ public class OracleDialectAdapter implements DialectAdapter {
             String colName = rs.getString("COLUMN_NAME");
             String pkName = rs.getString("PK_NAME");
             long seq = rs.getShort("KEY_SEQ");
-            
+
             SourceColumnIndexInfo.IndexType type = SourceColumnIndexInfo.IndexType.OTHER;
             try (ResultSet crs = metaData.getColumns(null, null, table, colName)) {
-                if (crs.next()) {
-                    String typeName = crs.getString("TYPE_NAME");
-                    if (typeName != null) {
-                        typeName = typeName.toUpperCase();
-                        if (typeName.contains("CHAR") || typeName.contains("CLOB")) { type = SourceColumnIndexInfo.IndexType.STRING; }
-                        else if (typeName.contains("INT") || typeName.contains("NUM")) { type = SourceColumnIndexInfo.IndexType.NUMERIC; }
-                        else if (typeName.contains("DATE") || typeName.contains("TIME")) { type = SourceColumnIndexInfo.IndexType.TIME_STAMP; }
-                    }
+              if (crs.next()) {
+                String typeName = crs.getString("TYPE_NAME");
+                if (typeName != null) {
+                  typeName = typeName.toUpperCase();
+                  if (typeName.contains("CHAR") || typeName.contains("CLOB")) {
+                    type = SourceColumnIndexInfo.IndexType.STRING;
+                  } else if (typeName.contains("INT") || typeName.contains("NUM")) {
+                    type = SourceColumnIndexInfo.IndexType.NUMERIC;
+                  } else if (typeName.contains("DATE") || typeName.contains("TIME")) {
+                    type = SourceColumnIndexInfo.IndexType.TIME_STAMP;
+                  }
                 }
+              }
             }
 
-            SourceColumnIndexInfo.Builder infoBuilder = SourceColumnIndexInfo.builder()
-                .setColumnName(colName)
-                .setIsPrimary(true)
-                .setIsUnique(true)
-                .setOrdinalPosition(seq)
-                .setIndexName(pkName != null ? pkName : "PRIMARY")
-                .setIndexType(type)
-                .setColumnTypeName("");
-                
+            SourceColumnIndexInfo.Builder infoBuilder =
+                SourceColumnIndexInfo.builder()
+                    .setColumnName(colName)
+                    .setIsPrimary(true)
+                    .setIsUnique(true)
+                    .setOrdinalPosition(seq)
+                    .setIndexName(pkName != null ? pkName : "PRIMARY")
+                    .setIndexType(type)
+                    .setColumnTypeName("");
+
             if (type == SourceColumnIndexInfo.IndexType.STRING) {
-                com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference emptyCollation = 
-                    com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference.builder()
-                    .setDbCharacterSet("UTF8")
-                    .setDbCollation("UTF8_BIN")
-                    .setPadSpace(false)
-                    .build();
-                infoBuilder.setCollationReference(emptyCollation);
-                infoBuilder.setStringMaxLength(200);
+              com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
+                      .CollationReference
+                  emptyCollation =
+                      com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
+                          .CollationReference.builder()
+                          .setDbCharacterSet("UTF8")
+                          .setDbCollation("UTF8_BIN")
+                          .setPadSpace(false)
+                          .build();
+              infoBuilder.setCollationReference(emptyCollation);
+              infoBuilder.setStringMaxLength(200);
             }
 
             builders.get(table).add(infoBuilder.build());
@@ -186,8 +228,9 @@ public class OracleDialectAdapter implements DialectAdapter {
       }
     } catch (SQLException e) {
     }
-    
-    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result = ImmutableMap.builder();
+
+    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
+        ImmutableMap.builder();
     builders.forEach((k, v) -> result.put(k, v.build()));
     return result.build();
   }
