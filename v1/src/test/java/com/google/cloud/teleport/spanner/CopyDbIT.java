@@ -92,11 +92,11 @@ public class CopyDbIT extends SpannerTemplateITBase {
   private void createAndPopulate(Ddl ddl, int numBatches) {
     // Initialize the databases with the appropriate dialect dynamically.
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, ddl.dialect())
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, ddl.dialect())
             .useCustomHost(spannerHost)
             .build();
 
@@ -252,11 +252,11 @@ public class CopyDbIT extends SpannerTemplateITBase {
 
   private void createAndPopulate(String sqlFile, Dialect dialect, int numBatches) throws Exception {
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", dialect)
+        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, dialect)
             .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", dialect)
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, dialect)
             .useCustomHost(spannerHost)
             .build();
 
