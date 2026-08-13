@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
-import java.io.IOException;
+import com.google.common.collect.ImmutableList;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -36,7 +36,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 /** Test class for {@link CollationMapper}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -335,9 +334,69 @@ public class CollationMapperTest {
                 testCollationReference));
   }
 
-  @Test
-  public void testUtf8Mb40900AiCi() throws SQLException, IOException {
+  private static CollationOrderRow createRow(
+      String charsetChar,
+      String equivalentChar,
+      long codepointRank,
+      boolean isEmpty,
+      boolean isSpace) {
+    return CollationOrderRow.builder()
+        .setCharsetChar(charsetChar)
+        .setEquivalentChar(equivalentChar)
+        .setEquivalentCharPadSpace(equivalentChar)
+        .setCodepointRank(codepointRank)
+        .setCodepointRankPadSpace(codepointRank)
+        .setIsEmpty(isEmpty)
+        .setIsSpace(isSpace)
+        .build();
+  }
 
+  private static ImmutableList<CollationOrderRow> getSyntheticRowsAiCi() {
+    return ImmutableList.of(
+        createRow("\0", "\0", 0L, true, false),
+        createRow("\t", "\t", 0L, false, false),
+        createRow(" ", " ", 1L, false, true),
+        createRow("A", "A", 2L, false, false),
+        createRow("a", "A", 2L, false, false),
+        createRow("á", "A", 2L, false, false),
+        createRow("C", "C", 3L, false, false),
+        createRow("c", "C", 3L, false, false),
+        createRow("Ɣ", "Ɣ", 4L, false, false),
+        createRow("ɣ", "Ɣ", 4L, false, false),
+        createRow("M", "M", 5L, false, false),
+        createRow("m", "M", 5L, false, false),
+        createRow("T", "T", 6L, false, false),
+        createRow("t", "T", 6L, false, false));
+  }
+
+  private static ImmutableList<CollationOrderRow> getSyntheticRowsAsCs() {
+    return ImmutableList.of(
+        createRow("\0", "\0", 0L, true, false),
+        createRow("\u0332", "\u0332", 0L, false, false),
+        createRow("\t", "\t", 1L, false, false),
+        createRow(" ", " ", 2L, false, true),
+        createRow("a", "a", 3L, false, false),
+        createRow("c", "c", 4L, false, false),
+        createRow("á", "á", 5L, false, false),
+        createRow("t", "t", 6L, false, false));
+  }
+
+  private static ImmutableList<CollationOrderRow> getSyntheticRowsUnicodeCi() {
+    return ImmutableList.of(
+        createRow("\0", "\0", 0L, true, false),
+        createRow("\t", "\t", 0L, false, false),
+        createRow(" ", " ", 1L, false, true),
+        createRow("A", "A", 2L, false, false),
+        createRow("a", "A", 2L, false, false),
+        createRow("á", "A", 2L, false, false),
+        createRow("C", "C", 3L, false, false),
+        createRow("c", "C", 3L, false, false),
+        createRow("T", "T", 4L, false, false),
+        createRow("t", "T", 4L, false, false));
+  }
+
+  @Test
+  public void testUtf8Mb40900AiCi() throws SQLException {
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
@@ -349,9 +408,7 @@ public class CollationMapperTest {
             .setDbCollation("utf8mb4_0900_ai_ci")
             .setPadSpace(false)
             .build();
-    int numRows =
-        TestUtils.wireMockResultSet(
-            "TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv", mockResultSet);
+    int numRows = TestUtils.wireMockResultSet(getSyntheticRowsAiCi(), mockResultSet);
     CollationMapper collationMapper =
         CollationMapper.fromDB(
             mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
@@ -369,7 +426,7 @@ public class CollationMapperTest {
     // The average of cat and mat for uf8mb4_0900_ai_ci won't be HAT!
     // utf8mb4 has a wide range of characters and the latin gamma
     // (https://en.wikipedia.org/wiki/Latin_gamma) sorts at the midpoint of C and H.
-    // refer to the indexes in TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv , or
+    // refer to the indexes in getSyntheticRowsAiCi() , or
     // just try
     // ` SELECT _utf8mb4'ƔAT' > _utf8mb4'cat' COLLATE utf8mb4_0900_ai_ci ` and ` SELECT
     // _utf8mb4'ƔAT' < _utf8mb4'hat' COLLATE utf8mb4_0900_ai_ci `
@@ -389,7 +446,7 @@ public class CollationMapperTest {
   }
 
   @Test
-  public void testUtf8Mb40900AsCs() throws SQLException, IOException {
+  public void testUtf8Mb40900AsCs() throws SQLException {
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
@@ -401,9 +458,7 @@ public class CollationMapperTest {
             .setDbCollation("utf8mb4_0900_as_cs")
             .setPadSpace(false)
             .build();
-    int numRows =
-        TestUtils.wireMockResultSet(
-            "TestCollations/collation-output-mysql-utf8mb4-0900-as-cs.tsv", mockResultSet);
+    int numRows = TestUtils.wireMockResultSet(getSyntheticRowsAsCs(), mockResultSet);
     CollationMapper collationMapper =
         CollationMapper.fromDB(
             mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
@@ -428,7 +483,7 @@ public class CollationMapperTest {
   }
 
   @Test
-  public void testUtf8Mb4UnicodeCi() throws SQLException, IOException {
+  public void testUtf8Mb4UnicodeCi() throws SQLException {
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
@@ -440,9 +495,7 @@ public class CollationMapperTest {
             .setDbCollation("utf8mb4_unicode_ci")
             .setPadSpace(true)
             .build();
-    int numRows =
-        TestUtils.wireMockResultSet(
-            "TestCollations/collation-output-mysql-utf8mb4-unicode-ci.tsv", mockResultSet);
+    int numRows = TestUtils.wireMockResultSet(getSyntheticRowsUnicodeCi(), mockResultSet);
     CollationMapper collationMapper =
         CollationMapper.fromDB(
             mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);

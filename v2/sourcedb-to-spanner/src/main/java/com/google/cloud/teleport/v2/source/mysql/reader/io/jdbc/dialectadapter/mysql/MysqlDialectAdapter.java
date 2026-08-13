@@ -50,12 +50,14 @@ import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -254,7 +256,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         // We register them here to apply a "+ 0" cast in getBoundaryQuery to force a numeric
         // context.
         if ("BIT".equalsIgnoreCase(colType.getName())) {
-          logger.info(
+          logger.debug(
               "Discovered BIT column '{}' in table '{}'; applying +0 cast to boundaries",
               colName,
               tableName);
@@ -853,6 +855,14 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
   }
 
+  /**
+   * Processes the collation result set from the database to compute in-memory collation ranks and
+   * equivalence groupings for both standard collation and pad space collation modes.
+   *
+   * <p>MySQL 5.7 does not support window functions like {@code DENSE_RANK() OVER (ORDER BY
+   * weight)}, so character weights returned from {@code WEIGHT_STRING()} queries are grouped and
+   * ranked here in Java memory using lexicographical byte ordering.
+   */
   @Override
   public List<CollationOrderRow> processCollationResultSet(
       ResultSet rs, CollationReference collationReference) throws SQLException {
@@ -866,7 +876,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     List<CharacterWeightRow> uniqueRows = new ArrayList<>();
-    java.util.Set<Integer> seenCodepoints = new java.util.HashSet<>();
+    Set<Integer> seenCodepoints = new HashSet<>();
     for (CharacterWeightRow row : rows) {
       if (seenCodepoints.add(row.codepoint)) {
         uniqueRows.add(row);
@@ -876,8 +886,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
     rows = uniqueRows;
 
+    // Groups codepoints by their collation weight byte array in lexicographical order for
+    // non-trailing / standard collation comparison.
     Map<byte[], List<CharacterWeightRow>> ntGroupsMap =
-        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
+        new TreeMap<>(UnsignedBytes.lexicographicalComparator());
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty) {
         byte[] keyNt = (row.weight != null) ? row.weight : new byte[0];
@@ -885,6 +897,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       }
     }
 
+    // Maps each codepoint to its computed dense rank (ntRank) and its primary equivalent character
+    // codepoint (ntEquivalent) for standard collation.
     Map<Integer, Long> ntRank = new HashMap<>();
     Map<Integer, Integer> ntEquivalent = new HashMap<>();
     long rank = 0;
@@ -897,8 +911,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       rank++;
     }
 
+    // Groups non-empty, non-space codepoints by weight bytes for Pad Space collation comparison
+    // where trailing spaces are ignored.
     Map<byte[], List<CharacterWeightRow>> tGroupsMap =
-        new java.util.TreeMap<>(UnsignedBytes.lexicographicalComparator());
+        new TreeMap<>(UnsignedBytes.lexicographicalComparator());
     for (CharacterWeightRow row : rows) {
       if (!row.isEmpty && !row.isSpace) {
         byte[] keyT = (row.weight != null) ? row.weight : new byte[0];
@@ -906,6 +922,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       }
     }
 
+    // Maps each codepoint to its Pad Space dense rank (tRank) and primary equivalent character
+    // codepoint (tEquivalent).
     Map<Integer, Long> tRank = new HashMap<>();
     Map<Integer, Integer> tEquivalent = new HashMap<>();
     long tRankVal = 0;
@@ -936,7 +954,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
               .build());
     }
     result.sort(
-        java.util.Comparator.comparingLong(CollationOrderRow::codepointRank)
+        Comparator.comparingLong(CollationOrderRow::codepointRank)
             .thenComparing(CollationOrderRow::charsetChar));
     return result;
   }
@@ -1019,6 +1037,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   private static final class ColumnKey implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final String tableName;
     private final String columnName;
 

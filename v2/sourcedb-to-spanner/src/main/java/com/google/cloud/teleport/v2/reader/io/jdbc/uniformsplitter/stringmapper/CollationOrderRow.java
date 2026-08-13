@@ -30,11 +30,7 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Represents a row of the minimum required columns from the collations output query. You can refer
- * to src/test/resources/TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv for example of
- * the columns.
- */
+/** Represents a row of the minimum required columns from the collations output query. */
 @AutoValue
 public abstract class CollationOrderRow {
 
