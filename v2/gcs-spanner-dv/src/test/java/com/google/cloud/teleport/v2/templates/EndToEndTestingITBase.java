@@ -145,4 +145,87 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       }
     }
   }
+
+  protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
+      String jobName,
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager postgresResourceManager,
+      String sessionFileResourceName,
+      boolean multiSharded)
+      throws IOException {
+    FlexTemplateDataflowJobResourceManager.Builder builder =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Sourcedb_to_Spanner_Flex")
+            .withTemplateModulePath("v2/sourcedb-to-spanner")
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("outputDirectory", "gs://" + artifactBucketName + "/" + testId)
+            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName + "/" + testId)
+            .addParameter("workerMachineType", "n2-standard-4")
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("disable_runner_v2"));
+
+    if (sessionFileResourceName != null) {
+      gcsResourceManager.uploadArtifact(
+          "session.json", Resources.getResource(sessionFileResourceName).getPath());
+      builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
+    }
+
+    if (!multiSharded) {
+      DataShard dataShard =
+          new DataShard(
+              "shard1",
+              postgresResourceManager.getHost(),
+              postgresResourceManager.getUsername(),
+              postgresResourceManager.getPassword(),
+              String.valueOf(postgresResourceManager.getPort()),
+              postgresResourceManager.getDatabaseName(),
+              null,
+              null,
+              Collections.emptyList());
+      createAndUploadShardConfigToGcs(Collections.singletonList(dataShard), gcsResourceManager);
+    }
+
+    builder.addParameter(
+        "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager));
+
+    if (!multiSharded) {
+      builder.addParameter("sourceDbDialect", "POSTGRESQL");
+      builder.addParameter("jdbcDriverClassName", "org.postgresql.Driver");
+    }
+
+    flexTemplateDataflowJobResourceManager = builder.build();
+
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
+
+  public org.apache.beam.it.jdbc.PostgresResourceManager setUpPostgreSQLResourceManager() {
+    return org.apache.beam.it.jdbc.PostgresResourceManager.builder(testName).build();
+  }
+
+  protected void loadSQLFileResource(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String resourcePath)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            com.google.common.io.Resources.readLines(
+                com.google.common.io.Resources.getResource(resourcePath),
+                java.nio.charset.StandardCharsets.UTF_8));
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadSQLToJdbcResourceManager(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String sql)
+      throws Exception {
+    for (String stmt : sql.split("(?m);\\s*$")) {
+      if (!stmt.trim().isEmpty()) {
+        jdbcResourceManager.runSQLUpdate(stmt);
+      }
+    }
+  }
 }
