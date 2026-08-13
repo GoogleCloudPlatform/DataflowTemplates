@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscovery
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
@@ -27,10 +28,13 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OracleDialectAdapter implements DialectAdapter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OracleDialectAdapter.class);
   private String quote(String identifier) {
     if (identifier == null) {
       return null;
@@ -84,7 +88,16 @@ public class OracleDialectAdapter implements DialectAdapter {
 
   @Override
   public boolean checkForTimeout(SQLException exception) {
-    return false; // Simplified
+    if (exception instanceof java.sql.SQLTimeoutException) {
+      return true;
+    }
+    int errorCode = exception.getErrorCode();
+    if (errorCode == 1013 || errorCode == 3156) {
+      // ORA-01013: user requested cancel (query timeout)
+      // ORA-03156: OCI call timed out
+      return true;
+    }
+    return false;
   }
 
   @Override
@@ -103,9 +116,6 @@ public class OracleDialectAdapter implements DialectAdapter {
           sourceSchemaReference.namespace() != null
               ? sourceSchemaReference.namespace()
               : metaData.getUserName();
-      if (schemaPattern != null) {
-        schemaPattern = null;
-      }
       try (ResultSet rs = metaData.getTables(null, schemaPattern, null, new String[] {"TABLE"})) {
         while (rs.next()) {
           tablesBuilder.add(rs.getString("TABLE_NAME"));
@@ -115,8 +125,7 @@ public class OracleDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     }
     ImmutableList<String> tables = tablesBuilder.build();
-    org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class)
-        .info("Discovered Oracle Tables: {}", tables);
+    LOGGER.info("Discovered Oracle Tables: {}", tables);
     return tables;
   }
 
@@ -126,8 +135,8 @@ public class OracleDialectAdapter implements DialectAdapter {
       JdbcSchemaReference schemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
-    Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
-    tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
+    Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders =
+        tables.stream().collect(Collectors.toMap(t -> t, t -> ImmutableMap.builder()));
 
     try (Connection conn = dataSource.getConnection()) {
       DatabaseMetaData metaData = conn.getMetaData();
@@ -135,9 +144,6 @@ public class OracleDialectAdapter implements DialectAdapter {
           schemaReference.namespace() != null
               ? schemaReference.namespace()
               : metaData.getUserName();
-      if (schemaPattern != null) {
-        schemaPattern = null;
-      }
       for (String table : tables) {
         try (ResultSet rs = metaData.getColumns(null, schemaPattern, table, null)) {
           while (rs.next()) {
@@ -147,13 +153,12 @@ public class OracleDialectAdapter implements DialectAdapter {
               typeName = typeName.replaceAll("\\([0-9]+\\)", "");
             }
             long colSize = rs.getLong("COLUMN_SIZE");
-            long descinalDigits = rs.getLong("DECIMAL_DIGITS"); // May be 0 if null
+            long decimalDigits = rs.getLong("DECIMAL_DIGITS"); // May be 0 if null
             SourceColumnType record = new SourceColumnType(typeName, new Long[] {colSize}, null);
             builders.get(table).put(colName, record);
           }
         }
-        org.slf4j.LoggerFactory.getLogger(OracleDialectAdapter.class)
-            .info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
+        LOGGER.info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
       }
     } catch (SQLException e) {
       throw new SchemaDiscoveryException(e);
@@ -169,20 +174,24 @@ public class OracleDialectAdapter implements DialectAdapter {
       javax.sql.DataSource dataSource,
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables) {
-    Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
-    tables.forEach(table -> builders.put(table, ImmutableList.builder()));
+    Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders =
+        tables.stream().collect(Collectors.toMap(t -> t, t -> ImmutableList.builder()));
 
     try (Connection conn = dataSource.getConnection()) {
       DatabaseMetaData metaData = conn.getMetaData();
+      String schemaPattern =
+          sourceSchemaReference.namespace() != null
+              ? sourceSchemaReference.namespace()
+              : metaData.getUserName();
       for (String table : tables) {
-        try (ResultSet rs = metaData.getPrimaryKeys(null, null, table)) {
+        try (ResultSet rs = metaData.getPrimaryKeys(null, schemaPattern, table)) {
           while (rs.next()) {
             String colName = rs.getString("COLUMN_NAME");
             String pkName = rs.getString("PK_NAME");
             long seq = rs.getShort("KEY_SEQ");
 
             SourceColumnIndexInfo.IndexType type = SourceColumnIndexInfo.IndexType.OTHER;
-            try (ResultSet crs = metaData.getColumns(null, null, table, colName)) {
+            try (ResultSet crs = metaData.getColumns(null, schemaPattern, table, colName)) {
               if (crs.next()) {
                 String typeName = crs.getString("TYPE_NAME");
                 if (typeName != null) {
@@ -209,15 +218,12 @@ public class OracleDialectAdapter implements DialectAdapter {
                     .setColumnTypeName("");
 
             if (type == SourceColumnIndexInfo.IndexType.STRING) {
-              com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
-                      .CollationReference
-                  emptyCollation =
-                      com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
-                          .CollationReference.builder()
-                          .setDbCharacterSet("UTF8")
-                          .setDbCollation("UTF8_BIN")
-                          .setPadSpace(false)
-                          .build();
+              CollationReference emptyCollation =
+                  CollationReference.builder()
+                      .setDbCharacterSet("UTF8")
+                      .setDbCollation("UTF8_BIN")
+                      .setPadSpace(false)
+                      .build();
               infoBuilder.setCollationReference(emptyCollation);
               infoBuilder.setStringMaxLength(200);
             }
@@ -227,6 +233,7 @@ public class OracleDialectAdapter implements DialectAdapter {
         }
       }
     } catch (SQLException e) {
+      LOGGER.error("Error discovering table indexes", e);
     }
 
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =

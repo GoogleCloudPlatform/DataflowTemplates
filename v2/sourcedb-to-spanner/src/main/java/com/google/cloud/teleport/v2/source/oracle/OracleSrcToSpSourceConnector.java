@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.oracle;
 
+import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
@@ -127,11 +128,15 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
       String connectionProperties,
       String namespace,
       Integer fetchSize) {
-    String url = "jdbc:oracle:thin:@" + host + ":" + port + "/" + dbName;
+    String url = "jdbc:oracle:thin:@//" + host + ":" + port + "/" + dbName;
     if (StringUtils.isNotBlank(connectionProperties)) {
       url = url + "?" + connectionProperties;
     }
-    // Set explicit fetchSize via options builder mapping...
+    if (fetchSize != null && fetchSize > 0) {
+      url =
+          OptionsToConfigBuilder.addParamToJdbcUrl(
+              url, "defaultRowPrefetch", String.valueOf(fetchSize));
+    }
     return url;
   }
 }

@@ -52,6 +52,7 @@ public class OracleJdbcValueMappings implements JdbcValueMappingsProvider {
             .set(TimeStampTz.OFFSET_FIELD_NAME, 0)
             .build();
       };
+
   private static final ResultSetValueMapper<java.math.BigDecimal> bigDecimalToByteArray =
       (value, schema) -> {
         if (value == null) {
