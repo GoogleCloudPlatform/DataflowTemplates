@@ -76,6 +76,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -111,6 +112,7 @@ public class SourceWriterFnTest {
   @Mock private PCollectionView<Ddl> mockDdlView;
   @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
   @Mock private IDMLGenerator mockDMLGenerator;
+  @Mock private ValueState<String> mockState;
   private static Gson gson = new Gson();
 
   private Shard testShard;
@@ -274,7 +276,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, never()).write(any(), any());
@@ -309,7 +311,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, never()).write(any(), any());
@@ -368,7 +370,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
 
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     // Verify that IDao.write was called with a TransactionContext
     verify(mockSpannerTargetDao).write(any(), any(), any());
@@ -429,7 +431,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
 
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     verify(mockSpannerTargetDao).write(any(), any(), any());
   }
@@ -462,7 +464,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, atLeast(1)).write(any(), any());
@@ -502,7 +504,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
@@ -546,7 +548,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<DMLGeneratorResponse> argumentCaptor =
         ArgumentCaptor.forClass(DMLGeneratorResponse.class);
     verify(mockSpannerDao, atLeast(1))
@@ -593,7 +595,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, atLeast(0)).write(any(), any());
@@ -631,7 +633,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
         new ChangeStreamErrorRecord(jsonRec, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE);
@@ -668,7 +670,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
         new ChangeStreamErrorRecord(jsonRec, Constants.SKIPPED_TAG_MESSAGE);
@@ -703,7 +705,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -739,7 +741,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -776,7 +778,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -813,7 +815,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -850,7 +852,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -887,7 +889,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -924,7 +926,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -961,7 +963,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -1010,7 +1012,7 @@ public class SourceWriterFnTest {
           .thenThrow(
               new TransactionalCheckException("Shadow table sequence changed during transaction"));
 
-      sourceWriterFn.processElement(processContext);
+      sourceWriterFn.processElement(processContext, mockState);
     }
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
@@ -1050,7 +1052,7 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), any());
   }
@@ -1083,7 +1085,7 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), any());
   }
@@ -1116,7 +1118,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -1153,7 +1155,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
@@ -1190,7 +1192,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -1227,7 +1229,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
         .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
@@ -1270,7 +1272,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))
@@ -1312,7 +1314,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
     verify(mockSqlDao, never())
         .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
     verify(mockSqlDao, never())
@@ -1351,7 +1353,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
-    sourceWriterFn.processElement(processContext);
+    sourceWriterFn.processElement(processContext, mockState);
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(processContext, atLeast(1))

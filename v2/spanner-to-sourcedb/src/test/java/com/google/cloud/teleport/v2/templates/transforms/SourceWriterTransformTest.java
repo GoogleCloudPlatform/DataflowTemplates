@@ -81,9 +81,9 @@ public class SourceWriterTransformTest {
               .apply("Create Shadow Ddl", Create.of(dummyDdl))
               .apply("View Shadow Ddl", View.asSingleton());
 
-      PCollection<KV<Long, TrimmedShardedDataChangeRecord>> input =
+      PCollection<KV<String, TrimmedShardedDataChangeRecord>> input =
           pipeline.apply(
-              Create.empty(new TypeDescriptor<KV<Long, TrimmedShardedDataChangeRecord>>() {}));
+              Create.empty(new TypeDescriptor<KV<String, TrimmedShardedDataChangeRecord>>() {}));
 
       SourceWriterTransform transform =
           new SourceWriterTransform(

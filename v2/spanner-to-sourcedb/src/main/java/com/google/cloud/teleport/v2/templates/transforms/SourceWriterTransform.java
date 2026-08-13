@@ -43,7 +43,7 @@ import org.apache.beam.sdk.values.TupleTagList;
 /** Takes an input of change stream events and writes them to the source database. */
 public class SourceWriterTransform
     extends PTransform<
-        PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
+        PCollection<KV<String, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
@@ -97,7 +97,7 @@ public class SourceWriterTransform
 
   @Override
   public SourceWriterTransform.Result expand(
-      PCollection<KV<Long, TrimmedShardedDataChangeRecord>> input) {
+      PCollection<KV<String, TrimmedShardedDataChangeRecord>> input) {
     PCollectionTuple sourceWriteResults =
         input.apply(
             "Write to sourcedb",

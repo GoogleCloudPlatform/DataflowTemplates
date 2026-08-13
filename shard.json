@@ -1,0 +1,12 @@
+{
+  "shardConfigs": [
+    {
+      "logicalShardId": "pratick-load-test-mysql",
+      "host": "34.61.176.118",
+      "port": "3306",
+      "user": "root",
+      "password": "password123",
+      "dbName": "loadtest_db"
+    }
+  ]
+}
