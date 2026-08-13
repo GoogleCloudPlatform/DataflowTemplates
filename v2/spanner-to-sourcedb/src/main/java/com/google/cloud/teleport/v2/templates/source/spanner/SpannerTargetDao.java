@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
@@ -46,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Receives a {@link SpannerMutationResponse} from the DML generator and commits the contained
  * {@link Mutation} via a {@link DatabaseClient} obtained from the {@link
- * com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper}.
+ * com.google.cloud.teleport.v2.templates.source.spanner.SpannerConnectionHelper}.
  */
 public class SpannerTargetDao implements IDao {
 
@@ -99,7 +100,17 @@ public class SpannerTargetDao implements IDao {
                         mainTxn, mutation.getTable(), primaryKey, targetDdl);
                   }
                   if (transactionalCheck != null) {
-                    transactionalCheck.check();
+                    try {
+                      transactionalCheck.check();
+                    } catch (SpannerException e) {
+                      if (e.getErrorCode() == com.google.cloud.spanner.ErrorCode.ABORTED) {
+                        // Wrap the exception to prevent mainTxn from infinitely retrying an aborted
+                        // outer transaction.
+                        throw new IllegalStateException(
+                            "shadow transaction aborted during check", e);
+                      }
+                      throw e;
+                    }
                   }
                   // TODO- add support for delete where PK has changed - similar to data dml in live
                   // flow

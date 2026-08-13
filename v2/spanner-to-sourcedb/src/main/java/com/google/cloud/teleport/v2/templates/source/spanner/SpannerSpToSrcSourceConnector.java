@@ -30,6 +30,12 @@ import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptions;
 
+/**
+ * Implementation of SpToSrcConnector which will read from a Spanner database (called
+ * originalSpanner) and write to a new database (called targetSpanner). The type of objects being
+ * returned maybe tagged as SourceSchema etc as the target being written to is referred to as the
+ * source for all other sources.
+ */
 public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
@@ -82,7 +88,8 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
         targetDdl);
   }
 
-  private synchronized Ddl checkAndInitTargetDdl(SpannerShard spannerShard) {
+  private synchronized void checkAndInitTargetDdl(SpannerShard spannerShard) {
+    // TODO - update the flow to set targetDDL in the constructor/init
     if (targetDdl == null) {
       SpannerConfig targetSpannerConfig =
           SpannerConfig.create()
@@ -91,7 +98,6 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
               .withDatabaseId(spannerShard.getDatabaseId());
       targetDdl = new SpannerInformationSchemaScanner(targetSpannerConfig).scanDdl();
     }
-    return targetDdl;
   }
 
   @Override

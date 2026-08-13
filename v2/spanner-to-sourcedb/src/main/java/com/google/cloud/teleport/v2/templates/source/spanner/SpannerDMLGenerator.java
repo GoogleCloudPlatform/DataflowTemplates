@@ -23,19 +23,22 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -57,37 +60,39 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           "DMLGeneratorRequest is null. Cannot process the request.");
     }
 
-    String sourceTableName = request.getSpannerTableName();
+    // Target - The spanner database which this pipeline is writing to
+    // Original - The spanner database whose writes are being replicated via changestream
+    String originalSpTableName = request.getSpannerTableName();
     ISchemaMapper schemaMapper = request.getSchemaMapper();
-    Ddl spannerDdl = request.getSpannerDdl();
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema sourceSchema =
+    Ddl originalSpannerDdl = request.getSpannerDdl();
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema targetSpSchema =
         request.getSourceSchema();
 
     if (schemaMapper == null) {
       throw new InvalidDMLGenerationException("SchemaMapper must not be null.");
     }
-    if (spannerDdl == null) {
-      throw new InvalidDMLGenerationException("Source Spanner DDL must not be null.");
+    if (originalSpannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner DDL must not be null.");
     }
-    if (sourceSchema == null) {
+    if (targetSpSchema == null) {
       throw new InvalidDMLGenerationException("SourceSchema must not be null.");
     }
 
-    Table sourceSpannerTable = spannerDdl.table(sourceTableName);
-    if (sourceSpannerTable == null) {
+    Table originalSpannerTable = originalSpannerDdl.table(originalSpTableName);
+    if (originalSpannerTable == null) {
       throw new InvalidDMLGenerationException(
-          "Source Spanner table '" + sourceTableName + "' not found in source DDL.");
+          "Original Spanner table '" + originalSpTableName + "' not found in source DDL.");
     }
 
     String targetTableName;
     try {
-      targetTableName = schemaMapper.getSourceTableName("", sourceTableName);
+      targetTableName = schemaMapper.getSourceTableName("", originalSpTableName);
     } catch (NoSuchElementException e) {
       throw new InvalidDMLGenerationException(
-          "Could not find target table name for source Spanner table: " + sourceTableName, e);
+          "Could not find target table name for source Spanner table: " + originalSpTableName, e);
     }
 
-    SourceTable targetSpannerTable = sourceSchema.table(targetTableName);
+    SourceTable targetSpannerTable = targetSpSchema.table(targetTableName);
     if (targetSpannerTable == null) {
       throw new InvalidDMLGenerationException(
           "Target table '" + targetTableName + "' not found in SourceSchema.");
@@ -104,18 +109,18 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     String modType = request.getModType();
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
       return buildUpsertMutation(
-          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          originalSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else if ("DELETE".equals(modType)) {
       return buildDeleteMutation(
-          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          originalSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else {
       throw new InvalidDMLGenerationException(
-          "Unsupported modType '" + modType + "' for table " + sourceTableName);
+          "Unsupported modType '" + modType + "' for table " + originalSpTableName);
     }
   }
 
   private static DMLGeneratorResponse buildUpsertMutation(
-      Table sourceSpannerTable,
+      Table originalSpannerTable,
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
@@ -133,64 +138,93 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
       String targetColName = targetCol.name();
 
-      String sourceColName;
+      String originalColName;
       try {
-        sourceColName =
+        originalColName =
             schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
       } catch (NoSuchElementException e) {
         continue;
       }
 
-      Column sourceCol = sourceSpannerTable.column(sourceColName);
-      if (sourceCol == null) {
+      Column origCol = originalSpannerTable.column(originalColName);
+      if (origCol == null) {
+        // There is no column in the original spanner which maps to the target spanner
         continue;
       }
 
       if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
-        Object customVal = request.getCustomTransformationResponse().get(sourceColName);
+          && request.getCustomTransformationResponse().containsKey(originalColName)) {
+        Object customVal = request.getCustomTransformationResponse().get(originalColName);
         if (customVal == null) {
-          setNullValue(builder, targetColName, sourceCol.type());
+          setNullValue(builder, targetColName, origCol.type());
         } else {
-          setCustomColumnValue(builder, targetColName, sourceCol, customVal);
+          setCustomColumnValue(builder, targetColName, origCol, customVal);
         }
-      } else if (newValuesJson.has(sourceColName)) {
-        if (newValuesJson.isNull(sourceColName)) {
-          setNullValue(builder, targetColName, sourceCol.type());
+      } else if (newValuesJson.has(originalColName)) {
+        if (newValuesJson.isNull(originalColName)) {
+          setNullValue(builder, targetColName, origCol.type());
         } else {
-          setColumnValue(builder, targetColName, sourceCol, newValuesJson);
+          setColumnValue(builder, targetColName, origCol, newValuesJson);
         }
-      } else if (keyValuesJson.has(sourceColName)) {
-        if (keyValuesJson.isNull(sourceColName)) {
-          setNullValue(builder, targetColName, sourceCol.type());
+      } else if (keyValuesJson.has(originalColName)) {
+        if (keyValuesJson.isNull(originalColName)) {
+          setNullValue(builder, targetColName, origCol.type());
         } else {
-          setColumnValue(builder, targetColName, sourceCol, keyValuesJson);
+          setColumnValue(builder, targetColName, origCol, keyValuesJson);
         }
       }
+    }
+
+    Key primaryKey =
+        buildTargetPrimaryKey(
+            targetSpannerTable,
+            newValuesJson,
+            keyValuesJson,
+            request.getCustomTransformationResponse());
+    return new SpannerMutationResponse(builder.build(), primaryKey);
+  }
+
+  private static Key buildTargetPrimaryKey(
+      SourceTable targetSpannerTable,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      Map<String, Object> customTransformationResponse) {
+    // TODO- rework class to take targetDdl in constructor
+    Ddl targetDdl = null;
+    try {
+      targetDdl =
+          ((SpannerSpToSrcSourceConnector)
+                  SourceProcessorFactory.getSource(Constants.SOURCE_SPANNER))
+              .getTargetDdl();
+    } catch (UnsupportedSourceException e) {
+      LOG.warn("could not fetch spanner source");
+      throw new RuntimeException(e);
     }
 
     Key.Builder keyBuilder = Key.newBuilder();
-    for (IndexColumn pkIndexCol : sourceSpannerTable.primaryKeys()) {
-      String sourceColName = pkIndexCol.name();
-      Column sourceCol = sourceSpannerTable.column(sourceColName);
+    for (String targetColName : targetSpannerTable.primaryKeyColumns()) {
       Object customVal = null;
-      if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
-        customVal = request.getCustomTransformationResponse().get(sourceColName);
+      if (customTransformationResponse != null
+          && customTransformationResponse.containsKey(targetColName)) {
+        customVal = customTransformationResponse.get(targetColName);
       }
-      JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
+      Column targetCol = targetDdl.table(targetSpannerTable.name()).column(targetColName);
+      JSONObject valuesJson = keyValuesJson.has(targetColName) ? keyValuesJson : newValuesJson;
       if (customVal != null) {
-        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
-      } else if (valuesJson.has(sourceColName)) {
-        appendKeyComponent(keyBuilder, sourceCol, valuesJson, sourceColName);
+        appendCustomKeyComponent(keyBuilder, targetCol, customVal);
+      } else if (valuesJson.has(targetColName)) {
+        appendCustomKeyComponent(keyBuilder, targetCol, valuesJson.get(targetColName));
+      } else {
+        LOG.warn("Primary key column '{}' could not be resolved.", targetColName);
+        throw new InvalidDMLGenerationException(
+            "Primary key column '" + targetColName + "' could not be resolved.");
       }
     }
-
-    return new SpannerMutationResponse(builder.build(), keyBuilder.build());
+    return keyBuilder.build();
   }
 
   private static DMLGeneratorResponse buildDeleteMutation(
-      Table sourceSpannerTable,
+      Table origSpannerTable,
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
@@ -199,45 +233,12 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     JSONObject keyValuesJson = request.getKeyValuesJson();
     JSONObject newValuesJson = request.getNewValuesJson();
 
-    Key.Builder keyBuilder = Key.newBuilder();
-    for (IndexColumn pkIndexCol : sourceSpannerTable.primaryKeys()) {
-      String sourceColName = pkIndexCol.name();
-
-      String targetColName;
-      try {
-        targetColName = schemaMapper.getSourceColumnName("", targetTableName, sourceColName);
-      } catch (NoSuchElementException e) {
-        targetColName = sourceColName;
-      }
-
-      Column sourceCol = sourceSpannerTable.column(sourceColName);
-      if (sourceCol == null) {
-        throw new InvalidDMLGenerationException(
-            "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
-      }
-
-      Object customVal = null;
-      if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
-        customVal = request.getCustomTransformationResponse().get(sourceColName);
-      }
-
-      JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
-
-      if (!valuesJson.has(sourceColName) && customVal == null) {
-        LOG.warn("Primary key column '{}' not found in change record for DELETE.", sourceColName);
-        throw new InvalidDMLGenerationException(
-            "Primary key column '" + sourceColName + "' not found in change record for DELETE.");
-      }
-
-      if (customVal != null) {
-        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
-      } else {
-        appendKeyComponent(keyBuilder, sourceCol, valuesJson, sourceColName);
-      }
-    }
-
-    Key primaryKey = keyBuilder.build();
+    Key primaryKey =
+        buildTargetPrimaryKey(
+            targetSpannerTable,
+            newValuesJson,
+            keyValuesJson,
+            request.getCustomTransformationResponse());
     Mutation mutation = Mutation.delete(targetTableName, primaryKey);
     return new SpannerMutationResponse(mutation, primaryKey);
   }
@@ -334,13 +335,6 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       default:
         builder.set(targetColName).toStringArray((Iterable<String>) null);
     }
-  }
-
-  /** Appends a single primary-key component to the Key builder. */
-  private static void appendKeyComponent(
-      Key.Builder keyBuilder, Column col, JSONObject valuesJson, String sourceColName) {
-    Object value = valuesJson.get(sourceColName);
-    appendCustomKeyComponent(keyBuilder, col, value);
   }
 
   /**
