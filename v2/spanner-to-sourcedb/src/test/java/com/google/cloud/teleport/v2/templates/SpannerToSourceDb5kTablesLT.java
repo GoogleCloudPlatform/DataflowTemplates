@@ -84,21 +84,21 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
     spannerResourceManager =
         SpannerResourceManager.builder("rr-main-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(2))
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
             .build();
 
     spannerMetadataResourceManager =
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerMetadataResourceManager.ensureUsableAndCreateResources();
 
     spannerChangeStreamMetadataResourceManager =
         SpannerResourceManager.builder("rr-cs-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerChangeStreamMetadataResourceManager.ensureUsableAndCreateResources();

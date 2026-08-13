@@ -136,7 +136,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(2))
             .build();
     String ddl =
         String.join(
@@ -161,7 +161,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
       builder.setInstanceId(metadataInstanceId).useStaticInstance();
     } else {
-      builder.maybeUseStaticInstance();
+      builder.maybeUseStaticInstance(java.util.Optional.of(2));
     }
 
     SpannerResourceManager spannerMetadataResourceManager = builder.build();

@@ -111,7 +111,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(3))
             .setNodeCount(SPANNER_NODE_COUNT)
             .setMonitoringClient(monitoringClient)
             .build();

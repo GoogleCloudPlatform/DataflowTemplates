@@ -79,7 +79,7 @@ public class PostgreSQL5KTablesLT extends SourceDbToSpannerLTBase {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(3))
             .setMonitoringClient(monitoringClient)
             .build();
 

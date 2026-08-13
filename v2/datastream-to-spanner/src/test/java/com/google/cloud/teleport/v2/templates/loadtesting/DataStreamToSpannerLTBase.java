@@ -113,7 +113,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(1))
             .setNodeCount(10)
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
@@ -138,7 +138,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     if (separateShadowTableDb) {
       shadowTableSpannerResourceManager =
           SpannerResourceManager.builder("shadow_" + testName, project, region)
-              .maybeUseStaticInstance()
+              .maybeUseStaticInstance(java.util.Optional.of(1))
               .setNodeCount(10)
               .setMonitoringClient(monitoringClient)
               .setSuppressVerboseLogs(true)

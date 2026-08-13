@@ -84,7 +84,7 @@ public class MySQL5KTablesLT extends SourceDbToSpannerLTBase {
     mySQLResourceManager = MySQLResourceManager.builder(testName).build();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(3))
             .setMonitoringClient(monitoringClient)
             .build();
 

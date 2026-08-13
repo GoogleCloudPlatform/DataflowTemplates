@@ -95,7 +95,7 @@ public class PostgreSQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase 
 
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(java.util.Optional.of(3))
             .setMonitoringClient(monitoringClient)
             .build();
 
