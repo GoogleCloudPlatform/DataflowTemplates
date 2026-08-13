@@ -1019,7 +1019,10 @@ public class InformationSchemaScanner {
       builder
           .createView(viewName)
           .query(viewQuery)
-          .security(View.SqlSecurity.valueOf(viewSecurityType))
+          .security(
+              viewSecurityType == null || viewSecurityType.trim().isEmpty()
+                  ? null
+                  : View.SqlSecurity.valueOf(viewSecurityType))
           .endView();
     }
   }
@@ -1077,7 +1080,10 @@ public class InformationSchemaScanner {
           .type(functionType)
           .language(language)
           .definition(functionDefinition)
-          .security(Udf.SqlSecurity.valueOf(functionSecurityType))
+          .security(
+              functionSecurityType == null || functionSecurityType.trim().isEmpty()
+                  ? null
+                  : Udf.SqlSecurity.valueOf(functionSecurityType))
           .endUdf();
     }
   }
