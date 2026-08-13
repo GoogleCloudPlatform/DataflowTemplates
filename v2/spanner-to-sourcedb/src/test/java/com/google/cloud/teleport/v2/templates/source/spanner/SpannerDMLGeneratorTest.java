@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
@@ -3138,5 +3139,178 @@ public final class SpannerDMLGeneratorTest {
     assertEquals("TargetAlbums", mutation.getTable());
     assertEquals(
         com.google.cloud.spanner.Key.of(1L, 2L).toString(), mutResp.getPrimaryKey().toString());
+  }
+
+  @Test
+  public void insertWithCustomTransformationUsingTargetColumnName() throws Exception {
+    Ddl origDdl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(50)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    Ddl targetDdl =
+        Ddl.builder()
+            .createTable("TargetUsers")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("target_first_name")
+            .string()
+            .size(50)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    SourceSchema targetSchema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(
+                ImmutableMap.of(
+                    "TargetUsers",
+                    SourceTable.builder(SRC_TYPE)
+                        .name("TargetUsers")
+                        .primaryKeyColumns(ImmutableList.of("id"))
+                        .columns(
+                            ImmutableList.of(
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("id")
+                                    .type("INT64")
+                                    .isPrimaryKey(true)
+                                    .build(),
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("target_first_name")
+                                    .type("STRING")
+                                    .build()))
+                        .build()))
+            .rawDdl(targetDdl)
+            .build();
+
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
+    when(mapper.getSourceTableName("", "Users")).thenReturn("TargetUsers");
+    when(mapper.getSpannerColumnName("", "TargetUsers", "id")).thenReturn("id");
+    when(mapper.getSpannerColumnName("", "TargetUsers", "target_first_name"))
+        .thenReturn("first_name");
+
+    JSONObject newValues = new JSONObject("{\"first_name\":\"Alice\"}");
+    JSONObject keyValues = new JSONObject("{\"id\":\"10\"}");
+
+    Map<String, Object> customResponse = new HashMap<>();
+    customResponse.put("target_first_name", "Transformed Alice");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "Users", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(origDdl)
+                    .setSourceSchema(targetSchema)
+                    .setCustomTransformationResponse(customResponse)
+                    .build());
+
+    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
+    Mutation mutation = mutResp.getMutation();
+    assertEquals(Mutation.Op.INSERT_OR_UPDATE, mutation.getOperation());
+    assertEquals("TargetUsers", mutation.getTable());
+    assertEquals("Transformed Alice", mutation.asMap().get("target_first_name").getString());
+    assertEquals(10L, mutResp.getPrimaryKey().getParts().iterator().next());
+  }
+
+  @Test
+  public void insertWithTargetPgDialectTypes() throws Exception {
+    Ddl origDdl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .size(50)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    Ddl targetPgDdl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .pgVarchar()
+            .size(50)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    SourceSchema targetSchema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(
+                ImmutableMap.of(
+                    "Users",
+                    SourceTable.builder(SRC_TYPE)
+                        .name("Users")
+                        .primaryKeyColumns(ImmutableList.of("id"))
+                        .columns(
+                            ImmutableList.of(
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("id")
+                                    .type("PG_INT8")
+                                    .isPrimaryKey(true)
+                                    .build(),
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("name")
+                                    .type("PG_VARCHAR")
+                                    .build()))
+                        .build()))
+            .rawDdl(targetPgDdl)
+            .build();
+
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
+    when(mapper.getSourceTableName("", "Users")).thenReturn("Users");
+    when(mapper.getSpannerColumnName("", "Users", "id")).thenReturn("id");
+    when(mapper.getSpannerColumnName("", "Users", "name")).thenReturn("name");
+
+    JSONObject newValues = new JSONObject("{\"name\":\"Bob\"}");
+    JSONObject keyValues = new JSONObject("{\"id\":\"20\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "Users", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(origDdl)
+                    .setSourceSchema(targetSchema)
+                    .build());
+
+    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
+    Mutation mutation = mutResp.getMutation();
+    assertEquals("Bob", mutation.asMap().get("name").getString());
+    assertEquals(20L, mutResp.getPrimaryKey().getParts().iterator().next());
   }
 }
