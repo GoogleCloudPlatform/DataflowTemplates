@@ -915,7 +915,7 @@ INSERT INTO `uuid_pk_table` (`id`, `uuid_pk_col`) VALUES ('a0eebc99-9c0b-4ef8-bb
 
 CREATE TABLE IF NOT EXISTS `utf8mb4_pk_table` (
     `id` VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin PRIMARY KEY,
-    `utf8mb4_pk_col` VARCHAR(200) NOT NULL
+    `utf8mb4_pk_col` VARCHAR(200) CHARACTER SET utf8mb4 NOT NULL
 );
 
 INSERT INTO `utf8mb4_pk_table` (`id`, `utf8mb4_pk_col`) VALUES ('😀', '😀'), ('😁', '😁'), ('😂', '😂');
