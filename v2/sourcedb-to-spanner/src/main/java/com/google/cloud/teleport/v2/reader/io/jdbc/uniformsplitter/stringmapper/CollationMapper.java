@@ -261,7 +261,7 @@ public abstract class CollationMapper implements Serializable {
           ResultSet rs = statement.getResultSet();
           List<CollationOrderRow> rows =
               dbAdapter.processCollationResultSet(rs, collationReference);
-          mapper = fromRowsCollection(rows, collationReference);
+          mapper = fromRows(rows, collationReference);
           break;
         }
         foundResultSet = statement.getMoreResults();
@@ -286,7 +286,7 @@ public abstract class CollationMapper implements Serializable {
     return mapper;
   }
 
-  static CollationMapper fromRowsCollection(
+  static CollationMapper fromRows(
       List<CollationOrderRow> rows, CollationReference collationReference) {
     Builder builder = builder(collationReference);
     for (CollationOrderRow row : rows) {
