@@ -56,16 +56,17 @@ public interface IUnifiedVisitor {
       return;
     }
 
-    switch (value.getType().getCode()) {
-      case STRING -> visitor.visitString(value.getString());
-      case INT64 -> visitor.visitInt64(value.getInt64());
-      case FLOAT64 -> visitor.visitFloat64(value.getFloat64());
-      case BOOL -> visitor.visitBool(value.getBool());
-      case BYTES -> visitor.visitBytes(value.getBytes().toByteArray());
-      case DATE -> visitor.visitDate(value.getDate());
-      case NUMERIC -> visitor.visitNumeric(value.getNumeric());
-      case TIMESTAMP -> visitor.visitTimestamp(value.getTimestamp());
-      case JSON -> visitor.visitJson(value.getJson());
+    switch (value.getType().getCode().name()) {
+      case "STRING" -> visitor.visitString(value.getString());
+      case "UUID", "PG_UUID" -> visitor.visitString(value.getUuid().toString());
+      case "INT64" -> visitor.visitInt64(value.getInt64());
+      case "FLOAT64" -> visitor.visitFloat64(value.getFloat64());
+      case "BOOL" -> visitor.visitBool(value.getBool());
+      case "BYTES" -> visitor.visitBytes(value.getBytes().toByteArray());
+      case "DATE" -> visitor.visitDate(value.getDate());
+      case "NUMERIC", "PG_NUMERIC" -> visitor.visitNumeric(value.getNumeric());
+      case "TIMESTAMP" -> visitor.visitTimestamp(value.getTimestamp());
+      case "JSON", "PG_JSONB" -> visitor.visitJson(value.getJson());
       default -> visitor.visitDefault(value);
     }
   }
