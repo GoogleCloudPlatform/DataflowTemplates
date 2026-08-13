@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public class OracleDialectAdapter implements DialectAdapter {
   private static final Logger LOGGER = LoggerFactory.getLogger(OracleDialectAdapter.class);
+
   private String quote(String identifier) {
     if (identifier == null) {
       return null;
