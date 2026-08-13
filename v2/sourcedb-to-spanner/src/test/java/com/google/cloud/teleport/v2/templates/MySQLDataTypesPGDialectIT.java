@@ -51,10 +51,10 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesPGDialectIT.class);
-  private static PipelineLauncher.LaunchInfo jobInfo;
+  protected PipelineLauncher.LaunchInfo jobInfo;
 
-  public static MySQLResourceManager mySQLResourceManager;
-  public static SpannerResourceManager pgDialectSpannerResourceManager;
+  protected MySQLResourceManager mySQLResourceManager;
+  protected SpannerResourceManager pgDialectSpannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql-data-types.sql";
 
