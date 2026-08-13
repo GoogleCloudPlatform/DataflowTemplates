@@ -182,11 +182,9 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
   private void setupMultiRegionSpannerResourceManager(Dialect dialect) {
     String projectId = TestProperties.project();
 
-    String region = "nam6";
+    String region = "nam3";
     if (spannerHost != null) {
-      if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
-        region = "nam3";
-      } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
+      if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
         region = "nam-private1";
       }
     }
@@ -2021,14 +2019,11 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
   @Test
   public void placementsAndPlacementTables() throws Exception {
     setupMultiRegionSpannerResourceManager(Dialect.GOOGLE_STANDARD_SQL);
-    String leader1 = "us-east1";
-    String leader2 = "us-central1";
+    String leader1 = "us-east4";
+    String leader2 = "us-east1";
 
     if (spannerHost != null) {
-      if (spannerHost.contains("staging-wrenchworks.sandbox.googleapis.com")) {
-        leader1 = "us-east4";
-        leader2 = "us-east1";
-      } else if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
+      if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
         leader1 = "us-west1";
         leader2 = "us-west4";
       }
