@@ -27,10 +27,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -75,7 +72,13 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException("Spanner DDL must not be null.");
     }
     if (targetSpannerSchema == null) {
-      throw new InvalidDMLGenerationException("SourceSchema must not be null.");
+      throw new InvalidDMLGenerationException("target spanner schema could not be fetched.");
+    }
+
+    Ddl targetDdl =
+        (targetSpannerSchema.rawDdl() instanceof Ddl) ? (Ddl) targetSpannerSchema.rawDdl() : null;
+    if (targetDdl == null) {
+      throw new InvalidDMLGenerationException("target spanner ddl could not be fetched.");
     }
 
     Table origSpannerTable = originalSpannerDdl.table(origSpannerTableName);
@@ -109,10 +112,10 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     String modType = request.getModType();
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
       return buildUpsertMutation(
-          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName, targetDdl);
     } else if ("DELETE".equals(modType)) {
       return buildDeleteMutation(
-          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName, targetDdl);
     } else {
       throw new InvalidDMLGenerationException(
           "Unsupported modType '" + modType + "' for table " + origSpannerTableName);
@@ -124,7 +127,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
-      String targetTableName) {
+      String targetTableName,
+      Ddl targetDdl) {
 
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(targetTableName);
     JSONObject newValuesJson = request.getNewValuesJson();
@@ -178,6 +182,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     Key primaryKey =
         buildTargetPrimaryKey(
             origSpannerTable,
+            targetDdl,
             targetSpannerTable,
             schemaMapper,
             newValuesJson,
@@ -188,65 +193,55 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
   private static Key buildTargetPrimaryKey(
       Table origSpannerTable,
+      Ddl targetDdl,
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       Map<String, Object> customTransformationResponse) {
-    // TODO- rework class to take targetDdl in constructor
-    Ddl targetDdl = null;
-    try {
-      ISpToSrcSourceConnector sourceConnector =
-          SourceProcessorFactory.getSource(Constants.SOURCE_SPANNER);
-      if (sourceConnector instanceof SpannerSpToSrcSourceConnector) {
-        targetDdl = ((SpannerSpToSrcSourceConnector) sourceConnector).getTargetDdl();
-      }
-    } catch (Exception e) {
-      LOG.warn("could not fetch spanner source", e);
-    }
-
     Key.Builder keyBuilder = Key.newBuilder();
     for (String targetColName : targetSpannerTable.primaryKeyColumns()) {
-      Object customVal = null;
-      if (customTransformationResponse != null
-          && customTransformationResponse.containsKey(targetColName)) {
-        customVal = customTransformationResponse.get(targetColName);
-      }
       Column targetCol = null;
       if (targetDdl != null && targetDdl.table(targetSpannerTable.name()) != null) {
         targetCol = targetDdl.table(targetSpannerTable.name()).column(targetColName);
-      }
-      if (targetCol == null) {
-        String origColName = null;
-        try {
-          if (schemaMapper != null) {
-            origColName =
-                schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
-          }
-        } catch (NoSuchElementException ignored) {
-        }
-        if (origColName == null) {
-          origColName = targetColName;
-        }
-        if (origSpannerTable != null && origColName != null) {
-          targetCol = origSpannerTable.column(origColName);
-        }
       }
       if (targetCol == null) {
         throw new InvalidDMLGenerationException(
             "Primary key column '" + targetColName + "' not found in DDL.");
       }
 
-      JSONObject valuesJson = keyValuesJson.has(targetColName) ? keyValuesJson : newValuesJson;
-      if (customVal != null) {
-        appendCustomKeyComponent(keyBuilder, targetCol, customVal);
-      } else if (valuesJson.has(targetColName)) {
-        appendCustomKeyComponent(keyBuilder, targetCol, valuesJson.get(targetColName));
-      } else {
-        LOG.warn("Primary key column '{}' could not be resolved.", targetColName);
-        throw new InvalidDMLGenerationException(
-            "Primary key column '" + targetColName + "' could not be resolved.");
+      String origColName = null;
+      try {
+        if (schemaMapper != null) {
+          origColName =
+              schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
+        }
+      } catch (NoSuchElementException ignored) {
       }
+      if (origColName == null) {
+        origColName = targetColName;
+      }
+
+      Object targetColValue = null;
+      if (customTransformationResponse != null
+          && customTransformationResponse.containsKey(targetColName)) {
+        targetColValue = customTransformationResponse.get(targetColName);
+      } else {
+        // Fetch the value from the changestream record
+        if (keyValuesJson.has(origColName)) {
+          // column was a part of key in the original record.
+          targetColValue = keyValuesJson.get(origColName);
+        } else if (newValuesJson.has(origColName)) {
+          // column was not a part of key in the original record.
+          targetColValue = newValuesJson.get(origColName);
+        } else {
+          // column not resolvable
+          LOG.warn("Primary key column '{}' could not be resolved.", targetColName);
+          throw new InvalidDMLGenerationException(
+              "Primary key column '" + targetColName + "' could not be resolved.");
+        }
+      }
+      appendCustomKeyComponent(keyBuilder, targetCol, targetColValue);
     }
     return keyBuilder.build();
   }
@@ -256,7 +251,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
-      String targetTableName) {
+      String targetTableName,
+      Ddl targetDdl) {
 
     JSONObject keyValuesJson = request.getKeyValuesJson();
     JSONObject newValuesJson = request.getNewValuesJson();
@@ -264,6 +260,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     Key primaryKey =
         buildTargetPrimaryKey(
             origSpannerTable,
+            targetDdl,
             targetSpannerTable,
             schemaMapper,
             newValuesJson,
@@ -454,6 +451,10 @@ public class SpannerDMLGenerator implements IDMLGenerator {
    * {@link #setCustomColumnValue} for the DELETE path.
    */
   private static void appendCustomKeyComponent(Key.Builder keyBuilder, Column col, Object value) {
+    if (value == null) {
+      keyBuilder.appendObject(null);
+      return;
+    }
     Type type = col.type();
     switch (type.getCode()) {
       case BOOL:

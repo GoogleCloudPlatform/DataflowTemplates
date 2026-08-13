@@ -83,6 +83,7 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
     return SourceSchema.builder(sourceType)
         .databaseName(spannerConfig.getDatabaseId().get())
         .tables(ImmutableMap.copyOf(tables))
+        .rawDdl(ddl)
         .build();
   }
 

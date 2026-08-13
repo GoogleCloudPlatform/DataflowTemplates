@@ -37,8 +37,6 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -97,6 +95,7 @@ public final class SpannerDMLGeneratorTest {
     return SourceSchema.builder(SRC_TYPE)
         .databaseName("test-db")
         .tables(ImmutableMap.of("Singers", table))
+        .rawDdl(buildDdl())
         .build();
   }
 
@@ -548,6 +547,39 @@ public final class SpannerDMLGeneratorTest {
     return ddlBuilder.build();
   }
 
+  private static Type parseSpannerType(String typeStr) {
+    if (typeStr.startsWith("ARRAY<") && typeStr.endsWith(">")) {
+      String inner = typeStr.substring(6, typeStr.length() - 1);
+      return Type.array(parseSpannerType(inner));
+    }
+    switch (typeStr) {
+      case "BOOL":
+        return Type.bool();
+      case "INT64":
+        return Type.int64();
+      case "FLOAT64":
+        return Type.float64();
+      case "FLOAT32":
+        return Type.float32();
+      case "STRING":
+        return Type.string();
+      case "BYTES":
+        return Type.bytes();
+      case "TIMESTAMP":
+        return Type.timestamp();
+      case "DATE":
+        return Type.date();
+      case "NUMERIC":
+        return Type.numeric();
+      case "JSON":
+        return Type.json();
+      case "STRUCT":
+        return Type.struct(Type.StructField.of("f1", Type.string()));
+      default:
+        return Type.string();
+    }
+  }
+
   private static SourceSchema buildSchemaWithSingleNonPkCol(String colName, String colType) {
     SourceColumn idCol =
         SourceColumn.builder(SRC_TYPE)
@@ -571,6 +603,7 @@ public final class SpannerDMLGeneratorTest {
     return SourceSchema.builder(SRC_TYPE)
         .databaseName("test-db")
         .tables(ImmutableMap.of("T", table))
+        .rawDdl(buildDdlWithSingleNonPkCol(colName, parseSpannerType(colType)))
         .build();
   }
 
@@ -1102,7 +1135,11 @@ public final class SpannerDMLGeneratorTest {
   public void missingTargetTableInSourceSchemaThrows() throws Exception {
     Ddl ddl = buildDdl();
     SourceSchema emptySchema =
-        SourceSchema.builder(SRC_TYPE).databaseName("test-db").tables(ImmutableMap.of()).build();
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(ImmutableMap.of())
+            .rawDdl(ddl)
+            .build();
     ISchemaMapper mapper = buildIdentityMapper();
 
     assertThrows(
@@ -1203,6 +1240,7 @@ public final class SpannerDMLGeneratorTest {
                                     .isPrimaryKey(true)
                                     .build()))
                         .build()))
+            .rawDdl(ddl)
             .build();
     ISchemaMapper mapper = buildIdentityMapper();
     when(mapper.getSourceTableName("", "Albums")).thenReturn("Albums");
@@ -1582,6 +1620,7 @@ public final class SpannerDMLGeneratorTest {
         SourceSchema.builder(SRC_TYPE)
             .databaseName("test-db")
             .tables(ImmutableMap.of("Singers", noPkTable))
+            .rawDdl(ddl)
             .build();
     ISchemaMapper mapper = buildIdentityMapper();
 
@@ -1655,6 +1694,7 @@ public final class SpannerDMLGeneratorTest {
         SourceSchema.builder(SRC_TYPE)
             .databaseName("test-db")
             .tables(ImmutableMap.of("Singers", table))
+            .rawDdl(ddl)
             .build();
 
     ISchemaMapper mapper = buildIdentityMapper();
@@ -1722,6 +1762,7 @@ public final class SpannerDMLGeneratorTest {
         SourceSchema.builder(SRC_TYPE)
             .databaseName("test-db")
             .tables(ImmutableMap.of("Singers", table))
+            .rawDdl(ddl)
             .build();
 
     ISchemaMapper mapper = buildIdentityMapper();
@@ -2536,6 +2577,7 @@ public final class SpannerDMLGeneratorTest {
         SourceSchema.builder(SRC_TYPE)
             .databaseName("test-db")
             .tables(ImmutableMap.of("PkTable", table))
+            .rawDdl(ddl)
             .build();
 
     ISchemaMapper mapper = mock(ISchemaMapper.class);
@@ -2586,36 +2628,29 @@ public final class SpannerDMLGeneratorTest {
   }
 
   @Test
-  public void targetDdlIntegrationWithSourceProcessor() throws Exception {
+  public void targetDdlNullInSourceSchemaThrows() throws Exception {
     Ddl ddl = buildDdl();
-    SourceSchema schema = buildSourceSchema();
+    SourceSchema schemaWithoutDdl =
+        SourceSchema.builder(SRC_TYPE).databaseName("test-db").tables(ImmutableMap.of()).build();
     ISchemaMapper mapper = buildIdentityMapper();
 
-    SpannerSpToSrcSourceConnector connector =
-        (SpannerSpToSrcSourceConnector) SourceProcessorFactory.getSource(Constants.SOURCE_SPANNER);
-    connector.setTargetDdl(ddl);
-
-    try {
-      JSONObject newValues = new JSONObject("{\"FirstName\":\"Jane\",\"LastName\":\"Doe\"}");
-      JSONObject keyValues = new JSONObject("{\"SingerId\":\"42\"}");
-
-      DMLGeneratorResponse response =
-          new SpannerDMLGenerator()
-              .getDMLStatement(
-                  new DMLGeneratorRequest.Builder(
-                          "INSERT", "Singers", newValues, keyValues, "+00:00")
-                      .setSchemaMapper(mapper)
-                      .setDdl(ddl)
-                      .setSourceSchema(schema)
-                      .build());
-
-      SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
-      assertNotNull(mutResp.getMutation());
-      assertEquals(
-          com.google.cloud.spanner.Key.of(42L).toString(), mutResp.getPrimaryKey().toString());
-    } finally {
-      connector.setTargetDdl(null);
-    }
+    InvalidDMLGenerationException ex =
+        assertThrows(
+            InvalidDMLGenerationException.class,
+            () ->
+                new SpannerDMLGenerator()
+                    .getDMLStatement(
+                        new DMLGeneratorRequest.Builder(
+                                "INSERT",
+                                "Singers",
+                                new JSONObject("{}"),
+                                new JSONObject("{\"SingerId\":\"1\"}"),
+                                "+00:00")
+                            .setSchemaMapper(mapper)
+                            .setDdl(ddl)
+                            .setSourceSchema(schemaWithoutDdl)
+                            .build()));
+    assertEquals("target spanner ddl could not be fetched.", ex.getMessage());
   }
 
   @Test
@@ -2818,36 +2853,290 @@ public final class SpannerDMLGeneratorTest {
   }
 
   @Test
-  public void sourceProcessorFactoryThrowsExceptionHandledGracefully() throws Exception {
+  public void targetDdlInvalidTypeInSourceSchemaThrows() throws Exception {
     Ddl ddl = buildDdl();
-    SourceSchema schema = buildSourceSchema();
+    SourceSchema schemaWithInvalidDdl =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(ImmutableMap.of())
+            .rawDdl("not-a-ddl-object")
+            .build();
     ISchemaMapper mapper = buildIdentityMapper();
 
-    Map<String, com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector>
-        originalMap = SourceProcessorFactory.getSourceMap();
-    try {
-      SourceProcessorFactory.setSourceMap(
-          new HashMap<>()); // Empty map triggers UnsupportedSourceException
+    InvalidDMLGenerationException ex =
+        assertThrows(
+            InvalidDMLGenerationException.class,
+            () ->
+                new SpannerDMLGenerator()
+                    .getDMLStatement(
+                        new DMLGeneratorRequest.Builder(
+                                "INSERT",
+                                "Singers",
+                                new JSONObject("{}"),
+                                new JSONObject("{\"SingerId\":\"1\"}"),
+                                "+00:00")
+                            .setSchemaMapper(mapper)
+                            .setDdl(ddl)
+                            .setSourceSchema(schemaWithInvalidDdl)
+                            .build()));
+    assertEquals("target spanner ddl could not be fetched.", ex.getMessage());
+  }
 
-      JSONObject newValues = new JSONObject("{\"FirstName\":\"John\",\"LastName\":\"Doe\"}");
-      JSONObject keyValues = new JSONObject("{\"SingerId\":\"42\"}");
+  @Test
+  public void insertWithRenamedPrimaryKeyColumn() throws Exception {
+    Ddl origDdl = buildDdl();
 
-      DMLGeneratorResponse response =
-          new SpannerDMLGenerator()
-              .getDMLStatement(
-                  new DMLGeneratorRequest.Builder(
-                          "INSERT", "Singers", newValues, keyValues, "+00:00")
-                      .setSchemaMapper(mapper)
-                      .setDdl(ddl)
-                      .setSourceSchema(schema)
-                      .build());
+    Ddl targetDdl =
+        Ddl.builder()
+            .createTable("TargetSingers")
+            .column("TargetSingerId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("TargetFirstName")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("TargetSingerId")
+            .end()
+            .endTable()
+            .build();
 
-      SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
-      assertNotNull(mutResp.getMutation());
-      assertEquals(
-          com.google.cloud.spanner.Key.of(42L).toString(), mutResp.getPrimaryKey().toString());
-    } finally {
-      SourceProcessorFactory.setSourceMap(originalMap);
-    }
+    SourceColumn pkCol =
+        SourceColumn.builder(SRC_TYPE)
+            .name("TargetSingerId")
+            .type("INT64")
+            .isPrimaryKey(true)
+            .isNullable(false)
+            .build();
+    SourceColumn nameCol =
+        SourceColumn.builder(SRC_TYPE)
+            .name("TargetFirstName")
+            .type("STRING")
+            .isNullable(true)
+            .build();
+
+    SourceTable targetTable =
+        SourceTable.builder(SRC_TYPE)
+            .name("TargetSingers")
+            .columns(ImmutableList.of(pkCol, nameCol))
+            .primaryKeyColumns(ImmutableList.of("TargetSingerId"))
+            .foreignKeys(ImmutableList.of())
+            .indexes(ImmutableList.of())
+            .build();
+
+    SourceSchema targetSchema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(ImmutableMap.of("TargetSingers", targetTable))
+            .rawDdl(targetDdl)
+            .build();
+
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
+    when(mapper.getSourceTableName("", "Singers")).thenReturn("TargetSingers");
+    when(mapper.getSpannerColumnName("", "TargetSingers", "TargetSingerId")).thenReturn("SingerId");
+    when(mapper.getSpannerColumnName("", "TargetSingers", "TargetFirstName"))
+        .thenReturn("FirstName");
+    when(mapper.getSourceColumnName("", "Singers", "SingerId")).thenReturn("TargetSingerId");
+    when(mapper.getSourceColumnName("", "Singers", "FirstName")).thenReturn("TargetFirstName");
+
+    JSONObject newValues = new JSONObject("{\"FirstName\":\"John\"}");
+    JSONObject keyValues = new JSONObject("{\"SingerId\":\"42\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "Singers", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(origDdl)
+                    .setSourceSchema(targetSchema)
+                    .build());
+
+    assertNotNull(response);
+    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
+    Mutation mutation = mutResp.getMutation();
+    assertEquals(Mutation.Op.INSERT_OR_UPDATE, mutation.getOperation());
+    assertEquals("TargetSingers", mutation.getTable());
+    assertEquals(42L, mutation.asMap().get("TargetSingerId").getInt64());
+    assertEquals("John", mutation.asMap().get("TargetFirstName").getString());
+    assertEquals(
+        com.google.cloud.spanner.Key.of(42L).toString(), mutResp.getPrimaryKey().toString());
+  }
+
+  @Test
+  public void deleteWithRenamedPrimaryKeyColumn() throws Exception {
+    Ddl origDdl = buildDdl();
+
+    Ddl targetDdl =
+        Ddl.builder()
+            .createTable("TargetSingers")
+            .column("TargetSingerId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("FirstName")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("TargetSingerId")
+            .end()
+            .endTable()
+            .build();
+
+    SourceColumn pkCol =
+        SourceColumn.builder(SRC_TYPE)
+            .name("TargetSingerId")
+            .type("INT64")
+            .isPrimaryKey(true)
+            .isNullable(false)
+            .build();
+    SourceColumn nameCol =
+        SourceColumn.builder(SRC_TYPE).name("FirstName").type("STRING").isNullable(true).build();
+
+    SourceTable targetTable =
+        SourceTable.builder(SRC_TYPE)
+            .name("TargetSingers")
+            .columns(ImmutableList.of(pkCol, nameCol))
+            .primaryKeyColumns(ImmutableList.of("TargetSingerId"))
+            .foreignKeys(ImmutableList.of())
+            .indexes(ImmutableList.of())
+            .build();
+
+    SourceSchema targetSchema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(ImmutableMap.of("TargetSingers", targetTable))
+            .rawDdl(targetDdl)
+            .build();
+
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
+    when(mapper.getSourceTableName("", "Singers")).thenReturn("TargetSingers");
+    when(mapper.getSpannerColumnName("", "TargetSingers", "TargetSingerId")).thenReturn("SingerId");
+    when(mapper.getSpannerColumnName("", "TargetSingers", "FirstName")).thenReturn("FirstName");
+    when(mapper.getSourceColumnName("", "Singers", "SingerId")).thenReturn("TargetSingerId");
+    when(mapper.getSourceColumnName("", "Singers", "FirstName")).thenReturn("FirstName");
+
+    JSONObject newValues = new JSONObject("{}");
+    JSONObject keyValues = new JSONObject("{\"SingerId\":\"42\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("DELETE", "Singers", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(origDdl)
+                    .setSourceSchema(targetSchema)
+                    .build());
+
+    assertNotNull(response);
+    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
+    Mutation mutation = mutResp.getMutation();
+    assertEquals(Mutation.Op.DELETE, mutation.getOperation());
+    assertEquals("TargetSingers", mutation.getTable());
+    assertEquals(
+        com.google.cloud.spanner.Key.of(42L).toString(), mutResp.getPrimaryKey().toString());
+    assertEquals(
+        com.google.cloud.spanner.Key.of(42L).toString(),
+        mutation.getKeySet().getKeys().iterator().next().toString());
+  }
+
+  @Test
+  public void deleteWithRenamedCompositePrimaryKey() throws Exception {
+    Ddl origDdl =
+        Ddl.builder()
+            .createTable("Albums")
+            .column("SingerId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("AlbumId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Title")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("SingerId")
+            .asc("AlbumId")
+            .end()
+            .endTable()
+            .build();
+
+    Ddl targetDdl =
+        Ddl.builder()
+            .createTable("TargetAlbums")
+            .column("TargetSingerId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("TargetAlbumId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Title")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("TargetSingerId")
+            .asc("TargetAlbumId")
+            .end()
+            .endTable()
+            .build();
+
+    SourceSchema targetSchema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(
+                ImmutableMap.of(
+                    "TargetAlbums",
+                    SourceTable.builder(SRC_TYPE)
+                        .name("TargetAlbums")
+                        .primaryKeyColumns(ImmutableList.of("TargetSingerId", "TargetAlbumId"))
+                        .columns(
+                            ImmutableList.of(
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("TargetSingerId")
+                                    .type("INT64")
+                                    .isPrimaryKey(true)
+                                    .build(),
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("TargetAlbumId")
+                                    .type("INT64")
+                                    .isPrimaryKey(true)
+                                    .build()))
+                        .build()))
+            .rawDdl(targetDdl)
+            .build();
+
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
+    when(mapper.getSourceTableName("", "Albums")).thenReturn("TargetAlbums");
+    when(mapper.getSpannerColumnName("", "TargetAlbums", "TargetSingerId")).thenReturn("SingerId");
+    when(mapper.getSpannerColumnName("", "TargetAlbums", "TargetAlbumId")).thenReturn("AlbumId");
+    when(mapper.getSourceColumnName("", "Albums", "SingerId")).thenReturn("TargetSingerId");
+    when(mapper.getSourceColumnName("", "Albums", "AlbumId")).thenReturn("TargetAlbumId");
+
+    JSONObject newValues = new JSONObject("{}");
+    JSONObject keyValues = new JSONObject("{\"SingerId\":\"1\", \"AlbumId\":\"2\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("DELETE", "Albums", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(origDdl)
+                    .setSourceSchema(targetSchema)
+                    .build());
+
+    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
+    Mutation mutation = mutResp.getMutation();
+    assertEquals(Mutation.Op.DELETE, mutation.getOperation());
+    assertEquals("TargetAlbums", mutation.getTable());
+    assertEquals(
+        com.google.cloud.spanner.Key.of(1L, 2L).toString(), mutResp.getPrimaryKey().toString());
   }
 }
