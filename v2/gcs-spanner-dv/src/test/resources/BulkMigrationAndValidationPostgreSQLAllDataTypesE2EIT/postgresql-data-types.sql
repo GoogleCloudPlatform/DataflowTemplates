@@ -22,7 +22,7 @@ CREATE TABLE bigint_to_int64 (
     col bigint
 );
 INSERT INTO bigint_to_int64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS bigint_to_string;
 CREATE TABLE bigint_to_string (
@@ -30,7 +30,7 @@ CREATE TABLE bigint_to_string (
     col bigint
 );
 INSERT INTO bigint_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS bigserial_to_int64;
 CREATE TABLE bigserial_to_int64 (
@@ -38,7 +38,7 @@ CREATE TABLE bigserial_to_int64 (
     col bigserial
 );
 INSERT INTO bigserial_to_int64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (42);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (42);
 
 DROP TABLE IF EXISTS bigserial_to_string;
 CREATE TABLE bigserial_to_string (
@@ -46,7 +46,7 @@ CREATE TABLE bigserial_to_string (
     col bigserial
 );
 INSERT INTO bigserial_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (42);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (42);
 
 DROP TABLE IF EXISTS bit_to_bytes;
 CREATE TABLE bit_to_bytes (
@@ -102,7 +102,7 @@ CREATE TABLE bytea_to_bytes (
     col bytea
 );
 INSERT INTO bytea_to_bytes (col) VALUES
-    (NULL), (NULL), (NULL), (NULL);
+    (''::bytea), ('\xDEADBEEF'::bytea), ('\xDEADBEEF'::bytea), (NULL);
 
 DROP TABLE IF EXISTS char_to_string;
 CREATE TABLE char_to_string (
@@ -110,7 +110,7 @@ CREATE TABLE char_to_string (
     col char
 );
 INSERT INTO char_to_string (col) VALUES
-    (''), ('M'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), ('M'), ('R'), (NULL);
 
 DROP TABLE IF EXISTS character_to_string;
 CREATE TABLE character_to_string (
@@ -118,7 +118,7 @@ CREATE TABLE character_to_string (
     col character
 );
 INSERT INTO character_to_string (col) VALUES
-    (''), ('M'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), ('M'), ('R'), (NULL);
 
 DROP TABLE IF EXISTS character_varying_to_string;
 CREATE TABLE character_varying_to_string (
@@ -126,7 +126,7 @@ CREATE TABLE character_varying_to_string (
     col character varying
 );
 INSERT INTO character_varying_to_string (col) VALUES
-    (''), ('MAX_LEN'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), (repeat('a', 2621440)), ('RandomStringVal'), (NULL);
 
 DROP TABLE IF EXISTS cid_to_string;
 CREATE TABLE cid_to_string (
@@ -134,7 +134,7 @@ CREATE TABLE cid_to_string (
     col cid
 );
 INSERT INTO cid_to_string (col) VALUES
-    ('1'), ('1'), ('1'), (NULL);
+    ('0'), ('4294967255'), ('39487'), (NULL);
 
 DROP TABLE IF EXISTS cidr_to_string;
 CREATE TABLE cidr_to_string (
@@ -142,7 +142,7 @@ CREATE TABLE cidr_to_string (
     col cidr
 );
 INSERT INTO cidr_to_string (col) VALUES
-    ('192.168.1.1'), ('10.0.0.1'), ('10.0.0.1'), (NULL);
+    ('0.0.0.0'), ('ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'), ('192.168.1.1'), (NULL);
 
 DROP TABLE IF EXISTS circle_to_string;
 CREATE TABLE circle_to_string (
@@ -150,7 +150,7 @@ CREATE TABLE circle_to_string (
     col circle
 );
 INSERT INTO circle_to_string (col) VALUES
-    ('<(0,0),1>'), ('<(0,0),1>'), ('<(0,0),1>'), (NULL);
+    ('<(-1.79769e308,-1.79769e308),0>'), ('<(1.79769e308,1.79769e308),1.79769e308>'), ('<(0,0),1>'), (NULL);
 
 DROP TABLE IF EXISTS citext_to_string;
 CREATE TABLE citext_to_string (
@@ -158,7 +158,7 @@ CREATE TABLE citext_to_string (
     col citext
 );
 INSERT INTO citext_to_string (col) VALUES
-    (''), ('MAX_LEN'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), (repeat('a', 2621440)), ('RandomStringVal'), (NULL);
 
 DROP TABLE IF EXISTS date_to_date;
 CREATE TABLE date_to_date (
@@ -182,7 +182,7 @@ CREATE TABLE datemultirange_to_string (
     col datemultirange
 );
 INSERT INTO datemultirange_to_string (col) VALUES
-    ('{[2020-01-01, 2020-01-05]}'), ('{[2020-01-01, 2020-01-05]}'), ('{[2020-01-01, 2020-01-05]}'), (NULL);
+    ('{empty}'), ('{[2020-01-01, 2020-01-05]}'), ('{[2020-01-01, 2020-01-05]}'), (NULL);
 
 DROP TABLE IF EXISTS daterange_to_string;
 CREATE TABLE daterange_to_string (
@@ -190,7 +190,7 @@ CREATE TABLE daterange_to_string (
     col daterange
 );
 INSERT INTO daterange_to_string (col) VALUES
-    ('[2020-01-01, 2020-01-05]'), ('[2020-01-01, 2020-01-05]'), ('[2020-01-01, 2020-01-05]'), (NULL);
+    ('empty'), ('[2020-01-01, 2020-01-05]'), ('[2020-01-01, 2020-01-05]'), (NULL);
 
 DROP TABLE IF EXISTS decimal_to_string;
 CREATE TABLE decimal_to_string (
@@ -206,7 +206,7 @@ CREATE TABLE double_precision_to_float64 (
     col double precision
 );
 INSERT INTO double_precision_to_float64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS double_precision_to_string;
 CREATE TABLE double_precision_to_string (
@@ -214,7 +214,7 @@ CREATE TABLE double_precision_to_string (
     col double precision
 );
 INSERT INTO double_precision_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float_to_float64;
 CREATE TABLE float_to_float64 (
@@ -222,7 +222,7 @@ CREATE TABLE float_to_float64 (
     col float
 );
 INSERT INTO float_to_float64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float_to_string;
 CREATE TABLE float_to_string (
@@ -230,7 +230,7 @@ CREATE TABLE float_to_string (
     col float
 );
 INSERT INTO float_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float4_to_float32;
 CREATE TABLE float4_to_float32 (
@@ -238,7 +238,7 @@ CREATE TABLE float4_to_float32 (
     col float4
 );
 INSERT INTO float4_to_float32 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float4_to_float64;
 CREATE TABLE float4_to_float64 (
@@ -246,7 +246,7 @@ CREATE TABLE float4_to_float64 (
     col float4
 );
 INSERT INTO float4_to_float64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float4_to_string;
 CREATE TABLE float4_to_string (
@@ -254,7 +254,7 @@ CREATE TABLE float4_to_string (
     col float4
 );
 INSERT INTO float4_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float8_to_float64;
 CREATE TABLE float8_to_float64 (
@@ -262,7 +262,7 @@ CREATE TABLE float8_to_float64 (
     col float8
 );
 INSERT INTO float8_to_float64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS float8_to_string;
 CREATE TABLE float8_to_string (
@@ -270,7 +270,7 @@ CREATE TABLE float8_to_string (
     col float8
 );
 INSERT INTO float8_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-1.7976931348623157e+308'), ('1.7976931348623157e+308'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS hstore_to_string;
 CREATE TABLE hstore_to_string (
@@ -278,7 +278,7 @@ CREATE TABLE hstore_to_string (
     col hstore
 );
 INSERT INTO hstore_to_string (col) VALUES
-    ('"a"=>"1"'), ('"a"=>"1"'), ('"a"=>"1"'), (NULL);
+    (''), ('"k"=>"v"'), ('"k"=>"v"'), (NULL);
 
 DROP TABLE IF EXISTS inet_to_string;
 CREATE TABLE inet_to_string (
@@ -286,7 +286,7 @@ CREATE TABLE inet_to_string (
     col inet
 );
 INSERT INTO inet_to_string (col) VALUES
-    ('192.168.1.1'), ('10.0.0.1'), ('10.0.0.1'), (NULL);
+    ('0.0.0.0'), ('ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'), ('192.168.1.1'), (NULL);
 
 DROP TABLE IF EXISTS int_to_int64;
 CREATE TABLE int_to_int64 (
@@ -294,7 +294,7 @@ CREATE TABLE int_to_int64 (
     col int
 );
 INSERT INTO int_to_int64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int_to_float64;
 CREATE TABLE int_to_float64 (
@@ -302,7 +302,7 @@ CREATE TABLE int_to_float64 (
     col int
 );
 INSERT INTO int_to_float64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int_to_string;
 CREATE TABLE int_to_string (
@@ -310,7 +310,7 @@ CREATE TABLE int_to_string (
     col int
 );
 INSERT INTO int_to_string (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int2_to_int64;
 CREATE TABLE int2_to_int64 (
@@ -318,7 +318,7 @@ CREATE TABLE int2_to_int64 (
     col int2
 );
 INSERT INTO int2_to_int64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int2_to_float32;
 CREATE TABLE int2_to_float32 (
@@ -326,7 +326,7 @@ CREATE TABLE int2_to_float32 (
     col int2
 );
 INSERT INTO int2_to_float32 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int2_to_float64;
 CREATE TABLE int2_to_float64 (
@@ -334,7 +334,7 @@ CREATE TABLE int2_to_float64 (
     col int2
 );
 INSERT INTO int2_to_float64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int2_to_string;
 CREATE TABLE int2_to_string (
@@ -342,7 +342,7 @@ CREATE TABLE int2_to_string (
     col int2
 );
 INSERT INTO int2_to_string (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int4_to_int64;
 CREATE TABLE int4_to_int64 (
@@ -350,7 +350,7 @@ CREATE TABLE int4_to_int64 (
     col int4
 );
 INSERT INTO int4_to_int64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int4_to_float64;
 CREATE TABLE int4_to_float64 (
@@ -358,7 +358,7 @@ CREATE TABLE int4_to_float64 (
     col int4
 );
 INSERT INTO int4_to_float64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int4_to_string;
 CREATE TABLE int4_to_string (
@@ -366,7 +366,7 @@ CREATE TABLE int4_to_string (
     col int4
 );
 INSERT INTO int4_to_string (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int4multirange_to_string;
 CREATE TABLE int4multirange_to_string (
@@ -374,7 +374,7 @@ CREATE TABLE int4multirange_to_string (
     col int4multirange
 );
 INSERT INTO int4multirange_to_string (col) VALUES
-    ('{[1,10]}'), ('{[1,10]}'), ('{[1,10]}'), (NULL);
+    ('{empty}'), ('{[1,10]}'), ('{[1,10]}'), (NULL);
 
 DROP TABLE IF EXISTS int4range_to_string;
 CREATE TABLE int4range_to_string (
@@ -382,7 +382,7 @@ CREATE TABLE int4range_to_string (
     col int4range
 );
 INSERT INTO int4range_to_string (col) VALUES
-    ('[1,10]'), ('[1,10]'), ('[1,10]'), (NULL);
+    ('empty'), ('[1,10]'), ('[1,10]'), (NULL);
 
 DROP TABLE IF EXISTS int8_to_int64;
 CREATE TABLE int8_to_int64 (
@@ -390,7 +390,7 @@ CREATE TABLE int8_to_int64 (
     col int8
 );
 INSERT INTO int8_to_int64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int8_to_string;
 CREATE TABLE int8_to_string (
@@ -398,7 +398,7 @@ CREATE TABLE int8_to_string (
     col int8
 );
 INSERT INTO int8_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS int8multirange_to_string;
 CREATE TABLE int8multirange_to_string (
@@ -406,7 +406,7 @@ CREATE TABLE int8multirange_to_string (
     col int8multirange
 );
 INSERT INTO int8multirange_to_string (col) VALUES
-    ('{[1,10]}'), ('{[1,10]}'), ('{[1,10]}'), (NULL);
+    ('{empty}'), ('{[1,10]}'), ('{[1,10]}'), (NULL);
 
 DROP TABLE IF EXISTS int8range_to_string;
 CREATE TABLE int8range_to_string (
@@ -414,7 +414,7 @@ CREATE TABLE int8range_to_string (
     col int8range
 );
 INSERT INTO int8range_to_string (col) VALUES
-    ('[1,10]'), ('[1,10]'), ('[1,10]'), (NULL);
+    ('empty'), ('[1,10]'), ('[1,10]'), (NULL);
 
 DROP TABLE IF EXISTS integer_to_int64;
 CREATE TABLE integer_to_int64 (
@@ -422,7 +422,7 @@ CREATE TABLE integer_to_int64 (
     col integer
 );
 INSERT INTO integer_to_int64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS integer_to_float64;
 CREATE TABLE integer_to_float64 (
@@ -430,7 +430,7 @@ CREATE TABLE integer_to_float64 (
     col integer
 );
 INSERT INTO integer_to_float64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS integer_to_string;
 CREATE TABLE integer_to_string (
@@ -438,7 +438,7 @@ CREATE TABLE integer_to_string (
     col integer
 );
 INSERT INTO integer_to_string (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (NULL);
+    ('-2147483648'), ('2147483647'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS interval_to_string;
 CREATE TABLE interval_to_string (
@@ -454,7 +454,7 @@ CREATE TABLE json_to_string (
     col json
 );
 INSERT INTO json_to_string (col) VALUES
-    ('{}'), ('{"k": "v"}'), ('[]'), (NULL);
+    ('{}'), ('{"rand": "val"}'), ('{"rand": "val"}'), (NULL);
 
 DROP TABLE IF EXISTS jsonb_to_string;
 CREATE TABLE jsonb_to_string (
@@ -462,7 +462,7 @@ CREATE TABLE jsonb_to_string (
     col jsonb
 );
 INSERT INTO jsonb_to_string (col) VALUES
-    ('{}'), ('{"k": "v"}'), ('[]'), (NULL);
+    ('{}'), ('{"rand": "val"}'), ('{"rand": "val"}'), (NULL);
 
 DROP TABLE IF EXISTS line_to_string;
 CREATE TABLE line_to_string (
@@ -494,7 +494,7 @@ CREATE TABLE macaddr_to_string (
     col macaddr
 );
 INSERT INTO macaddr_to_string (col) VALUES
-    ('08:00:2b:01:02:03'), ('08:00:2b:01:02:03'), ('08:00:2b:01:02:03'), (NULL);
+    ('00:00:00:00:00:00'), ('ff:ff:ff:ff:ff:ff'), ('08:00:2b:01:02:03'), (NULL);
 
 DROP TABLE IF EXISTS macaddr8_to_string;
 CREATE TABLE macaddr8_to_string (
@@ -502,7 +502,7 @@ CREATE TABLE macaddr8_to_string (
     col macaddr8
 );
 INSERT INTO macaddr8_to_string (col) VALUES
-    ('08:00:2b:01:02:03'), ('08:00:2b:01:02:03'), ('08:00:2b:01:02:03'), (NULL);
+    ('00:00:00:00:00:00'), ('ff:ff:ff:ff:ff:ff'), ('08:00:2b:01:02:03'), (NULL);
 
 DROP TABLE IF EXISTS money_to_string;
 CREATE TABLE money_to_string (
@@ -526,7 +526,7 @@ CREATE TABLE nummultirange_to_string (
     col nummultirange
 );
 INSERT INTO nummultirange_to_string (col) VALUES
-    ('{[1.5,5.5]}'), ('{[1.5,5.5]}'), ('{[1.5,5.5]}'), (NULL);
+    ('{empty}'), ('{[1.5,5.5]}'), ('{[1.5,5.5]}'), (NULL);
 
 DROP TABLE IF EXISTS numrange_to_string;
 CREATE TABLE numrange_to_string (
@@ -534,7 +534,7 @@ CREATE TABLE numrange_to_string (
     col numrange
 );
 INSERT INTO numrange_to_string (col) VALUES
-    ('[1.5,5.5]'), ('[1.5,5.5]'), ('[1.5,5.5]'), (NULL);
+    ('empty'), ('[1.5,5.5]'), ('[1.5,5.5]'), (NULL);
 
 DROP TABLE IF EXISTS oid_to_int64;
 CREATE TABLE oid_to_int64 (
@@ -542,7 +542,7 @@ CREATE TABLE oid_to_int64 (
     col oid
 );
 INSERT INTO oid_to_int64 (col) VALUES
-    ('0'), ('4294967295'), ('0'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS oid_to_float64;
 CREATE TABLE oid_to_float64 (
@@ -550,7 +550,7 @@ CREATE TABLE oid_to_float64 (
     col oid
 );
 INSERT INTO oid_to_float64 (col) VALUES
-    ('0'), ('4294967295'), ('0'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS oid_to_string;
 CREATE TABLE oid_to_string (
@@ -558,7 +558,7 @@ CREATE TABLE oid_to_string (
     col oid
 );
 INSERT INTO oid_to_string (col) VALUES
-    ('0'), ('4294967295'), ('0'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS path_to_string;
 CREATE TABLE path_to_string (
@@ -606,7 +606,7 @@ CREATE TABLE real_to_float32 (
     col real
 );
 INSERT INTO real_to_float32 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS real_to_float64;
 CREATE TABLE real_to_float64 (
@@ -614,7 +614,7 @@ CREATE TABLE real_to_float64 (
     col real
 );
 INSERT INTO real_to_float64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS real_to_string;
 CREATE TABLE real_to_string (
@@ -622,7 +622,7 @@ CREATE TABLE real_to_string (
     col real
 );
 INSERT INTO real_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (NULL);
+    ('-3.4028235e+38'), ('3.4028235e+38'), ('42.42'), (NULL);
 
 DROP TABLE IF EXISTS regclass_to_string;
 CREATE TABLE regclass_to_string (
@@ -630,7 +630,7 @@ CREATE TABLE regclass_to_string (
     col regclass
 );
 INSERT INTO regclass_to_string (col) VALUES
-    ('pg_class'), ('pg_class'), ('pg_class'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regconfig_to_string;
 CREATE TABLE regconfig_to_string (
@@ -638,7 +638,7 @@ CREATE TABLE regconfig_to_string (
     col regconfig
 );
 INSERT INTO regconfig_to_string (col) VALUES
-    ('english'), ('english'), ('english'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regdictionary_to_string;
 CREATE TABLE regdictionary_to_string (
@@ -646,7 +646,7 @@ CREATE TABLE regdictionary_to_string (
     col regdictionary
 );
 INSERT INTO regdictionary_to_string (col) VALUES
-    ('simple'), ('simple'), ('simple'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regnamespace_to_string;
 CREATE TABLE regnamespace_to_string (
@@ -654,7 +654,7 @@ CREATE TABLE regnamespace_to_string (
     col regnamespace
 );
 INSERT INTO regnamespace_to_string (col) VALUES
-    ('public'), ('public'), ('public'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regproc_to_string;
 CREATE TABLE regproc_to_string (
@@ -662,7 +662,7 @@ CREATE TABLE regproc_to_string (
     col regproc
 );
 INSERT INTO regproc_to_string (col) VALUES
-    ('pg_backend_pid'), ('pg_backend_pid'), ('pg_backend_pid'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regrole_to_string;
 CREATE TABLE regrole_to_string (
@@ -670,7 +670,7 @@ CREATE TABLE regrole_to_string (
     col regrole
 );
 INSERT INTO regrole_to_string (col) VALUES
-    ('postgres'), ('postgres'), ('postgres'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS regtype_to_string;
 CREATE TABLE regtype_to_string (
@@ -678,7 +678,7 @@ CREATE TABLE regtype_to_string (
     col regtype
 );
 INSERT INTO regtype_to_string (col) VALUES
-    ('int4'), ('int4'), ('int4'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS serial_to_int64;
 CREATE TABLE serial_to_int64 (
@@ -686,7 +686,7 @@ CREATE TABLE serial_to_int64 (
     col serial
 );
 INSERT INTO serial_to_int64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial_to_float64;
 CREATE TABLE serial_to_float64 (
@@ -694,7 +694,7 @@ CREATE TABLE serial_to_float64 (
     col serial
 );
 INSERT INTO serial_to_float64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial_to_string;
 CREATE TABLE serial_to_string (
@@ -702,7 +702,7 @@ CREATE TABLE serial_to_string (
     col serial
 );
 INSERT INTO serial_to_string (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial2_to_int64;
 CREATE TABLE serial2_to_int64 (
@@ -710,7 +710,7 @@ CREATE TABLE serial2_to_int64 (
     col serial2
 );
 INSERT INTO serial2_to_int64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial2_to_float32;
 CREATE TABLE serial2_to_float32 (
@@ -718,7 +718,7 @@ CREATE TABLE serial2_to_float32 (
     col serial2
 );
 INSERT INTO serial2_to_float32 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial2_to_float64;
 CREATE TABLE serial2_to_float64 (
@@ -726,7 +726,7 @@ CREATE TABLE serial2_to_float64 (
     col serial2
 );
 INSERT INTO serial2_to_float64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial2_to_string;
 CREATE TABLE serial2_to_string (
@@ -734,7 +734,7 @@ CREATE TABLE serial2_to_string (
     col serial2
 );
 INSERT INTO serial2_to_string (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial4_to_int64;
 CREATE TABLE serial4_to_int64 (
@@ -742,7 +742,7 @@ CREATE TABLE serial4_to_int64 (
     col serial4
 );
 INSERT INTO serial4_to_int64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial4_to_float64;
 CREATE TABLE serial4_to_float64 (
@@ -750,7 +750,7 @@ CREATE TABLE serial4_to_float64 (
     col serial4
 );
 INSERT INTO serial4_to_float64 (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial4_to_string;
 CREATE TABLE serial4_to_string (
@@ -758,7 +758,7 @@ CREATE TABLE serial4_to_string (
     col serial4
 );
 INSERT INTO serial4_to_string (col) VALUES
-    ('-2147483648'), ('2147483647'), ('0'), (42);
+    ('-2147483648'), ('2147483647'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial8_to_int64;
 CREATE TABLE serial8_to_int64 (
@@ -766,7 +766,7 @@ CREATE TABLE serial8_to_int64 (
     col serial8
 );
 INSERT INTO serial8_to_int64 (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (42);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (42);
 
 DROP TABLE IF EXISTS serial8_to_string;
 CREATE TABLE serial8_to_string (
@@ -774,7 +774,7 @@ CREATE TABLE serial8_to_string (
     col serial8
 );
 INSERT INTO serial8_to_string (col) VALUES
-    ('-9223372036854775808'), ('9223372036854775807'), ('0'), (42);
+    ('-9223372036854775808'), ('9223372036854775807'), ('12345'), (42);
 
 DROP TABLE IF EXISTS smallint_to_int64;
 CREATE TABLE smallint_to_int64 (
@@ -782,7 +782,7 @@ CREATE TABLE smallint_to_int64 (
     col smallint
 );
 INSERT INTO smallint_to_int64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS smallint_to_float32;
 CREATE TABLE smallint_to_float32 (
@@ -790,7 +790,7 @@ CREATE TABLE smallint_to_float32 (
     col smallint
 );
 INSERT INTO smallint_to_float32 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS smallint_to_float64;
 CREATE TABLE smallint_to_float64 (
@@ -798,7 +798,7 @@ CREATE TABLE smallint_to_float64 (
     col smallint
 );
 INSERT INTO smallint_to_float64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS smallint_to_string;
 CREATE TABLE smallint_to_string (
@@ -806,7 +806,7 @@ CREATE TABLE smallint_to_string (
     col smallint
 );
 INSERT INTO smallint_to_string (col) VALUES
-    ('-32768'), ('32767'), ('0'), (NULL);
+    ('-32768'), ('32767'), ('12345'), (NULL);
 
 DROP TABLE IF EXISTS smallserial_to_int64;
 CREATE TABLE smallserial_to_int64 (
@@ -814,7 +814,7 @@ CREATE TABLE smallserial_to_int64 (
     col smallserial
 );
 INSERT INTO smallserial_to_int64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS smallserial_to_float32;
 CREATE TABLE smallserial_to_float32 (
@@ -822,7 +822,7 @@ CREATE TABLE smallserial_to_float32 (
     col smallserial
 );
 INSERT INTO smallserial_to_float32 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS smallserial_to_float64;
 CREATE TABLE smallserial_to_float64 (
@@ -830,7 +830,7 @@ CREATE TABLE smallserial_to_float64 (
     col smallserial
 );
 INSERT INTO smallserial_to_float64 (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS smallserial_to_string;
 CREATE TABLE smallserial_to_string (
@@ -838,7 +838,7 @@ CREATE TABLE smallserial_to_string (
     col smallserial
 );
 INSERT INTO smallserial_to_string (col) VALUES
-    ('-32768'), ('32767'), ('0'), (42);
+    ('-32768'), ('32767'), ('12345'), (42);
 
 DROP TABLE IF EXISTS text_to_string;
 CREATE TABLE text_to_string (
@@ -846,7 +846,7 @@ CREATE TABLE text_to_string (
     col text
 );
 INSERT INTO text_to_string (col) VALUES
-    (''), ('MAX_LEN'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), (repeat('a', 2621440)), ('RandomStringVal'), (NULL);
 
 DROP TABLE IF EXISTS tid_to_string;
 CREATE TABLE tid_to_string (
@@ -934,7 +934,7 @@ CREATE TABLE tsmultirange_to_string (
     col tsmultirange
 );
 INSERT INTO tsmultirange_to_string (col) VALUES
-    ('{[2020-01-01 00:00:00, 2020-01-05 00:00:00]}'), ('{[2020-01-01 00:00:00, 2020-01-05 00:00:00]}'), ('{[2020-01-01 00:00:00, 2020-01-05 00:00:00]}'), (NULL);
+    ('{empty}'), ('{[2020-01-01 00:00:00, 2020-01-05 00:00:00]}'), ('{[2020-01-01 00:00:00, 2020-01-05 00:00:00]}'), (NULL);
 
 DROP TABLE IF EXISTS tsquery_to_string;
 CREATE TABLE tsquery_to_string (
@@ -950,7 +950,7 @@ CREATE TABLE tsrange_to_string (
     col tsrange
 );
 INSERT INTO tsrange_to_string (col) VALUES
-    ('[2020-01-01 00:00:00, 2020-01-05 00:00:00]'), ('[2020-01-01 00:00:00, 2020-01-05 00:00:00]'), ('[2020-01-01 00:00:00, 2020-01-05 00:00:00]'), (NULL);
+    ('empty'), ('[2020-01-01 00:00:00, 2020-01-05 00:00:00]'), ('[2020-01-01 00:00:00, 2020-01-05 00:00:00]'), (NULL);
 
 DROP TABLE IF EXISTS tstzmultirange_to_string;
 CREATE TABLE tstzmultirange_to_string (
@@ -958,7 +958,7 @@ CREATE TABLE tstzmultirange_to_string (
     col tstzmultirange
 );
 INSERT INTO tstzmultirange_to_string (col) VALUES
-    ('{[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]}'), ('{[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]}'), ('{[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]}'), (NULL);
+    ('{empty}'), ('{[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]}'), ('{[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]}'), (NULL);
 
 DROP TABLE IF EXISTS tstzrange_to_string;
 CREATE TABLE tstzrange_to_string (
@@ -966,7 +966,7 @@ CREATE TABLE tstzrange_to_string (
     col tstzrange
 );
 INSERT INTO tstzrange_to_string (col) VALUES
-    ('[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]'), ('[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]'), ('[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]'), (NULL);
+    ('empty'), ('[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]'), ('[2020-01-01 00:00:00+00, 2020-01-05 00:00:00+00]'), (NULL);
 
 DROP TABLE IF EXISTS tsvector_to_string;
 CREATE TABLE tsvector_to_string (
@@ -1014,7 +1014,7 @@ CREATE TABLE varchar_to_string (
     col varchar
 );
 INSERT INTO varchar_to_string (col) VALUES
-    (''), ('MAX_LEN'), (NULL /* Spanner does not support NULL byte */), (NULL);
+    (''), (repeat('a', 2621440)), ('RandomStringVal'), (NULL);
 
 DROP TABLE IF EXISTS xid_to_string;
 CREATE TABLE xid_to_string (
@@ -1022,7 +1022,7 @@ CREATE TABLE xid_to_string (
     col xid
 );
 INSERT INTO xid_to_string (col) VALUES
-    ('1'), ('1'), ('1'), (NULL);
+    ('0'), ('4294967295'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS xid8_to_string;
 CREATE TABLE xid8_to_string (
@@ -1030,7 +1030,7 @@ CREATE TABLE xid8_to_string (
     col xid8
 );
 INSERT INTO xid8_to_string (col) VALUES
-    ('1'), ('1'), ('1'), (NULL);
+    ('0'), ('18446744073709551615'), ('42'), (NULL);
 
 DROP TABLE IF EXISTS xml_to_string;
 CREATE TABLE xml_to_string (
@@ -1038,5 +1038,5 @@ CREATE TABLE xml_to_string (
     col xml
 );
 INSERT INTO xml_to_string (col) VALUES
-    ('<foo>bar</foo>'), ('<foo>bar</foo>'), ('<foo>bar</foo>'), (NULL);
+    ('<a/>'), ('<foo>bar</foo>'), ('<foo>bar</foo>'), (NULL);
 
