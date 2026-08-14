@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.v2.source.oracle.reader.io.jdbc.dialectadapter.oracle;
 
+import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -28,12 +30,19 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTransientConnectionException;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class OracleDialectAdapter implements DialectAdapter {
+
+  private final Counter schemaDiscoveryErrors =
+      Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
   private static final Logger LOGGER = LoggerFactory.getLogger(OracleDialectAdapter.class);
 
   private String quote(String identifier) {
@@ -122,9 +131,34 @@ public class OracleDialectAdapter implements DialectAdapter {
           tablesBuilder.add(rs.getString("TABLE_NAME"));
         }
       }
-    } catch (SQLException e) {
-      LOGGER.error("Error discovering tables ", e);
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
+          String.format(
+              "Transient connection error while discovering tables for datasource=%s db=%s, cause=%s",
+              dataSource, sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering tables for datasource=%s db=%s, cause=%s",
+              dataSource, sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering tables for datasource=%s db=%s, cause=%s",
+              dataSource, sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering tables for datasource=%s db=%s, cause=%s",
+              dataSource, sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
     ImmutableList<String> tables = tablesBuilder.build();
     LOGGER.info("Discovered Oracle Tables: {}", tables);
@@ -176,9 +210,34 @@ public class OracleDialectAdapter implements DialectAdapter {
         }
         LOGGER.info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
       }
-    } catch (SQLException e) {
-      LOGGER.error("Error discovering table schema", e);
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
+          String.format(
+              "Transient connection error while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, schemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, schemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, schemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, schemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
     ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
         ImmutableMap.builder();
@@ -190,7 +249,8 @@ public class OracleDialectAdapter implements DialectAdapter {
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       javax.sql.DataSource dataSource,
       JdbcSchemaReference sourceSchemaReference,
-      ImmutableList<String> tables) {
+      ImmutableList<String> tables)
+      throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders =
         tables.stream().collect(Collectors.toMap(t -> t, t -> ImmutableList.builder()));
 
@@ -209,7 +269,7 @@ public class OracleDialectAdapter implements DialectAdapter {
 
             SourceColumnIndexInfo.IndexType type = SourceColumnIndexInfo.IndexType.OTHER;
             String columnTypeName = "";
-            long stringMaxLength = 0;
+            int stringMaxLength = 0;
             try (ResultSet crs = metaData.getColumns(null, schemaPattern, table, colName)) {
               if (crs.next()) {
                 String typeName = crs.getString("TYPE_NAME");
@@ -218,7 +278,7 @@ public class OracleDialectAdapter implements DialectAdapter {
                   String typeNameUpper = typeName.toUpperCase();
                   if (typeNameUpper.contains("CHAR") || typeNameUpper.contains("CLOB")) {
                     type = SourceColumnIndexInfo.IndexType.STRING;
-                    stringMaxLength = crs.getLong("COLUMN_SIZE");
+                    stringMaxLength = crs.getInt("COLUMN_SIZE");
                   } else if (typeNameUpper.contains("INT") || typeNameUpper.contains("NUM")) {
                     type = SourceColumnIndexInfo.IndexType.NUMERIC;
                   } else if (typeNameUpper.contains("DATE") || typeNameUpper.contains("TIME")) {
@@ -253,9 +313,34 @@ public class OracleDialectAdapter implements DialectAdapter {
           }
         }
       }
-    } catch (SQLException e) {
-      LOGGER.error("Error discovering table indexes", e);
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
+          String.format(
+              "Transient connection error while discovering table indexes for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering table indexes for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering table indexes for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering table indexes for datasource=%s db=%s tables=%s, cause=%s",
+              dataSource, sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
 
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
