@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
-/** Creates DML statements for PostgreSQL. */
+/** Creates DML statements for Oracle. */
 public class OracleDMLGenerator implements IDMLGenerator {
 
   private static final ThreadLocal<java.util.List<Object>> threadLocalParameters =
@@ -132,6 +132,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
+      SourceTable sourceTable,
       String tableName,
       Map<String, String> allColumnNameValues,
       Map<String, String> generatedColumnValues,
@@ -148,6 +149,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
+      if ("NULL".equals(sqlValue) || "?".equals(sqlValue)) {
+        if (sourceTable != null && sourceTable.column(colName) != null) {
+          sqlValue = "CAST(" + sqlValue + " AS " + sourceTable.column(colName).type() + ")";
+        }
+      }
       usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
       if (index + 1 < queryColumns.size()) {
         usingSelect.append(", ");
@@ -272,6 +278,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
     DMLGeneratorResponse resp =
         getUpsertStatement(
+            sourceTable,
             sourceTable.name(),
             orderedColumnNameValues,
             generatedColumnValues,
@@ -346,7 +353,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
   private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
-    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid PostgreSQL
+    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid Oracle
     // array literals.
     if (columnType != null && columnType.contains("(")) {
       columnType = columnType.substring(0, columnType.indexOf("(")).trim();
@@ -386,9 +393,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
               "TO_DATE(" + getQuotedEscapedString(colValue, spannerColType) + ", 'YYYY-MM-DD')";
         } else {
           response =
-              "TO_TIMESTAMP_TZ("
+              "FROM_TZ(TO_TIMESTAMP("
                   + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"')";
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
         }
         break;
       case "timestamp":
@@ -401,16 +408,16 @@ public class OracleDMLGenerator implements IDMLGenerator {
             && !"+00:00".equals(sourceDbTimezoneOffset)
             && !"Z".equalsIgnoreCase(sourceDbTimezoneOffset)) {
           response =
-              "CAST(FROM_TZ(CAST(TO_TIMESTAMP("
+              "CAST(FROM_TZ(TO_TIMESTAMP("
                   + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"') AS TIMESTAMP), 'UTC') AT TIME ZONE '"
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AT TIME ZONE '"
                   + sourceDbTimezoneOffset
                   + "' AS TIMESTAMP)";
         } else {
           response =
-              "TO_TIMESTAMP("
+              "FROM_TZ(TO_TIMESTAMP("
                   + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"')";
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
         }
         break;
       case "bytea":
@@ -428,6 +435,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "integer":
       case "smallint":
       case "int":
+      case "boolean":
+      case "bool":
         if ("true".equalsIgnoreCase(colValue)) {
           response = "1";
         } else if ("false".equalsIgnoreCase(colValue)) {
@@ -451,7 +460,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    // PostgreSQL defaults to standard conforming strings, so backslash is just a
+    // Oracle supports standard conforming strings.
     // backslash.
     // For standard string literals '', we just need to escape the single quote as
     // ''

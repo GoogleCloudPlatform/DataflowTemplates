@@ -30,8 +30,6 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -55,7 +53,7 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:oracle:thin:@" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+    return "jdbc:oracle:thin:@//" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -98,13 +96,9 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   Connection createConnection(Shard shard) throws Exception {
-    HikariConfig config = new HikariConfig();
-    config.setJdbcUrl(getConnectionUrl(shard));
-    config.setUsername(shard.getUserName());
-    config.setPassword(shard.getPassword());
-    config.setDriverClassName("oracle.jdbc.OracleDriver");
-    HikariDataSource ds = new HikariDataSource(config);
-    return ds.getConnection();
+    Class.forName("oracle.jdbc.OracleDriver");
+    return java.sql.DriverManager.getConnection(
+        getConnectionUrl(shard), shard.getUserName(), shard.getPassword());
   }
 
   @Override
@@ -119,9 +113,13 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   @Override
   public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
-    if (cause instanceof java.sql.SQLSyntaxErrorException
-        || cause instanceof java.sql.SQLDataException) {
-      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+    Throwable current = cause;
+    while (current != null) {
+      if (current instanceof java.sql.SQLSyntaxErrorException
+          || current instanceof java.sql.SQLDataException) {
+        return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+      }
+      current = current.getCause();
     }
     return null;
   }

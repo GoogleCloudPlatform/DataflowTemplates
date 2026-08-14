@@ -55,6 +55,9 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
       try (ResultSet rs = metaData.getTables(null, schemaPattern, "%", new String[] {"TABLE"})) {
         while (rs.next()) {
           String tableName = rs.getString("TABLE_NAME");
+          if (tableName.startsWith("BIN$")) {
+            continue;
+          }
           SourceTable table = scanTable(metaData, schemaPattern, tableName);
           tablesMap.put(tableName, table);
         }
