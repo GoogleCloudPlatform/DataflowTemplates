@@ -95,8 +95,8 @@ public class ShardedBulkMigrationAndValidationE2EIT extends EndToEndTestingITBas
   @Test
   public void shardedMigrationAndValidationE2E() throws Exception {
     // 1. Generate and Upload Source Records to MySQL (Both Shards)
-      executeSqlScript(mySQLResourceManager1, MYSQL_DDL_RESOURCE);
-      executeSqlScript(mySQLResourceManager2, MYSQL_DDL_RESOURCE);
+    executeSqlScript(mySQLResourceManager1, MYSQL_DDL_RESOURCE);
+    executeSqlScript(mySQLResourceManager2, MYSQL_DDL_RESOURCE);
 
     // Shard Configuration: 2 physical shards with 1 logical shard each = 2 total logical shards
     // Shard 1 Data
