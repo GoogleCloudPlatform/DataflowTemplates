@@ -130,6 +130,7 @@ public class SourceWriterFnTest {
     when(mockDaoMap.get(any())).thenReturn(mockSqlDao);
     when(mockSpannerDao.getDatabaseClient()).thenReturn(mockDatabaseClient);
     when(mockDatabaseClient.readWriteTransaction(any())).thenReturn(mockTransactionRunner);
+    when(mockTransactionRunner.allowNestedTransaction()).thenReturn(mockTransactionRunner);
     when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
         .thenAnswer(
             new Answer<Void>() {
@@ -342,7 +343,8 @@ public class SourceWriterFnTest {
     when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
     when(mockDMLGenerator.getDMLStatement(any()))
         .thenReturn(
-            new SpannerMutationResponse(Mockito.mock(com.google.cloud.spanner.Mutation.class)));
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
 
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
@@ -370,8 +372,7 @@ public class SourceWriterFnTest {
 
     sourceWriterFn.processElement(processContext);
 
-    // Verify that IDao.write was called with a TransactionContext
-    verify(mockSpannerTargetDao).write(any(), any(), any());
+    verify(mockSpannerTargetDao).write(any(), any());
   }
 
   @Test
@@ -404,7 +405,8 @@ public class SourceWriterFnTest {
     when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
     when(mockDMLGenerator.getDMLStatement(any()))
         .thenReturn(
-            new SpannerMutationResponse(Mockito.mock(com.google.cloud.spanner.Mutation.class)));
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
 
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
@@ -431,7 +433,7 @@ public class SourceWriterFnTest {
 
     sourceWriterFn.processElement(processContext);
 
-    verify(mockSpannerTargetDao).write(any(), any(), any());
+    verify(mockSpannerTargetDao).write(any(), any());
   }
 
   @Test
