@@ -134,7 +134,7 @@ public final class Utils {
     }
     removeTableRowFields(
         rawDoc,
-        com.google.cloud.teleport.v2.templates.DataStreamMongoDBToFirestore.MAPPER_IGNORE_FIELDS);
+        com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.MAPPER_IGNORE_FIELDS);
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }
@@ -208,12 +208,18 @@ public final class Utils {
   }
 
   public static Document extractInnerEvent(Document doc) {
+    if (doc == null) {
+      return null;
+    }
     return doc.containsKey(DatastreamConstants.CHANGE_EVENT)
         ? (Document) doc.get(DatastreamConstants.CHANGE_EVENT)
         : doc;
   }
 
   public static JsonNode extractInnerEvent(JsonNode payload) {
+    if (payload == null) {
+      return null;
+    }
     return payload.has(DatastreamConstants.CHANGE_EVENT)
         ? payload.get(DatastreamConstants.CHANGE_EVENT)
         : payload;

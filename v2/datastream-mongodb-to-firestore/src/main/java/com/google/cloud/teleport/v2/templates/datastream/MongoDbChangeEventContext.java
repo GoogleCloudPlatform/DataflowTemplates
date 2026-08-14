@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-import static com.google.cloud.teleport.v2.templates.DataStreamMongoDBToFirestore.MAPPER_IGNORE_FIELDS;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.MAPPER_IGNORE_FIELDS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;

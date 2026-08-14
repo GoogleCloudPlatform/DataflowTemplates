@@ -88,7 +88,7 @@ public class TimestampSortKey implements Serializable, Comparable<TimestampSortK
   @Override
   public int compareTo(TimestampSortKey other) {
     if (other == null) {
-      return 1;
+      throw new NullPointerException("Cannot compare TimestampSortKey with null");
     }
     // 1. Primary: Compare epoch seconds
     if (this.seconds != other.seconds) {

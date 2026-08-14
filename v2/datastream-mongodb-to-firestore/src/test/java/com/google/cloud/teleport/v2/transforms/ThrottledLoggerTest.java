@@ -153,4 +153,25 @@ public class ThrottledLoggerTest {
     org.mockito.Mockito.verify(mockLogger, org.mockito.Mockito.times(1))
         .error("error message", new Object[] {});
   }
+
+  @Test
+  public void testCategoryAndKeyOverflowRoutesToOther() {
+    ThrottledLogger logger = new ThrottledLogger("OverflowLogger", 5000L);
+
+    // Register 250 distinct categories (limit is 200)
+    for (int i = 0; i < 250; i++) {
+      logger.recordRetryableError("CAT_" + i, "error msg " + i);
+    }
+    assertEquals(250L, logger.getTotalErrors());
+
+    // Register 250 distinct log keys (limit is 200)
+    int loggedCount = 0;
+    for (int i = 0; i < 250; i++) {
+      if (logger.shouldLog("KEY_" + i)) {
+        loggedCount++;
+      }
+    }
+    // The first 200 unique keys + 1 for "OTHER" log once; remaining 49 are suppressed under "OTHER"
+    assertEquals(201, loggedCount);
+  }
 }

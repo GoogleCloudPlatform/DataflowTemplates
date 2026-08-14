@@ -15,8 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.google.common.collect.ImmutableSet;
+import java.util.Set;
+
 /** Constants used in Datastream templates. */
-public class DatastreamConstants {
+public final class DatastreamConstants {
+
+  private DatastreamConstants() {
+    // Utility class; prevent instantiation
+  }
 
   // Common event metadata fields
   public static final String EVENT_SOURCE_METADATA = "_metadata_source";
@@ -50,4 +57,30 @@ public class DatastreamConstants {
 
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;
+
+  /** Metadata fields ignored during BSON document conversion. */
+  public static final Set<String> MAPPER_IGNORE_FIELDS =
+      ImmutableSet.of(
+          "_metadata_stream",
+          "_metadata_schema",
+          "_metadata_table",
+          "_metadata_source",
+          "_metadata_ssn",
+          "_metadata_rs_id",
+          "_metadata_tx_id",
+          "_metadata_uuid",
+          "_metadata_dlq_reconsumed",
+          "_metadata_error",
+          "_metadata_retry_count",
+          "_metadata_timestamp",
+          "_metadata_read_timestamp",
+          "_metadata_read_method",
+          "_metadata_deleted",
+          "_metadata_primary_keys",
+          "_metadata_log_file",
+          "_metadata_log_position",
+          "_metadata_dataflow_timestamp",
+          "data",
+          "_metadata_timestamp_seconds",
+          "_metadata_timestamp_nanos");
 }

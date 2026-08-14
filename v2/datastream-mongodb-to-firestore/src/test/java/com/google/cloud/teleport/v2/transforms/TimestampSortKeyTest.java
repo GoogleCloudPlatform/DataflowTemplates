@@ -33,6 +33,12 @@ public class TimestampSortKeyTest {
     assertNull(TimestampSortKey.of(null));
   }
 
+  @Test(expected = NullPointerException.class)
+  public void testCompareTo_nullThrowsNullPointerException() {
+    TimestampSortKey t1 = new TimestampSortKey(1000L, 500L, true);
+    t1.compareTo(null);
+  }
+
   @Test
   public void testCompareTo_higherSecondsWins() {
     TimestampSortKey t1 = new TimestampSortKey(1000L, 500L, true);

@@ -48,7 +48,6 @@ import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableSet;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
@@ -142,30 +141,7 @@ public class DataStreamMongoDBToFirestore {
   static final TupleTag<FailsafeElement<String, String>> BYPASS_UDF_TAG = new TupleTag<>();
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
-  public static final Set<String> MAPPER_IGNORE_FIELDS =
-      ImmutableSet.of(
-          "_metadata_stream",
-          "_metadata_schema",
-          "_metadata_table",
-          "_metadata_source",
-          "_metadata_ssn",
-          "_metadata_rs_id",
-          "_metadata_tx_id",
-          "_metadata_uuid",
-          "_metadata_dlq_reconsumed",
-          "_metadata_error",
-          "_metadata_retry_count",
-          "_metadata_timestamp",
-          "_metadata_read_timestamp",
-          "_metadata_read_method",
-          "_metadata_deleted",
-          "_metadata_primary_keys",
-          "_metadata_log_file",
-          "_metadata_log_position",
-          "_metadata_dataflow_timestamp",
-          "data",
-          "_metadata_timestamp_seconds",
-          "_metadata_timestamp_nanos");
+  public static final Set<String> MAPPER_IGNORE_FIELDS = DatastreamConstants.MAPPER_IGNORE_FIELDS;
 
   /**
    * Options supported by the pipeline.
@@ -634,25 +610,25 @@ public class DataStreamMongoDBToFirestore {
             "Process/CreateMongoDbChangeEventContext",
             ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
                 .withOutputTags(
-                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
-                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+                    CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)));
 
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     writeFailedJsonToDlq(
         options,
         changeEventContexts,
         dlqManager,
-        CreateMongoDbChangeEventContextFn.failedCreationTag,
+        CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG,
         "Process/WriteFailedContextCreationToDlq");
 
     PCollection<MongoDbChangeEventContext> contexts =
-        changeEventContexts.get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
+        changeEventContexts.get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG);
 
     LOG.info("Configuring shadowless stateful deduplication by collection and doc ID");
     PCollection<KV<String, MongoDbChangeEventContext>> keyedEvents =
@@ -856,15 +832,15 @@ public class DataStreamMongoDBToFirestore {
             "Create MongoDbChangeEventContext objects",
             ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
                 .withOutputTags(
-                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
-                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+                    CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)));
 
     // Set coders
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     // Handle failed creation with DLQ
@@ -872,26 +848,26 @@ public class DataStreamMongoDBToFirestore {
         options,
         changeEventContexts,
         dlqManager,
-        CreateMongoDbChangeEventContextFn.failedCreationTag);
+        CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG);
 
     // Stage 3: Split events into backfill and CDC streams
     LOG.info("Configuring event splitting into backfill and CDC streams");
     PCollectionTuple splitEvents =
         changeEventContexts
-            .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+            .get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG)
             .apply(
                 "Split Backfill and CDC",
                 ParDo.of(new SplitBackfillAndCdcEventsFn())
                     .withOutputTags(
-                        SplitBackfillAndCdcEventsFn.backfillTag,
-                        TupleTagList.of(SplitBackfillAndCdcEventsFn.cdcTag)));
+                        SplitBackfillAndCdcEventsFn.BACKFILL_TAG,
+                        TupleTagList.of(SplitBackfillAndCdcEventsFn.CDC_TAG)));
 
     // Set coders for split events
     splitEvents
-        .get(SplitBackfillAndCdcEventsFn.backfillTag)
+        .get(SplitBackfillAndCdcEventsFn.BACKFILL_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
     splitEvents
-        .get(SplitBackfillAndCdcEventsFn.cdcTag)
+        .get(SplitBackfillAndCdcEventsFn.CDC_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
 
     // Stage 4: Process backfill events
@@ -901,42 +877,42 @@ public class DataStreamMongoDBToFirestore {
       // Use shadow tables for backfill (same as CDC processing)
       backfillResult =
           splitEvents
-              .get(SplitBackfillAndCdcEventsFn.backfillTag)
+              .get(SplitBackfillAndCdcEventsFn.BACKFILL_TAG)
               .apply(
                   "Process Backfill with Shadow Tables",
                   ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                       .withOutputTags(
-                          ProcessChangeEventFn.successfulWriteTag,
-                          TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
-                              .and(ProcessChangeEventFn.severeFailedWriteTag)));
+                          ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG,
+                          TupleTagList.of(ProcessChangeEventFn.FAILED_WRITE_TAG)
+                              .and(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG)));
     } else {
       // Process backfill without shadow tables
       backfillResult =
           splitEvents
-              .get(SplitBackfillAndCdcEventsFn.backfillTag)
+              .get(SplitBackfillAndCdcEventsFn.BACKFILL_TAG)
               .apply(
                   "Process Backfill without Shadow Tables",
                   ParDo.of(
                           new ProcessBackfillEventFn(
                               connectionString, options.getDatabaseName(), options.getBatchSize()))
                       .withOutputTags(
-                          ProcessBackfillEventFn.successfulWriteTag,
-                          TupleTagList.of(ProcessBackfillEventFn.failedWriteTag)
-                              .and(ProcessBackfillEventFn.severeFailedWriteTag)));
+                          ProcessBackfillEventFn.SUCCESSFUL_WRITE_TAG,
+                          TupleTagList.of(ProcessBackfillEventFn.FAILED_WRITE_TAG)
+                              .and(ProcessBackfillEventFn.SEVERE_FAILED_WRITE_TAG)));
     }
 
     // Set coders for backfill results
     backfillResult
         .get(
             options.getUseShadowTablesForBackfill()
-                ? ProcessChangeEventFn.successfulWriteTag
-                : ProcessBackfillEventFn.successfulWriteTag)
+                ? ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG
+                : ProcessBackfillEventFn.SUCCESSFUL_WRITE_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
     backfillResult
         .get(
             options.getUseShadowTablesForBackfill()
-                ? ProcessChangeEventFn.failedWriteTag
-                : ProcessBackfillEventFn.failedWriteTag)
+                ? ProcessChangeEventFn.FAILED_WRITE_TAG
+                : ProcessBackfillEventFn.FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
@@ -944,8 +920,8 @@ public class DataStreamMongoDBToFirestore {
     backfillResult
         .get(
             options.getUseShadowTablesForBackfill()
-                ? ProcessChangeEventFn.severeFailedWriteTag
-                : ProcessBackfillEventFn.severeFailedWriteTag)
+                ? ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG
+                : ProcessBackfillEventFn.SEVERE_FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
@@ -956,8 +932,8 @@ public class DataStreamMongoDBToFirestore {
         backfillResult,
         dlqManager,
         options.getUseShadowTablesForBackfill()
-            ? ProcessChangeEventFn.failedWriteTag
-            : ProcessBackfillEventFn.failedWriteTag);
+            ? ProcessChangeEventFn.FAILED_WRITE_TAG
+            : ProcessBackfillEventFn.FAILED_WRITE_TAG);
 
     // Write severe backfill failures directly to severe DLQ
     writeSevereEventsToDlq(
@@ -965,43 +941,43 @@ public class DataStreamMongoDBToFirestore {
         backfillResult,
         dlqManager,
         options.getUseShadowTablesForBackfill()
-            ? ProcessChangeEventFn.severeFailedWriteTag
-            : ProcessBackfillEventFn.severeFailedWriteTag);
+            ? ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG
+            : ProcessBackfillEventFn.SEVERE_FAILED_WRITE_TAG);
 
     // Stage 5: Process CDC events
     LOG.info("Configuring CDC event processing");
     PCollectionTuple cdcResult =
         splitEvents
-            .get(SplitBackfillAndCdcEventsFn.cdcTag)
+            .get(SplitBackfillAndCdcEventsFn.CDC_TAG)
             .apply(
                 "Process CDC Events",
                 ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                     .withOutputTags(
-                        ProcessChangeEventFn.successfulWriteTag,
-                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
-                            .and(ProcessChangeEventFn.severeFailedWriteTag)));
+                        ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG,
+                        TupleTagList.of(ProcessChangeEventFn.FAILED_WRITE_TAG)
+                            .and(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG)));
 
     // Set coders for CDC results
     cdcResult
-        .get(ProcessChangeEventFn.successfulWriteTag)
+        .get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
     cdcResult
-        .get(ProcessChangeEventFn.failedWriteTag)
+        .get(ProcessChangeEventFn.FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     cdcResult
-        .get(ProcessChangeEventFn.severeFailedWriteTag)
+        .get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     // Handle failed CDC writes with DLQ
-    writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.FAILED_WRITE_TAG);
     // Write severe CDC failures directly to severe DLQ
     writeSevereEventsToDlq(
-        options, cdcResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
+        options, cdcResult, dlqManager, ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
 
     // Execute the pipeline
     LOG.info("Executing pipeline");
@@ -1045,15 +1021,15 @@ public class DataStreamMongoDBToFirestore {
             "Create MongoDbChangeEventContext objects",
             ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
                 .withOutputTags(
-                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
-                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+                    CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)));
 
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
 
     changeEventContexts
-        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .get(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     LOG.info("Setting up DLQ handling for failed event creation");
@@ -1061,41 +1037,41 @@ public class DataStreamMongoDBToFirestore {
         options,
         changeEventContexts,
         dlqManager,
-        CreateMongoDbChangeEventContextFn.failedCreationTag);
+        CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG);
 
     LOG.info("Stage 3: Configuring change event processing and destination database writing");
     PCollectionTuple writeResult =
         changeEventContexts
-            .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+            .get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG)
             .setCoder(MongoDbChangeEventContextCoder.of())
             .apply(
                 "Transactional write events",
                 ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                     .withOutputTags(
-                        ProcessChangeEventFn.successfulWriteTag,
-                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
-                            .and(ProcessChangeEventFn.severeFailedWriteTag)));
+                        ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG,
+                        TupleTagList.of(ProcessChangeEventFn.FAILED_WRITE_TAG)
+                            .and(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG)));
 
     writeResult
-        .get(ProcessChangeEventFn.successfulWriteTag)
+        .get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG)
         .setCoder(MongoDbChangeEventContextCoder.of());
 
     writeResult
-        .get(ProcessChangeEventFn.failedWriteTag)
+        .get(ProcessChangeEventFn.FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     writeResult
-        .get(ProcessChangeEventFn.severeFailedWriteTag)
+        .get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG)
         .setCoder(
             FailsafeElementCoder.of(
                 MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
     LOG.info("Setting up DLQ handling for failed writes");
-    writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.FAILED_WRITE_TAG);
     writeSevereEventsToDlq(
-        options, writeResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
+        options, writeResult, dlqManager, ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
 
     LOG.info("Executing pipeline");
     return pipeline.run();
@@ -1119,7 +1095,7 @@ public class DataStreamMongoDBToFirestore {
     }
 
     String dlqDirectory =
-        options.getDeadLetterQueueDirectory().isEmpty()
+        Strings.isNullOrEmpty(options.getDeadLetterQueueDirectory())
             ? tempLocation + "dlq/"
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
@@ -1345,8 +1321,9 @@ public class DataStreamMongoDBToFirestore {
 
     private static final Logger LOG = LoggerFactory.getLogger(SplitBackfillAndCdcEventsFn.class);
 
-    public static TupleTag<MongoDbChangeEventContext> backfillTag = new TupleTag<>("backfill");
-    public static TupleTag<MongoDbChangeEventContext> cdcTag = new TupleTag<>("cdc");
+    public static final TupleTag<MongoDbChangeEventContext> BACKFILL_TAG =
+        new TupleTag<>("backfill");
+    public static final TupleTag<MongoDbChangeEventContext> CDC_TAG = new TupleTag<>("cdc");
 
     @ProcessElement
     public void processElement(ProcessContext c, MultiOutputReceiver out) {
@@ -1354,10 +1331,10 @@ public class DataStreamMongoDBToFirestore {
 
       if (isNonDlqBackfillEvent(event)) {
         LOG.debug("Classified event as backfill for document ID: {}", event.getDocumentId());
-        out.get(backfillTag).output(event);
+        out.get(BACKFILL_TAG).output(event);
       } else {
         LOG.debug("Classified event as CDC for document ID: {}", event.getDocumentId());
-        out.get(cdcTag).output(event);
+        out.get(CDC_TAG).output(event);
       }
     }
 
@@ -1389,12 +1366,14 @@ public class DataStreamMongoDBToFirestore {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProcessBackfillEventFn.class);
 
-    public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
+    public static final TupleTag<MongoDbChangeEventContext> SUCCESSFUL_WRITE_TAG =
         new TupleTag<>("backfillSuccessfulWrite");
-    public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-        failedWriteTag = new TupleTag<>("backfillFailedWrite");
-    public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-        severeFailedWriteTag = new TupleTag<>("backfillSevereFailedWrite");
+    public static final TupleTag<
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+        FAILED_WRITE_TAG = new TupleTag<>("backfillFailedWrite");
+    public static final TupleTag<
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+        SEVERE_FAILED_WRITE_TAG = new TupleTag<>("backfillSevereFailedWrite");
 
     private final String connectionString;
     private final String targetDatabaseName;
@@ -1528,7 +1507,7 @@ public class DataStreamMongoDBToFirestore {
             result.getDeletedCount());
 
         for (MongoDbChangeEventContext event : events) {
-          out.get(successfulWriteTag).output(event);
+          out.get(SUCCESSFUL_WRITE_TAG).output(event);
           successfulWrites.inc();
         }
       } catch (MongoBulkWriteException e) {
@@ -1545,17 +1524,17 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
 
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
-            out.get(severeFailedWriteTag).output(failedElement);
+            out.get(SEVERE_FAILED_WRITE_TAG).output(failedElement);
             severeFailedWrites.inc();
           } else {
-            out.get(failedWriteTag).output(failedElement);
+            out.get(FAILED_WRITE_TAG).output(failedElement);
             retriableFailedWrites.inc();
           }
         }
 
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
-            out.get(successfulWriteTag).output(events.get(i));
+            out.get(SUCCESSFUL_WRITE_TAG).output(events.get(i));
             successfulWrites.inc();
           }
         }
@@ -1571,7 +1550,7 @@ public class DataStreamMongoDBToFirestore {
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          out.get(failedWriteTag).output(failedElement);
+          out.get(FAILED_WRITE_TAG).output(failedElement);
           retriableFailedWrites.inc();
         }
       }
@@ -1614,7 +1593,7 @@ public class DataStreamMongoDBToFirestore {
             result.getDeletedCount());
 
         for (MongoDbChangeEventContext event : events) {
-          context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+          context.output(SUCCESSFUL_WRITE_TAG, event, Instant.now(), GlobalWindow.INSTANCE);
           successfulWrites.inc();
         }
       } catch (MongoBulkWriteException e) {
@@ -1632,17 +1611,18 @@ public class DataStreamMongoDBToFirestore {
 
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             context.output(
-                severeFailedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+                SEVERE_FAILED_WRITE_TAG, failedElement, Instant.now(), GlobalWindow.INSTANCE);
             severeFailedWrites.inc();
           } else {
-            context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+            context.output(FAILED_WRITE_TAG, failedElement, Instant.now(), GlobalWindow.INSTANCE);
             retriableFailedWrites.inc();
           }
         }
 
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
-            context.output(successfulWriteTag, events.get(i), Instant.now(), GlobalWindow.INSTANCE);
+            context.output(
+                SUCCESSFUL_WRITE_TAG, events.get(i), Instant.now(), GlobalWindow.INSTANCE);
             successfulWrites.inc();
           }
         }
@@ -1658,7 +1638,7 @@ public class DataStreamMongoDBToFirestore {
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+          context.output(FAILED_WRITE_TAG, failedElement, Instant.now(), GlobalWindow.INSTANCE);
           retriableFailedWrites.inc();
         }
       }

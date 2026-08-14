@@ -110,10 +110,11 @@ public class ThrottledLogger implements Serializable {
 
   private void incrementCategory(String category) {
     String safeCategory = category != null ? category : "UNKNOWN";
-    if (errorCategories.size() < MAX_ERROR_CATEGORIES
-        || errorCategories.containsKey(safeCategory)) {
-      errorCategories.computeIfAbsent(safeCategory, k -> new AtomicLong(0)).incrementAndGet();
+    if (errorCategories.size() >= MAX_ERROR_CATEGORIES
+        && !errorCategories.containsKey(safeCategory)) {
+      safeCategory = "OTHER";
     }
+    errorCategories.computeIfAbsent(safeCategory, k -> new AtomicLong(0)).incrementAndGet();
   }
 
   private void checkAndFlush() {
@@ -174,11 +175,11 @@ public class ThrottledLogger implements Serializable {
   public boolean shouldLog(String key) {
     ensureInitialized();
     String safeKey = key != null ? key : "DEFAULT";
-    long now = System.currentTimeMillis();
-    if (logStates.size() >= MAX_ERROR_CATEGORIES) {
-      logStates.clear();
+    if (logStates.size() >= MAX_ERROR_CATEGORIES && !logStates.containsKey(safeKey)) {
+      safeKey = "OTHER";
     }
     LogEntryState state = logStates.computeIfAbsent(safeKey, k -> new LogEntryState(0));
+    long now = System.currentTimeMillis();
     long lastTime = state.lastLoggedTimeMs.get();
     if (now - lastTime >= throttleIntervalMs) {
       if (state.lastLoggedTimeMs.compareAndSet(lastTime, now)) {
@@ -192,6 +193,9 @@ public class ThrottledLogger implements Serializable {
   public long getAndResetSuppressedCount(String key) {
     ensureInitialized();
     String safeKey = key != null ? key : "DEFAULT";
+    if (logStates.size() >= MAX_ERROR_CATEGORIES && !logStates.containsKey(safeKey)) {
+      safeKey = "OTHER";
+    }
     LogEntryState state = logStates.get(safeKey);
     return state != null ? state.suppressedCount.getAndSet(0) : 0;
   }
