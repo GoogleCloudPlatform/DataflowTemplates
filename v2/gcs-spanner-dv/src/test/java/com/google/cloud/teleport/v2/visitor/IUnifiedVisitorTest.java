@@ -23,6 +23,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -152,23 +153,12 @@ public class IUnifiedVisitorTest {
   }
 
   @Test
-  public void testDispatchMatchesUuidViaString() {
+  public void testDispatchMatchesUuid() {
     IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
-    // Mocking a value with UUID type code since older clients might not have Value.uuid()
-    Value mockValue = mock(Value.class);
-    com.google.cloud.spanner.Type mockType = mock(com.google.cloud.spanner.Type.class);
-    com.google.cloud.spanner.Type.Code mockCode = mock(com.google.cloud.spanner.Type.Code.class);
-
-    org.mockito.Mockito.when(mockValue.isNull()).thenReturn(false);
-    org.mockito.Mockito.when(mockValue.getType()).thenReturn(mockType);
-    org.mockito.Mockito.when(mockType.getCode()).thenReturn(mockCode);
-    org.mockito.Mockito.when(mockCode.name()).thenReturn("UUID");
-    org.mockito.Mockito.when(mockValue.getUuid())
-        .thenReturn(java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
-
+    UUID testUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    Value mockValue = Value.uuid(testUuid);
     IUnifiedVisitor.dispatch(mockValue, visitor);
-
-    verify(visitor).visitString("123e4567-e89b-12d3-a456-426614174000");
+    verify(visitor).visitUuid(testUuid);
   }
 
   @Test

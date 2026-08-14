@@ -53,6 +53,25 @@ public class UnifiedHasherVisitorTest {
   }
 
   @Test
+  public void testVisitUuid() {
+    Hasher hasher = Hashing.murmur3_128().newHasher();
+    UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);
+    java.util.UUID input = java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+
+    visitor.visitUuid(input);
+    HashCode actualHash = hasher.hash();
+
+    HashCode expectedHash =
+        Hashing.murmur3_128()
+            .newHasher()
+            .putByte((byte) 1)
+            .putString(input.toString(), UTF_8)
+            .hash();
+
+    assertEquals(expectedHash, actualHash);
+  }
+
+  @Test
   public void testVisitInt64() {
     Hasher hasher = Hashing.murmur3_128().newHasher();
     UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);

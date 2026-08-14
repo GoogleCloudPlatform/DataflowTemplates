@@ -81,7 +81,7 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
   @Test
   public void migrationAndValidationE2E() throws Exception {
     // 1. Generate and Upload Source Records to MySQL
-    createMySQLDDL(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+      executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
     // Insert records into source MySQL DB
     List<Map<String, Object>> usersData = new ArrayList<>();

@@ -23,10 +23,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -103,6 +105,16 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
     }
 
+    String connectionProps = "useSSL=false&allowPublicKeyRetrieval=true";
+    String jdbcDriver = "com.mysql.cj.jdbc.Driver";
+    String dialect = "MYSQL";
+
+    if (cloudSqlResourceManager instanceof CloudPostgresResourceManager) {
+      connectionProps = null;
+      jdbcDriver = "org.postgresql.Driver";
+      dialect = "POSTGRESQL";
+    }
+
     if (!multiSharded) {
       DataShard dataShard =
           new DataShard(
@@ -113,116 +125,29 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
               String.valueOf(cloudSqlResourceManager.getPort()),
               cloudSqlResourceManager.getDatabaseName(),
               null,
-              "useSSL=false&allowPublicKeyRetrieval=true",
+              connectionProps,
               Collections.emptyList());
       createAndUploadShardConfigToGcs(Collections.singletonList(dataShard), gcsResourceManager);
     }
 
     builder.addParameter(
         "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager));
-
-    if (!multiSharded) {
-      builder.addParameter("jdbcDriverClassName", "com.mysql.cj.jdbc.Driver");
-    }
+    builder.addParameter("sourceDbDialect", dialect);
+    builder.addParameter("jdbcDriverClassName", jdbcDriver);
 
     flexTemplateDataflowJobResourceManager = builder.build();
-
-    // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
 
-  protected void createMySQLDDL(CloudSqlResourceManager cloudSqlResourceManager, String ddlResource)
+  protected void executeSqlScript(JDBCResourceManager jdbcResourceManager, String ddlResource)
       throws IOException {
     String mysqlSql =
         Resources.toString(Resources.getResource(ddlResource), StandardCharsets.UTF_8);
     // Since the DDL file contains multiple CREATE statements, we split them by semicolon and
     // execute one single SQL statement at a time.
     for (String stmt : mysqlSql.split("(?m);\\s*$")) {
-      if (!stmt.trim().isEmpty()) {
-        cloudSqlResourceManager.runSQLUpdate(stmt);
-      }
-    }
-  }
-
-  protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
-      String jobName,
-      SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager,
-      org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager postgresResourceManager,
-      String sessionFileResourceName,
-      boolean multiSharded)
-      throws IOException {
-    FlexTemplateDataflowJobResourceManager.Builder builder =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Sourcedb_to_Spanner_Flex")
-            .withTemplateModulePath("v2/sourcedb-to-spanner")
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName + "/" + testId)
-            .addParameter("gcsOutputDirectory", "gs://" + artifactBucketName + "/" + testId)
-            .addParameter("workerMachineType", "n2-standard-4")
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("disable_runner_v2"));
-
-    if (sessionFileResourceName != null) {
-      gcsResourceManager.uploadArtifact(
-          "session.json", Resources.getResource(sessionFileResourceName).getPath());
-      builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
-    }
-
-    if (!multiSharded) {
-      DataShard dataShard =
-          new DataShard(
-              "shard1",
-              postgresResourceManager.getHost(),
-              postgresResourceManager.getUsername(),
-              postgresResourceManager.getPassword(),
-              String.valueOf(postgresResourceManager.getPort()),
-              postgresResourceManager.getDatabaseName(),
-              null,
-              null,
-              Collections.emptyList());
-      createAndUploadShardConfigToGcs(Collections.singletonList(dataShard), gcsResourceManager);
-    }
-
-    builder.addParameter(
-        "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager));
-
-    if (!multiSharded) {
-      builder.addParameter("sourceDbDialect", "POSTGRESQL");
-      builder.addParameter("jdbcDriverClassName", "org.postgresql.Driver");
-    }
-
-    flexTemplateDataflowJobResourceManager = builder.build();
-
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
-    assertThatPipeline(jobInfo).isRunning();
-    return jobInfo;
-  }
-
-  public org.apache.beam.it.jdbc.PostgresResourceManager setUpPostgreSQLResourceManager() {
-    return org.apache.beam.it.jdbc.PostgresResourceManager.builder(testName).build();
-  }
-
-  protected void loadSQLFileResource(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String resourcePath)
-      throws Exception {
-    String sql =
-        String.join(
-            " ",
-            com.google.common.io.Resources.readLines(
-                com.google.common.io.Resources.getResource(resourcePath),
-                java.nio.charset.StandardCharsets.UTF_8));
-    loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
-  }
-
-  protected void loadSQLToJdbcResourceManager(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String sql)
-      throws Exception {
-    for (String stmt : sql.split("(?m);\\s*$")) {
       if (!stmt.trim().isEmpty()) {
         jdbcResourceManager.runSQLUpdate(stmt);
       }

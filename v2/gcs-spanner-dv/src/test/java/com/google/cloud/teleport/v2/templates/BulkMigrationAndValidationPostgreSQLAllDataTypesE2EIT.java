@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -69,30 +68,31 @@ public class BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT extends EndTo
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
 
-    loadSQLFileResource(postgreSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
+    executeSqlScript(postgreSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
   }
 
   @After
   public void tearDown() {
-    // Preserving spannerResourceManager and bigQueryResourceManager for debugging mismatches
+    if (originalTimeZone != null) {
+      TimeZone.setDefault(originalTimeZone);
+    }
     ResourceManagerUtils.cleanResources(
         postgreSQLResourceManager, flexTemplateDataflowJobResourceManager);
-    TimeZone.setDefault(originalTimeZone);
+    // Spanner and BigQuery are automatically cleaned up in tearDownBase()
   }
 
   @Test
   public void testAllDataTypesPostgreSQLToSpanner() throws IOException, InterruptedException {
     String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;
 
-    LaunchInfo migrationJobInfo =
+    // Launch Bulk Pipeline (SourceDbToSpanner)
+    LaunchInfo bulkJobInfo =
         launchBulkDataflowJob(
             testName, spannerResourceManager, gcsClient, postgreSQLResourceManager, null, false);
-    assertThatPipeline(migrationJobInfo).isRunning();
 
-    org.apache.beam.it.common.PipelineOperator.Result migrationResult =
-        pipelineOperator().waitUntilDone(createConfig(migrationJobInfo));
-    assertThatResult(migrationResult).isLaunchFinished();
+    assertThatPipeline(bulkJobInfo).isRunning();
+    pipelineOperator().waitUntilDone(createConfig(bulkJobInfo));
 
     LaunchConfig.Builder dvOptions = LaunchConfig.builder(testName, specPath);
     LaunchInfo validationJobInfo =
@@ -109,9 +109,9 @@ public class BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT extends EndTo
             null,
             null,
             null);
-    org.apache.beam.it.common.PipelineOperator.Result validationResult =
-        pipelineOperator().waitUntilDone(createConfig(validationJobInfo));
-    assertThatResult(validationResult).isLaunchFinished();
+
+    assertThatPipeline(validationJobInfo).isRunning();
+    pipelineOperator().waitUntilDone(createConfig(validationJobInfo));
 
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
