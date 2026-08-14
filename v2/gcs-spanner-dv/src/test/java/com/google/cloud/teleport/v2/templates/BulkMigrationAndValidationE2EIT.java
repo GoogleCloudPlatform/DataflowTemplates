@@ -130,7 +130,7 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
     mySQLResourceManager.write("AccountRoles", rolesData);
 
     // 2. Launch Bulk Pipeline (SourceDbToSpanner)
-    String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testName;
+    String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;
 
     LaunchInfo bulkJobInfo =
         launchBulkDataflowJob(

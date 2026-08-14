@@ -154,7 +154,7 @@ public class AvroToValueMapper {
 
     gsqlFunctions.put(
         Type.json(),
-        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.json(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.array(Type.json()),
         (recordValue, fieldSchema) ->
@@ -230,7 +230,7 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgJsonb(),
-        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.pgJsonb(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
