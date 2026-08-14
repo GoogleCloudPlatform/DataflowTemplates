@@ -13,12 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
 import java.io.IOException;
 import java.util.TimeZone;
@@ -38,10 +40,6 @@ import org.slf4j.LoggerFactory;
 /**
  * End-to-End Integration test validating the migration and validation of all supported data types
  * from PostgreSQL to Spanner.
- *
- * <p>Note on Edge Cases: 0001-01-01 is clamped to 1970-01-01 for Date/Time edge cases in the test
- * data to avoid Debezium Julian calendar shift bugs that push the date back to 0000-12-30 and crash
- * Spanner mapping.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
@@ -67,9 +65,6 @@ public class BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT extends EndTo
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
-
-    executeSqlScript(postgreSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
   }
 
   @After
@@ -84,6 +79,37 @@ public class BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT extends EndTo
 
   @Test
   public void testAllDataTypesPostgreSQLToSpanner() throws IOException, InterruptedException {
+
+    /*
+     * Validates all supported PostgreSQL datatype to Spanner GoogleSQL datatype mappings as outlined in
+     * go/pg-bulk-migration-support-dd.
+     *
+     * Testing Methodology & Constraints:
+     * 1. Isolated Testing: Each mapping is simulated within a distinct table to isolate and identify
+     *    datatype-specific errors cleanly.
+     * 2. Edge Case Coverage: 4 rows are inserted per table: a Standard value, a Minimum boundary value,
+     *    a Maximum boundary value, and a NULL value.
+     * 3. Variable Boundaries: Not all datatypes have structurally defined minimum/maximum boundary
+     *    values (e.g., UUID, JSON, bytea). In such instances, a random standard value is injected in
+     *    place of the boundary value.
+     * 4. NOT NULL Fallbacks: For datatypes that do not accept NULL values (e.g., serial, bigserial),
+     *    we insert a static standard value in place of the NULL insert.
+     * 5. Spanner Payload Limits (10MB): PostgreSQL supports up to 1GB of data for large object types
+     *    (like varchar, text, and bytea). Since Spanner enforces a strict 10MB per-row limit, we clamp
+     *    the maximum test values for these datatypes to ~2.6MB (e.g., using repeat('a', 2621440)) to
+     *    simulate large payload sizes without triggering database payload rejections.
+     * 6. Logical Boundary Clamping: For datatypes whose extreme minimum or maximum values logically fit
+     *    within a Spanner row but exceed the supported limits of either Spanner or the migration pipeline
+     *    itself, we clamp the insertions to the safest supported boundary.
+     *      - Date limits: Minimum dates are clamped to '1970-01-01' to prevent Debezium Julian calendar
+     *        shift bugs (which push dates back to 0000-12-30 and crash the pipeline).
+     * 7. Known Exclusions:
+     *      - number-to-NUMERIC mappings are currently skipped due to padding mismatches (b/544589449).
+     *      - JSON-to-JSON mappings are skipped due to whitespace minification bugs (b/546487364).
+     */
+    executeSqlScript(postgreSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
     String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;
 
     // Launch Bulk Pipeline (SourceDbToSpanner)
