@@ -57,6 +57,8 @@ public class OracleSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConne
           .put(
               "TIMESTAMP WITH LOCAL TIME ZONE",
               UnifiedMappingProvider.Type.TIMESTAMP_WITH_TIME_ZONE)
+          .put("INTERVAL YEAR TO MONTH", UnifiedMappingProvider.Type.STRING)
+          .put("INTERVAL DAY TO SECOND", UnifiedMappingProvider.Type.STRING)
           .put("RAW", UnifiedMappingProvider.Type.BYTES)
           .put("BOOLEAN", UnifiedMappingProvider.Type.BOOLEAN)
           .put("CLOB", UnifiedMappingProvider.Type.STRING)

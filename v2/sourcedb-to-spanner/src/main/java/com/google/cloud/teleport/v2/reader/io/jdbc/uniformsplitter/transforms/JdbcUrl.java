@@ -54,11 +54,12 @@ abstract class JdbcUrl {
    * <ul>
    *   <li>"jdbc:postgresql://localhost:5432/postgres"
    *   <li>"jdbc:mysql://127.0.0.1:3306/db"
-   *   <li>"jdbc:oracle:thin:HR/hr@localhost:5221:orcl"
-   *   <li>"jdbc:derby:memory:testDB;create=true"
-   *   <li>"jdbc:oracle:thin:@//myhost.example.com:1521/my_service"
    *   <li>"jdbc:mysql:///cloud_sql" (GCP CloudSQL, supported if Connection name setup via
    *       HikariDataSource)
+   *   <li>"jdbc:derby:memory:testDB;create=true"
+   *   <li>"jdbc:oracle:thin:user/password@host:port:SID" (Oracle Old SID format)
+   *   <li>"jdbc:oracle:thin:@//host:port/service_name" (Oracle EZConnect)
+   *   <li>"jdbc:oracle:thin:@host:port/service_name" (Oracle EZConnect without slashes)
    * </ul>
    */
   static @Nullable JdbcUrl of(String url) {
@@ -103,12 +104,17 @@ abstract class JdbcUrl {
         if (startHost == -1) {
           return null;
         }
-        List<String> components = Splitter.on(':').splitToList(cleanUri.substring(startHost + 1));
-        if (components.size() < 3) {
-          return null;
+        String hostPart = cleanUri.substring(startHost + 1);
+        if (hostPart.contains("/")) {
+          cleanUri = "oracle://" + hostPart;
+        } else {
+          List<String> components = Splitter.on(':').splitToList(hostPart);
+          if (components.size() < 3) {
+            return null;
+          }
+          return new AutoValue_JdbcUrl(
+              scheme, components.get(0) + ":" + components.get(1), components.get(2));
         }
-        return new AutoValue_JdbcUrl(
-            scheme, components.get(0) + ":" + components.get(1), components.get(2));
       } else {
         return null;
       }

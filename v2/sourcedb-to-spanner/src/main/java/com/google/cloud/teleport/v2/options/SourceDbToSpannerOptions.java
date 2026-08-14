@@ -38,7 +38,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
         @TemplateParameter.TemplateEnumOption(ORACLE_SOURCE_DIALECT)
       },
       description = "Dialect of the source database",
-      helpText = "Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`.")
+      helpText = "Possible values are `CASSANDRA`, `MYSQL`, `POSTGRESQL` and `ORACLE`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 

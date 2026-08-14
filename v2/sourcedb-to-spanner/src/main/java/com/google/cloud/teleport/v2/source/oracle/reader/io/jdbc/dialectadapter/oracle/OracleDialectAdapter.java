@@ -123,6 +123,7 @@ public class OracleDialectAdapter implements DialectAdapter {
         }
       }
     } catch (SQLException e) {
+      LOGGER.error("Error discovering tables ", e);
       throw new SchemaDiscoveryException(e);
     }
     ImmutableList<String> tables = tablesBuilder.build();
@@ -154,14 +155,29 @@ public class OracleDialectAdapter implements DialectAdapter {
               typeName = typeName.replaceAll("\\([0-9]+\\)", "");
             }
             long colSize = rs.getLong("COLUMN_SIZE");
-            long decimalDigits = rs.getLong("DECIMAL_DIGITS"); // May be 0 if null
-            SourceColumnType record = new SourceColumnType(typeName, new Long[] {colSize}, null);
+            boolean hasColSize = !rs.wasNull();
+            long decimalDigits = rs.getLong("DECIMAL_DIGITS");
+            boolean hasDecimalDigits = !rs.wasNull();
+
+            Long[] mods;
+            if (hasColSize && hasDecimalDigits) {
+              mods = new Long[] {colSize, decimalDigits};
+            } else if (hasColSize) {
+              mods = new Long[] {colSize};
+            } else if (hasDecimalDigits) {
+              mods = new Long[] {decimalDigits};
+            } else {
+              mods = new Long[] {};
+            }
+
+            SourceColumnType record = new SourceColumnType(typeName, mods, null);
             builders.get(table).put(colName, record);
           }
         }
         LOGGER.info("Discovered Table Schema for {}: {}", table, builders.get(table).build());
       }
     } catch (SQLException e) {
+      LOGGER.error("Error discovering table schema", e);
       throw new SchemaDiscoveryException(e);
     }
     ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
@@ -192,16 +208,20 @@ public class OracleDialectAdapter implements DialectAdapter {
             long seq = rs.getShort("KEY_SEQ");
 
             SourceColumnIndexInfo.IndexType type = SourceColumnIndexInfo.IndexType.OTHER;
+            String columnTypeName = "";
+            long stringMaxLength = 0;
             try (ResultSet crs = metaData.getColumns(null, schemaPattern, table, colName)) {
               if (crs.next()) {
                 String typeName = crs.getString("TYPE_NAME");
                 if (typeName != null) {
-                  typeName = typeName.toUpperCase();
-                  if (typeName.contains("CHAR") || typeName.contains("CLOB")) {
+                  columnTypeName = typeName.replaceAll("\\([0-9]+\\)", "");
+                  String typeNameUpper = typeName.toUpperCase();
+                  if (typeNameUpper.contains("CHAR") || typeNameUpper.contains("CLOB")) {
                     type = SourceColumnIndexInfo.IndexType.STRING;
-                  } else if (typeName.contains("INT") || typeName.contains("NUM")) {
+                    stringMaxLength = crs.getLong("COLUMN_SIZE");
+                  } else if (typeNameUpper.contains("INT") || typeNameUpper.contains("NUM")) {
                     type = SourceColumnIndexInfo.IndexType.NUMERIC;
-                  } else if (typeName.contains("DATE") || typeName.contains("TIME")) {
+                  } else if (typeNameUpper.contains("DATE") || typeNameUpper.contains("TIME")) {
                     type = SourceColumnIndexInfo.IndexType.TIME_STAMP;
                   }
                 }
@@ -216,7 +236,7 @@ public class OracleDialectAdapter implements DialectAdapter {
                     .setOrdinalPosition(seq)
                     .setIndexName(pkName != null ? pkName : "PRIMARY")
                     .setIndexType(type)
-                    .setColumnTypeName("");
+                    .setColumnTypeName(columnTypeName);
 
             if (type == SourceColumnIndexInfo.IndexType.STRING) {
               CollationReference emptyCollation =
@@ -226,7 +246,7 @@ public class OracleDialectAdapter implements DialectAdapter {
                       .setPadSpace(false)
                       .build();
               infoBuilder.setCollationReference(emptyCollation);
-              infoBuilder.setStringMaxLength(200);
+              infoBuilder.setStringMaxLength(stringMaxLength);
             }
 
             builders.get(table).add(infoBuilder.build());
@@ -235,6 +255,7 @@ public class OracleDialectAdapter implements DialectAdapter {
       }
     } catch (SQLException e) {
       LOGGER.error("Error discovering table indexes", e);
+      throw new SchemaDiscoveryException(e);
     }
 
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =

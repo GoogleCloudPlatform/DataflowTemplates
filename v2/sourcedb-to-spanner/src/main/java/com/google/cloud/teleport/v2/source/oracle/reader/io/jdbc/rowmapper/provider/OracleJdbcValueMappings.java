@@ -46,14 +46,17 @@ public class OracleJdbcValueMappings implements JdbcValueMappingsProvider {
             + TimeUnit.NANOSECONDS.toMicros(value.getNanos());
       };
 
-  private static final ResultSetValueMapper<java.sql.Timestamp> timestampTzToAvroRecord =
+  private static final ResultSetValueExtractor<java.time.ZonedDateTime> zonedDateTimeExtractor =
+      (rs, fieldName) -> rs.getObject(fieldName, java.time.ZonedDateTime.class);
+
+  private static final ResultSetValueMapper<java.time.ZonedDateTime> zonedDateTimeToAvroRecord =
       (value, schema) -> {
         long micros =
-            TimeUnit.SECONDS.toMicros(value.getTime() / 1000)
-                + TimeUnit.NANOSECONDS.toMicros(value.getNanos());
+            TimeUnit.SECONDS.toMicros(value.toEpochSecond())
+                + TimeUnit.NANOSECONDS.toMicros(value.getNano());
         return new GenericRecordBuilder(TimeStampTz.SCHEMA)
             .set(TimeStampTz.TIMESTAMP_FIELD_NAME, micros)
-            .set(TimeStampTz.OFFSET_FIELD_NAME, 0)
+            .set(TimeStampTz.OFFSET_FIELD_NAME, value.getOffset().getTotalSeconds() * 1000)
             .build();
       };
 
@@ -232,12 +235,16 @@ public class OracleJdbcValueMappings implements JdbcValueMappingsProvider {
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-F2EBDFEC-8BDD-48ED-9C1C-509BFDC4B325
            * Oracle essentially allocates exactly 13 physical bytes natively for standard representation.
            */
-          .put("TIMESTAMP WITH TIME ZONE", timestampExtractor, timestampTzToAvroRecord, 13)
+          .put("TIMESTAMP WITH TIME ZONE", zonedDateTimeExtractor, zonedDateTimeToAvroRecord, 13)
           /*
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-F2EBDFEC-8BDD-48ED-9C1C-509BFDC4B325
            * Oracle essentially allocates exactly 11 physical bytes natively for standard representation.
            */
-          .put("TIMESTAMP WITH LOCAL TIME ZONE", timestampExtractor, timestampTzToAvroRecord, 11)
+          .put(
+              "TIMESTAMP WITH LOCAL TIME ZONE",
+              zonedDateTimeExtractor,
+              zonedDateTimeToAvroRecord,
+              11)
           /*
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-85D757CB-AEE1-41C8-A392-AD31BE662059
            * Oracle standard structurally dictates exactly 11 natively physical bytes accurately.

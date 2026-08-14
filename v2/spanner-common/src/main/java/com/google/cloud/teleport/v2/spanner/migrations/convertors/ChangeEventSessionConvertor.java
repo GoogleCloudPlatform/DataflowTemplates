@@ -153,6 +153,9 @@ public class ChangeEventSessionConvertor {
   }
 
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
+    /*
+     * TODO: Check if PG needs to be part of this check or not
+     */
     if ((!MYSQL_SOURCE_TYPE.equals(this.sourceType) && !ORACLE_SOURCE_TYPE.equals(this.sourceType))
         || ((shardingContext.getStreamToDbAndShardMap() == null
                 || shardingContext.getStreamToDbAndShardMap().isEmpty())
