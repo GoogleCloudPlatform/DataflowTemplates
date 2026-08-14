@@ -21,6 +21,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +43,7 @@ public class UnifiedStringVisitorTest {
   @Test
   public void testVisitUuid() {
     UnifiedStringVisitor visitor = new UnifiedStringVisitor();
-    java.util.UUID input = java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    UUID input = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 
     visitor.visitUuid(input);
 

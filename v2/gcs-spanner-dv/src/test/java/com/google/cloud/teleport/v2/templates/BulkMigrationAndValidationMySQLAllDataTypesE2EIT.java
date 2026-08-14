@@ -103,7 +103,7 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
 
   @Test
   public void allDataTypesE2E() throws Exception {
-      executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+    executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     List<Map<String, Object>> records = new ArrayList<>();
 
     // Row 1 (Standard Values)
