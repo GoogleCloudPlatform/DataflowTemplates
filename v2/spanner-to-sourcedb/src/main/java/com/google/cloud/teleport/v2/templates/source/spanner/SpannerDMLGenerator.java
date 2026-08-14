@@ -170,7 +170,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           if (valuesJson.isNull(originalColName)) {
             setNullValue(builder, targetColName, origCol.type());
           } else {
-            setColumnValue(builder, targetColName, origCol, valuesJson);
+            setColumnValue(builder, targetCol, origCol, valuesJson);
           }
         }
       }
@@ -219,6 +219,9 @@ public class SpannerDMLGenerator implements IDMLGenerator {
                 schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
           }
         } catch (NoSuchElementException e) {
+          throw new InvalidDMLGenerationException(
+              "there is no mapped column or custom transformation for table'"
+                  + targetSpannerTable.name() + "' column'" + targetColName + "'");
         }
         // Fetch the value from the changestream record
         if (keyValuesJson != null && keyValuesJson.has(origColName)) {
@@ -229,9 +232,9 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           targetColValue = newValuesJson.get(origColName);
         } else {
           // column not resolvable
-          LOG.warn("Primary key column '{}' could not be resolved.", targetColName);
           throw new InvalidDMLGenerationException(
-              "Primary key column '" + targetColName + "' could not be resolved.");
+              "Primary key column '" + targetColName
+                  + "' could not be resolved because of incorrect schema mapper.");
         }
       }
       appendCustomKeyComponent(keyBuilder, targetCol, targetColValue);
@@ -264,19 +267,19 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   }
 
   private static void setColumnValue(
-      Mutation.WriteBuilder builder, String targetColName, Column col, JSONObject valuesJson) {
-    String sourceColName = col.name();
-    Type type = col.type();
+      WriteBuilder builder, Column targetCol, Column origCol, JSONObject valuesJson) {
+    String origColName = origCol.name();
+    Type type = targetCol.type();
 
     if (type.getCode() == Type.Code.ARRAY || type.getCode() == Type.Code.PG_ARRAY) {
       builder
-          .set(targetColName)
-          .to(buildArrayValue(type.getArrayElementType(), valuesJson.getJSONArray(sourceColName)));
+          .set(targetCol.name())
+          .to(buildArrayValue(type.getArrayElementType(), valuesJson.getJSONArray(origColName)));
       return;
     }
 
-    Object value = valuesJson.get(sourceColName);
-    setCustomColumnValue(builder, col, value);
+    Object value = valuesJson.get(origColName);
+    setCustomColumnValue(builder, targetCol, value);
   }
 
   private static void setNullValue(Mutation.WriteBuilder builder, String targetColName, Type type) {

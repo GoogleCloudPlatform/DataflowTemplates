@@ -103,10 +103,11 @@ public final class SpannerDMLGeneratorTest {
   /** Creates a schema mapper that maps Singers → Singers with identity column mapping. */
   private static ISchemaMapper buildIdentityMapper() throws Exception {
     ISchemaMapper mapper = mock(ISchemaMapper.class);
-    when(mapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    when(mapper.getSpannerTableName("", "Singers")).thenReturn("Singers");
     when(mapper.getSpannerColumnName("", "Singers", "SingerId")).thenReturn("SingerId");
     when(mapper.getSpannerColumnName("", "Singers", "FirstName")).thenReturn("FirstName");
     when(mapper.getSpannerColumnName("", "Singers", "LastName")).thenReturn("LastName");
+    when(mapper.getSourceTableName("", "Singers")).thenReturn("Singers");
     when(mapper.getSourceColumnName("", "Singers", "SingerId")).thenReturn("SingerId");
     when(mapper.getSourceColumnName("", "Singers", "FirstName")).thenReturn("FirstName");
     when(mapper.getSourceColumnName("", "Singers", "LastName")).thenReturn("LastName");
@@ -1243,10 +1244,13 @@ public final class SpannerDMLGeneratorTest {
                         .build()))
             .rawDdl(ddl)
             .build();
-    ISchemaMapper mapper = buildIdentityMapper();
+    ISchemaMapper mapper = mock(ISchemaMapper.class);
     when(mapper.getSourceTableName("", "Albums")).thenReturn("Albums");
     when(mapper.getSourceColumnName("", "Albums", "SingerId")).thenReturn("SingerId");
     when(mapper.getSourceColumnName("", "Albums", "AlbumId")).thenReturn("AlbumId");
+    when(mapper.getSpannerTableName("", "Albums")).thenReturn("Albums");
+    when(mapper.getSpannerColumnName("", "Albums", "SingerId")).thenReturn("SingerId");
+    when(mapper.getSpannerColumnName("", "Albums", "AlbumId")).thenReturn("AlbumId");
 
     JSONObject newValues = new JSONObject("{}");
     JSONObject keyValues = new JSONObject("{\"SingerId\":\"1\", \"AlbumId\":\"2\"}");
@@ -1673,7 +1677,7 @@ public final class SpannerDMLGeneratorTest {
     Table.Builder tableBuilder = builder.createTable("Singers");
     tableBuilder.column("SingerId").int64().notNull().endColumn();
     tableBuilder.column("FirstName").string().max().endColumn();
-    tableBuilder.column("GenCol").string().max().endColumn();
+    tableBuilder.column("GenCol").string().max().isGenerated(true).endColumn();
     tableBuilder.primaryKey().asc("SingerId").end();
     tableBuilder.endTable();
     Ddl ddl = builder.build();
@@ -2823,34 +2827,6 @@ public final class SpannerDMLGeneratorTest {
     assertEquals(
         "{\"f1\":\"val\"}",
         ((SpannerMutationResponse) respCustom).getMutation().asMap().get("StructVal").getString());
-  }
-
-  @Test
-  public void
-      schemaMapperThrowsNoSuchElementExceptionInPrimaryKeyResolutionFallsBackToTargetColName()
-          throws Exception {
-    Ddl ddl = buildDdl();
-    SourceSchema schema = buildSourceSchema();
-    ISchemaMapper mapper = buildIdentityMapper();
-    when(mapper.getSpannerColumnName("", "Singers", "SingerId"))
-        .thenThrow(new NoSuchElementException("Column unmapped"));
-
-    JSONObject newValues = new JSONObject("{\"FirstName\":\"John\",\"LastName\":\"Doe\"}");
-    JSONObject keyValues = new JSONObject("{\"SingerId\":\"42\"}");
-
-    DMLGeneratorResponse response =
-        new SpannerDMLGenerator()
-            .getDMLStatement(
-                new DMLGeneratorRequest.Builder("INSERT", "Singers", newValues, keyValues, "+00:00")
-                    .setSchemaMapper(mapper)
-                    .setDdl(ddl)
-                    .setSourceSchema(schema)
-                    .build());
-
-    SpannerMutationResponse mutResp = (SpannerMutationResponse) response;
-    assertNotNull(mutResp.getMutation());
-    assertEquals(
-        com.google.cloud.spanner.Key.of(42L).toString(), mutResp.getPrimaryKey().toString());
   }
 
   @Test
