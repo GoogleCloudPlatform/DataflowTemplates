@@ -114,7 +114,7 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
      * - bigint_unsigned_col and decimal_col mappings are currently skipped due to padding mismatches (b/544589449).
      * - JSON non-empty values are skipped due to whitespace minification bugs (b/546487364).
      */
-    createMySQLDDL(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+      executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
     // 2. Launch Bulk Pipeline (SourceDbToSpanner)
     String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;

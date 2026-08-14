@@ -40,6 +40,16 @@ public class UnifiedStringVisitorTest {
   }
 
   @Test
+  public void testVisitUuid() {
+    UnifiedStringVisitor visitor = new UnifiedStringVisitor();
+    java.util.UUID input = java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+
+    visitor.visitUuid(input);
+
+    assertEquals(input.toString(), visitor.getResult());
+  }
+
+  @Test
   public void testVisitInt64() {
     UnifiedStringVisitor visitor = new UnifiedStringVisitor();
     long input = 123456789L;
