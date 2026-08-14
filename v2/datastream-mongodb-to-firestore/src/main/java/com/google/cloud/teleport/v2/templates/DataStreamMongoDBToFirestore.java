@@ -494,6 +494,12 @@ public class DataStreamMongoDBToFirestore {
               + ". Must start with 'mongodb://' or 'mongodb+srv://'");
     }
 
+    String databaseName = options.getDatabaseName();
+    if (databaseName == null || databaseName.trim().isEmpty()) {
+      throw new IllegalArgumentException(
+          "Database name (databaseName) must be specified and non-empty.");
+    }
+
     String inputFileFormat = options.getInputFileFormat();
     if (inputFileFormat != null
         && !inputFileFormat.isEmpty()
@@ -561,17 +567,15 @@ public class DataStreamMongoDBToFirestore {
 
       // Choose processing mode based on options
       LOG.info("Starting pipeline execution");
-      if (Boolean.TRUE.equals(options.getUseShadowTables())) {
-        if (Boolean.TRUE.equals(options.getProcessBackfillFirst())) {
-          LOG.info("Using legacy backfill-first processing mode with shadow tables");
-          runLegacyWithBackfillFirst(options, connectionString);
-        } else {
-          LOG.info("Using legacy unified processing mode with shadow tables");
-          runLegacyAllEventsTogether(options, connectionString);
-        }
-      } else {
+      if (!Boolean.TRUE.equals(options.getUseShadowTables())) {
         LOG.info("Using high-throughput shadowless processing mode");
         runShadowless(options, connectionString);
+      } else if (Boolean.TRUE.equals(options.getProcessBackfillFirst())) {
+        LOG.info("Using legacy backfill-first processing mode with shadow tables");
+        runLegacyWithBackfillFirst(options, connectionString);
+      } else {
+        LOG.info("Using legacy unified processing mode with shadow tables");
+        runLegacyAllEventsTogether(options, connectionString);
       }
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
@@ -832,7 +836,7 @@ public class DataStreamMongoDBToFirestore {
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
     // Stage 1: Ingest data from GCS
-    LOG.info("Ingesting data from GCS");
+    LOG.info("Configuring data ingestion from GCS");
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
@@ -846,7 +850,7 @@ public class DataStreamMongoDBToFirestore {
     }
 
     // Stage 2: Create MongoDbChangeEventContext objects
-    LOG.info("Creating MongoDbChangeEventContext objects");
+    LOG.info("Configuring MongoDbChangeEventContext creation");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
             "Create MongoDbChangeEventContext objects",
@@ -871,7 +875,7 @@ public class DataStreamMongoDBToFirestore {
         CreateMongoDbChangeEventContextFn.failedCreationTag);
 
     // Stage 3: Split events into backfill and CDC streams
-    LOG.info("Splitting events into backfill and CDC streams");
+    LOG.info("Configuring event splitting into backfill and CDC streams");
     PCollectionTuple splitEvents =
         changeEventContexts
             .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
@@ -891,7 +895,7 @@ public class DataStreamMongoDBToFirestore {
         .setCoder(MongoDbChangeEventContextCoder.of());
 
     // Stage 4: Process backfill events
-    LOG.info("Processing backfill events");
+    LOG.info("Configuring backfill event processing");
     PCollectionTuple backfillResult;
     if (options.getUseShadowTablesForBackfill()) {
       // Use shadow tables for backfill (same as CDC processing)
@@ -965,7 +969,7 @@ public class DataStreamMongoDBToFirestore {
             : ProcessBackfillEventFn.severeFailedWriteTag);
 
     // Stage 5: Process CDC events
-    LOG.info("Processing CDC events");
+    LOG.info("Configuring CDC event processing");
     PCollectionTuple cdcResult =
         splitEvents
             .get(SplitBackfillAndCdcEventsFn.cdcTag)
@@ -1024,7 +1028,7 @@ public class DataStreamMongoDBToFirestore {
     LOG.info("Building Dead Letter Queue manager");
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
-    LOG.info("Stage 1: Starting ingestion of data from GCS");
+    LOG.info("Stage 1: Configuring data ingestion from GCS");
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
@@ -1035,9 +1039,7 @@ public class DataStreamMongoDBToFirestore {
               "Apply UDF To Data Field", new ApplyUdfToDataField(options, dlqManager));
     }
 
-    LOG.info("Stage 1: Completed ingestion of data from GCS");
-
-    LOG.info("Stage 2: Creating MongoDbChangeEventContext objects");
+    LOG.info("Stage 2: Configuring MongoDbChangeEventContext creation");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
             "Create MongoDbChangeEventContext objects",
@@ -1061,7 +1063,7 @@ public class DataStreamMongoDBToFirestore {
         dlqManager,
         CreateMongoDbChangeEventContextFn.failedCreationTag);
 
-    LOG.info("Stage 3: Processing change events and writing to the destination database");
+    LOG.info("Stage 3: Configuring change event processing and destination database writing");
     PCollectionTuple writeResult =
         changeEventContexts
             .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
@@ -1139,7 +1141,7 @@ public class DataStreamMongoDBToFirestore {
   /** Read from input path and dlq to collect objects to process. */
   private static PCollection<FailsafeElement<String, String>> ingestAndNormalizeJson(
       Options options, DeadLetterQueueManager dlqManager, Pipeline pipeline) {
-    LOG.info("Starting ingestion and normalization of JSON data");
+    LOG.info("Configuring ingestion and normalization of JSON data");
     PCollection<FailsafeElement<String, String>> jsonRecords;
     PCollectionTuple reconsumedElements;
     boolean isRegularMode = "regular".equals(options.getRunMode());
@@ -1235,7 +1237,6 @@ public class DataStreamMongoDBToFirestore {
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
               .apply("Reshuffle records", Reshuffle.viaRandomKey());
     }
-    LOG.info("Completed ingestion and normalization of JSON data");
     return jsonRecords;
   }
 

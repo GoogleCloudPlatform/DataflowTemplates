@@ -195,6 +195,26 @@ public final class DataStreamMongoDBToFirestoreTest {
   }
 
   @Test
+  public void validateOptions_emptyDatabaseName_throwsException() {
+    String[] args =
+        new String[] {
+          "--inputFilePattern=gs://test-bkt/",
+          "--connectionUri=mongodb://localhost:27017",
+          "--databaseName=   "
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataStreamMongoDBToFirestore.validateOptions(options));
+    assertTrue(thrown.getMessage().contains("Database name (databaseName) must be specified"));
+  }
+
+  @Test
   public void validateOptions_invalidBatchSize_throwsException() {
     String[] args =
         new String[] {

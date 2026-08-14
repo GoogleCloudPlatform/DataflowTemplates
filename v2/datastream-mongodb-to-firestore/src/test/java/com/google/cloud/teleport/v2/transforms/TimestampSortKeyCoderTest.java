@@ -58,11 +58,16 @@ public class TimestampSortKeyCoderTest {
 
   @Test
   public void testEncodeDecodeRoundTrip_boundaryValues() throws Exception {
-    TimestampSortKey minKey = TimestampSortKey.of(0L, 0, false);
+    TimestampSortKey minKey = TimestampSortKey.of(0L, 0L, false);
     CoderProperties.coderDecodeEncodeEqual(coder, minKey);
 
-    TimestampSortKey maxKey = TimestampSortKey.of(Long.MAX_VALUE, Integer.MAX_VALUE, true);
+    TimestampSortKey maxKey = TimestampSortKey.of(Long.MAX_VALUE, Long.MAX_VALUE, true);
     CoderProperties.coderDecodeEncodeEqual(coder, maxKey);
+
+    TimestampSortKey largeSubSecKey = TimestampSortKey.of(1786382543L, 5_000_000_000L, true);
+    TimestampSortKey decoded = CoderUtils.clone(coder, largeSubSecKey);
+    assertEquals(largeSubSecKey, decoded);
+    assertEquals(5_000_000_000L, decoded.getSubSeconds());
   }
 
   @Test
@@ -82,18 +87,18 @@ public class TimestampSortKeyCoderTest {
   public void testVerifyDeterministic() throws Exception {
     coder.verifyDeterministic();
 
-    TimestampSortKey key1 = TimestampSortKey.of(1000L, 50, true);
-    TimestampSortKey key2 = TimestampSortKey.of(1000L, 50, true);
+    TimestampSortKey key1 = TimestampSortKey.of(1000L, 50L, true);
+    TimestampSortKey key2 = TimestampSortKey.of(1000L, 50L, true);
     CoderProperties.coderDeterministic(coder, key1, key2);
   }
 
   @Test
   public void testBinaryEncodingExactSize() throws Exception {
-    TimestampSortKey key = TimestampSortKey.of(1786382543L, 4752, true);
+    TimestampSortKey key = TimestampSortKey.of(1786382543L, 4752L, true);
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     coder.encode(key, out);
 
-    // 1 byte presence + 8 bytes long + 4 bytes int + 1 byte boolean = 14 bytes
-    assertEquals(14, out.toByteArray().length);
+    // 1 byte presence + 8 bytes long + 8 bytes long + 1 byte boolean = 18 bytes
+    assertEquals(18, out.toByteArray().length);
   }
 }
