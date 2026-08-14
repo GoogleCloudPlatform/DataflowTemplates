@@ -221,7 +221,10 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         } catch (NoSuchElementException e) {
           throw new InvalidDMLGenerationException(
               "there is no mapped column or custom transformation for table'"
-                  + targetSpannerTable.name() + "' column'" + targetColName + "'");
+                  + targetSpannerTable.name()
+                  + "' column'"
+                  + targetColName
+                  + "'");
         }
         // Fetch the value from the changestream record
         if (keyValuesJson != null && keyValuesJson.has(origColName)) {
@@ -233,7 +236,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         } else {
           // column not resolvable
           throw new InvalidDMLGenerationException(
-              "Primary key column '" + targetColName
+              "Primary key column '"
+                  + targetColName
                   + "' could not be resolved because of incorrect schema mapper.");
         }
       }
