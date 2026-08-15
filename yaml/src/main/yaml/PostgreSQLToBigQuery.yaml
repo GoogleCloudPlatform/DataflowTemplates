@@ -1,0 +1,57 @@
+template:
+  name: "PostgreSQL_to_BigQuery_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "PostgreSQL to BigQuery (YAML)"
+  description: >
+    The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to connect to PostgreSQL.
+  flex_container_name: "postgresql-to-bigquery-yaml"
+  yamlTemplateFile: "PostgreSQLToBigQuery.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/postgres_options.yaml", "options/bigquery_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The PostgreSQL database must be accessible from the Dataflow workers.",
+    "The target BigQuery dataset and table must exist."
+  }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "postgres_options"
+    - "bigquery_options"
+
+  parameters:
+    - postgres_common_options
+    - postgres_read_options
+    - bigquery_common_options
+    - bigquery_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPostgres
+      name: ReadFromPostgres
+      config:
+        url: {{ jdbcUrl }}
+        username: {{ username }}
+        password: {{ password }}
+        table: {{ postgresTable }}
+        query: {{ query }}
+        connection_properties: {{ connectionProperties }}
+        partition_column: {{ partitionColumn }}
+        num_partitions: {{ numPartitions }}
+        fetch_size: {{ fetchSize }}
+        disable_auto_commit: {{ disableAutoCommit }}
+        output_parallelization: {{ outputParallelization }}
+        
+    - type: WriteToBigQuery
+      name: WriteToBigQuery
+      config:
+        table: {{ table }}
+        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
+        num_streams: {{ numStreams | default(1) }}
+
+options:
+  streaming: false
