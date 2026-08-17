@@ -128,7 +128,12 @@ public class OracleDialectAdapter implements DialectAdapter {
               : metaData.getUserName();
       try (ResultSet rs = metaData.getTables(null, schemaPattern, null, new String[] {"TABLE"})) {
         while (rs.next()) {
-          tablesBuilder.add(rs.getString("TABLE_NAME"));
+          String tableName = rs.getString("TABLE_NAME");
+          // Safely bypass Oracle Recycle Bin objects natively
+          if (tableName != null && tableName.startsWith("BIN$")) {
+            continue;
+          }
+          tablesBuilder.add(tableName);
         }
       }
     } catch (SQLTransientConnectionException e) {

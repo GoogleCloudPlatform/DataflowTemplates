@@ -331,6 +331,7 @@ public class OracleJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    return 100;
+    LOG.warn("Unknown column type: {}. Defaulting to size: 65,535.", sourceColumnType);
+    return 65_535;
   }
 }
