@@ -144,11 +144,11 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
 
   protected void executeSqlScript(JDBCResourceManager jdbcResourceManager, String ddlResource)
       throws IOException {
-    String mysqlSql =
+    String sqlString =
         Resources.toString(Resources.getResource(ddlResource), StandardCharsets.UTF_8);
     // Since the DDL file contains multiple CREATE statements, we split them by semicolon and
     // execute one single SQL statement at a time.
-    for (String stmt : mysqlSql.split("(?m);\\s*$")) {
+    for (String stmt : sqlString.split("(?m);\\s*$")) {
       if (!stmt.trim().isEmpty()) {
         jdbcResourceManager.runSQLUpdate(stmt);
       }
