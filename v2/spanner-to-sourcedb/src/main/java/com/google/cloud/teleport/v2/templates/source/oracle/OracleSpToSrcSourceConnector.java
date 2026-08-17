@@ -53,7 +53,12 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:oracle:thin:@//" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+    return "jdbc:oracle:thin:@//"
+        + shard.getHost()
+        + ":"
+        + shard.getPort()
+        + "/"
+        + shard.getDbName();
   }
 
   @Override

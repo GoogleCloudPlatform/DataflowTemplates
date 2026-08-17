@@ -40,7 +40,8 @@ public class DMLGeneratorUtils {
         Column spannerColDef,
         SourceColumn sourceColDef,
         JSONObject valuesJson,
-        String sourceDbTimezoneOffset);
+        String sourceDbTimezoneOffset,
+        List<Object> preparedStatementParameters);
   }
 
   public static String convertBase64ToRawHex(String base64EncodedString) {
@@ -71,7 +72,8 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnValueMapper columnValueMapper) {
+      ColumnValueMapper columnValueMapper,
+      List<Object> preparedStatementParameters) {
     Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
@@ -110,7 +112,7 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(colName, null);
@@ -118,7 +120,7 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
       } else {
         continue;
       }
@@ -137,7 +139,8 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnValueMapper columnValueMapper) {
+      ColumnValueMapper columnValueMapper,
+      List<Object> preparedStatementParameters) {
     Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
@@ -191,7 +194,7 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(sourceColName, null);
@@ -199,7 +202,7 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
@@ -218,7 +221,8 @@ public class DMLGeneratorUtils {
               keyValuesJson,
               sourceDbTimezoneOffset,
               customTransformationResponse,
-              columnValueMapper);
+              columnValueMapper,
+              preparedStatementParameters);
       response.putAll(generatedColumnValues);
     }
 

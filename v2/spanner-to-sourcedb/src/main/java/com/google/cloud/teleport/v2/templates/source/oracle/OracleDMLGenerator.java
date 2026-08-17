@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package com.google.cloud.teleport.v2.templates.source.oracle;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
@@ -29,23 +30,27 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Creates DML statements for Oracle. */
 public class OracleDMLGenerator implements IDMLGenerator {
 
-  private static final ThreadLocal<java.util.List<Object>> threadLocalParameters =
-      new ThreadLocal<>();
+  private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
 
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
-    try {
-      threadLocalParameters.set(new java.util.ArrayList<>());
+    List<Object> currentParams = new ArrayList<>();
+    // Removed try-finally block
       if (dmlGeneratorRequest == null) {
         throw new InvalidDMLGenerationException(
             "DMLGeneratorRequest is null. Cannot process the request.");
@@ -103,7 +108,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
               dmlGeneratorRequest.getKeyValuesJson(),
               dmlGeneratorRequest.getSourceDbTimezoneOffset(),
               dmlGeneratorRequest.getCustomTransformationResponse(),
-              OracleDMLGenerator::getMappedColumnValue);
+              OracleDMLGenerator::getMappedColumnValue,
+              currentParams);
       if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
         throw new InvalidDMLGenerationException(
             String.format(
@@ -114,11 +120,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
       if ("INSERT".equals(dmlGeneratorRequest.getModType())
           || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
         return generateUpsertStatement(
-            spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
+            spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, currentParams);
 
       } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
         DMLGeneratorResponse resp = getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
-        resp.setPreparedStatementParameters(new java.util.ArrayList<>(threadLocalParameters.get()));
+        resp.setPreparedStatementParameters(currentParams);
         return resp;
       } else {
         throw new InvalidDMLGenerationException(
@@ -126,9 +132,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
                 "Unsupported modType: %s for table %s",
                 dmlGeneratorRequest.getModType(), spannerTableName));
       }
-    } finally {
-      threadLocalParameters.remove();
-    }
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
@@ -138,7 +141,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
       Map<String, String> generatedColumnValues,
       List<String> primaryKeys) {
 
-    Map<String, String> queryColumns = new java.util.LinkedHashMap<>(allColumnNameValues);
+    Map<String, String> queryColumns = new LinkedHashMap<>(allColumnNameValues);
     if (generatedColumnValues != null) {
       queryColumns.putAll(generatedColumnValues);
     }
@@ -227,7 +230,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
       Table spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
-      Map<String, String> pkcolumnNameValues) {
+      Map<String, String> pkcolumnNameValues,
+      List<Object> currentParams) {
     Map<String, String> columnNameValues =
         DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
@@ -237,14 +241,18 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            OracleDMLGenerator::getMappedColumnValue);
+            OracleDMLGenerator::getMappedColumnValue,
+            currentParams);
 
-    Map<String, String> orderedColumnNameValues = new java.util.LinkedHashMap<>();
+    Map<String, String> orderedColumnNameValues = new LinkedHashMap<>();
     orderedColumnNameValues.putAll(pkcolumnNameValues);
     orderedColumnNameValues.putAll(columnNameValues);
 
-    Map<String, String> generatedColumnValues = new java.util.LinkedHashMap<>();
+    Map<String, String> generatedColumnValues = new LinkedHashMap<>();
     for (SourceColumn col : sourceTable.columns()) {
+      // The shared DMLGeneratorUtils explicitly skips generated (virtual) columns. Oracle physically requires 
+      // these columns to be mapped separately so they can be injected solely into the USING (SELECT...) block 
+      // of the MERGE statement. (E.g. in case a generated column is part of a Primary Key referenced in the ON block).
       if (col.isGenerated()) {
         try {
           String spannerColName =
@@ -260,7 +268,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
                     spannerColDef,
                     col,
                     dmlGeneratorRequest.getKeyValuesJson(),
-                    dmlGeneratorRequest.getSourceDbTimezoneOffset()));
+                    dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                    currentParams));
           } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
               && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
             generatedColumnValues.put(
@@ -269,9 +278,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
                     spannerColDef,
                     col,
                     dmlGeneratorRequest.getNewValuesJson(),
-                    dmlGeneratorRequest.getSourceDbTimezoneOffset()));
+                    dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                    currentParams));
           }
-        } catch (Exception e) {
+        } catch (NoSuchElementException e) {
+          LOG.warn("Spanner column not found for generated Oracle column: {}", col.name());
         }
       }
     }
@@ -283,7 +294,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
             orderedColumnNameValues,
             generatedColumnValues,
             sourceTable.primaryKeyColumns());
-    resp.setPreparedStatementParameters(new java.util.ArrayList<>(threadLocalParameters.get()));
+    resp.setPreparedStatementParameters(currentParams);
     return resp;
   }
 
@@ -292,11 +303,35 @@ public class OracleDMLGenerator implements IDMLGenerator {
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset,
+      List<Object> preparedStatementParameters) {
 
     String colInputValue = "";
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
+    
+    /**
+     * DYNAMIC PREPARED STATEMENT ROUTING:
+     * Oracle has a strict hard limit of 4,000 bytes for any single inline string literal (ORA-01704).
+     * If Spanner sends a massive payload (e.g. a large text CLOB or a large binary BLOB) and we
+     * format it as an inline literal, Oracle will violently crash.
+     * 
+     * To prevent this, if the exact payload size breaches ~3,500 characters, we dynamically intercept
+     * the raw pristine object before it is wrapped in SQL syntax, inject it into the PreparedStatement 
+     * Java array, and natively return a '?' placeholder. 
+     * Smaller payloads safely bypass this to retain blistering fast simple Statement execution.
+     */
+    String rawJsonStr = valuesJson.get(colName).toString();
+    if (preparedStatementParameters != null && rawJsonStr != null && rawJsonStr.length() >= 3500) {
+      if (colType.getCode().equals(Type.Code.BYTES) || colType.getCode().equals(Type.Code.PG_BYTEA)) {
+        byte[] decodedBytes = Base64.getDecoder().decode(valuesJson.getString(colName));
+        preparedStatementParameters.add(decodedBytes);
+      } else {
+        preparedStatementParameters.add(valuesJson.getString(colName));
+      }
+      return "?";
+    }
+
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)
         || colType.getCode().equals(Type.Code.PG_FLOAT4)
@@ -318,17 +353,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
               .collect(Collectors.joining(","));
     } else if (colType.getCode().equals(Type.Code.BYTES)
         || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-      if (threadLocalParameters.get() != null) {
-        byte[] decodedBytes = java.util.Base64.getDecoder().decode(valuesJson.getString(colName));
-        threadLocalParameters.get().add(decodedBytes);
-        colInputValue = "?";
-      } else {
-        if (sourceColDef.type().toLowerCase().equals("bytea")) {
-          colInputValue = convertBase64ToHex(valuesJson.getString(colName));
-        } else {
-          colInputValue = convertBase64ToHex(valuesJson.getString(colName));
-        }
-      }
+      colInputValue = convertBase64ToHex(valuesJson.getString(colName));
     } else {
       colInputValue = valuesJson.getString(colName);
     }
