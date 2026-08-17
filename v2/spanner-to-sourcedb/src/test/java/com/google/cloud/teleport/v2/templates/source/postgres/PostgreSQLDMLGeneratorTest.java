@@ -428,7 +428,8 @@ public final class PostgreSQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"c\":\"YWJj\"}");
 
-    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    String res =
+        PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
     assertTrue(res.contains("decode('YWJj', 'base64')"));
 
     // Test string escape
@@ -442,7 +443,8 @@ public final class PostgreSQLDMLGeneratorTest {
     JSONObject jsonStr = new JSONObject("{\"s\":\"it\\'s a string\"}");
 
     String resStr =
-        PostgreSQLDMLGenerator.getMappedColumnValue(spannerStrCol, sourceStrCol, jsonStr, "+00:00");
+        PostgreSQLDMLGenerator.getMappedColumnValue(
+            spannerStrCol, sourceStrCol, jsonStr, "+00:00", null);
     assertEquals("'it''s a string'", resStr);
   }
 
@@ -458,7 +460,8 @@ public final class PostgreSQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"bytea_column\":\"SGVsbG8=\"}"); // "Hello" in base64
 
-    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    String res =
+        PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
     assertEquals("'\\x48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
   }
 
@@ -474,7 +477,8 @@ public final class PostgreSQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"uuid_column\":\"123e4567-e89b-12d3-a456-426614174000\"}");
 
-    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    String res =
+        PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
     assertEquals("'123e4567-e89b-12d3-a456-426614174000'", res);
   }
 
@@ -490,7 +494,8 @@ public final class PostgreSQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"jsonb_column\":\"{\\\"a\\\": 1}\"}");
 
-    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    String res =
+        PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
     assertEquals("'{\"a\": 1}'", res);
   }
 

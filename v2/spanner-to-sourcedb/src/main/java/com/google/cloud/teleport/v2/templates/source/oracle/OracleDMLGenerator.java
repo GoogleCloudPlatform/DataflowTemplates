@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates.source.oracle;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
@@ -51,87 +50,87 @@ public class OracleDMLGenerator implements IDMLGenerator {
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     List<Object> currentParams = new ArrayList<>();
     // Removed try-finally block
-      if (dmlGeneratorRequest == null) {
-        throw new InvalidDMLGenerationException(
-            "DMLGeneratorRequest is null. Cannot process the request.");
-      }
-      String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
-      ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
-      Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
-      SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
+    if (dmlGeneratorRequest == null) {
+      throw new InvalidDMLGenerationException(
+          "DMLGeneratorRequest is null. Cannot process the request.");
+    }
+    String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
+    ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
+    Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
+    SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
 
-      if (schemaMapper == null) {
-        throw new InvalidDMLGenerationException("Schema Mapper must be not null");
-      }
-      if (spannerDdl == null) {
-        throw new InvalidDMLGenerationException("Spanner Ddl must be not null.");
-      }
-      if (sourceSchema == null) {
-        throw new InvalidDMLGenerationException("SourceSchema must be not null.");
-      }
+    if (schemaMapper == null) {
+      throw new InvalidDMLGenerationException("Schema Mapper must be not null");
+    }
+    if (spannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner Ddl must be not null.");
+    }
+    if (sourceSchema == null) {
+      throw new InvalidDMLGenerationException("SourceSchema must be not null.");
+    }
 
-      Table spannerTable = spannerDdl.table(spannerTableName);
-      if (spannerTable == null) {
-        throw new InvalidDMLGenerationException(
-            String.format(
-                "The spanner table %s was not found in ddl found on spanner", spannerTableName));
-      }
+    Table spannerTable = spannerDdl.table(spannerTableName);
+    if (spannerTable == null) {
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "The spanner table %s was not found in ddl found on spanner", spannerTableName));
+    }
 
-      String sourceTableName = "";
-      try {
-        sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
-      } catch (NoSuchElementException e) {
-        throw new InvalidDMLGenerationException(
-            "Could not find source table name for spanner table: " + spannerTableName, e);
-      }
-      SourceTable sourceTable = sourceSchema.table(sourceTableName);
-      if (sourceTable == null) {
-        throw new InvalidDMLGenerationException(
-            String.format(
-                "Equivalent table %s was not found in source for spanner table %s",
-                sourceTableName, spannerTableName));
-      }
+    String sourceTableName = "";
+    try {
+      sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
+    } catch (NoSuchElementException e) {
+      throw new InvalidDMLGenerationException(
+          "Could not find source table name for spanner table: " + spannerTableName, e);
+    }
+    SourceTable sourceTable = sourceSchema.table(sourceTableName);
+    if (sourceTable == null) {
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Equivalent table %s was not found in source for spanner table %s",
+              sourceTableName, spannerTableName));
+    }
 
-      if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
-        throw new InvalidDMLGenerationException(
-            String.format(
-                "Cannot reverse replicate for source table %s without primary key, skipping the record.",
-                sourceTableName));
-      }
+    if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for source table %s without primary key, skipping the record.",
+              sourceTableName));
+    }
 
-      Map<String, String> pkcolumnNameValues =
-          DMLGeneratorUtils.getPkColumnValues(
-              schemaMapper,
-              spannerTable,
-              sourceTable,
-              dmlGeneratorRequest.getNewValuesJson(),
-              dmlGeneratorRequest.getKeyValuesJson(),
-              dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-              dmlGeneratorRequest.getCustomTransformationResponse(),
-              OracleDMLGenerator::getMappedColumnValue,
-              currentParams);
-      if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
-        throw new InvalidDMLGenerationException(
-            String.format(
-                "Cannot reverse replicate for table %s without primary key, skipping the record",
-                sourceTableName));
-      }
+    Map<String, String> pkcolumnNameValues =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getNewValuesJson(),
+            dmlGeneratorRequest.getKeyValuesJson(),
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            OracleDMLGenerator::getMappedColumnValue,
+            currentParams);
+    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for table %s without primary key, skipping the record",
+              sourceTableName));
+    }
 
-      if ("INSERT".equals(dmlGeneratorRequest.getModType())
-          || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
-        return generateUpsertStatement(
-            spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, currentParams);
+    if ("INSERT".equals(dmlGeneratorRequest.getModType())
+        || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
+      return generateUpsertStatement(
+          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, currentParams);
 
-      } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-        DMLGeneratorResponse resp = getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
-        resp.setPreparedStatementParameters(currentParams);
-        return resp;
-      } else {
-        throw new InvalidDMLGenerationException(
-            String.format(
-                "Unsupported modType: %s for table %s",
-                dmlGeneratorRequest.getModType(), spannerTableName));
-      }
+    } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
+      DMLGeneratorResponse resp = getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
+      resp.setPreparedStatementParameters(currentParams);
+      return resp;
+    } else {
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Unsupported modType: %s for table %s",
+              dmlGeneratorRequest.getModType(), spannerTableName));
+    }
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
@@ -250,39 +249,38 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
     Map<String, String> generatedColumnValues = new LinkedHashMap<>();
     for (SourceColumn col : sourceTable.columns()) {
-      // The shared DMLGeneratorUtils explicitly skips generated (virtual) columns. Oracle physically requires 
-      // these columns to be mapped separately so they can be injected solely into the USING (SELECT...) block 
-      // of the MERGE statement. (E.g. in case a generated column is part of a Primary Key referenced in the ON block).
+      // The shared DMLGeneratorUtils explicitly skips generated (virtual) columns. Oracle
+      // physically requires
+      // these columns to be mapped separately so they can be injected solely into the USING
+      // (SELECT...) block
+      // of the MERGE statement. (E.g. in case a generated column is part of a Primary Key
+      // referenced in the ON block).
       if (col.isGenerated()) {
-        try {
-          String spannerColName =
-              dmlGeneratorRequest
-                  .getSchemaMapper()
-                  .getSpannerColumnName("", sourceTable.name(), col.name());
-          Column spannerColDef = spannerTable.column(spannerColName);
-          if (dmlGeneratorRequest.getKeyValuesJson().has(spannerColName)
-              && !dmlGeneratorRequest.getKeyValuesJson().isNull(spannerColName)) {
-            generatedColumnValues.put(
-                col.name(),
-                getMappedColumnValue(
-                    spannerColDef,
-                    col,
-                    dmlGeneratorRequest.getKeyValuesJson(),
-                    dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-                    currentParams));
-          } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
-              && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
-            generatedColumnValues.put(
-                col.name(),
-                getMappedColumnValue(
-                    spannerColDef,
-                    col,
-                    dmlGeneratorRequest.getNewValuesJson(),
-                    dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-                    currentParams));
-          }
-        } catch (NoSuchElementException e) {
-          LOG.warn("Spanner column not found for generated Oracle column: {}", col.name());
+        String spannerColName =
+            dmlGeneratorRequest
+                .getSchemaMapper()
+                .getSpannerColumnName("", sourceTable.name(), col.name());
+        Column spannerColDef = spannerTable.column(spannerColName);
+        if (dmlGeneratorRequest.getKeyValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getKeyValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              getMappedColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getKeyValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  currentParams));
+        } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              getMappedColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getNewValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  currentParams));
         }
       }
     }
@@ -309,21 +307,22 @@ public class OracleDMLGenerator implements IDMLGenerator {
     String colInputValue = "";
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
-    
+
     /**
-     * DYNAMIC PREPARED STATEMENT ROUTING:
-     * Oracle has a strict hard limit of 4,000 bytes for any single inline string literal (ORA-01704).
-     * If Spanner sends a massive payload (e.g. a large text CLOB or a large binary BLOB) and we
-     * format it as an inline literal, Oracle will violently crash.
-     * 
-     * To prevent this, if the exact payload size breaches ~3,500 characters, we dynamically intercept
-     * the raw pristine object before it is wrapped in SQL syntax, inject it into the PreparedStatement 
-     * Java array, and natively return a '?' placeholder. 
-     * Smaller payloads safely bypass this to retain blistering fast simple Statement execution.
+     * DYNAMIC PREPARED STATEMENT ROUTING: Oracle has a strict hard limit of 4,000 bytes for any
+     * single inline string literal (ORA-01704). If Spanner sends a massive payload (e.g. a large
+     * text CLOB or a large binary BLOB) and we format it as an inline literal, Oracle will
+     * violently crash.
+     *
+     * <p>To prevent this, if the exact payload size breaches ~3,500 characters, we dynamically
+     * intercept the raw pristine object before it is wrapped in SQL syntax, inject it into the
+     * PreparedStatement Java array, and natively return a '?' placeholder. Smaller payloads safely
+     * bypass this to retain blistering fast simple Statement execution.
      */
     String rawJsonStr = valuesJson.get(colName).toString();
     if (preparedStatementParameters != null && rawJsonStr != null && rawJsonStr.length() >= 3500) {
-      if (colType.getCode().equals(Type.Code.BYTES) || colType.getCode().equals(Type.Code.PG_BYTEA)) {
+      if (colType.getCode().equals(Type.Code.BYTES)
+          || colType.getCode().equals(Type.Code.PG_BYTEA)) {
         byte[] decodedBytes = Base64.getDecoder().decode(valuesJson.getString(colName));
         preparedStatementParameters.add(decodedBytes);
       } else {

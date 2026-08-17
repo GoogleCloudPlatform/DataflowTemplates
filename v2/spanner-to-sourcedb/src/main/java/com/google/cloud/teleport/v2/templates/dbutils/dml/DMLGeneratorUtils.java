@@ -112,7 +112,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
+                spannerColDef,
+                sourceColDef,
+                keyValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(colName, null);
@@ -120,7 +124,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
+                spannerColDef,
+                sourceColDef,
+                newValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else {
         continue;
       }
@@ -194,7 +202,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
+                spannerColDef,
+                sourceColDef,
+                keyValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(sourceColName, null);
@@ -202,7 +214,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset, preparedStatementParameters);
+                spannerColDef,
+                sourceColDef,
+                newValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
