@@ -15,50 +15,37 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_COL;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import com.google.common.io.Resources;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReferenceArray;
-import org.apache.commons.collections4.map.HashedMap;
-import org.apache.commons.text.StringEscapeUtils;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TestUtils {
-  public static int wireMockResultSet(String tsvFilePath, ResultSet mockResultSet)
-      throws IOException, SQLException {
-    URL url = Resources.getResource(tsvFilePath);
-    List<String> lines = Resources.readLines(url, StandardCharsets.UTF_8);
-    String header = lines.get(0);
-    String[] columnNames = header.split("\t");
-    Map<String, Integer> colToIdx = new HashedMap();
-    for (int i = 0; i < columnNames.length; i++) {
-      colToIdx.put(columnNames[i], i);
-    }
 
-    // Skip the header line
-    lines = lines.subList(1, lines.size());
-
-    Iterator<String> lineIterator = lines.iterator();
-
-    AtomicReferenceArray<String> values = new AtomicReferenceArray<>(colToIdx.size());
+  public static int wireMockResultSet(List<CollationOrderRow> rows, ResultSet mockResultSet)
+      throws SQLException {
+    Iterator<CollationOrderRow> lineIterator = rows.iterator();
+    AtomicReference<CollationOrderRow> currentRow = new AtomicReference<>();
 
     when(mockResultSet.next())
         .thenAnswer(
             invocation -> {
               boolean ret = lineIterator.hasNext();
               if (ret) {
-                String[] valuesCur = lineIterator.next().split("\t");
-                for (int i = 0; i < valuesCur.length; i++) {
-                  values.set(i, valuesCur[i]);
-                }
+                currentRow.set(lineIterator.next());
               }
               return ret;
             });
@@ -67,23 +54,75 @@ public class TestUtils {
         .thenAnswer(
             invocation -> {
               String colName = invocation.getArgument(0);
-              return StringEscapeUtils.unescapeJava(values.get(colToIdx.get(colName)));
+              CollationOrderRow row = currentRow.get();
+              if (row == null) {
+                return null;
+              }
+              switch (colName) {
+                case CHARSET_CHAR_COL:
+                  return row.charsetChar();
+                case EQUIVALENT_CHARSET_CHAR_COL:
+                  return row.equivalentChar();
+                case EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL:
+                  return row.equivalentCharPadSpace();
+                default:
+                  return null;
+              }
             });
 
     when(mockResultSet.getLong(anyString()))
         .thenAnswer(
             invocation -> {
               String colName = invocation.getArgument(0);
-              return Long.parseLong(values.get(colToIdx.get(colName)));
+              CollationOrderRow row = currentRow.get();
+              if (row == null) {
+                return 0L;
+              }
+              switch (colName) {
+                case CODEPOINT_RANK_COL:
+                  return row.codepointRank();
+                case CODEPOINT_RANK_PAD_SPACE_COL:
+                  return row.codepointRankPadSpace();
+                default:
+                  return 0L;
+              }
             });
 
     when(mockResultSet.getBoolean(anyString()))
         .thenAnswer(
             invocation -> {
               String colName = invocation.getArgument(0);
-              return (values.get(colToIdx.get(colName)).equals("1")
-                  || Boolean.parseBoolean(values.get(colToIdx.get(colName))));
+              CollationOrderRow row = currentRow.get();
+              if (row == null) {
+                return false;
+              }
+              switch (colName) {
+                case IS_EMPTY_COL:
+                  return row.isEmpty();
+                case IS_SPACE_COL:
+                  return row.isSpace();
+                default:
+                  return false;
+              }
             });
-    return lines.size();
+
+    when(mockResultSet.getBytes(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String colName = invocation.getArgument(0);
+              CollationOrderRow row = currentRow.get();
+              if (row == null) {
+                return null;
+              }
+              if (WEIGHT_COL.equals(colName)) {
+                if (row.isEmpty()) {
+                  return null;
+                }
+                return ByteBuffer.allocate(8).putLong(row.codepointRank()).array();
+              }
+              return null;
+            });
+
+    return rows.size();
   }
 }
