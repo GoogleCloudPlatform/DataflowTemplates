@@ -1,0 +1,75 @@
+template:
+  name: "DeltaLake_To_Iceberg_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Delta Lake to Lakehouse"
+  description: >
+    The Delta Lake to Iceberg template is a batch pipeline that reads data from a Delta Lake table
+    and outputs the records to an Apache Iceberg table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "DeltaLakeToIceberg.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Delta Lake table must exist and be accessible.",
+     "The Output Iceberg table must exist or be created, and the warehouse must be accessible."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "deltalake_options"
+    - "iceberg_options"
+
+  parameters:
+    - deltalake_read_options
+    - iceberg_common_options
+    - iceberg_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromDeltaLake
+      name: ReadFromDeltaLake
+      config:
+        table: "{{ deltaLakeTable }}"
+        {% if deltaLakeHadoopConfig %}
+        hadoop_config: {{ deltaLakeHadoopConfig }}
+        {% endif %}
+
+    - type: WriteToIceberg
+      name: WriteToIceberg
+      config:
+        table: "{{ table }}"
+        catalog_name: "{{ catalogName }}"
+        catalog_properties: {{ catalogProperties }}
+        {% if configProperties %}
+        config_properties: {{ configProperties }}
+        {% endif %}
+        {% if drop %}
+        drop: {{ drop }}
+        {% endif %}
+        {% if keep %}
+        keep: {{ keep }}
+        {% endif %}
+        {% if only %}
+        only: {{ only }}
+        {% endif %}
+        {% if partitionFields %}
+        partition_fields: {{ partitionFields }}
+        {% endif %}
+        {% if tableProperties %}
+        table_properties: {{ tableProperties }}
+        {% endif %}
+
+providers:
+  - type: pythonPackage
+    config:
+      packages:
+        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz
+    transforms:
+      ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
+
+options:
+  streaming: false
