@@ -33,6 +33,11 @@ on:
         type: string
         required: false
         default: ''
+      spannerMultiRegion:
+        description: 'Spanner multi-region to use for tests.'
+        type: string
+        required: false
+        default: 'nam3'
 
 permissions: write-all
 
@@ -54,13 +59,15 @@ jobs:
     - name: Run Integration Tests
       env:
         SPANNER_HOST: ${{ inputs.spannerHost || 'https://staging-wrenchworks.sandbox.googleapis.com' }}
+        SPANNER_MULTI_REGION: ${{ inputs.spannerMultiRegion || 'nam3' }}
       run: |
         ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="v1" \
         --it-region="us-central1" \
         --it-project="span-cloud-migrations-staging" \
         --it-artifact-bucket="dataflow-testing-it-spanner-staging" \
-        --it-spanner-host="$SPANNER_HOST"
+        --it-spanner-host="$SPANNER_HOST" \
+        --it-spanner-multi-region="$SPANNER_MULTI_REGION"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails

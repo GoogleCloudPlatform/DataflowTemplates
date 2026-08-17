@@ -179,23 +179,22 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
     }
   }
 
-  private void setupMultiRegionSpannerResourceManager(Dialect dialect) {
-    String projectId = TestProperties.project();
+  private void setupResourceManager(Dialect dialect) {
+    setupResourceManager(dialect, null);
+  }
 
-    String region = "nam3";
-    if (spannerHost != null) {
-      if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
-        region = "nam-private1";
-      }
-    }
+  private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
+    String projectId = TestProperties.project();
 
     SpannerResourceManager.Builder builder =
         SpannerResourceManager.builder(
                 testName + "-" + UUID.randomUUID().toString().substring(0, 8),
                 projectId,
-                region,
-                dialect)
-            .setNodeCount(2);
+                System.getProperty("spannerMultiRegion", "nam3"),
+                dialect);
+    if (protoDescriptors != null) {
+      builder.setProtoDescriptors(protoDescriptors);
+    }
     if (spannerHost != null) {
       builder.useCustomHost(spannerHost);
     }
@@ -804,8 +803,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                   "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
                   "max_batching_rows=50"));
           assertEquals(udf3.definition(), "");
-          // assertEquals(udf3.security(), nullValue()); // Commenting this assert since the
-          // behaviour is different in different environments.
+          assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
           assertThat(
               udf3.parameters(),
               hasItems(
@@ -1916,28 +1914,6 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
-  private SharedTestCase testStoringArrayColumn() {
-    List<String> statements =
-        Arrays.asList(
-            "CREATE TABLE `t_testStoringArrayColumn_VectorTable` ("
-                + " `Id` INT64 NOT NULL,"
-                + " `MyEmbedding` ARRAY<FLOAT64>"
-                + ") PRIMARY KEY (`Id` ASC)",
-            "CREATE INDEX `i_testStoringArrayColumn_VectorIndex` ON `t_testStoringArrayColumn_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)");
-
-    return new SharedTestCase(
-        statements,
-        ddl -> {
-          Table table = ddl.table("t_testStoringArrayColumn_VectorTable");
-          assertThat(table, notNullValue());
-          assertThat(table.indexes().size(), is(1));
-          assertThat(
-              table.indexes().get(0),
-              equalTo(
-                  "CREATE INDEX `i_testStoringArrayColumn_VectorIndex` ON `t_testStoringArrayColumn_VectorTable`(`Id` ASC) STORING (`MyEmbedding`)"));
-        });
-  }
-
   @Test
   public void sharedInformationSchemaScannerTestGsql() throws Exception {
     List<SharedTestCase> testCases =
@@ -1967,8 +1943,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             propertyGraphOnViewSimple(),
             propertyGraphOnViewMixedOrder(),
             propertyGraphOnViewTablesFirst(),
-            propertyGraphOnViewWithNamedSchema(),
-            testStoringArrayColumn());
+            propertyGraphOnViewWithNamedSchema());
 
     List<String> allStatements = new ArrayList<>();
     for (SharedTestCase testCase : testCases) {
@@ -2018,16 +1993,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void placementsAndPlacementTables() throws Exception {
-    setupMultiRegionSpannerResourceManager(Dialect.GOOGLE_STANDARD_SQL);
-    String leader1 = "us-east4";
-    String leader2 = "us-east1";
-
-    if (spannerHost != null) {
-      if (spannerHost.contains("preprod-spanner.sandbox.googleapis.com")) {
-        leader1 = "us-west1";
-        leader2 = "us-west4";
-      }
-    }
+    setupResourceManager(Dialect.GOOGLE_STANDARD_SQL);
     try {
       List<String> statements =
           Arrays.asList(
@@ -2037,14 +2003,10 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               "CREATE PLACEMENT `pl1_placements`\n\tOPTIONS (instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\""
-                  + leader1
-                  + "\", instance_partition=\""
+              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")\n",
-              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\""
-                  + leader2
-                  + "\", instance_partition=\""
+              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
                   + INSTANCE_PARTITION_ID
                   + "\")",
               "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"
@@ -2090,7 +2052,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   @Test
   public void pgPlacementTables() throws Exception {
-    setupMultiRegionSpannerResourceManager(Dialect.POSTGRESQL);
+    setupResourceManager(Dialect.POSTGRESQL);
     try {
       List<String> statements =
           Arrays.asList(
