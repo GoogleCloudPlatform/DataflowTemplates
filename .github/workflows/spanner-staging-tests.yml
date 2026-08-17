@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Spanner Staging integration tests
+name: Spanner Multi-Environment Integration Tests
+run-name: Spanner ${{ inputs.spannerHost == 'https://batch-spanner.googleapis.com' && 'Production ' || inputs.spannerHost == 'https://preprod-spanner.sandbox.googleapis.com' && 'Staging ' || inputs.spannerHost == 'https://staging-wrenchworks.sandbox.googleapis.com' && 'Cloud-devel ' || 'Cloud-devel ' }}Integration Tests
 
 on:
   pull_request:
@@ -20,12 +21,6 @@ on:
     - 'main'
     paths:
     - '.github/workflows/spanner-staging-tests.yml'
-    inputs:
-      spannerHost:
-        description: 'Spanner host URL.'
-        type: string
-        required: false
-        default: 'https://staging-wrenchworks.sandbox.googleapis.com'
   workflow_dispatch:
     inputs:
       commitOrTag:
@@ -58,7 +53,7 @@ jobs:
       uses: ./.github/actions/setup-env
     - name: Run Integration Tests
       env:
-        SPANNER_HOST: ${{ inputs.spannerHost }}
+        SPANNER_HOST: ${{ inputs.spannerHost || 'https://staging-wrenchworks.sandbox.googleapis.com' }}
       run: |
         ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="v1" \
