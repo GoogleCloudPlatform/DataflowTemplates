@@ -101,8 +101,6 @@ public class BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT extends EndTo
      * 6. Logical Boundary Clamping: For datatypes whose extreme minimum or maximum values logically fit
      *    within a Spanner row but exceed the supported limits of either Spanner or the migration pipeline
      *    itself, we clamp the insertions to the safest supported boundary.
-     *      - Date limits: Minimum dates are clamped to '1970-01-01' to prevent Debezium Julian calendar
-     *        shift bugs (which push dates back to 0000-12-30 and crash the pipeline).
      * 7. Known Exclusions:
      *      - number-to-NUMERIC mappings are currently skipped due to padding mismatches (b/544589449).
      *      - JSON-to-JSON mappings are skipped due to whitespace minification bugs (b/546487364).
