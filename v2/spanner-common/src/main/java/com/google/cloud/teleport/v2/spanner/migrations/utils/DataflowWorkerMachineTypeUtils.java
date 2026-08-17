@@ -18,9 +18,13 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import com.google.cloud.compute.v1.MachineType;
 import com.google.cloud.compute.v1.MachineTypesClient;
 import com.google.common.base.Preconditions;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.resourcehints.ResourceHintsOptions;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,7 +149,7 @@ public class DataflowWorkerMachineTypeUtils {
           minCPUs);
     } else {
       // Handle standard machine types.
-      java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(".*-(\\d+)$");
+      Pattern pattern = Pattern.compile(".*-(\\d+)$");
       java.util.regex.Matcher matcher = pattern.matcher(workerMachineType);
 
       if (matcher.find()) {
@@ -172,12 +176,8 @@ public class DataflowWorkerMachineTypeUtils {
     }
   }
 
-  public static Optional<Integer> getMinCpuResourceHint(
-      org.apache.beam.sdk.options.PipelineOptions options) {
-    java.util.List<String> resourceHints =
-        options
-            .as(org.apache.beam.sdk.transforms.resourcehints.ResourceHintsOptions.class)
-            .getResourceHints();
+  public static Optional<Integer> getMinCpuResourceHint(PipelineOptions options) {
+    List<String> resourceHints = options.as(ResourceHintsOptions.class).getResourceHints();
     if (resourceHints == null) {
       return Optional.empty();
     }

@@ -61,6 +61,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -670,7 +671,7 @@ public class DataStreamToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    java.util.Optional<Integer> resourceHintsMinCpus =
+    Optional<Integer> resourceHintsMinCpus =
         DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
     DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
