@@ -376,7 +376,9 @@ public final class DatastreamResourceManager implements ResourceManager {
         DestinationConfig.newBuilder().setDestinationConnectionProfile(connectionProfile.getName());
 
     GcsDestinationConfig.Builder gcsDestinationConfigBuilder =
-        GcsDestinationConfig.newBuilder().setPath(path);
+        GcsDestinationConfig.newBuilder()
+            .setPath(path)
+            .setFileRotationInterval(Duration.newBuilder().setSeconds(60).build());
 
     if (destinationOutputFormat == DestinationOutputFormat.AVRO_FILE_FORMAT) {
       gcsDestinationConfigBuilder.setAvroFileFormat(AvroFileFormat.getDefaultInstance());
