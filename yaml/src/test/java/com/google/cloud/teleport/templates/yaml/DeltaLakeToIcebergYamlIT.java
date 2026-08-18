@@ -104,7 +104,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
             + "{\\\"name\\\":\\\"state\\\",\\\"type\\\":\\\"string\\\",\\\"nullable\\\":true,\\\"metadata\\\":{}},"
             + "{\\\"name\\\":\\\"price\\\",\\\"type\\\":\\\"double\\\",\\\"nullable\\\":true,\\\"metadata\\\":{}}"
             + "]}\",\"partitionColumns\":[],\"configuration\":{},\"createdAt\":123456789}}\n"
-            + "{\"add\":{\"path\":\"part-00000.parquet\",\"partitionValues\":{},\"size\":774,"
+            + "{\"add\":{\"path\":\"part-00000.parquet\",\"partitionValues\":{},\"size\":" + parquetBytes.length + ","
             + "\"modificationTime\":123456789,\"dataChange\":true}}";
 
     gcsClient.createArtifact(
