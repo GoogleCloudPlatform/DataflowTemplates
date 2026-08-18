@@ -236,9 +236,9 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
         bigQueryResourceManager,
         Arrays.asList(
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
+                "shard1", null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
+                "shard1", null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:3, event_id:E3]", "MISSING_IN_SOURCE"),
             new MismatchedRecordDto(
