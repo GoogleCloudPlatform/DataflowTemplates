@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.MAPPER_IGNORE_FIELDS;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -314,7 +312,7 @@ public class MongoDbChangeEventContext implements Serializable {
     shadowDoc.put("processed_at", System.currentTimeMillis());
     shadowDoc.put("is_from_dlq", isDlqReconsumed);
 
-    Utils.removeTableRowFields(shadowDoc, MAPPER_IGNORE_FIELDS);
+    Utils.removeTableRowFields(shadowDoc, DatastreamConstants.SHADOW_DOC_IGNORE_FIELDS);
 
     return shadowDoc;
   }

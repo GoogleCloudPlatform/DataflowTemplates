@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -291,5 +292,36 @@ public class UtilsTest {
     assertEquals(inner, Utils.extractInnerEvent(wrapped));
     // Test case where the JSON node is NOT wrapped
     assertEquals(inner, Utils.extractInnerEvent(inner));
+  }
+
+  @Test
+  public void testJsonToDocument_preservesCustomerDataField() {
+    String jsonString =
+        "{\"_id\":\"{\\\"$oid\\\": \\\"6a7c79fbfd2b2eb4aca6d225\\\"}\","
+            + "\"data\":\"{\\\"_id\\\":{\\\"$oid\\\": \\\"6a7c79fbfd2b2eb4aca6d225\\\"},"
+            + "\\\"value\\\":0.7018,\\\"version\\\":14,\\\"data\\\":\\\"xxxxxxxxxxxxxxxxxxxx\\\"}\","
+            + "\"_metadata_stream\":\"test-stream\",\"_metadata_timestamp\":1745957556}";
+
+    Document result = Utils.jsonToDocument(jsonString, "6a7c79fbfd2b2eb4aca6d225");
+    assertNotNull(result);
+    assertEquals("6a7c79fbfd2b2eb4aca6d225", result.get("_id"));
+    assertEquals(0.7018, result.getDouble("value"), 1e-4);
+    assertEquals(14, result.getInteger("version").intValue());
+    assertEquals("xxxxxxxxxxxxxxxxxxxx", result.getString("data"));
+    assertFalse(result.containsKey("_metadata_stream"));
+    assertFalse(result.containsKey("_metadata_timestamp"));
+  }
+
+  @Test
+  public void testJsonToDocument_preservesDataFieldInObjectFormat() {
+    String jsonString =
+        "{\"data\":{\"name\":\"John\",\"data\":\"custom_payload_data\",\"_metadata_stream\":\"str\"}}";
+    Document result = Utils.jsonToDocument(jsonString, "id1");
+
+    assertNotNull(result);
+    assertEquals("John", result.get("name"));
+    assertEquals("custom_payload_data", result.get("data"));
+    assertEquals("id1", result.get("_id"));
+    assertFalse(result.containsKey("_metadata_stream"));
   }
 }

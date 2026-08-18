@@ -58,8 +58,8 @@ public final class DatastreamConstants {
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;
 
-  /** Metadata fields ignored during BSON document conversion. */
-  public static final Set<String> MAPPER_IGNORE_FIELDS =
+  /** Internal Datastream metadata fields ignored/stripped from customer documents. */
+  public static final Set<String> DATASTREAM_METADATA_FIELDS =
       ImmutableSet.of(
           "_metadata_stream",
           "_metadata_schema",
@@ -80,7 +80,13 @@ public final class DatastreamConstants {
           "_metadata_log_file",
           "_metadata_log_position",
           "_metadata_dataflow_timestamp",
-          "data",
           "_metadata_timestamp_seconds",
           "_metadata_timestamp_nanos");
+
+  /** Fields ignored when generating shadow metadata documents. */
+  public static final Set<String> SHADOW_DOC_IGNORE_FIELDS =
+      ImmutableSet.<String>builder().addAll(DATASTREAM_METADATA_FIELDS).add("data").build();
+
+  /** Retained for backwards compatibility. */
+  public static final Set<String> MAPPER_IGNORE_FIELDS = DATASTREAM_METADATA_FIELDS;
 }

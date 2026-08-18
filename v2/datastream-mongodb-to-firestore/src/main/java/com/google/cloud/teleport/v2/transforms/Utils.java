@@ -134,7 +134,8 @@ public final class Utils {
     }
     removeTableRowFields(
         rawDoc,
-        com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.MAPPER_IGNORE_FIELDS);
+        com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants
+            .DATASTREAM_METADATA_FIELDS);
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }
