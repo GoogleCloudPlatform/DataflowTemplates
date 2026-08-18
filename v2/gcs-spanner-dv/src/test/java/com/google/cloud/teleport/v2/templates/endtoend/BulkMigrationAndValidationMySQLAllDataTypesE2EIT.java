@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
 import java.io.IOException;
@@ -31,7 +33,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.junit.After;
@@ -104,7 +105,7 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
 
   @Test
   public void allDataTypesE2E() throws Exception {
-    createMySQLDDL(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+    executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     List<Map<String, Object>> records = new ArrayList<>();
 
     // Row 1 (Standard Values)
@@ -264,12 +265,7 @@ public class BulkMigrationAndValidationMySQLAllDataTypesE2EIT extends EndToEndTe
 
     LaunchInfo bulkJobInfo =
         launchBulkDataflowJob(
-            PipelineUtils.createJobName("bulk"),
-            spannerResourceManager,
-            gcsClient,
-            mySQLResourceManager,
-            null,
-            false);
+            testName, spannerResourceManager, gcsClient, mySQLResourceManager, null, false);
     assertThatPipeline(bulkJobInfo).isRunning();
 
     pipelineOperator().waitUntilDone(createConfig(bulkJobInfo));

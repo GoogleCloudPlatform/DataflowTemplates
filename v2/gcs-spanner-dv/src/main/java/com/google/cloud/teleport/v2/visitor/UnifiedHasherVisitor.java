@@ -102,6 +102,13 @@ public class UnifiedHasherVisitor implements IUnifiedVisitor {
   }
 
   @Override
+  public void visitUuid(java.util.UUID u) {
+    // UUID values are encoded with a sentinel byte 1 followed by the UUID as a string
+    markNonNull();
+    hasher.putString(u.toString(), StandardCharsets.UTF_8);
+  }
+
+  @Override
   public void visitJson(String j) {
     // Json values are encoded with a sentinel byte 1 followed by the json value as a string
     markNonNull();

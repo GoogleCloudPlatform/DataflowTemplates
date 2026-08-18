@@ -23,6 +23,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -149,6 +150,15 @@ public class IUnifiedVisitorTest {
     IUnifiedVisitor.dispatch(value, visitor);
 
     verify(visitor).visitDefault(value);
+  }
+
+  @Test
+  public void testDispatchMatchesUuid() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    UUID testUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    Value mockValue = Value.uuid(testUuid);
+    IUnifiedVisitor.dispatch(mockValue, visitor);
+    verify(visitor).visitUuid(testUuid);
   }
 
   @Test
