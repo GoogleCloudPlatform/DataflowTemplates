@@ -92,6 +92,7 @@ public class SourceConfigParser {
         String astraFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> astraConfigMap = parseConfigToConfigMap(astraFileContent);
         return mapper.convertValue(astraConfigMap, AstraConnectionConfig.class);
+      case ORACLE:
       case MYSQL:
       case PG:
         String jdbcFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);

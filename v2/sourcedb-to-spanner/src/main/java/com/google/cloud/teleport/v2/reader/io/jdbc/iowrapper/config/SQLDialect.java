@@ -30,5 +30,6 @@ public enum SQLDialect {
   MYSQL,
   POSTGRESQL,
   CASSANDRA,
-  ASTRA_DB
+  ASTRA_DB,
+  ORACLE
 }

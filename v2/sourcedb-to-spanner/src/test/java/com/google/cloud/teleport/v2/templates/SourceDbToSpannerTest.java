@@ -132,6 +132,13 @@ public class SourceDbToSpannerTest {
           .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
           .thenReturn(mock(JdbcShardConfig.class));
       assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
+
+      // Test ORACLE dialect with wrong config type (CassandraConnectionConfig)
+      mockOptions.setSourceDbDialect(SourceDbToSpannerOptions.ORACLE_SOURCE_DIALECT);
+      mockedPipelineController
+          .when(() -> PipelineController.getSourceConnectionConfig(any(), any()))
+          .thenReturn(mock(CassandraConnectionConfig.class));
+      assertThrows(IllegalArgumentException.class, () -> SourceDbToSpanner.run(mockOptions));
     }
   }
 
