@@ -72,8 +72,6 @@ A few prerequisites must be considered before starting with reverse replication.
         - Check that the PostgreSQL credentials are correctly specified in the [source shards file](#sample-source-shards-file-for-mysql-and-postgresql).
         - Check that the PostgreSQL server is up.
         - The PostgreSQL user configured in the [source shards file](#sample-source-shards-file-for-mysql-and-postgresql) should have INSERT, UPDATE and DELETE privileges on the database.
-    - **For Spanner:**
-        - Ensure that the target Spanner instance and database are ready and the Dataflow worker has `roles/spanner.databaseUser` on it.
     - **For Cassandra:**
         - Ensure network connectivity between the Cassandra database and your GCP project, where your Dataflow jobs will run.
         - Allowlist Dataflow worker IPs on the Cassandra instance so that they can access the Cassandra nodes.
@@ -95,12 +93,10 @@ A few prerequisites must be considered before starting with reverse replication.
 9. Configuration Files Upload
     - **For MySQL and PostgreSQL:**
       [Source shards file](#sample-source-shards-file-for-mysql-and-postgresql) already uploaded to GCS.
-    - **For Spanner:**
-      [Source shards file](#sample-source-shards-file-for-spanner) already uploaded to GCS.
     - **For Cassandra:**
       [Source file](#sample-source-file-for-Cassandra) already uploaded to GCS.
 10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped. Note: Spanner target does not currently support sharding.
+11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped.
 12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
 13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
@@ -171,22 +167,6 @@ The file should be a list of JSONs as:
      }
    ]
 }
-```
-
-
-### Sample source shards file for Spanner
-
-This file contains meta data regarding the target Spanner database. It must contain exactly one shard.
-The file should be a list containing a single JSON object as:
-
-```json
-[
-  {
-    "projectId": "my-gcp-project",
-    "instanceId": "my-spanner-instance",
-    "databaseId": "my-database"
-  }
-]
 ```
 
 
@@ -377,7 +357,7 @@ However, because the continuous reader watches the `retry/` directory indefinite
 
 The following sections list the known limitations that exist currently with the Reverse Replication flows:
 
-1. Currently MySQL, PostgreSQL, Cassandra and Spanner are supported as source databases (sinks for reverse replication).
+1. Currently MySQL, PostgreSQL and Cassandra are supported as source databases (sinks for reverse replication).
 2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
 3. Schema changes are not supported.
 4. Session file modifications to add backticks in table or column names is not supported.
