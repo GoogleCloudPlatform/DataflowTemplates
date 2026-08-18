@@ -71,7 +71,12 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards, null, maxConnections, "oracle.jdbc.OracleDriver", null, "jdbc:oracle:thin:@");
+              shards,
+              null,
+              maxConnections,
+              "oracle.jdbc.OracleDriver",
+              null,
+              "jdbc:oracle:thin:@//");
       connectionHelper.init(request);
     }
   }
