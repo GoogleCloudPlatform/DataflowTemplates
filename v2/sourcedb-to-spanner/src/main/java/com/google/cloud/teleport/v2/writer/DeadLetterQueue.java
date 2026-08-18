@@ -295,6 +295,9 @@ public class DeadLetterQueue implements Serializable {
           case FLOAT64:
             val = value.getFloat64();
             break;
+          case FLOAT32:
+            val = value.getFloat32();
+            break;
           case NUMERIC:
             val = value.getNumeric();
             break;

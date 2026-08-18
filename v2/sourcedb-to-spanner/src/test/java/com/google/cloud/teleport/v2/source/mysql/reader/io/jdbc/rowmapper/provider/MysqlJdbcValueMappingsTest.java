@@ -135,4 +135,36 @@ public class MysqlJdbcValueMappingsTest {
             + TimeUnit.SECONDS.toMicros(4);
     assertEquals(expectedShort, mapper.map(binaryShort, null));
   }
+
+  @Test
+  public void testSqlDateToAvroDate() throws Exception {
+    Field field = MysqlJdbcValueMappings.class.getDeclaredField("sqlDateToAvroDate");
+    field.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    ResultSetValueMapper<java.sql.Date> mapper = (ResultSetValueMapper<java.sql.Date>) field.get(null);
+
+    // Standard date
+    java.sql.Date d1 = java.sql.Date.valueOf("2012-09-17");
+    assertEquals((int) java.time.LocalDate.parse("2012-09-17").toEpochDay(), (int) mapper.map(d1, null));
+
+    // Min date (1000-01-01)
+    java.sql.Date d2 = java.sql.Date.valueOf("1000-01-01");
+    assertEquals((int) java.time.LocalDate.parse("1000-01-01").toEpochDay(), (int) mapper.map(d2, null));
+
+    // Max date (9999-12-31)
+    java.sql.Date d3 = java.sql.Date.valueOf("9999-12-31");
+    assertEquals((int) java.time.LocalDate.parse("9999-12-31").toEpochDay(), (int) mapper.map(d3, null));
+
+    // Leap year (2000-02-29)
+    java.sql.Date d4 = java.sql.Date.valueOf("2000-02-29");
+    assertEquals((int) java.time.LocalDate.parse("2000-02-29").toEpochDay(), (int) mapper.map(d4, null));
+
+    // Leap year (2024-02-29)
+    java.sql.Date d5 = java.sql.Date.valueOf("2024-02-29");
+    assertEquals((int) java.time.LocalDate.parse("2024-02-29").toEpochDay(), (int) mapper.map(d5, null));
+
+    // Epoch day zero (1970-01-01)
+    java.sql.Date d6 = java.sql.Date.valueOf("1970-01-01");
+    assertEquals(0, (int) mapper.map(d6, null));
+  }
 }

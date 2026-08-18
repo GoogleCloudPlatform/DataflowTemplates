@@ -886,4 +886,37 @@ public class AvroToValueMapperTest {
             avroArrayFieldToSpannerArray(
                 genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToLong));
   }
+
+  @Test
+  public void testAvroValueToPgFloat4() {
+    Schema schema = SchemaBuilder.builder().floatType();
+    
+    // Normal floats
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(45.56f, schema))
+        .isEqualTo(Value.float32(45.56f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(3.4e38f, schema))
+        .isEqualTo(Value.float32(3.4e38f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(-3.4e38f, schema))
+        .isEqualTo(Value.float32(-3.4e38f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(0.0f, schema))
+        .isEqualTo(Value.float32(0.0f));
+
+    // Extremes
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.MAX_VALUE, schema))
+        .isEqualTo(Value.float32(Float.MAX_VALUE));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.MIN_VALUE, schema))
+        .isEqualTo(Value.float32(Float.MIN_VALUE));
+
+    // Infinities and NaN
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.POSITIVE_INFINITY, schema))
+        .isEqualTo(Value.float32(Float.POSITIVE_INFINITY));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.NEGATIVE_INFINITY, schema))
+        .isEqualTo(Value.float32(Float.NEGATIVE_INFINITY));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.NaN, schema))
+        .isEqualTo(Value.float32(Float.NaN));
+
+    // Null
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(null, schema))
+        .isEqualTo(Value.float32(null));
+  }
 }
