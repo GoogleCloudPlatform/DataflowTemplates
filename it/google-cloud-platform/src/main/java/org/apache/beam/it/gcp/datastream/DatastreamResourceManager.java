@@ -639,11 +639,12 @@ public final class DatastreamResourceManager implements ResourceManager {
   }
 
   public synchronized void cleanupAll() {
-    LOG.info("Cleaning up Datastream resource manager.");
+    LOG.info("Cleaning up Datastream resource manager at {}.", java.time.Instant.now());
     boolean producedError = false;
 
     for (String stream : createdStreamIds) {
       try {
+        LOG.info("Starting deleteStreamAsync get for {} at {}", stream, java.time.Instant.now());
         Failsafe.with(retryOnException())
             .get(
                 () ->
@@ -653,6 +654,7 @@ public final class DatastreamResourceManager implements ResourceManager {
                                 .setName(StreamName.format(projectId, location, stream))
                                 .build())
                         .get());
+        LOG.info("Finished deleteStreamAsync get for {} at {}", stream, java.time.Instant.now());
       } catch (Exception e) {
         if (ExceptionUtils.containsType(e, NotFoundException.class)
             || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
@@ -664,10 +666,14 @@ public final class DatastreamResourceManager implements ResourceManager {
         }
       }
     }
-    LOG.info("Successfully deleted stream(s). ");
+    LOG.info("Successfully deleted stream(s) at {}. ", java.time.Instant.now());
 
     for (String connectionProfile : createdConnectionProfileIds) {
       try {
+        LOG.info(
+            "Starting deleteConnectionProfileAsync get for {} at {}",
+            connectionProfile,
+            java.time.Instant.now());
         Failsafe.with(retryOnException())
             .get(
                 () ->
@@ -679,6 +685,10 @@ public final class DatastreamResourceManager implements ResourceManager {
                                         projectId, location, connectionProfile))
                                 .build())
                         .get());
+        LOG.info(
+            "Finished deleteConnectionProfileAsync get for {} at {}",
+            connectionProfile,
+            java.time.Instant.now());
       } catch (Exception e) {
         if (ExceptionUtils.containsType(e, NotFoundException.class)
             || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
@@ -692,7 +702,7 @@ public final class DatastreamResourceManager implements ResourceManager {
         }
       }
     }
-    LOG.info("Successfully deleted connection profile(s). ");
+    LOG.info("Successfully deleted connection profile(s) at {}. ", java.time.Instant.now());
 
     try {
       datastreamClient.close();
