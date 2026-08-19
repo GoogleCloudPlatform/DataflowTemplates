@@ -71,6 +71,49 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return CloudMySQLResourceManager.builder(testName).build();
   }
 
+  public org.apache.beam.it.jdbc.OracleResourceManager setUpOracleResourceManager() {
+    return org.apache.beam.it.jdbc.OracleResourceManager.builder(testName).build();
+  }
+
+  protected void loadOracleSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath) throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadOracleSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql) throws Exception {
+    LOG.info("Loading Oracle sql to jdbc resource manager");
+    try {
+      Connection connection =
+          DriverManager.getConnection(
+              jdbcResourceManager.getUri(),
+              jdbcResourceManager.getUsername(),
+              jdbcResourceManager.getPassword());
+
+      // Preprocess SQL to handle multi-line statements and newlines
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+
+      // Split into individual statements based on -- SPLIT --
+      String[] statements = sql.split("-- SPLIT --");
+
+      // Execute each statement
+      Statement statement = connection.createStatement();
+      for (String stmt : statements) {
+        if (!stmt.trim().isEmpty()) {
+          LOG.info("Executing Oracle statement: {}", stmt);
+          statement.executeUpdate(stmt);
+        }
+      }
+    } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
+      throw new Exception("Failed to load SQL into database", e);
+    }
+    LOG.info("Successfully loaded sql to jdbc resource manager");
+  }
+
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
     return PostgresResourceManager.builder(testName).build();
   }
@@ -328,6 +371,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     if (jobParameters != null && jobParameters.containsKey("namespace")) {
       shard.setNamespace(jobParameters.get("namespace"));
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
@@ -457,6 +502,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (resourceManager instanceof PostgresResourceManager) {
       return SQLDialect.POSTGRESQL.name();
     }
+    if (resourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      return "ORACLE";
+    }
     return SQLDialect.MYSQL.name();
   }
 
@@ -464,6 +512,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     try {
       if (jdbcResourceManager instanceof PostgresResourceManager) {
         return Class.forName("org.postgresql.Driver").getCanonicalName();
+      }
+      if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        return "oracle.jdbc.OracleDriver";
       }
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {
