@@ -1,9 +1,0 @@
-{
-  "ID": "{{uuid()}}",
-  "first_name1": "{{alphaNumeric(460,500)}}",
-  "last_name1": "{{alphaNumeric(460,500)}}",
-  "first_name2": "{{alphaNumeric(460,500)}}",
-  "last_name2": "{{alphaNumeric(460,500)}}",
-  "first_name3": "{{alphaNumeric(460,500)}}",
-  "last_name3": "{{alphaNumeric(460,500)}}"
-}
