@@ -141,15 +141,15 @@
     </dependency>
     <!-- Hadoop AWS connector to resolve s3a:// paths -->
     <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-aws</artifactId>
-        <version>3.3.6</version>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-aws</artifactId>
+      <version>${hadoop.version}</version>
     </dependency>
     <!-- AWS SDK Bundle required by hadoop-aws -->
     <dependency>
-        <groupId>com.amazonaws</groupId>
-        <artifactId>aws-java-sdk-bundle</artifactId>
-        <version>1.12.367</version>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-bundle</artifactId>
+      <version>1.12.367</version>
     </dependency>
   </dependencies>
 
