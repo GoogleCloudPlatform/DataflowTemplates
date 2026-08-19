@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
@@ -39,6 +40,7 @@ public class SourceProcessorFactory {
     sourceMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_CASSANDRA, new CassandraSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_SPANNER, new SpannerSpToSrcSourceConnector());
+    sourceMap.put(Constants.SOURCE_ORACLE, new OracleSpToSrcSourceConnector());
   }
 
   public static void registerSource(String sourceName, ISpToSrcSourceConnector source) {

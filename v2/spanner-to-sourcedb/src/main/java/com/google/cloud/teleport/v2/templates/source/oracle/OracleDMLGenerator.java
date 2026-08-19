@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.postgres;
+package com.google.cloud.teleport.v2.templates.source.oracle;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -30,18 +30,26 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** Creates DML statements for PostgreSQL. */
-public class PostgreSQLDMLGenerator implements IDMLGenerator {
+/** Creates DML statements for Oracle. */
+public class OracleDMLGenerator implements IDMLGenerator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
 
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
+    List<Object> currentParams = new ArrayList<>();
+    // Removed try-finally block
     if (dmlGeneratorRequest == null) {
       throw new InvalidDMLGenerationException(
           "DMLGeneratorRequest is null. Cannot process the request.");
@@ -99,8 +107,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            PostgreSQLDMLGenerator::getMappedColumnValue,
-            new ArrayList<>());
+            OracleDMLGenerator::getMappedColumnValue,
+            currentParams);
     if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -111,10 +119,12 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
+          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, currentParams);
 
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-      return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
+      DMLGeneratorResponse resp = getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
+      resp.setPreparedStatementParameters(currentParams);
+      return resp;
     } else {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -124,52 +134,75 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName, Map<String, String> allColumnNameValues, List<String> primaryKeys) {
+      SourceTable sourceTable,
+      String tableName,
+      Map<String, String> allColumnNameValues,
+      Map<String, String> generatedColumnValues,
+      List<String> primaryKeys) {
 
-    StringBuilder allColumns = new StringBuilder();
-    StringBuilder allValues = new StringBuilder();
+    Map<String, String> queryColumns = new LinkedHashMap<>(allColumnNameValues);
+    if (generatedColumnValues != null) {
+      queryColumns.putAll(generatedColumnValues);
+    }
 
+    StringBuilder usingSelect = new StringBuilder("SELECT ");
     int index = 0;
-
-    for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
+    for (Map.Entry<String, String> entry : queryColumns.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
-      allColumns.append("\"").append(colName).append("\"");
-      allValues.append(sqlValue);
-
-      // Add comma if not the last item in this loop
-      if (index + 1 < allColumnNameValues.size()) {
-        allColumns.append(",");
-        allValues.append(",");
+      if ("NULL".equals(sqlValue) || "?".equals(sqlValue)) {
+        if (sourceTable != null && sourceTable.column(colName) != null) {
+          sqlValue = "CAST(" + sqlValue + " AS " + sourceTable.column(colName).type() + ")";
+        }
+      }
+      usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
+      if (index + 1 < queryColumns.size()) {
+        usingSelect.append(", ");
       }
       index++;
     }
+    usingSelect.append(" FROM DUAL");
 
-    String conflictCols =
-        primaryKeys.stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
-    String updateValues =
+    String onClause =
+        primaryKeys.stream()
+            .map(k -> "t.\"" + k + "\" = s.\"" + k + "\"")
+            .collect(Collectors.joining(" AND "));
+
+    List<String> nonPkCols =
         allColumnNameValues.keySet().stream()
             .filter(k -> !primaryKeys.contains(k))
-            .map(k -> "\"" + k + "\" = EXCLUDED.\"" + k + "\"")
-            .collect(Collectors.joining(","));
+            .collect(Collectors.toList());
 
-    String returnVal =
-        "INSERT INTO \""
-            + tableName
-            + "\" ("
-            + allColumns.toString()
-            + ") VALUES ("
-            + allValues.toString()
-            + ")";
+    StringBuilder mergeQuery = new StringBuilder();
+    mergeQuery.append("MERGE INTO \"").append(tableName).append("\" t ");
+    mergeQuery.append("USING (").append(usingSelect).append(") s ");
+    mergeQuery.append("ON (").append(onClause).append(") ");
 
-    if (updateValues.isEmpty()) {
-      returnVal += " ON CONFLICT (" + conflictCols + ") DO NOTHING";
-    } else {
-      returnVal += " ON CONFLICT (" + conflictCols + ") DO UPDATE SET " + updateValues;
+    if (!nonPkCols.isEmpty()) {
+      String updateSet =
+          nonPkCols.stream()
+              .map(k -> "t.\"" + k + "\" = s.\"" + k + "\"")
+              .collect(Collectors.joining(", "));
+      mergeQuery.append("WHEN MATCHED THEN UPDATE SET ").append(updateSet).append(" ");
     }
 
-    return new DMLGeneratorResponse(returnVal);
+    String insertCols =
+        allColumnNameValues.keySet().stream()
+            .map(k -> "\"" + k + "\"")
+            .collect(Collectors.joining(", "));
+    String insertVals =
+        allColumnNameValues.keySet().stream()
+            .map(k -> "s.\"" + k + "\"")
+            .collect(Collectors.joining(", "));
+    mergeQuery
+        .append("WHEN NOT MATCHED THEN INSERT (")
+        .append(insertCols)
+        .append(") VALUES (")
+        .append(insertVals)
+        .append(")");
+
+    return new DMLGeneratorResponse(mergeQuery.toString());
   }
 
   private static DMLGeneratorResponse getDeleteStatement(
@@ -196,7 +229,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       Table spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
-      Map<String, String> pkcolumnNameValues) {
+      Map<String, String> pkcolumnNameValues,
+      List<Object> currentParams) {
     Map<String, String> columnNameValues =
         DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
@@ -206,11 +240,60 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            PostgreSQLDMLGenerator::getMappedColumnValue,
-            new ArrayList<>());
-    columnNameValues.putAll(pkcolumnNameValues);
-    return getUpsertStatement(
-        sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
+            OracleDMLGenerator::getMappedColumnValue,
+            currentParams);
+
+    Map<String, String> orderedColumnNameValues = new LinkedHashMap<>();
+    orderedColumnNameValues.putAll(pkcolumnNameValues);
+    orderedColumnNameValues.putAll(columnNameValues);
+
+    Map<String, String> generatedColumnValues = new LinkedHashMap<>();
+    for (SourceColumn col : sourceTable.columns()) {
+      // The shared DMLGeneratorUtils explicitly skips generated (virtual) columns. Oracle
+      // physically requires
+      // these columns to be mapped separately so they can be injected solely into the USING
+      // (SELECT...) block
+      // of the MERGE statement. (E.g. in case a generated column is part of a Primary Key
+      // referenced in the ON block).
+      if (col.isGenerated()) {
+        String spannerColName =
+            dmlGeneratorRequest
+                .getSchemaMapper()
+                .getSpannerColumnName("", sourceTable.name(), col.name());
+        Column spannerColDef = spannerTable.column(spannerColName);
+        if (dmlGeneratorRequest.getKeyValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getKeyValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              getMappedColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getKeyValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  currentParams));
+        } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              getMappedColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getNewValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  currentParams));
+        }
+      }
+    }
+
+    DMLGeneratorResponse resp =
+        getUpsertStatement(
+            sourceTable,
+            sourceTable.name(),
+            orderedColumnNameValues,
+            generatedColumnValues,
+            sourceTable.primaryKeyColumns());
+    resp.setPreparedStatementParameters(currentParams);
+    return resp;
   }
 
   @VisibleForTesting
@@ -224,6 +307,30 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     String colInputValue = "";
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
+
+    /**
+     * DYNAMIC PREPARED STATEMENT ROUTING: Oracle has a strict hard limit of 4,000 bytes for any
+     * single inline string literal (ORA-01704). If Spanner sends a massive payload (e.g. a large
+     * text CLOB or a large binary BLOB) and we format it as an inline literal, Oracle will
+     * violently crash.
+     *
+     * <p>To prevent this, if the exact payload size breaches ~3,500 characters, we dynamically
+     * intercept the raw pristine object before it is wrapped in SQL syntax, inject it into the
+     * PreparedStatement Java array, and natively return a '?' placeholder. Smaller payloads safely
+     * bypass this to retain blistering fast simple Statement execution.
+     */
+    String rawJsonStr = valuesJson.get(colName).toString();
+    if (preparedStatementParameters != null && rawJsonStr != null && rawJsonStr.length() >= 3500) {
+      if (colType.getCode().equals(Type.Code.BYTES)
+          || colType.getCode().equals(Type.Code.PG_BYTEA)) {
+        byte[] decodedBytes = Base64.getDecoder().decode(valuesJson.getString(colName));
+        preparedStatementParameters.add(decodedBytes);
+      } else {
+        preparedStatementParameters.add(valuesJson.getString(colName));
+      }
+      return "?";
+    }
+
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)
         || colType.getCode().equals(Type.Code.PG_FLOAT4)
@@ -245,12 +352,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
               .collect(Collectors.joining(","));
     } else if (colType.getCode().equals(Type.Code.BYTES)
         || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-      if (sourceColDef.type().toLowerCase().equals("bytea")) {
-        colInputValue = convertBase64ToHex(valuesJson.getString(colName));
-      } else {
-        // Postgres decode: decode('base64string', 'base64')
-        colInputValue = "decode('" + valuesJson.getString(colName) + "', 'base64')";
-      }
+      colInputValue = convertBase64ToHex(valuesJson.getString(colName));
     } else {
       colInputValue = valuesJson.getString(colName);
     }
@@ -269,40 +371,112 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     if (rawHex == null) {
       return null;
     }
-    return rawHex.isEmpty() ? "''" : "'\\x" + rawHex + "'";
+    return rawHex.isEmpty() ? "''" : "HEXTORAW('" + rawHex + "')";
   }
 
   private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
-    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid PostgreSQL
+    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid Oracle
     // array literals.
+    if (columnType != null && columnType.contains("(")) {
+      columnType = columnType.substring(0, columnType.indexOf("(")).trim();
+    }
     switch (columnType) {
+      case "nvarchar2":
+      case "nclob":
+      case "nchar":
+      case "nchar varying":
+      case "national char":
+      case "national char varying":
+      case "national character":
+      case "national character varying":
+        response = getQuotedEscapedString(colValue, spannerColType);
+        if (response.startsWith("HEXTORAW(")) {
+          response = "TO_NCLOB(UTL_RAW.CAST_TO_NVARCHAR2(" + response + "))";
+        } else {
+          response = "N" + response;
+        }
+        break;
       case "varchar":
+      case "varchar2":
+      case "clob":
       case "char":
       case "text":
       case "character varying":
       case "character":
       case "json":
       case "jsonb":
-      case "date":
       case "time":
       case "uuid":
         response = getQuotedEscapedString(colValue, spannerColType);
         break;
+      case "date":
+        if (spannerColType.equalsIgnoreCase("DATE")) {
+          response =
+              "TO_DATE(" + getQuotedEscapedString(colValue, spannerColType) + ", 'YYYY-MM-DD')";
+        } else {
+          response =
+              "FROM_TZ(TO_TIMESTAMP("
+                  + getQuotedEscapedString(colValue, spannerColType)
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
+        }
+        break;
       case "timestamp":
       case "timestamp without time zone":
       case "timestamp with time zone":
+      case "timestamp with local time zone":
       case "timestamptz":
-        response = getQuotedEscapedString(colValue, spannerColType) + "::timestamptz";
+        if (sourceDbTimezoneOffset != null
+            && !sourceDbTimezoneOffset.isEmpty()
+            && !"+00:00".equals(sourceDbTimezoneOffset)
+            && !"Z".equalsIgnoreCase(sourceDbTimezoneOffset)) {
+          response =
+              "CAST(FROM_TZ(TO_TIMESTAMP("
+                  + getQuotedEscapedString(colValue, spannerColType)
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AT TIME ZONE '"
+                  + sourceDbTimezoneOffset
+                  + "' AS TIMESTAMP)";
+        } else {
+          response =
+              "FROM_TZ(TO_TIMESTAMP("
+                  + getQuotedEscapedString(colValue, spannerColType)
+                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
+        }
         break;
       case "bytea":
+      case "blob":
+      case "raw":
       case "binary":
       case "varbinary":
-        response = colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
+        response = colValue;
+        break;
+      case "number":
+      case "numeric":
+      case "decimal":
+      case "float":
+      case "double precision":
+      case "integer":
+      case "smallint":
+      case "int":
+      case "boolean":
+      case "bool":
+        if ("true".equalsIgnoreCase(colValue)) {
+          response = "1";
+        } else if ("false".equalsIgnoreCase(colValue)) {
+          response = "0";
+        } else {
+          response = colValue;
+        }
         break;
       default:
-        response = colValue;
+        if ("true".equalsIgnoreCase(colValue)) {
+          response = "1";
+        } else if ("false".equalsIgnoreCase(colValue)) {
+          response = "0";
+        } else {
+          response = colValue;
+        }
     }
     return response;
   }
@@ -310,7 +484,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    // PostgreSQL defaults to standard conforming strings, so backslash is just a
+    // Oracle supports standard conforming strings.
     // backslash.
     // For standard string literals '', we just need to escape the single quote as
     // ''
