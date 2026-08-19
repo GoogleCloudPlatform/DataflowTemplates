@@ -79,7 +79,6 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Pub/Sub to Splunk](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Splunk&type=code)
     - [Pub/Sub to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_GCS_Text&type=code)
     - [Pubsub to JMS](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Pubsub_to_Jms&type=code)
-    - [Spanner Change Streams to Sink](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_Change_Streams_to_Sink&type=code)
     - [Synchronizing CDC data to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cdc_To_BigQuery_Template&type=code)
     - [Text Files on Cloud Storage to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_Cloud_PubSub&type=code)
 - Process Data in Bulk (batch)
