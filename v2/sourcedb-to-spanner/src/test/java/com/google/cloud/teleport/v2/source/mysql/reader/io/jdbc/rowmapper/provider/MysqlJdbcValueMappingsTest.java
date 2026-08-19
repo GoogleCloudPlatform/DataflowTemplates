@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMappe
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -141,36 +143,35 @@ public class MysqlJdbcValueMappingsTest {
     Field field = MysqlJdbcValueMappings.class.getDeclaredField("sqlDateToAvroDate");
     field.setAccessible(true);
     @SuppressWarnings("unchecked")
-    ResultSetValueMapper<java.sql.Date> mapper =
-        (ResultSetValueMapper<java.sql.Date>) field.get(null);
+    ResultSetValueMapper<Date> mapper = (ResultSetValueMapper<Date>) field.get(null);
 
     // Standard date
-    java.sql.Date d1 = java.sql.Date.valueOf("2012-09-17");
-    assertEquals(
-        (int) java.time.LocalDate.parse("2012-09-17").toEpochDay(), (int) mapper.map(d1, null));
+    int epochDay1 = (int) LocalDate.parse("2012-09-17").toEpochDay();
+    Date d1 = Date.valueOf("2012-09-17");
+    assertEquals(epochDay1, (int) mapper.map(d1, null));
 
     // Min date (1000-01-01)
-    java.sql.Date d2 = java.sql.Date.valueOf("1000-01-01");
-    assertEquals(
-        (int) java.time.LocalDate.parse("1000-01-01").toEpochDay(), (int) mapper.map(d2, null));
+    int epochDay2 = (int) LocalDate.parse("1000-01-01").toEpochDay();
+    Date d2 = Date.valueOf("1000-01-01");
+    assertEquals(epochDay2, (int) mapper.map(d2, null));
 
     // Max date (9999-12-31)
-    java.sql.Date d3 = java.sql.Date.valueOf("9999-12-31");
-    assertEquals(
-        (int) java.time.LocalDate.parse("9999-12-31").toEpochDay(), (int) mapper.map(d3, null));
+    int epochDay3 = (int) LocalDate.parse("9999-12-31").toEpochDay();
+    Date d3 = Date.valueOf("9999-12-31");
+    assertEquals(epochDay3, (int) mapper.map(d3, null));
 
     // Leap year (2000-02-29)
-    java.sql.Date d4 = java.sql.Date.valueOf("2000-02-29");
-    assertEquals(
-        (int) java.time.LocalDate.parse("2000-02-29").toEpochDay(), (int) mapper.map(d4, null));
+    int epochDay4 = (int) LocalDate.parse("2000-02-29").toEpochDay();
+    Date d4 = Date.valueOf("2000-02-29");
+    assertEquals(epochDay4, (int) mapper.map(d4, null));
 
     // Leap year (2024-02-29)
-    java.sql.Date d5 = java.sql.Date.valueOf("2024-02-29");
-    assertEquals(
-        (int) java.time.LocalDate.parse("2024-02-29").toEpochDay(), (int) mapper.map(d5, null));
+    int epochDay5 = (int) LocalDate.parse("2024-02-29").toEpochDay();
+    Date d5 = Date.valueOf("2024-02-29");
+    assertEquals(epochDay5, (int) mapper.map(d5, null));
 
     // Epoch day zero (1970-01-01)
-    java.sql.Date d6 = java.sql.Date.valueOf("1970-01-01");
+    Date d6 = Date.valueOf("1970-01-01");
     assertEquals(0, (int) mapper.map(d6, null));
   }
 }

@@ -44,12 +44,14 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -335,8 +337,8 @@ public class JdbcSourceRowMapperTest {
             Column.builder()
                 .derbyColumnType("DATE")
                 .sourceColumnType("DATE")
-                .inputValue(java.sql.Date.valueOf("2024-05-02"))
-                .mappedValue((int) java.sql.Date.valueOf("2024-05-02").toLocalDate().toEpochDay())
+                .inputValue(Date.valueOf("2024-05-02"))
+                .mappedValue((int) LocalDate.parse("2024-05-02").toEpochDay())
                 .build())
         .add(
             Column.builder()
