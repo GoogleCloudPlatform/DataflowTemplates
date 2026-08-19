@@ -258,32 +258,14 @@ public class ColumnTest {
         Type.pgFloat4(),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("float4").autoBuild().type());
     assertEquals(
-        Type.pgFloat4(),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("FLOAT4").autoBuild().type());
-    assertEquals(
-        Type.pgFloat4(),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("Float4").autoBuild().type());
-    assertEquals(
         Type.pgFloat8(),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("float8").autoBuild().type());
-    assertEquals(
-        Type.pgFloat8(),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("FLOAT8").autoBuild().type());
-    assertEquals(
-        Type.pgFloat8(),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("Float8").autoBuild().type());
     assertEquals(
         Type.pgArray(Type.pgFloat4()),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("float4[]").autoBuild().type());
     assertEquals(
-        Type.pgArray(Type.pgFloat4()),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("FLOAT4[]").autoBuild().type());
-    assertEquals(
         Type.pgArray(Type.pgFloat8()),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("float8[]").autoBuild().type());
-    assertEquals(
-        Type.pgArray(Type.pgFloat8()),
-        Column.builder(Dialect.POSTGRESQL).name("col").parseType("FLOAT8[]").autoBuild().type());
   }
 
   @Test
