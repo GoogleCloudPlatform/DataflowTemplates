@@ -212,34 +212,17 @@ public final class Utils {
     if (doc == null) {
       return null;
     }
-    if (doc.containsKey("_original_document")) {
-      Object inner = doc.get("_original_document");
-      return (inner instanceof Document) ? (Document) inner : Document.parse(inner.toString());
-    }
-    if (doc.containsKey("_metadata_original_document")) {
-      Object inner = doc.get("_metadata_original_document");
-      return (inner instanceof Document) ? (Document) inner : Document.parse(inner.toString());
-    }
-    if (doc.containsKey(DatastreamConstants.CHANGE_EVENT)) {
-      Object inner = doc.get(DatastreamConstants.CHANGE_EVENT);
-      return (inner instanceof Document) ? (Document) inner : Document.parse(inner.toString());
-    }
-    return doc;
+    return doc.containsKey(DatastreamConstants.CHANGE_EVENT)
+        ? (Document) doc.get(DatastreamConstants.CHANGE_EVENT)
+        : doc;
   }
 
   public static JsonNode extractInnerEvent(JsonNode payload) {
     if (payload == null) {
       return null;
     }
-    if (payload.has("_original_document")) {
-      return payload.get("_original_document");
-    }
-    if (payload.has("_metadata_original_document")) {
-      return payload.get("_metadata_original_document");
-    }
-    if (payload.has(DatastreamConstants.CHANGE_EVENT)) {
-      return payload.get(DatastreamConstants.CHANGE_EVENT);
-    }
-    return payload;
+    return payload.has(DatastreamConstants.CHANGE_EVENT)
+        ? payload.get(DatastreamConstants.CHANGE_EVENT)
+        : payload;
   }
 }

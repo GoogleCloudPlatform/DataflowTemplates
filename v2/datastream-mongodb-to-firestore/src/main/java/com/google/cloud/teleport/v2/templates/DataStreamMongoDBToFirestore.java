@@ -193,8 +193,8 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Initial write rate per worker (docs/sec)",
         helpText =
-            "Initial maximum write rate per worker during warm-up. Set <= 0 to disable. Default: 5000.")
-    @Default.Integer(5000)
+            "Initial maximum write rate per worker during warm-up. Set <= 0 to disable. Default: 500.")
+    @Default.Integer(500)
     Integer getInitialWriteRatePerWorker();
 
     void setInitialWriteRatePerWorker(Integer value);
@@ -214,8 +214,8 @@ public class DataStreamMongoDBToFirestore {
         order = 16,
         optional = true,
         description = "Max write rate per worker after ramp-up",
-        helpText = "Target maximum write rate per worker after completing ramp-up. Default: 25000.")
-    @Default.Integer(25000)
+        helpText = "Target maximum write rate per worker after completing ramp-up. Default: 2500.")
+    @Default.Integer(2500)
     Integer getMaxWriteRatePerWorker();
 
     void setMaxWriteRatePerWorker(Integer value);

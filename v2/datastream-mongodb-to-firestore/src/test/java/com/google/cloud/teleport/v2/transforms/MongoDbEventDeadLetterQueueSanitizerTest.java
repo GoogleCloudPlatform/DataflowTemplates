@@ -55,7 +55,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
   @Test
   public void testGetJsonMessageSuccess() throws Exception {
     String expectedJson =
-        "{\"_original_document\":{\"key\":\"value\"},"
+        "{\"changeEvent\":{\"key\":\"value\"},"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
@@ -71,7 +71,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     when(mockContext.getOriginalPayload().getOriginalChangeEvent()).thenReturn(null);
 
     String expectedJson =
-        "{\"_original_document\":null,"
+        "{\"changeEvent\":null,"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
@@ -110,7 +110,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     when(mockContext.getOriginalPayload().getOriginalChangeEvent()).thenReturn(complexChangeEvent);
 
     String expectedJson =
-        "{\"_original_document\":{\"_id\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},\"data\":{\"field1\":\"value1\",\"field2\":123}},"
+        "{\"changeEvent\":{\"_id\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},\"data\":{\"field1\":\"value1\",\"field2\":123}},"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\",\"documentId\":\"test_id\","
             + "\"isDeleteEvent\":false,\"isDlqReconsumed\":true,\"_metadata_retry_count\":1}";
@@ -134,7 +134,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     when(mockContext.getOriginalPayload().getRetryCount()).thenReturn(123);
 
     String expectedJson =
-        "{\"_original_document\":{\"key\":\"value\"},"
+        "{\"changeEvent\":{\"key\":\"value\"},"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
