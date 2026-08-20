@@ -1355,8 +1355,8 @@ jmespath==1.1.0 \
     # via
     #   boto3
     #   botocore
-job-builder-util-transforms @ https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz \
-    --hash=sha256:34bb65f0f52e768b223e775e712429d04abfbd500e441a514e899244f389ac52
+job-builder-util-transforms @ https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-20/job_builder_util_transforms-0.2.2.tar.gz \
+    --hash=sha256:ce4545918eabafaa7dddef767158405ff8c1f6f1a9e68da878db8eec573305cb
     # via -r python/default_base_yaml_requirements.txt
 joblib==1.5.3 \
     --hash=sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713 \
