@@ -171,10 +171,10 @@ public class MongoDbBulkTransforms {
     private String database;
     private int batchSize = 500;
     private int maxConcurrentAsyncWrites = 10;
-    private int initialWriteRatePerWorker = 500;
+    private int initialWriteRatePerWorker = 5000;
     private int writeRateRampUpMinutes = 5;
     private int writeRateRampUpSteps = 5;
-    private int maxWriteRatePerWorker = 2500;
+    private int maxWriteRatePerWorker = 25000;
     private int maxWriteRetries = 3;
     private int dlqMaxRetries = 3;
     private SerializableFunction<String, MongoClient> clientFactory =
@@ -387,10 +387,10 @@ public class MongoDbBulkTransforms {
       private String database;
       private int batchSize = 500;
       private int maxConcurrentAsyncWrites = 10;
-      private int initialWriteRatePerWorker = 500;
+      private int initialWriteRatePerWorker = 5000;
       private int writeRateRampUpMinutes = 5;
       private int writeRateRampUpSteps = 5;
-      private int maxWriteRatePerWorker = 2500;
+      private int maxWriteRatePerWorker = 25000;
       private int maxWriteRetries = 3;
       private int dlqMaxRetries = 3;
       private SerializableFunction<String, MongoClient> clientFactory =

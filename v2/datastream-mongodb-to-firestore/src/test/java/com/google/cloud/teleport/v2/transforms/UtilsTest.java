@@ -272,24 +272,43 @@ public class UtilsTest {
 
   @Test
   public void testExtractInnerEvent_Document() {
-    // Test case where the document is wrapped in a "changeEvent" field (common for DLQ records)
+    // Test case where the document is wrapped in a "_original_document" field
     Document inner = new Document("field", "value");
-    Document wrapped = new Document(DatastreamConstants.CHANGE_EVENT, inner);
+    Document wrappedOriginal = new Document("_original_document", inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedOriginal));
 
-    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the document is wrapped in a "_metadata_original_document" field
+    Document wrappedMetadata = new Document("_metadata_original_document", inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedMetadata));
+
+    // Test case where the document is wrapped in legacy "changeEvent" field
+    Document wrappedLegacy = new Document(DatastreamConstants.CHANGE_EVENT, inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedLegacy));
+
     // Test case where the document is NOT wrapped
     assertEquals(inner, Utils.extractInnerEvent(inner));
   }
 
   @Test
   public void testExtractInnerEvent_JsonNode() throws Exception {
-    // Test case where the JSON node is wrapped in a "changeEvent" field
     ObjectMapper mapper = new ObjectMapper();
     JsonNode inner = mapper.readTree("{\"field\":\"value\"}");
-    ObjectNode wrapped = mapper.createObjectNode();
-    wrapped.set(DatastreamConstants.CHANGE_EVENT, inner);
 
-    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the JSON node is wrapped in a "_original_document" field
+    ObjectNode wrappedOriginal = mapper.createObjectNode();
+    wrappedOriginal.set("_original_document", inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedOriginal));
+
+    // Test case where the JSON node is wrapped in a "_metadata_original_document" field
+    ObjectNode wrappedMetadata = mapper.createObjectNode();
+    wrappedMetadata.set("_metadata_original_document", inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedMetadata));
+
+    // Test case where the JSON node is wrapped in legacy "changeEvent" field
+    ObjectNode wrappedLegacy = mapper.createObjectNode();
+    wrappedLegacy.set(DatastreamConstants.CHANGE_EVENT, inner);
+    assertEquals(inner, Utils.extractInnerEvent(wrappedLegacy));
+
     // Test case where the JSON node is NOT wrapped
     assertEquals(inner, Utils.extractInnerEvent(inner));
   }

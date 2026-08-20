@@ -67,9 +67,9 @@ public final class DataStreamMongoDBToFirestoreTest {
     assertFalse(options.getUseShadowTables());
     assertEquals(Integer.valueOf(500), options.getBatchSize());
     assertEquals(Integer.valueOf(10), options.getMaxConcurrentAsyncWrites());
-    assertEquals(Integer.valueOf(500), options.getInitialWriteRatePerWorker());
+    assertEquals(Integer.valueOf(5000), options.getInitialWriteRatePerWorker());
     assertEquals(Integer.valueOf(5), options.getWriteRateRampUpMinutes());
-    assertEquals(Integer.valueOf(2500), options.getMaxWriteRatePerWorker());
+    assertEquals(Integer.valueOf(25000), options.getMaxWriteRatePerWorker());
   }
 
   @Test

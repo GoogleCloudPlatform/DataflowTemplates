@@ -47,7 +47,7 @@ public class MongoDbEventDeadLetterQueueSanitizer
       // Add the original change event JSON. This preserves the raw source data in the
       // DLQ, ensuring that retry attempts can re-apply updated UDF logic to the original
       // payload.
-      jsonNode.set("changeEvent", changeEvent.getOriginalChangeEvent());
+      jsonNode.set("_original_document", changeEvent.getOriginalChangeEvent());
 
       // Add other important fields
       jsonNode.put("dataCollection", changeEvent.getDataCollection());
