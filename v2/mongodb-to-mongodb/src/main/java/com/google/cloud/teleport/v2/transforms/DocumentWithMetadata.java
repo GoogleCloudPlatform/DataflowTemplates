@@ -41,7 +41,7 @@ public class DocumentWithMetadata implements Serializable {
   public static final String METADATA_TARGET_COLLECTION = "_metadata_target_collection";
   public static final String METADATA_ERROR_MESSAGE = "_metadata_error_message";
   public static final String METADATA_FAILURE_STAGE = "_metadata_failure_stage";
-  public static final String METADATA_ORIGINAL_DOCUMENT = "_metadata_original_document";
+  public static final String ORIGINAL_DOCUMENT = "_original_document";
 
   public enum ErrorType {
     RETRYABLE,
@@ -213,7 +213,7 @@ public class DocumentWithMetadata implements Serializable {
     try {
       ObjectNode dlqNode = MAPPER.createObjectNode();
 
-      dlqNode.set(METADATA_ORIGINAL_DOCUMENT, MAPPER.readTree(originalDocument));
+      dlqNode.set(ORIGINAL_DOCUMENT, MAPPER.readTree(originalDocument));
       dlqNode.put(METADATA_ERROR_MESSAGE, errorMessage);
       dlqNode.put(METADATA_ERROR_TYPE, errorType != null ? errorType.name() : null);
       dlqNode.put(METADATA_RETRY_COUNT, newRetryCount);
@@ -242,14 +242,17 @@ public class DocumentWithMetadata implements Serializable {
   public static DocumentWithMetadata fromDlqJson(String jsonStr) {
     try {
       JsonNode jsonNode = MAPPER.readTree(jsonStr);
-      JsonNode dataNode = jsonNode.get(METADATA_ORIGINAL_DOCUMENT);
+      JsonNode dataNode = jsonNode.get(ORIGINAL_DOCUMENT);
+      if (dataNode == null) {
+        dataNode = jsonNode.get("_metadata_original_document");
+      }
       if (dataNode == null) {
         // Fallback to legacy "data" key for backwards compatibility
         dataNode = jsonNode.get("data");
       }
       if (dataNode == null) {
         throw new IllegalArgumentException(
-            "Invalid DLQ message: missing '" + METADATA_ORIGINAL_DOCUMENT + "' or 'data' field");
+            "Invalid DLQ message: missing '" + ORIGINAL_DOCUMENT + "' or 'data' field");
       }
 
       Document doc = Document.parse(dataNode.toString());

@@ -60,8 +60,7 @@ public class DocumentWithMetadataTest {
   }
 
   @Test
-  public void
-      documentWithMetadata_toDlqJson_usesMetadataOriginalDocumentAndPreservesCustomerDataField() {
+  public void documentWithMetadata_toDlqJson_usesOriginalDocumentAndPreservesCustomerDataField() {
     Document doc = new Document("_id", 1).append("data", "customer_business_payload");
     DocumentWithMetadata original =
         DocumentWithMetadata.of(
@@ -69,12 +68,22 @@ public class DocumentWithMetadataTest {
 
     String dlqJson = original.toDlqJson("Error message", RETRYABLE, 1);
     assertTrue(
-        "DLQ JSON should store document under _metadata_original_document",
-        dlqJson.contains("\"_metadata_original_document\":"));
+        "DLQ JSON should store document under _original_document",
+        dlqJson.contains("\"_original_document\":"));
 
     DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(dlqJson);
     assertEquals("customer_business_payload", reconstructed.getDocument().getString("data"));
     assertEquals(original.getDocument(), reconstructed.getDocument());
+  }
+
+  @Test
+  public void documentWithMetadata_fromDlqJson_metadataOriginalDocumentFallback_success() {
+    String intermediateDlqJson =
+        "{\"_metadata_original_document\":{\"_id\":1,\"name\":\"intermediate_test\"},\"_metadata_error_message\":\"Error\",\"_metadata_error_type\":\"RETRYABLE\",\"_metadata_retry_count\":1}";
+    DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(intermediateDlqJson);
+
+    assertEquals(1, reconstructed.getDocument().get("_id"));
+    assertEquals("intermediate_test", reconstructed.getDocument().getString("name"));
   }
 
   @Test
