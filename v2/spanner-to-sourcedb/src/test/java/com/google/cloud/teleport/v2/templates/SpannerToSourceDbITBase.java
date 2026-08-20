@@ -174,7 +174,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.OracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
     } else {
+
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
     return shard;
@@ -299,7 +306,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                             && !Objects.equals(
                                 sourceType,
                                 com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                                    .SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, "oracle"))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -561,4 +569,30 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
     }
   }
+
+  protected void createOracleSchema(
+      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager, String mySqlSchemaFile)
+      throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(mySqlSchemaFile), java.nio.charset.StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.trim().isEmpty()) {
+        try {
+          jdbcResourceManager.runSQLUpdate(d);
+        } catch (Exception e) {
+        }
+      }
+    }
+  }
+
+  protected void createOracleTableWithNColumns(
+      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager,
+      String arg1,
+      int arg2,
+      String arg3) {}
 }

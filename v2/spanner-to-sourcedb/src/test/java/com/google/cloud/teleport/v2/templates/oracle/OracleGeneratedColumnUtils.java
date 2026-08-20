@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.oracle;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
@@ -27,19 +27,19 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SpannerGeneratedColumnUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerGeneratedColumnUtils.class);
+public class OracleGeneratedColumnUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(OracleGeneratedColumnUtils.class);
 
   public static ConditionCheck buildConditionCheck(
       Map<String, List<Map<String, Value>>> spannerTableData,
-      JDBCResourceManager jdbcResourceManager) {
+      OracleResourceManager jdbcResourceManager) {
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
       String tableName = getTableName(entry.getKey());
@@ -54,7 +54,8 @@ public class SpannerGeneratedColumnUtils {
             @Override
             protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
               return new CheckResult(
-                  jdbcResourceManager.getRowCount(tableName) == numRows, getDescription());
+                  jdbcResourceManager.getRowCount("\"" + tableName + "\"") == numRows,
+                  getDescription());
             }
           };
       if (combinedCondition == null) {
@@ -67,9 +68,9 @@ public class SpannerGeneratedColumnUtils {
     return combinedCondition;
   }
 
-  public static void assertRowInMySQL(
+  public static void assertRowInOracle(
       Map<String, List<Map<String, Object>>> expectedData,
-      JDBCResourceManager jdbcResourceManager) {
+      OracleResourceManager jdbcResourceManager) {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String type = expectedTableData.getKey();
       String tableName = getTableName(type);
@@ -81,9 +82,9 @@ public class SpannerGeneratedColumnUtils {
         // Need to read them as a string to avoid a DataReadException
         rawRows =
             jdbcResourceManager.runSQLQuery(
-                "SELECT id, CAST(time_col as char) as time_col FROM time_table");
+                "SELECT \"id\", CAST(\"time_col\" as char) as \"time_col\" FROM \"time_table\"");
       } else {
-        rawRows = jdbcResourceManager.readTable(tableName);
+        rawRows = jdbcResourceManager.readTable("\"" + tableName + "\"");
       }
 
       List<Map<String, Object>> rows = cleanValues(rawRows);

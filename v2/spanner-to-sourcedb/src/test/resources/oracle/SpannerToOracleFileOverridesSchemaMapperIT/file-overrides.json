@@ -1,0 +1,13 @@
+{
+  "renamedTables": {
+    "source_table1": "Target_Table_1"
+  },
+  "renamedColumns": {
+    "source_table1": {
+      "name_col1": "Target_Name_Col_1"
+    },
+    "source_table2": {
+      "category_col2": "Target_Category_Col_2"
+    }
+  }
+}
