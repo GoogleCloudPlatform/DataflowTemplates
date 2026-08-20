@@ -518,4 +518,23 @@ public class MongoDbTransformsTest {
 
     fn.teardown();
   }
+
+  @Test
+  public void testWriteFn_defaultAggressiveRampUpCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(5000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 5000 + 5 * 4000 = 25000)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(25000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
+  }
 }

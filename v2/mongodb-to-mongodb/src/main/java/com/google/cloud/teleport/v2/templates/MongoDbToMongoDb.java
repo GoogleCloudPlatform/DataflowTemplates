@@ -187,7 +187,7 @@ public class MongoDbToMongoDb {
         helpText =
             "Initial maximum documents/second written per worker thread during linear write rate"
                 + " ramp-up. Set to <= 0 to disable throttling.")
-    @Default.Integer(100)
+    @Default.Integer(5000)
     Integer getInitialWriteRatePerWorker();
 
     void setInitialWriteRatePerWorker(Integer value);
@@ -210,8 +210,8 @@ public class MongoDbToMongoDb {
         optional = true,
         description = "Max Write Rate Per Worker",
         helpText =
-            "Maximum target documents/second per worker after completing ramp-up. Default is 500.")
-    @Default.Integer(500)
+            "Maximum target documents/second per worker after completing ramp-up. Default is 25000.")
+    @Default.Integer(25000)
     Integer getMaxWriteRatePerWorker();
 
     void setMaxWriteRatePerWorker(Integer value);

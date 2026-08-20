@@ -102,10 +102,10 @@ public class MongoDbTransforms {
     private Integer maxConcurrentAsyncWrites = 10;
     private Integer maxWriteRetries = 3;
     private Integer dlqMaxRetries = 3;
-    private Integer initialWriteRatePerWorker = 100;
+    private Integer initialWriteRatePerWorker = 5000;
     private Integer writeRateRampUpMinutes = 5;
     private Integer writeRateRampUpSteps = 5;
-    private Integer maxWriteRatePerWorker = 500;
+    private Integer maxWriteRatePerWorker = 25000;
     private SerializableFunction<String, MongoClient> clientFactory =
         MongoDbTransforms::createMongoClient;
 
@@ -374,10 +374,10 @@ public class MongoDbTransforms {
       private Integer maxConcurrentAsyncWrites = 10;
       private Integer maxWriteRetries = 3;
       private Integer dlqMaxRetries = 3;
-      private Integer initialWriteRatePerWorker = 100;
+      private Integer initialWriteRatePerWorker = 5000;
       private Integer writeRateRampUpMinutes = 5;
       private Integer writeRateRampUpSteps = 5;
-      private Integer maxWriteRatePerWorker = 500;
+      private Integer maxWriteRatePerWorker = 25000;
       private SerializableFunction<String, MongoClient> clientFactory;
       private TupleTag<DocumentWithMetadata> failureTag;
 
