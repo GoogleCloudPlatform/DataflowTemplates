@@ -35,10 +35,16 @@ import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOption
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.OversizedValue;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.OversizedValueDlqSanitizer;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.TransformResult;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -51,12 +57,17 @@ import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO.ExistingPipelineOptions;
+import org.apache.beam.sdk.metrics.Distribution;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -94,6 +105,25 @@ public final class BigtableChangeStreamsToBigQuery {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQuery.class);
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+
+  /**
+   * Dataflow Streaming Engine's per-element commit limit. Elements larger than this are rejected by
+   * Windmill and cause work-item commit failures that freeze the partition indefinitely. See
+   * https://cloud.google.com/dataflow/quotas.
+   */
+  @VisibleForTesting static final long WINDMILL_ELEMENT_LIMIT_BYTES = 83_886_080L; // 80 MiB
+
+  /**
+   * Ceiling for a decoded value written to the {@code value} BigQuery column. Slightly below {@link
+   * #WINDMILL_ELEMENT_LIMIT_BYTES} to leave headroom for the remainder of the TableRow envelope
+   * (row key, metadata columns, JSON field names). BigQuery may further reject smaller rows
+   * depending on the write method in use (e.g. Storage Write API enforces an AppendRows cap of ~10
+   * MB); those rejections are already handled by {@link BigQueryDeadLetterQueueSanitizer} via
+   * {@code writeResult.getFailedStorageApiInserts()}.
+   */
+  @VisibleForTesting
+  static final long DEFAULT_MAX_DECODED_VALUE_BYTES =
+      BigtableChangeStreamToBigQueryOptions.DEFAULT_MAX_DECODED_VALUE_BYTES;
 
   /**
    * Main entry point for executing the pipeline.
@@ -181,6 +211,29 @@ public final class BigtableChangeStreamsToBigQuery {
             options.getBigQueryChangelogTableFieldsToIgnore());
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
+    long maxDecodedValueBytes = options.getMaxDecodedValueBytes();
+
+    if (maxDecodedValueBytes <= 0) {
+      throw new IllegalArgumentException("maxDecodedValueBytes must be greater than 0");
+    }
+    if (maxDecodedValueBytes > DEFAULT_MAX_DECODED_VALUE_BYTES) {
+      throw new IllegalArgumentException(
+          "maxDecodedValueBytes must be less than or equal to " + DEFAULT_MAX_DECODED_VALUE_BYTES);
+    }
+
+    if (!StringUtils.isBlank(options.getColumnTransforms())) {
+      if (options.getWriteValuesAsBytes()) {
+        throw new IllegalArgumentException(
+            "columnTransforms can only be used when writeValuesAsBytes is false");
+      }
+      LOG.info("Column transforms: {}", options.getColumnTransforms());
+    }
+
+    ValueTransformerRegistry transformerRegistry =
+        ValueTransformerRegistry.parse(
+            options.getColumnTransforms(),
+            options.getProtoSchemaPath(),
+            options.getPreserveProtoFieldNames());
 
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -210,10 +263,34 @@ public final class BigtableChangeStreamsToBigQuery {
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
             .apply(Values.create());
 
-    PCollection<TableRow> changeStreamMutationToTableRow =
+    PCollectionTuple processed =
         dataChangeRecord.apply(
             "ChangeStreamMutation To TableRow",
-            ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
+            ParDo.of(
+                    new ChangeStreamMutationToTableRowFn(
+                        sourceInfo,
+                        bigQuery,
+                        transformerRegistry,
+                        maxDecodedValueBytes))
+                .withOutputTags(
+                    ChangeStreamMutationToTableRowFn.MAIN_OUT,
+                    TupleTagList.of(ChangeStreamMutationToTableRowFn.OVERSIZED_DLQ_OUT)));
+
+    PCollection<TableRow> changeStreamMutationToTableRow =
+        processed.get(ChangeStreamMutationToTableRowFn.MAIN_OUT);
+
+    // Route oversized decoded values to the severe DLQ with metadata only; the cell is not
+    // retried against BigQuery because it would also fail the Storage Write API's row-size limit.
+    processed
+        .get(ChangeStreamMutationToTableRowFn.OVERSIZED_DLQ_OUT)
+        .apply("Sanitize Oversized Values", MapElements.via(new OversizedValueDlqSanitizer()))
+        .apply(
+            "Write Oversized Values To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectory() + "YYYY/MM/dd/HH/mm/")
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     Write<TableRow> bigQueryWrite =
         BigQueryIO.<TableRow>write()
@@ -319,27 +396,66 @@ public final class BigtableChangeStreamsToBigQuery {
 
   /**
    * DoFn that converts a {@link ChangeStreamMutation} to multiple {@link Mod} in serialized JSON
-   * format.
+   * format. SET_CELL mutations whose decoded value exceeds the configured byte limit are emitted to
+   * {@link #OVERSIZED_DLQ_OUT} as a metadata-only record instead of the main {@link TableRow}
+   * output.
    */
   static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
+
+    /** Main output: successfully built {@link TableRow}s to write to BigQuery. */
+    public static final TupleTag<TableRow> MAIN_OUT = new TupleTag<TableRow>() {};
+
+    /** Side output: metadata describing oversized decoded values, routed to DLQ. */
+    public static final TupleTag<OversizedValue> OVERSIZED_DLQ_OUT =
+        new TupleTag<OversizedValue>() {};
+
     private final BigtableSource sourceInfo;
     private final BigQueryUtils bigQuery;
+    private final ValueTransformerRegistry transformerRegistry;
+    private final long maxDecodedValueBytes;
 
-    ChangeStreamMutationToTableRowFn(BigtableSource source, BigQueryUtils bigQuery) {
+    private final org.apache.beam.sdk.metrics.Counter oversizedDecodesCounter =
+        Metrics.counter(ChangeStreamMutationToTableRowFn.class, "oversizedDecodes");
+    private final Distribution decodedValueBytesDistribution =
+        Metrics.distribution(ChangeStreamMutationToTableRowFn.class, "decodedValueBytes");
+
+    ChangeStreamMutationToTableRowFn(
+        BigtableSource source,
+        BigQueryUtils bigQuery,
+        ValueTransformerRegistry transformerRegistry,
+        long maxDecodedValueBytes) {
       this.sourceInfo = source;
       this.bigQuery = bigQuery;
+      this.transformerRegistry = transformerRegistry;
+      this.maxDecodedValueBytes = maxDecodedValueBytes;
     }
 
     @ProcessElement
-    public void process(@Element ChangeStreamMutation input, OutputReceiver<TableRow> receiver)
+    public void process(@Element ChangeStreamMutation input, MultiOutputReceiver receiver)
         throws Exception {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
-        Mod mod = null;
+        Mod mod;
         switch (modType) {
           case SET_CELL:
-            mod = new Mod(sourceInfo, input, (SetCell) entry);
+            SetCell setCell = (SetCell) entry;
+            Mod.SetCellBuildResult buildResult =
+                Mod.buildSetCell(
+                    sourceInfo,
+                    input,
+                    setCell,
+                    transformerRegistry,
+                    maxDecodedValueBytes);
+            TransformResult result = buildResult.transformResult();
+            if (result.status() == TransformResult.Status.SUCCESS) {
+              decodedValueBytesDistribution.update(result.decodedBytes());
+            } else if (result.status() == TransformResult.Status.OVERSIZED) {
+              oversizedDecodesCounter.inc();
+              receiver.get(OVERSIZED_DLQ_OUT).output(toOversizedValue(input, setCell, result));
+              continue;
+            }
+            mod = buildResult.mod();
             break;
           case DELETE_CELLS:
             mod = new Mod(sourceInfo, input, (DeleteCells) entry);
@@ -358,9 +474,26 @@ public final class BigtableChangeStreamsToBigQuery {
 
         TableRow tableRow = new TableRow();
         if (bigQuery.setTableRowFields(mod, tableRow)) {
-          receiver.output(tableRow);
+          receiver.get(MAIN_OUT).output(tableRow);
         }
       }
+    }
+
+    private OversizedValue toOversizedValue(
+        ChangeStreamMutation mutation, SetCell setCell, TransformResult result) {
+      return new OversizedValue(
+          mutation.getRowKey().toStringUtf8(),
+          Base64.getEncoder().encodeToString(mutation.getRowKey().toByteArray()),
+          mutation.getCommitTimestamp(),
+          setCell.getFamilyName(),
+          setCell.getQualifier().toStringUtf8(),
+          Base64.getEncoder().encodeToString(setCell.getQualifier().toByteArray()),
+          result.rawBytes(),
+          result.decodedBytes(),
+          maxDecodedValueBytes,
+          sourceInfo.getInstanceId(),
+          mutation.getSourceClusterId(),
+          sourceInfo.getTableId());
     }
 
     private ModType getModType(Entry entry) {

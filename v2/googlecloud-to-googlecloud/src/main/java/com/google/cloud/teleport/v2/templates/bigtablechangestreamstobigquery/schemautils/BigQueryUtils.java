@@ -94,10 +94,12 @@ public class BigQueryUtils implements Serializable {
     FORMATTERS.put(
         ChangelogColumn.VALUE_STRING,
         (bq, chg) -> {
+          if (chg.has(Mod.TRANSFORMED_VALUE)) {
+            return chg.getString(Mod.TRANSFORMED_VALUE);
+          }
           if (!chg.has(ChangelogColumn.VALUE_BYTES.name())) {
             return null;
           }
-
           String valueEncoded = chg.getString(ChangelogColumn.VALUE_BYTES.name());
           return bq.convertBase64ToString(valueEncoded);
         });
