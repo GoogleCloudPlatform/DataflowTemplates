@@ -56,10 +56,10 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(OracleSourceDbToSpannerSimpleIT.class);
   private static HashSet<OracleSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
-  private static PipelineLauncher.LaunchInfo jobInfo;
+  private PipelineLauncher.LaunchInfo jobInfo;
 
-  public static OracleResourceManager oracleResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  private OracleResourceManager oracleResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE =
       "oracle/OracleSourceDbToSpannerSimpleIT/oracle-GOOGLE_STANDARD_SQL-spanner-schema.sql";
