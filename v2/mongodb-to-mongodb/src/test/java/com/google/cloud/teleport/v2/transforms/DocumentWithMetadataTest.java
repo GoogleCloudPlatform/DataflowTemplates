@@ -60,6 +60,34 @@ public class DocumentWithMetadataTest {
   }
 
   @Test
+  public void
+      documentWithMetadata_toDlqJson_usesMetadataOriginalDocumentAndPreservesCustomerDataField() {
+    Document doc = new Document("_id", 1).append("data", "customer_business_payload");
+    DocumentWithMetadata original =
+        DocumentWithMetadata.of(
+            doc, doc.toJson(), 0, "Error message", RETRYABLE, "srcCol", "tgtCol");
+
+    String dlqJson = original.toDlqJson("Error message", RETRYABLE, 1);
+    assertTrue(
+        "DLQ JSON should store document under _metadata_original_document",
+        dlqJson.contains("\"_metadata_original_document\":"));
+
+    DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(dlqJson);
+    assertEquals("customer_business_payload", reconstructed.getDocument().getString("data"));
+    assertEquals(original.getDocument(), reconstructed.getDocument());
+  }
+
+  @Test
+  public void documentWithMetadata_fromDlqJson_legacyDataFieldFallback_success() {
+    String legacyDlqJson =
+        "{\"data\":{\"_id\":1,\"name\":\"legacy_test\"},\"_metadata_error_message\":\"Error\",\"_metadata_error_type\":\"RETRYABLE\",\"_metadata_retry_count\":1}";
+    DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(legacyDlqJson);
+
+    assertEquals(1, reconstructed.getDocument().get("_id"));
+    assertEquals("legacy_test", reconstructed.getDocument().getString("name"));
+  }
+
+  @Test
   public void documentWithMetadata_of_storesCanonicalJson() {
     Document doc =
         new Document()
