@@ -1,0 +1,87 @@
+template:
+
+  name: "PubSub_To_BigQuery_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "PubSub to BigQuery (YAML)"
+  description: >
+    The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted
+    data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "PubSubToBigQuery.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Pub/Sub topic or subscription must exist.",
+    "The output BigQuery table must exist."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "pubsub_options"
+    - "bigquery_options"
+
+  parameters:
+    - pubsub_common_options
+    - pubsub_read_options
+    - bigquery_common_options
+    - bigquery_write_options
+
+    - name: "outputDeadletterTable"
+      description: "The dead-letter table name to output failed messages to BigQuery"
+      help: >
+        BigQuery table for failed messages. Messages failed to reach the output 
+        table for different reasons (e.g., mismatched schema, malformed json) 
+        are written to this table. If it doesn't exist, it will be created 
+        during pipeline execution. If not specified, 
+        'outputTableSpec_error_records' is used instead. The dead-letter table
+        name to output failed messages to BigQuery.
+      example: "your-project-id:your-dataset.your-table-name"
+      required: true
+      type: text
+      order: 5
+
+pipeline:
+  transforms:
+    - type: ReadFromPubSub
+      name: ReadMessages
+      config:
+        topic: {{ topic }}
+        subscription: {{ subscription }}
+        format: {{ format | default('JSON') }}
+        schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributeMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
+        error_handling:
+          output: errors
+    - type: WriteToBigQuery
+      name: WriteGoodMessagesToBigQuery
+      input: ReadMessages
+      config:
+        table: {{ table }}
+        write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
+        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        num_streams: {{ numStreams | default(1) }}
+        error_handling:
+          output: errors
+    - type: WriteToBigQuery
+      name: WriteBadReadMessages
+      input: ReadMessages.errors
+      config:
+        table: {{ outputDeadletterTable }}
+        num_streams: {{ numStreams | default(1) }}
+    - type: WriteToBigQuery
+      name: WriteBadWriteMessages
+      input: WriteGoodMessagesToBigQuery.errors
+      config:
+        table: {{ outputDeadletterTable }}
+        num_streams: {{ numStreams | default(1) }}
+
+options:
+  streaming: true
