@@ -1,0 +1,522 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "plugin-test1",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t18": {
+      "Name": "Members",
+      "ColIds": [
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c12": {
+          "Name": "user_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: user_id bigint(19)",
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c13": {
+          "Name": "event_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: event_id varchar(255)",
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c14": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: full_name varchar(255)",
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c15": {
+          "Name": "age",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: age int(10)",
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c16": {
+          "Name": "created_at",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: created_at timestamp",
+          "Id": "c16",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c13",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t18"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t18": {
+      "Name": "Users",
+      "Schema": "plugin-test1",
+      "ColIds": [
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16"
+      ],
+      "ColDefs": {
+        "c12": {
+          "Name": "user_id",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c13": {
+          "Name": "event_id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c14": {
+          "Name": "full_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c15": {
+          "Name": "age",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c16": {
+          "Name": "created_at",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c16",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c13",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t18"
+    }
+  },
+  "SchemaIssues": {
+    "t18": {
+      "ColumnLevelIssues": {
+        "c15": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "Users": {
+      "Name": "Members",
+      "Cols": {
+        "age": "age",
+        "created_at": "created_at",
+        "event_id": "event_id",
+        "full_name": "full_name",
+        "user_id": "user_id"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "span-cloud-ck-testing-external",
+  "SpInstanceId": "ea-functional-tests",
+  "Source": "mysql",
+  "DatabaseOptions": {
+    "DbName": "",
+    "DefaultTimezone": ""
+  },
+  "DefaultIdentityOptions": {
+    "SkipRangeMin": "",
+    "SkipRangeMax": "",
+    "StartCounterWith": ""
+  }
+}

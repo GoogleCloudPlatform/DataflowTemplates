@@ -311,6 +311,14 @@ def _table_key(table_ref: 'bigquery.TableReference') -> str:
   return f'{table_ref.projectId}.{table_ref.datasetId}.{table_ref.tableId}'
 
 
+def _quote_identifier(name: str) -> str:
+  """Backtick-quote a column name for use in generated SQL.
+  """
+  if '`' in name:
+    raise ValueError(f'Invalid column name (contains backtick): {name!r}')
+  return f'`{name}`'
+
+
 def build_changes_query(
     table: str,
     start: Timestamp,
@@ -346,12 +354,13 @@ def build_changes_query(
   # destination tables with their original names. Rename them so they can
   # be persisted to the temp table for Storage Read API reading.
   pseudo = (
-      f"_CHANGE_TYPE AS {change_type_column}, "
-      f"_CHANGE_TIMESTAMP AS {change_timestamp_column}")
+      f"_CHANGE_TYPE AS {_quote_identifier(change_type_column)}, "
+      f"_CHANGE_TIMESTAMP AS {_quote_identifier(change_timestamp_column)}")
   if columns is None:
     select = f"SELECT * EXCEPT(_CHANGE_TYPE, _CHANGE_TIMESTAMP), {pseudo}"
   else:
-    select = f"SELECT {', '.join(columns)}, {pseudo}"
+    quoted = ', '.join(_quote_identifier(c) for c in columns)
+    select = f"SELECT {quoted}, {pseudo}" if quoted else f"SELECT {pseudo}"
   from_clause = (
       f"FROM {change_function}"
       f"(TABLE `{table}`, "
@@ -563,6 +572,7 @@ class _PollChangeHistoryFn(beam.DoFn, beam.transforms.core.RestrictionProvider):
 
     if not restriction_tracker.try_claim(current_index):
       return
+
     restriction_tracker.defer_remainder(Timestamp.of(now) + self._poll_interval)
 
     yield from self._emit_query_ranges(start_ts, end_ts, watermark_estimator)
@@ -1111,7 +1121,6 @@ class _CleanupTempTablesFn(beam.DoFn):
   """
   STREAMS_READ = beam.transforms.userstate.CombiningValueStateSpec(
       'streams_read', sum)
-
   def setup(self) -> None:
     _LOGGER.info('[Cleanup] setup: creating BigQueryWrapper')
     self._bq_wrapper = bigquery_tools.BigQueryWrapper()

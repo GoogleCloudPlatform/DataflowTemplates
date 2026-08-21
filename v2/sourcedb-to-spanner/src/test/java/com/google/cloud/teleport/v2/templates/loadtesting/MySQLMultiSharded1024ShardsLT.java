@@ -22,7 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -172,9 +172,11 @@ public class MySQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase {
     params.put("maxConnections", "16");
     params.put("numWorkers", "16");
     params.put("maxNumWorkers", "16");
-    params.put("workerMachineType", "n2-standard-4");
 
-    LaunchConfig.Builder options = LaunchConfig.builder(testName, SPEC_PATH).setParameters(params);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .setParameters(params)
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     PipelineLauncher.LaunchInfo jobInfo = launchJob(options);
 
     PipelineOperator.Result result =

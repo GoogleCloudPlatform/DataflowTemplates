@@ -111,6 +111,7 @@ public class SpannerReadUtils {
         break;
       case STRING:
       case JSON:
+      case UUID:
         stmtBuilder.bind(bindName).to((String) value);
         break;
       case NUMERIC:
@@ -153,6 +154,7 @@ public class SpannerReadUtils {
       case PG_VARCHAR:
       case PG_TEXT:
       case PG_JSONB:
+      case PG_UUID:
         stmtBuilder.bind(bindName).to((String) value);
         break;
       case PG_NUMERIC:

@@ -149,8 +149,12 @@ public class AvroToValueMapper {
                     recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
 
     gsqlFunctions.put(
-        Type.json(),
+        Type.uuid(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+
+    gsqlFunctions.put(
+        Type.json(),
+        (recordValue, fieldSchema) -> Value.json(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.array(Type.json()),
         (recordValue, fieldSchema) ->
@@ -226,7 +230,7 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgJsonb(),
-        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.pgJsonb(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
@@ -245,6 +249,9 @@ public class AvroToValueMapper {
     pgFunctions.put(
         Type.pgDate(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgUuid(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     return pgFunctions;
   }
 
@@ -387,6 +394,7 @@ public class AvroToValueMapper {
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
+
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }

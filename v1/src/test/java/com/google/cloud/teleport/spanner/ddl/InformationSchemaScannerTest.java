@@ -185,7 +185,7 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
-                + "t.index_type, t.spanner_type "
+                + "t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -195,7 +195,7 @@ public class InformationSchemaScannerTest {
         postgresSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
-                + "t.index_type, t.spanner_type "
+                + "t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
@@ -234,7 +234,7 @@ public class InformationSchemaScannerTest {
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
                 + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
-                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position"));
 
     assertThrows(

@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ChangeEventToMapConvertor {
-
   private static final Logger LOG = LoggerFactory.getLogger(ChangeEventToMapConvertor.class);
 
   public static Map<String, Object> convertChangeEventToMap(JsonNode changeEvent)

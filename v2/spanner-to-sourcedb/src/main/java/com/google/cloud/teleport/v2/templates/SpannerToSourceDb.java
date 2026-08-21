@@ -15,15 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -34,23 +29,19 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.PubSubNotifiedDlqIO;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.CommonTemplateOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
-import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
@@ -62,15 +53,10 @@ import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -85,7 +71,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -131,7 +116,7 @@ public class SpannerToSourceDb {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options extends CommonTemplateOptions, StreamingOptions {
 
     @TemplateParameter.Text(
         order = 1,
@@ -422,7 +407,9 @@ public class SpannerToSourceDb {
         enumOptions = {
           @TemplateEnumOption("mysql"),
           @TemplateEnumOption("cassandra"),
-          @TemplateEnumOption("postgresql")
+          @TemplateEnumOption("postgresql"),
+          @TemplateEnumOption("spanner"),
+          @TemplateEnumOption("oracle")
         },
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
@@ -574,6 +561,10 @@ public class SpannerToSourceDb {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
+    // Stage SSL certificates to extraFiles if required as per the pipeline options.
+    // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
+    new CommonTemplateJvmInitializer().beforeProcessing(options);
+
     boolean isRetryDLQMode = RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     options.setStreaming(!isRetryDLQMode);
 
@@ -604,7 +595,9 @@ public class SpannerToSourceDb {
 
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
+    Optional<Integer> resourceHintsMinCpus =
+        DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
@@ -648,31 +641,42 @@ public class SpannerToSourceDb {
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
-    String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
-      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-
-    } else {
-      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
-      shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
-      LOG.info("Cassandra config is: {}", shards.get(0));
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+    ISpToSrcSourceConnector sourceConnector;
+    try {
+      sourceConnector = SourceProcessorFactory.getSource(options.getSourceType());
+      shards = sourceConnector.parseShardConfig(options.getSourceShardsFilePath());
+    } catch (Exception e) {
+      throw new RuntimeException("Error parsing shard list", e);
     }
 
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
-      validateMySQLNotReadOnly(shards);
+    if (shards == null || shards.isEmpty()) {
+      LOG.error("Shard list should have at least 1 element.");
+      throw new IllegalArgumentException("Shard list should have at least 1 element.");
     }
 
-    SourceSchema sourceSchema = fetchSourceSchema(options, shards);
+    String shardingMode =
+        sourceConnector.supportsSharding()
+            ? Constants.SHARDING_MODE_MULTI_SHARD
+            : Constants.SHARDING_MODE_SINGLE_SHARD;
+
+    try {
+      sourceConnector.validate(shards, options);
+    } catch (Exception e) {
+      throw new RuntimeException("Validation failed", e);
+    }
+
+    SourceSchema sourceSchema;
+    try {
+      sourceSchema = sourceConnector.getInformationSchema(shards);
+    } catch (Exception e) {
+      throw new RuntimeException("Error fetching source schema", e);
+    }
     LOG.info("Source schema: {}", sourceSchema);
 
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
-      if (shard.getLogicalShardId() == null) {
+      if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
         shard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
         LOG.info(
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
@@ -997,97 +1001,6 @@ public class SpannerToSourceDb {
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-  }
-
-  static Connection createJdbcConnection(
-      Shard shard, String driverClassName, String jdbcUrlPrefix) {
-    try {
-      String sourceConnectionUrl =
-          new StringBuilder()
-              .append(jdbcUrlPrefix)
-              .append(shard.getHost())
-              .append(":")
-              .append(shard.getPort())
-              .append("/")
-              .append(shard.getDbName())
-              .toString();
-      HikariConfig config = new HikariConfig();
-      config.setJdbcUrl(sourceConnectionUrl);
-      config.setUsername(shard.getUserName());
-      config.setPassword(shard.getPassword());
-      config.setDriverClassName(driverClassName);
-      HikariDataSource ds = new HikariDataSource(config);
-      return ds.getConnection();
-    } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering jdbc schema: {}", e);
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
-   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
-   *
-   * @param cassandraShard The shard containing connection details.
-   * @return A {@link CqlSession} instance.
-   */
-  static CqlSession createCqlSession(CassandraShard cassandraShard) {
-    CqlSessionBuilder builder = CqlSession.builder();
-    DriverConfigLoader configLoader =
-        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
-    builder.withConfigLoader(configLoader);
-    return builder.build();
-  }
-
-  static void validateMySQLNotReadOnly(List<Shard> shards) {
-    for (Shard shard : shards) {
-      try (Connection conn = createJdbcConnection(shard, MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
-            }
-          }
-        }
-      } catch (SQLException e) {
-        LOG.error(
-            "Error checking MySQL read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking MySQL read-only status", e);
-      }
-    }
-  }
-
-  static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
-    try {
-      return getSourceSchema(options, shards);
-    } catch (SQLException e) {
-      throw new RuntimeException("Unable to discover jdbc schema", e);
-    }
-  }
-
-  static SourceSchema getSourceSchema(Options options, List<Shard> shards) throws SQLException {
-    if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-      try (Connection connection =
-          createJdbcConnection(shards.get(0), MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
-        return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
-      }
-    } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
-      try (Connection connection =
-          createJdbcConnection(shards.get(0), POSTGRESQL_DRIVER, POSTGRESQL_JDBC_PREFIX)) {
-        return new PostgreSQLInformationSchemaScanner(
-                connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
-            .scan();
-      }
-    } else {
-      try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
-        return new CassandraInformationSchemaScanner(
-                session, ((CassandraShard) shards.get(0)).getKeySpaceName())
-            .scan();
-      }
-    }
   }
 
   static int calculateConnectionPoolSizePerWorker(Long maxShardConnections, int maxNumWorkers) {

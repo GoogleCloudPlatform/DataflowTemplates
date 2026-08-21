@@ -28,7 +28,7 @@ import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.par
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.SourceMapper.DEFAULT_SOURCE_NAME;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
 import com.google.cloud.teleport.v2.neo4j.transforms.Order;
 import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
@@ -91,7 +91,7 @@ class TargetMapper {
   }
 
   public static Targets parse(
-      JSONArray json, OptionsParams options, JobSpecIndex jobIndex, boolean indexAllProperties) {
+      JSONArray json, OverlayTokens options, JobSpecIndex jobIndex, boolean indexAllProperties) {
     List<NodeTarget> nodes = new ArrayList<>();
     List<RelationshipTarget> relationshipTargets = new ArrayList<>();
     List<CustomQueryTarget> queryTargets = new ArrayList<>();
@@ -205,9 +205,8 @@ class TargetMapper {
   }
 
   private static CustomQueryTarget parseCustomQuery(
-      int index, JSONObject query, JobSpecIndex jobIndex, OptionsParams options) {
-    String cypher =
-        ModelUtils.replaceVariableTokens(query.getString("query"), options.getTokenMap());
+      int index, JSONObject query, JobSpecIndex jobIndex, OverlayTokens options) {
+    String cypher = ModelUtils.replaceVariableTokens(query.getString("query"), options.tokens());
     String targetName = normalizeName(index, query.getString("name"), ArtifactType.custom_query);
     return new CustomQueryTarget(
         getBooleanOrDefault(query, "active", true),

@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -109,8 +110,24 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
         "input/Sequence2-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/Sequence2-manifest.json")
             .getPath());
+    gcsClient.uploadArtifact(
+        "input/UdfSchema.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/UdfSchema-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema-manifest.json")
+            .getPath());
 
     if (Objects.equals(subdirectory, "googlesql")) {
+      gcsClient.uploadArtifact(
+          "input/UdfSchema.Remote.avro-00000-of-00001",
+          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema.Remote.avro")
+              .getPath());
+      gcsClient.uploadArtifact(
+          "input/UdfSchema.Remote-manifest.json",
+          Resources.getResource(
+                  "ImportPipelineIT/" + subdirectory + "/UdfSchema.Remote-manifest.json")
+              .getPath());
       gcsClient.uploadArtifact(
           "input/ModelStruct.avro-00000-of-00001",
           Resources.getResource("ImportPipelineIT/" + subdirectory + "/ModelStruct.avro")
@@ -235,6 +252,17 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    assertThat(
+            spannerResourceManager
+                .runQuery(
+                    "SELECT CONCAT(ROUTINE_SCHEMA, '.', ROUTINE_NAME) FROM INFORMATION_SCHEMA.ROUTINES")
+                .stream()
+                .map(row -> row.getString(0))
+                .collect(Collectors.toList()))
+        .containsExactly("UdfSchema.Remote");
+
+    // TODO(b/517150731): Assert the rest of the database content.
   }
 
   @Test
@@ -299,6 +327,8 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    // TODO(b/485601737): Add PG UDFs.
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.

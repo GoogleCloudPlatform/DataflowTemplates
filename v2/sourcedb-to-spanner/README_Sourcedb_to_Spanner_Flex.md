@@ -20,6 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
+* **sourceConfigURL**: The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. For example, `gs://your-bucket/source-config.json`. Defaults to empty.
 * **instanceId**: The destination Cloud Spanner instance.
 * **databaseId**: The destination Cloud Spanner database.
 * **projectId**: This is the name of the Cloud Spanner project.
@@ -27,12 +28,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **sourceDbDialect**: Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
+* **sourceDbDialect**: Possible values are `CASSANDRA`, `MYSQL`, `POSTGRESQL` and `ORACLE`. Defaults to: MYSQL.
 * **jdbcDriverJars**: The comma-separated list of driver JAR files. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`. Defaults to empty.
 * **jdbcDriverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **sourceConfigURL**: The URL to connect to the source database host. This can be either: 1. A JDBC connection URL for a single source database, which must contain the  host, port and source db name and can optionally contain properties like  autoReconnect, maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`. For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`. 2. A Cloud Storage path to a shard config file for sharded migrations. For example, `gs://my-bucket/my-shard-config.yaml`. This parameter is required except for ASTRA_DB source. Defaults to empty.
-* **username**: The username to be used for the JDBC connection. Defaults to empty.
-* **password**: The password to be used for the JDBC connection. Defaults to empty.
 * **tables**: Tables to migrate from source. Defaults to empty.
 * **numPartitions**: The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
 * **fetchSize**: The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below. This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors.Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties.In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default.
@@ -42,7 +40,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
-* **namespace**: Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Defaults to empty.
 * **insertOnlyModeForSpannerMutations**: By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.
 * **batchSizeForSpannerMutations**: BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
@@ -50,10 +47,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **columnOverrides**: These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
 * **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
 * **uniformizationStageCountHint**: Hint for number of uniformization stages. Currently Applicable only for jdbc based sources like MySQL or PostgreSQL. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages. If your source primary key space is uniformly distributed (for example an auto-incrementing key with sparse holes), it's based to leave it disabled. If your keyspace is not uniform, you might encounter a laggard VM in your dataflow run. In such a case, you can set it to -1 to enable uniformization. Manually setting it to values other than 0 or -1 would help you fine tune the tradeoff of the overhead added by uniformization stages and the  performance improvement due to better distribution of work.
-* **astraDBToken**: AstraDB token, ignored for non-AstraDB dialects. This token is used to automatically download the securebundle by the tempalte. Defaults to empty.
-* **astraDBDatabaseId**: AstraDB databaseID, ignored for non-AstraDB dialects. Defaults to empty.
-* **astraDBKeySpace**: AstraDB keySpace, ignored for non-AstraDB dialects. Defaults to empty.
-* **astraDBRegion**: AstraDB region, ignored for non-AstraDB dialects. Defaults to empty.
 * **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
 * **maxCommitDelay**: Maximum commit delay time to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes.Set -1 to let spanner choose the default. Set to a positive value to override for best suited tradeoff of throughput vs latency.Defaults to -1.
 * **gcsOutputDirectory**: This directory is used to write the AVRO files of the records read from source. For example, `gs://your-bucket/your-path`. Defaults to empty.
@@ -151,6 +144,7 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
 ### Required
+export SOURCE_CONFIG_URL=""
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -160,9 +154,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export SOURCE_CONFIG_URL=""
-export USERNAME=""
-export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export FETCH_SIZE=<fetchSize>
@@ -172,7 +163,6 @@ export SESSION_FILE_PATH=""
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
-export NAMESPACE=""
 export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS=false
 export BATCH_SIZE_FOR_SPANNER_MUTATIONS=-1
 export SPANNER_PRIORITY=HIGH
@@ -180,10 +170,6 @@ export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export SCHEMA_OVERRIDES_FILE_PATH=""
 export UNIFORMIZATION_STAGE_COUNT_HINT=0
-export ASTRA_DBTOKEN=""
-export ASTRA_DBDATABASE_ID=""
-export ASTRA_DBKEY_SPACE=""
-export ASTRA_DBREGION=""
 export FAILURE_INJECTION_PARAMETER=""
 export MAX_COMMIT_DELAY=-1
 export GCS_OUTPUT_DIRECTORY=""
@@ -198,8 +184,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
   --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
   --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
-  --parameters "username=$USERNAME" \
-  --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "fetchSize=$FETCH_SIZE" \
@@ -213,7 +197,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
-  --parameters "namespace=$NAMESPACE" \
   --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
   --parameters "batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
@@ -221,10 +204,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "columnOverrides=$COLUMN_OVERRIDES" \
   --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
   --parameters "uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT" \
-  --parameters "astraDBToken=$ASTRA_DBTOKEN" \
-  --parameters "astraDBDatabaseId=$ASTRA_DBDATABASE_ID" \
-  --parameters "astraDBKeySpace=$ASTRA_DBKEY_SPACE" \
-  --parameters "astraDBRegion=$ASTRA_DBREGION" \
   --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
   --parameters "maxCommitDelay=$MAX_COMMIT_DELAY" \
   --parameters "gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY" \
@@ -248,6 +227,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export SOURCE_CONFIG_URL=""
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
@@ -257,9 +237,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export SOURCE_DB_DIALECT=MYSQL
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export SOURCE_CONFIG_URL=""
-export USERNAME=""
-export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export FETCH_SIZE=<fetchSize>
@@ -269,7 +246,6 @@ export SESSION_FILE_PATH=""
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
-export NAMESPACE=""
 export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS=false
 export BATCH_SIZE_FOR_SPANNER_MUTATIONS=-1
 export SPANNER_PRIORITY=HIGH
@@ -277,10 +253,6 @@ export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export SCHEMA_OVERRIDES_FILE_PATH=""
 export UNIFORMIZATION_STAGE_COUNT_HINT=0
-export ASTRA_DBTOKEN=""
-export ASTRA_DBDATABASE_ID=""
-export ASTRA_DBKEY_SPACE=""
-export ASTRA_DBREGION=""
 export FAILURE_INJECTION_PARAMETER=""
 export MAX_COMMIT_DELAY=-1
 export GCS_OUTPUT_DIRECTORY=""
@@ -294,7 +266,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT,astraDBToken=$ASTRA_DBTOKEN,astraDBDatabaseId=$ASTRA_DBDATABASE_ID,astraDBKeySpace=$ASTRA_DBKEY_SPACE,astraDBRegion=$ASTRA_DBREGION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,maxCommitDelay=$MAX_COMMIT_DELAY,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,maxCommitDelay=$MAX_COMMIT_DELAY,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -339,6 +311,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
   name              = "sourcedb-to-spanner-flex"
   region            = var.region
   parameters        = {
+    sourceConfigURL = ""
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
@@ -346,9 +319,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # sourceDbDialect = "MYSQL"
     # jdbcDriverJars = ""
     # jdbcDriverClassName = "com.mysql.jdbc.Driver"
-    # sourceConfigURL = ""
-    # username = ""
-    # password = ""
     # tables = ""
     # numPartitions = "0"
     # fetchSize = "<fetchSize>"
@@ -358,7 +328,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # transformationJarPath = ""
     # transformationClassName = ""
     # transformationCustomParameters = ""
-    # namespace = ""
     # insertOnlyModeForSpannerMutations = "false"
     # batchSizeForSpannerMutations = "-1"
     # spannerPriority = "HIGH"
@@ -366,10 +335,6 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # columnOverrides = ""
     # schemaOverridesFilePath = ""
     # uniformizationStageCountHint = "0"
-    # astraDBToken = ""
-    # astraDBDatabaseId = ""
-    # astraDBKeySpace = ""
-    # astraDBRegion = ""
     # failureInjectionParameter = ""
     # maxCommitDelay = "-1"
     # gcsOutputDirectory = ""

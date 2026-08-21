@@ -51,10 +51,10 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
-  private static PipelineLauncher.LaunchInfo jobInfo;
+  protected PipelineLauncher.LaunchInfo jobInfo;
 
-  public static MySQLResourceManager mySQLResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  protected MySQLResourceManager mySQLResourceManager;
+  protected SpannerResourceManager spannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql-data-types.sql";
 
@@ -474,6 +474,14 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "-2.2250738585072014E-308"));
     expectedData.put(
         "time_pk", createRows("time_pk", "15:50:00.200000", "838:59:58.123000", "-838:59:59"));
+    expectedData.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+    expectedData.put(
+        "uuid_pk",
+        createRows(
+            "uuid_pk",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
+    expectedData.put("utf8mb4_pk", createRows("utf8mb4_pk", "😀", "😁", "😂"));
     return expectedData;
   }
 

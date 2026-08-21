@@ -48,12 +48,13 @@ import java.nio.channels.ReadableByteChannel;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -63,7 +64,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.PipelineOperator.Config;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
@@ -106,11 +106,13 @@ public abstract class TemplateTestBase {
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
   public String testName;
+  protected Description testDescription;
 
   @Rule
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
+          testDescription = description;
           testName = description.getMethodName();
           // In case of parameterization the testName can contain subscript like testName[paramName]
           // Converting testName from testName[paramName] to testNameParamName since it is used to
@@ -188,18 +190,29 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
-    try {
-      Method testMethod = getClass().getMethod(testName);
-      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-      Category category = testMethod.getAnnotation(Category.class);
-      if (category != null) {
-        usingDirectRunner =
-            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
-        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
-      }
-    } catch (NoSuchMethodException e) {
-      // ignore error
+
+    Set<Class<?>> categories = new HashSet<>();
+
+    Category classCategory = getClass().getAnnotation(Category.class);
+    if (classCategory != null) {
+      Collections.addAll(categories, classCategory.value());
     }
+
+    if (testDescription != null) {
+      annotation = testDescription.getAnnotation(TemplateIntegrationTest.class);
+      Category methodCategory = testDescription.getAnnotation(Category.class);
+      if (methodCategory != null) {
+        Collections.addAll(categories, methodCategory.value());
+      }
+    }
+
+    if (categories.contains(DirectRunnerTest.class)) {
+      usingDirectRunner = true;
+    }
+    if (categories.contains(SkipRunnerV2Test.class)) {
+      skipRunnerV2 = true;
+    }
+
     if (annotation == null) {
       annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
     }
@@ -307,7 +320,7 @@ public abstract class TemplateTestBase {
     }
   }
 
-  private String getSpecPath(
+  protected String getSpecPath(
       Class<?> dataflowTemplateClass, Template templateMetadata, String pomPath)
       throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
@@ -335,7 +348,7 @@ public abstract class TemplateTestBase {
           String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
       String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
 
-      String identifier = flex ? template.flexContainerName() : templateMetadata.name();
+      String identifier = flex ? templateMetadata.flexContainerName() : templateMetadata.name();
 
       stagedTemplates.get(
           identifier,
@@ -360,15 +373,40 @@ public abstract class TemplateTestBase {
               }
             }
 
-            String[] mavenCmd = buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, template);
+            String[] mavenCmd =
+                buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, templateMetadata);
             LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
             try {
-              Process exec = Runtime.getRuntime().exec(mavenCmd);
+              ProcessBuilder pb = new ProcessBuilder(mavenCmd);
+              pb.redirectErrorStream(true);
+              Process exec = pb.start();
 
-              if (exec.waitFor() != 0) {
-                IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-                IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+              List<String> outputLines = Collections.synchronizedList(new ArrayList<>());
+              Thread streamReaderThread =
+                  new Thread(
+                      () -> {
+                        try (java.io.BufferedReader reader =
+                            new java.io.BufferedReader(
+                                new java.io.InputStreamReader(exec.getInputStream(), UTF_8))) {
+                          String line;
+                          while ((line = reader.readLine()) != null) {
+                            outputLines.add(line);
+                          }
+                        } catch (IOException e) {
+                          LOG.error("Error reading process output", e);
+                        }
+                      });
+              streamReaderThread.start();
+
+              int exitCode = exec.waitFor();
+              streamReaderThread.join();
+
+              if (exitCode != 0) {
+                LOG.error("Error staging template, check Maven logs below:");
+                for (String line : outputLines) {
+                  LOG.error(line);
+                }
                 throw new RuntimeException("Error staging template, check Maven logs.");
               }
 

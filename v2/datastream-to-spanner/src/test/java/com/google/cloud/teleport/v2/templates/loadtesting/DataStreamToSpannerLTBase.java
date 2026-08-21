@@ -99,6 +99,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     setUpResourceManagers(spannerDdlResource, false);
   }
 
+  protected boolean shouldUsePrivateConnectivity() {
+    return false;
+  }
+
   /**
    * Setup resource managers.
    *
@@ -123,7 +127,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     DatastreamResourceManager.Builder datastreamBuilder =
         DatastreamResourceManager.builder(testName, project, region)
             .setCredentialsProvider(CREDENTIALS_PROVIDER);
-    if (System.getProperty("privateConnectivity") != null) {
+    if (System.getProperty("privateConnectivity") != null && shouldUsePrivateConnectivity()) {
       datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
     }
 
@@ -202,7 +206,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
-            put("workerMachineType", "n2-standard-4");
           }
         };
 
@@ -226,6 +229,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));

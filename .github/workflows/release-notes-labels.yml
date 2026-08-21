@@ -1,6 +1,6 @@
 name: Enforce labels for release notes
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, labeled, unlabeled, synchronize]
 jobs:
   label:
@@ -9,7 +9,14 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: mheap/github-action-required-labels@0ac283b4e65c1fb28ce6079dea5546ceca98ccbe
+      - name: Add extra labels to Dependabot PRs
+        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.event.action == 'opened' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "ignore-for-release"
+
+      - uses: mheap/github-action-required-labels@23e10fde7e062233401931a0eece796cd9bf3177 # v5.6.0
         with:
           mode: minimum
           count: 1

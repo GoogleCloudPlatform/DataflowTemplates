@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -179,10 +179,10 @@ public interface IcebergToPostgreSQLYaml {
 
   @TemplateParameter.Boolean(
       order = 15,
-      name = "autosharding",
+      name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
       example = "False")
-  Boolean getAutosharding();
+  Boolean getAutoSharding();
 }

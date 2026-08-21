@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.mapper;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
@@ -90,6 +92,66 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertNull(record.getShardId());
+  }
+
+  @Test
+  public void testMapFromSpannerStruct_WithGeneratedColumn() throws Exception {
+    String tableName = "public.Users";
+    String cleanTableName = "Users";
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to("Alice")
+            .set("gen_name")
+            .to("Alice_gen")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
+            .to(tableName)
+            .build();
+
+    Table mockTable = mock(Table.class);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
+
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "id")).thenReturn(false);
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "name")).thenReturn(false);
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "gen_name")).thenReturn(true);
+
+    // Mock primary keys
+    IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
+    when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
+
+    ComparisonRecord record = mapper.mapFrom(struct);
+
+    assertNotNull(record);
+    assertEquals(cleanTableName, record.getTableName());
+    assertEquals("public", record.getSchemaName());
+    assertEquals(1, record.getPrimaryKeyColumns().size());
+    assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertNull(record.getShardId());
+
+    // Verify that the filtering logic did execute and checked if gen_name is a generated column
+    verify(mockSchemaMapper).isGeneratedColumn("", tableName, "gen_name");
+
+    // To verify that 'gen_name' was indeed excluded from 'values',
+    // we can assert that its hash is exactly the same as a struct that never had it.
+    Struct structWithoutGenName =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to("Alice")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
+            .to(tableName)
+            .build();
+
+    ComparisonRecord recordWithoutGenName = mapper.mapFrom(structWithoutGenName);
+    assertEquals(
+        "Hash should exactly match the struct without 'gen_name', proving it was omitted from 'values'",
+        recordWithoutGenName.getHash(),
+        record.getHash());
   }
 
   @Test
@@ -150,6 +212,7 @@ public class ComparisonRecordMapperBasicTest {
     assertNotNull(record);
     assertEquals(cleanTableName, record.getTableName());
     assertEquals("public", record.getSchemaName());
+    assertEquals("shard1", record.getShardId());
     assertNotNull(record.getHash());
   }
 
@@ -280,5 +343,76 @@ public class ComparisonRecordMapperBasicTest {
 
     ComparisonRecord record = mapper.mapFrom(avroRecord);
     assertNotNull(record);
+  }
+
+  @Test
+  public void testMapFromAvroRecord_WithCustomTransformation() throws Exception {
+    Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
+    payloadSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null),
+            new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
+
+    Schema avroSchema = Schema.createRecord("SourceRow", null, "ns", false);
+    avroSchema.setFields(
+        Arrays.asList(
+            new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("payload", payloadSchema, null, null)));
+
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+    payload.put("id", 1L);
+    payload.put("name", "Alice");
+
+    GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    avroRecord.put("tableName", "public.Users");
+    avroRecord.put("shardId", "shard1");
+    avroRecord.put("payload", payload);
+
+    String cleanTableName = "Users";
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("public.Users");
+    when(mockSchemaMapper.getSpannerColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+
+    when(mockSchemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
+    when(mockSchemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(Arrays.asList("id", "name"));
+    when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("id")))
+        .thenReturn(Type.int64());
+    when(mockSchemaMapper.getSpannerColumnType(
+            anyString(), anyString(), org.mockito.ArgumentMatchers.eq("name")))
+        .thenReturn(Type.string());
+    when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    Table mockTable = mock(Table.class);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
+    IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
+    when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
+
+    MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);
+    when(mockResponse.isEventFiltered()).thenReturn(false);
+
+    // Custom transformation modifies 'id' from 1L to 2L and keeps 'name' unmodified as 'Alice'
+    java.util.Map<String, Object> responseRow = new java.util.HashMap<>();
+    responseRow.put("id", 2L);
+    responseRow.put("name", "Alice");
+    when(mockResponse.getResponseRow()).thenReturn(responseRow);
+
+    when(mockTransformer.toSpannerRow(org.mockito.ArgumentMatchers.any())).thenReturn(mockResponse);
+
+    ComparisonRecord record = mapper.mapFrom(avroRecord);
+
+    assertNotNull(record);
+    assertEquals(cleanTableName, record.getTableName());
+    assertEquals("public", record.getSchemaName());
+
+    // Verify that the primary key value is indeed modified by the transformer (from 1 to 2)
+    assertEquals(1, record.getPrimaryKeyColumns().size());
+    assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("2", record.getPrimaryKeyColumns().get(0).getColValue());
   }
 }

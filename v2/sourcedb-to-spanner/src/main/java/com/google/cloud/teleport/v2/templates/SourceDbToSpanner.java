@@ -20,13 +20,15 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.ISrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import java.util.List;
+import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -93,6 +95,30 @@ public class SourceDbToSpanner {
   }
 
   /**
+   * Validates the provided pipeline options. TODO: move this to source connector.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @param sourceConnectionConfig Parsed source connection config.
+   * @throws IllegalArgumentException if the provided options are invalid for the pipeline.
+   */
+  @VisibleForTesting
+  static void validateOptions(
+      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
+    if (SourceDbToSpannerOptions.PG_SOURCE_DIALECT.equals(options.getSourceDbDialect())) {
+      Preconditions.checkArgument(
+          (sourceConnectionConfig instanceof JdbcShardConfig),
+          "Postgresql dialect should have JDBC source config.");
+      for (Shard shard : ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs()) {
+        if (StringUtils.isNotBlank(shard.getNamespace())
+            && !shard.getNamespace().equals("public")) {
+          throw new IllegalArgumentException(
+              "Non-public namespaces are currently unsupported for PostgreSQL migrations.");
+        }
+      }
+    }
+  }
+
+  /**
    * Create the pipeline with the supplied options.
    *
    * @param options The execution parameters to the pipeline.
@@ -100,48 +126,23 @@ public class SourceDbToSpanner {
    */
   @VisibleForTesting
   static PipelineResult run(SourceDbToSpannerOptions options) {
-    // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
+    Optional<Integer> resourceHintsMinCpus =
+        DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
+    SourceConnectionConfig sourceConnectionConfig =
+        PipelineController.getSourceConnectionConfig(
+            options.getSourceDbDialect(), options.getSourceConfigURL());
+
+    validateOptions(options, sourceConnectionConfig);
 
     // Decide type and source of migration
-    // TODO(vardhanvthigle): Move this within pipelineController.
-    switch (options.getSourceDbDialect()) {
-      case SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT:
-        Preconditions.checkArgument(
-            StringUtils.isNotEmpty(options.getSourceConfigURL()),
-            "Cassandra Dialect needs sourceConfigURL to be set.");
-        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
-      case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT:
-        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
-
-      default:
-        /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
-        /* Making jdbc as default case which includes MYSQL and PG. */
-        Preconditions.checkArgument(
-            StringUtils.isNotEmpty(options.getSourceConfigURL()),
-            "JDBC based source needs sourceConfigURL to be set.");
-        return executeJdbcMigration(options, pipeline, spannerConfig);
-    }
-  }
-
-  // TODO(vardhanvthigle): Move this within pipelineController.
-  private static PipelineResult executeJdbcMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-    if (options.getSourceConfigURL().startsWith("gs://")) {
-      List<Shard> shards =
-          new ShardFileReader(new SecretManagerAccessorImpl())
-              .readForwardMigrationShardingConfig(options.getSourceConfigURL());
-      return PipelineController.executeJdbcShardedMigration(
-          options, pipeline, shards, spannerConfig);
-    } else {
-      return PipelineController.executeJdbcSingleInstanceMigration(
-          options, pipeline, spannerConfig);
-    }
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+    return connector.executeMigration(options, sourceConnectionConfig, pipeline, spannerConfig);
   }
 
   @VisibleForTesting

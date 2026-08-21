@@ -48,6 +48,7 @@ import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -313,7 +314,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       LOG.info(
           "Uploading sharding context file from resource: {}", shardingContextFileResourceName);
       gcsResourceManager.uploadArtifact(
-          gcsPathPrefix + "/shardingContext.json",
+          gcsPathPrefix + "/shardingConfig.conf",
           Resources.getResource(shardingContextFileResourceName).getPath());
     } else {
       LOG.info("No sharding context file provided, skipping upload.");
@@ -353,7 +354,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
     }
     params.put("inputFileFormat", "avro");
-    params.put("workerMachineType", "n2-standard-4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {
@@ -398,8 +398,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     if (shardingContextFileResourceName != null) {
       params.put(
-          "shardingContextFilePath",
-          getGcsPath(gcsPathPrefix + "/shardingContext.json", gcsResourceManager));
+          "sourceConfigURL",
+          getGcsPath(gcsPathPrefix + "/shardingConfig.conf", gcsResourceManager));
     }
 
     if (customTransformation != null) {
@@ -425,6 +425,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
@@ -594,5 +595,23 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         }
       }
     }
+  }
+
+  protected ConditionCheck buildBaseConditionCheck(
+      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
+
+    ConditionCheck combinedCondition = null;
+    for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
+      String tableName = entry.getKey();
+      int numRows = entry.getValue().size();
+      ConditionCheck c =
+          SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
+      if (combinedCondition == null) {
+        combinedCondition = c;
+      } else {
+        combinedCondition = combinedCondition.and(c);
+      }
+    }
+    return combinedCondition;
   }
 }

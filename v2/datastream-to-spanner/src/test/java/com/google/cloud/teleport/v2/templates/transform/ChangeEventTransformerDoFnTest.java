@@ -47,6 +47,7 @@ import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.HashMap;
 import java.util.Map;
@@ -79,7 +80,7 @@ public class ChangeEventTransformerDoFnTest {
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
 
@@ -135,7 +136,7 @@ public class ChangeEventTransformerDoFnTest {
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
@@ -205,7 +206,7 @@ public class ChangeEventTransformerDoFnTest {
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
@@ -285,7 +286,7 @@ public class ChangeEventTransformerDoFnTest {
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
@@ -357,7 +358,7 @@ public class ChangeEventTransformerDoFnTest {
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());

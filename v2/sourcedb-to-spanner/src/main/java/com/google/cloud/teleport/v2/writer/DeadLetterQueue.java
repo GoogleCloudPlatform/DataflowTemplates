@@ -21,7 +21,8 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
@@ -66,7 +67,10 @@ public class DeadLetterQueue implements Serializable {
 
   private final Ddl ddl;
 
-  private final SQLDialect sqlDialect;
+  private final String sourceType;
+
+  /** Source type to use in the dlq. Ideally fix the dlq to just use the regular source type. */
+  private final String dlqSourceType;
 
   private final ISchemaMapper schemaMapper;
 
@@ -77,12 +81,11 @@ public class DeadLetterQueue implements Serializable {
    * Creates a {@link DeadLetterQueue} instance.
    *
    * <p>Note: Explicit shard ID and table-to-shard-column mappings are no longer required here as
-   * they are now encapsulated within the {@link
-   * com.google.cloud.teleport.v2.source.reader.io.row.SourceRow} and processed dynamically.
+   * they are now encapsulated within the {@link SourceRow} and processed dynamically.
    */
   public static DeadLetterQueue create(
-      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
-    return new DeadLetterQueue(dlqDirectory, ddl, sqlDialect, iSchemaMapper);
+      String dlqDirectory, Ddl ddl, String sourceType, ISchemaMapper iSchemaMapper) {
+    return new DeadLetterQueue(dlqDirectory, ddl, sourceType, iSchemaMapper);
   }
 
   public String getDlqDirectory() {
@@ -90,10 +93,12 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private DeadLetterQueue(
-      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
+      String dlqDirectory, Ddl ddl, String sourceType, ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
     this.ddl = ddl;
-    this.sqlDialect = sqlDialect;
+    this.sourceType = sourceType;
+    this.dlqSourceType =
+        SourceConnectorFactory.getSourceConnectorBySourceType(sourceType).getDlqSourceType();
     this.schemaMapper = iSchemaMapper;
   }
 
@@ -321,17 +326,10 @@ public class DeadLetterQueue implements Serializable {
   private void initializeJsonNode(JSONObject json, String tableName, long timeStamp) {
     json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.UPDATE_INSERT_EVENT);
     json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
-    json.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, timeStamp);
+    json.put("_metadata_timestamp", timeStamp);
     json.put("_metadata_read_timestamp", timeStamp);
     json.put("_metadata_dataflow_timestamp", timeStamp);
-    switch (this.sqlDialect) {
-      case POSTGRESQL:
-        json.put(
-            DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
-        break;
-      default:
-        json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
-    }
+    json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, this.dlqSourceType);
   }
 
   /*

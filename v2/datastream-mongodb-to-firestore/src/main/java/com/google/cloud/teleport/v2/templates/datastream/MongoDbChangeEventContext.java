@@ -57,6 +57,7 @@ public class MongoDbChangeEventContext implements Serializable {
   private final Document shadowDocument;
   private final String jsonStringData;
   private final boolean isDeleteEvent;
+  private final boolean isUpdateEvent;
   private final Document timestampDoc;
   private boolean isDlqReconsumed;
   private int retryCount;
@@ -69,10 +70,20 @@ public class MongoDbChangeEventContext implements Serializable {
     return DatastreamConstants.EMPTY_EVENT;
   }
 
+  public String getChangeType() {
+    return getChangeType(this.changeEvent);
+  }
+
   /** Determines if the event is a delete event based on metadata. */
   private boolean isDeleteEvent(JsonNode changeEvent) {
     String changeType = getChangeType(changeEvent);
     return DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+  }
+
+  /** Determines if the event is an update event based on metadata. */
+  private boolean isUpdateEvent(JsonNode changeEvent) {
+    String changeType = getChangeType(changeEvent);
+    return DatastreamConstants.UPDATE_EVENT.equalsIgnoreCase(changeType);
   }
 
   /** Determines if the event is from dlq. */
@@ -168,6 +179,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
     // Determine event types
     this.isDeleteEvent = isDeleteEvent(changeEvent);
+    this.isUpdateEvent = isUpdateEvent(changeEvent);
 
     this.jsonStringData = dataAsJsonString();
     this.shadowDocument = generateShadowDocument();
@@ -226,6 +238,10 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public boolean isDeleteEvent() {
     return isDeleteEvent;
+  }
+
+  public boolean isUpdateEvent() {
+    return isUpdateEvent;
   }
 
   public Document getShadowDocument() {

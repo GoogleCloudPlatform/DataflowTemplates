@@ -252,6 +252,158 @@ class MetricSpecToDictTest(unittest.TestCase):
     self.assertNotIn('name', d)
 
 
+class NullMeasureHandlingTest(unittest.TestCase):
+  """Rows with NULL (None) measure fields must be dropped, not crash.
+
+  BigQuery NULLs arrive as None in the row dicts. The combiners cannot
+  fold None (``None + 0`` raises TypeError), which in streaming wedges
+  the bundle in a permanent retry loop. ComputeMetric drops such rows
+  before aggregation, matching BigQuery aggregate-function semantics.
+  """
+
+  _STREAMING_OPTIONS = beam.options.pipeline_options.PipelineOptions(
+      ['--streaming'])
+
+  def _spec(self, agg, group_by=None, measures=None, combiner=None):
+    return MetricSpec(
+        aggregation=AggregationSpec(
+            window=WindowSpec(type=WindowType.FIXED, size_seconds=60),
+            group_by=group_by or [],
+            measures=measures or [
+                MeasureSpec(field='amount', agg=agg, alias='m')]),
+        measure_combiner=combiner)
+
+  def _run(self, spec, rows, expected, keyed=False,
+           fanout_strategy=FanoutStrategy.NONE):
+    with TestPipeline(options=self._STREAMING_OPTIONS) as p:
+      timestamped = (
+          p
+          | beam.Create(rows)
+          | beam.Map(lambda r: beam_window.TimestampedValue(r, 10)))
+      result = timestamped | ComputeMetric(
+          spec, fanout_strategy=fanout_strategy)
+      if keyed:
+        values = result | beam.MapTuple(lambda k, row: (k, row.value))
+      else:
+        values = result | beam.Map(lambda row: row.value)
+      assert_that(values, equal_to(expected))
+
+  def test_sum_drops_null_rows(self):
+    rows = [{'amount': 10.0}, {'amount': None}, {'amount': 30.0}]
+    self._run(self._spec(AggOp.SUM), rows, [40.0])
+
+  def test_min_drops_null_rows(self):
+    rows = [{'amount': None}, {'amount': 5.0}, {'amount': 7.0}]
+    self._run(self._spec(AggOp.MIN), rows, [5.0])
+
+  def test_mean_drops_null_rows(self):
+    rows = [{'amount': 10.0}, {'amount': None}, {'amount': 20.0}]
+    self._run(self._spec(AggOp.MEAN), rows, [15.0])
+
+  def test_missing_field_treated_as_null(self):
+    rows = [{'amount': 10.0}, {'other': 1.0}]
+    self._run(self._spec(AggOp.SUM), rows, [10.0])
+
+  def test_count_only_spec_keeps_null_rows(self):
+    """COUNT never reads its field, so NULL rows still count."""
+    rows = [{'amount': None}, {'amount': 1.0}, {'amount': None}]
+    self._run(self._spec(AggOp.COUNT), rows, [3.0])
+
+  def test_multi_measure_drops_row_from_all_measures(self):
+    """A NULL measure field drops the whole row, COUNT included, so
+    ratio combiners stay consistent (SUM and COUNT see the same rows)."""
+    spec = self._spec(
+        None,
+        measures=[
+            MeasureSpec(field='amount', agg=AggOp.SUM, alias='total'),
+            MeasureSpec(field='amount', agg=AggOp.COUNT, alias='cnt'),
+        ],
+        combiner=Expr('total / cnt'))
+    rows = [{'amount': 10.0}, {'amount': None}, {'amount': 30.0}]
+    self._run(spec, rows, [20.0])
+
+  def test_keyed_null_rows_dropped_per_row(self):
+    spec = self._spec(AggOp.SUM, group_by=['k'])
+    rows = [
+        {'k': 'a', 'amount': 1.0},
+        {'k': 'a', 'amount': None},
+        {'k': 'b', 'amount': 5.0},
+    ]
+    self._run(spec, rows, [(('a',), 1.0), (('b',), 5.0)], keyed=True)
+
+  def test_sharded_strategy_also_guarded(self):
+    rows = [{'amount': 10.0}, {'amount': None}]
+    self._run(self._spec(AggOp.SUM), rows, [10.0],
+              fanout_strategy=FanoutStrategy.SHARDED)
+
+  def test_null_derived_measure_dropped(self):
+    """Rows whose measure fields are NULL are dropped after the
+    DerivedFields step, so derived expressions still see every row."""
+    spec = MetricSpec(
+        aggregation=AggregationSpec(
+            window=WindowSpec(type=WindowType.FIXED, size_seconds=60),
+            measures=[
+                MeasureSpec(field='amount', agg=AggOp.SUM, alias='total')]),
+        derived_fields=[
+            DerivedField(name='ignored',
+                         expression=Expr("1 if status == 'ok' else 0"))])
+    rows = [
+        {'status': 'ok', 'amount': 2.0},
+        {'status': None, 'amount': None},
+    ]
+    self._run(spec, rows, [2.0])
+
+
+class MetricExprErrorHandlingTest(unittest.TestCase):
+  """Arithmetic errors in measure_combiner drop the window, not the job.
+
+  A ZeroDivisionError raised while evaluating the combiner (e.g. a
+  ratio whose SUM denominator is zero for a window) previously escaped
+  _ApplyMetricExpr; in streaming that wedges the bundle in a permanent
+  retry loop. The affected window is now dropped (with a counter) and
+  healthy windows keep flowing.
+  """
+
+  _STREAMING_OPTIONS = beam.options.pipeline_options.PipelineOptions(
+      ['--streaming'])
+
+  def _ratio_spec(self):
+    return MetricSpec(
+        aggregation=AggregationSpec(
+            window=WindowSpec(type=WindowType.FIXED, size_seconds=60),
+            measures=[
+                MeasureSpec(field='num', agg=AggOp.SUM, alias='n'),
+                MeasureSpec(field='den', agg=AggOp.SUM, alias='d'),
+            ]),
+        measure_combiner=Expr('n / d'))
+
+  def _run(self, rows, expected):
+    with TestPipeline(options=self._STREAMING_OPTIONS) as p:
+      result = (
+          p
+          | beam.Create(rows)
+          | ComputeMetric(
+              self._ratio_spec(), fanout_strategy=FanoutStrategy.NONE))
+      values = result | beam.Map(lambda row: row.value)
+      assert_that(values, equal_to(expected))
+
+  def test_zero_denominator_window_dropped_healthy_window_kept(self):
+    rows = [
+        # Window [0, 60): denominator sums to 0 -> window dropped.
+        beam_window.TimestampedValue({'num': 5.0, 'den': 0.0}, 10),
+        # Window [60, 120): healthy -> emitted.
+        beam_window.TimestampedValue({'num': 8.0, 'den': 2.0}, 70),
+    ]
+    self._run(rows, [4.0])
+
+  def test_all_windows_bad_yields_empty_output(self):
+    rows = [
+        beam_window.TimestampedValue({'num': 5.0, 'den': 0.0}, 10),
+        beam_window.TimestampedValue({'num': 3.0, 'den': 0.0}, 70),
+    ]
+    self._run(rows, [])
+
+
 class MapperSidePrecombineDoFnTest(unittest.TestCase):
   """Unit tests for _MapperSidePrecombine DoFn."""
 

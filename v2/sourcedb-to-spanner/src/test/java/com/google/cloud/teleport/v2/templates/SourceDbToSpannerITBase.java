@@ -18,9 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
+import com.google.gson.Gson;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -30,6 +33,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +41,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -229,11 +234,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("workerMachineType", "n2-standard-4");
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {
-      params.putAll(getJdbcParameters((JDBCResourceManager) sourceResourceManager));
+      params.putAll(
+          getJdbcParameters(
+              (JDBCResourceManager) sourceResourceManager, gcsPathPrefix, jobParameters));
     } else if (sourceResourceManager instanceof CassandraResourceManager) {
       params.putAll(
           getCassandraParameters((CassandraResourceManager) sourceResourceManager, gcsPathPrefix));
@@ -258,8 +264,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     }
 
     // overridden parameters
+    String ipConfig = "WORKER_IP_PRIVATE";
     if (jobParameters != null) {
+      if (jobParameters.containsKey("ipConfiguration")) {
+        ipConfig = jobParameters.get("ipConfiguration");
+      }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
+        if ("namespace".equals(entry.getKey()) || "ipConfiguration".equals(entry.getKey())) {
+          continue;
+        }
         params.put(entry.getKey(), entry.getValue());
       }
     }
@@ -272,7 +285,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
-    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("ipConfiguration", ipConfig);
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
@@ -280,15 +294,75 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return jobInfo;
   }
 
-  private Map<String, String> getJdbcParameters(JDBCResourceManager jdbcResourceManager) {
+  protected String createAndUploadShardConfigToGcs(
+      String gcsPathPrefix,
+      JDBCResourceManager jdbcResourceManager,
+      Map<String, String> jobParameters)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(jdbcResourceManager.getUsername());
+    shard.setPassword(jdbcResourceManager.getPassword());
+    if (jdbcResourceManager instanceof PostgresResourceManager pgRm) {
+      shard.setHost(pgRm.getHost());
+      shard.setPort(String.valueOf(pgRm.getPort()));
+      shard.setDbName(pgRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
+      shard.setHost(mySqlRm.getHost());
+      shard.setPort(String.valueOf(mySqlRm.getPort()));
+      shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager cloudRm) {
+      shard.setHost(cloudRm.getHost());
+      shard.setPort(String.valueOf(cloudRm.getPort()));
+      shard.setDbName(cloudRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.OracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());
+    }
+
+    if (jobParameters != null && jobParameters.containsKey("namespace")) {
+      shard.setNamespace(jobParameters.get("namespace"));
+    }
+
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(List.of(shard));
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
+    LOG.info("Shard file contents: {}", shardFileContents);
+
+    String configBasePath = (gcsPathPrefix == null) ? "null" : gcsPathPrefix;
+    if (configBasePath.endsWith("/")) {
+      configBasePath = configBasePath.substring(0, configBasePath.length() - 1);
+    }
+    String configGcsPath = getGcsPath(configBasePath + "/shard.json");
+
+    gcsClient.createArtifact(configBasePath + "/shard.json", shardFileContents);
+
+    return configGcsPath;
+  }
+
+  private Map<String, String> getJdbcParameters(
+      JDBCResourceManager jdbcResourceManager,
+      String gcsPathPrefix,
+      Map<String, String> jobParameters) {
 
     Map<String, String> params =
         new HashMap<>() {
           {
             put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
-            put("sourceConfigURL", jdbcResourceManager.getUri());
-            put("username", jdbcResourceManager.getUsername());
-            put("password", jdbcResourceManager.getPassword());
+            try {
+              put(
+                  "sourceConfigURL",
+                  createAndUploadShardConfigToGcs(
+                      gcsPathPrefix, jdbcResourceManager, jobParameters));
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
             put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
           }
         };
@@ -395,5 +469,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException(e);
     }
+  }
+
+  @Override
+  protected PipelineOperator.Config.Builder wrapConfiguration(
+      PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(Duration.ofMinutes(15));
+    }
+    return builder;
   }
 }

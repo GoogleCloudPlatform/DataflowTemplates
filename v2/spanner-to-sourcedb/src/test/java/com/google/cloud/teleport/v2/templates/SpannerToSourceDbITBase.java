@@ -20,10 +20,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -132,34 +132,52 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager,
+      Map<String, JDBCResourceManager> shardNameToJdbcResourceManagerMaps)
       throws IOException {
+
+    List<Shard> shards =
+        shardNameToJdbcResourceManagerMaps.entrySet().stream()
+            .map(e -> createShardConfig(e.getValue(), e.getKey()))
+            .toList();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManagers)
+      throws IOException {
+    List<Shard> shards =
+        Collections.singletonList(createShardConfig(jdbcResourceManagers, "Shard1"));
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  private Shard createShardConfig(JDBCResourceManager jdbcResourceManager, String shardId) {
     Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
+    shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
-    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager) {
-      org.apache.beam.it.jdbc.PostgresResourceManager pgRm =
-          (org.apache.beam.it.jdbc.PostgresResourceManager) jdbcResourceManager;
+    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
       shard.setDbName(pgRm.getDatabaseName());
-    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.MySQLResourceManager) {
-      org.apache.beam.it.jdbc.MySQLResourceManager mySqlRm =
-          (org.apache.beam.it.jdbc.MySQLResourceManager) jdbcResourceManager;
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+    return shard;
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
@@ -216,6 +234,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
+  protected String getSpannerServerTime(
+      SpannerResourceManager spannerResourceManager, Dialect dialect) {
+    String query =
+        dialect == Dialect.POSTGRESQL ? "SELECT CURRENT_TIMESTAMP" : "SELECT CURRENT_TIMESTAMP()";
+    return spannerResourceManager.runQuery(query).get(0).getTimestamp(0).toString();
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -228,6 +253,35 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String sourceType,
       Map<String, String> jobParameters)
+      throws IOException {
+    return launchDataflowJob(
+        gcsResourceManager,
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        subscriptionName,
+        identifierSuffix,
+        shardingCustomJarPath,
+        shardingCustomClassName,
+        sourceDbTimezoneOffset,
+        customTransformation,
+        sourceType,
+        jobParameters,
+        Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String subscriptionName,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation,
+      String sourceType,
+      Map<String, String> jobParameters,
+      Dialect dialect)
       throws IOException {
 
     Map<String, String> params =
@@ -255,7 +309,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
-            put("workerMachineType", "n2-standard-4");
+            // Query Spanner server time to bypass local clock skew and set as startTimestamp
+            // to ensure the DirectRunner catches all test mutations during initialization.
+            put("startTimestamp", getSpannerServerTime(spannerResourceManager, dialect));
           }
         };
 
@@ -296,6 +352,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();

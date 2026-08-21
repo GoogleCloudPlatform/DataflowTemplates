@@ -7,3 +7,4 @@ CREATE TABLE date_table (id BIGINT PRIMARY KEY, date_col date);
 CREATE TABLE numeric_table (id BIGINT PRIMARY KEY, numeric_col numeric);
 CREATE TABLE timestamp_table (id BIGINT PRIMARY KEY, timestamp_col timestamp with time zone);
 CREATE TABLE json_table (id BIGINT PRIMARY KEY, json_col jsonb);
+CREATE TABLE uuid_table (id BIGINT PRIMARY KEY, uuid_col uuid);

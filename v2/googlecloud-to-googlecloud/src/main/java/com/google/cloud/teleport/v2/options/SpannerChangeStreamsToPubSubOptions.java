@@ -250,4 +250,16 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   Boolean getUseSpannerEmulatorHost();
 
   void setUseSpannerEmulatorHost(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 20,
+      optional = true,
+      groupName = "Source",
+      description =
+          "Semicolon-separated list of Spanner Change Stream TVF names to query and union.",
+      helpText = "Semicolon-separated list of Spanner Change Stream TVF names to query and union.")
+  @Default.String("")
+  String getSpannerChangeStreamTvfNameList();
+
+  void setSpannerChangeStreamTvfNameList(String value);
 }

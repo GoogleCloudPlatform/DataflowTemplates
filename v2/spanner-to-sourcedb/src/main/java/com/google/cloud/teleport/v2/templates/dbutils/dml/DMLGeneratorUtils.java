@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -41,7 +40,8 @@ public class DMLGeneratorUtils {
         Column spannerColDef,
         SourceColumn sourceColDef,
         JSONObject valuesJson,
-        String sourceDbTimezoneOffset);
+        String sourceDbTimezoneOffset,
+        List<Object> preparedStatementParameters);
   }
 
   public static String convertBase64ToRawHex(String base64EncodedString) {
@@ -72,8 +72,9 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnValueMapper columnValueMapper) {
-    Map<String, String> response = new HashMap<>();
+      ColumnValueMapper columnValueMapper,
+      List<Object> preparedStatementParameters) {
+    Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
@@ -111,7 +112,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+                spannerColDef,
+                sourceColDef,
+                keyValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(colName, null);
@@ -119,7 +124,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColDef,
+                sourceColDef,
+                newValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else {
         continue;
       }
@@ -138,8 +147,9 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnValueMapper columnValueMapper) {
-    Map<String, String> response = new HashMap<>();
+      ColumnValueMapper columnValueMapper,
+      List<Object> preparedStatementParameters) {
+    Map<String, String> response = new java.util.LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
@@ -175,16 +185,13 @@ public class DMLGeneratorUtils {
         continue;
       }
       if (spannerColName == null) {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
+        continue;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
+        continue;
       }
       String columnValue = "";
       String actualColName = spannerColDef.name();
@@ -195,7 +202,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+                spannerColDef,
+                sourceColDef,
+                keyValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(sourceColName, null);
@@ -203,7 +214,11 @@ public class DMLGeneratorUtils {
         }
         columnValue =
             columnValueMapper.getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColDef,
+                sourceColDef,
+                newValuesJson,
+                sourceDbTimezoneOffset,
+                preparedStatementParameters);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
@@ -222,7 +237,8 @@ public class DMLGeneratorUtils {
               keyValuesJson,
               sourceDbTimezoneOffset,
               customTransformationResponse,
-              columnValueMapper);
+              columnValueMapper,
+              preparedStatementParameters);
       response.putAll(generatedColumnValues);
     }
 

@@ -94,6 +94,7 @@ public final class SpannerResourceManagerTest {
   @Captor private ArgumentCaptor<Iterable<String>> statementCaptor;
   @Captor private ArgumentCaptor<String> instanceIdCaptor;
   @Captor private ArgumentCaptor<String> databaseIdCaptor;
+  @Captor private ArgumentCaptor<Database> databaseCaptor;
   @Captor private ArgumentCaptor<String> projectIdCaptor;
 
   @Before
@@ -153,7 +154,10 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareCreateInstanceMock();
     prepareCreateDatabaseMock();
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(InterruptedException.class);
     String statement =
         "CREATE TABLE Singers (\n"
@@ -190,14 +194,10 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
-        .updateDatabaseDdl(
-            instanceIdCaptor.capture(),
-            databaseIdCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
-    String actualInstanceId = instanceIdCaptor.getValue();
-    String actualDatabaseId = databaseIdCaptor.getValue();
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
     assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
@@ -222,7 +222,10 @@ public final class SpannerResourceManagerTest {
     RuntimeException resourceExhaustedException =
         new RuntimeException(
             "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(resourceExhaustedException)
         .thenReturn(null);
 
@@ -234,14 +237,10 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(3))
-        .updateDatabaseDdl(
-            instanceIdCaptor.capture(),
-            databaseIdCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
-    String actualInstanceId = instanceIdCaptor.getValue();
-    String actualDatabaseId = databaseIdCaptor.getValue();
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
     assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
@@ -826,7 +825,11 @@ public final class SpannerResourceManagerTest {
 
   private void prepareUpdateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
-        .when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+        .when(
+            spanner
+                .getDatabaseAdminClient()
+                .updateDatabaseDdl(any(Database.class), any(), any())
+                .get())
         .thenReturn(null);
   }
 

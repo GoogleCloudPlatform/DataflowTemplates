@@ -22,16 +22,22 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnection
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraConnectionHelper;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDao;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSpToSrcSourceConnector;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -39,6 +45,19 @@ import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public class SourceProcessorFactoryTest {
+
+  private static Map<String, ISpToSrcSourceConnector> originalSourceMap;
+
+  @BeforeClass
+  public static void setUpBeforeClass() {
+    originalSourceMap = SourceProcessorFactory.getSourceMap();
+  }
+
+  @After
+  public void tearDown() {
+    SourceProcessorFactory.setSourceMap(originalSourceMap);
+  }
+
   @Test
   public void testCreateSourceProcessor_validSource() throws Exception {
     List<Shard> shards =
@@ -54,10 +73,17 @@ public class SourceProcessorFactoryTest {
                 "projects/myproject/secrets/mysecret/versions/latest",
                 ""));
     int maxConnections = 10;
+
+    ISpToSrcSourceConnector mockSource = Mockito.mock(ISpToSrcSourceConnector.class);
     JdbcConnectionHelper mockConnectionHelper = Mockito.mock(JdbcConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
-    SourceProcessorFactory.setConnectionHelperMap(
-        Map.of(Constants.SOURCE_MYSQL, mockConnectionHelper));
+
+    Mockito.when(mockSource.getDmlGenerator()).thenReturn(new MySQLDMLGenerator());
+    Mockito.when(mockSource.getConnectionHelper()).thenReturn(mockConnectionHelper);
+    Mockito.when(mockSource.getDao(any())).thenReturn(Mockito.mock(JdbcDao.class));
+
+    SourceProcessorFactory.registerSource(Constants.SOURCE_MYSQL, mockSource);
+
     SourceProcessor processor =
         SourceProcessorFactory.createSourceProcessor(
             Constants.SOURCE_MYSQL, shards, maxConnections);
@@ -96,10 +122,17 @@ public class SourceProcessorFactoryTest {
 
     List<Shard> shards = List.of(mockCassandraShard);
     int maxConnections = 10;
+
+    ISpToSrcSourceConnector mockSource = Mockito.mock(ISpToSrcSourceConnector.class);
     CassandraConnectionHelper mockConnectionHelper = Mockito.mock(CassandraConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
-    SourceProcessorFactory.setConnectionHelperMap(
-        Map.of(Constants.SOURCE_CASSANDRA, mockConnectionHelper));
+
+    Mockito.when(mockSource.getDmlGenerator()).thenReturn(new CassandraDMLGenerator());
+    Mockito.when(mockSource.getConnectionHelper()).thenReturn(mockConnectionHelper);
+    Mockito.when(mockSource.getDao(any())).thenReturn(Mockito.mock(CassandraDao.class));
+
+    SourceProcessorFactory.registerSource(Constants.SOURCE_CASSANDRA, mockSource);
+
     SourceProcessor processor =
         SourceProcessorFactory.createSourceProcessor(
             Constants.SOURCE_CASSANDRA, shards, maxConnections);
@@ -108,5 +141,31 @@ public class SourceProcessorFactoryTest {
     Assert.assertTrue(processor.getDmlGenerator() instanceof CassandraDMLGenerator);
     Assert.assertEquals(1, processor.getSourceDaoMap().size());
     Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof CassandraDao);
+  }
+
+  @Test
+  public void testGetSource_Success() throws Exception {
+    ISpToSrcSourceConnector mysqlSource = SourceProcessorFactory.getSource("mysql");
+    Assert.assertTrue(mysqlSource instanceof MySQLSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector postgresSource = SourceProcessorFactory.getSource("postgresql");
+    Assert.assertTrue(postgresSource instanceof PostgreSQLSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector cassandraSource = SourceProcessorFactory.getSource("cassandra");
+    Assert.assertTrue(cassandraSource instanceof CassandraSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector spannerSource = SourceProcessorFactory.getSource("spanner");
+    Assert.assertTrue(spannerSource instanceof SpannerSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector oracleSource = SourceProcessorFactory.getSource("oracle");
+    Assert.assertTrue(
+        oracleSource
+            instanceof
+            com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector);
+  }
+
+  @Test(expected = UnsupportedSourceException.class)
+  public void testGetSource_UnsupportedSourceException() throws Exception {
+    SourceProcessorFactory.getSource("unsupported_db");
   }
 }

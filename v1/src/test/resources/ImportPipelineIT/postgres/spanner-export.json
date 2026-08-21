@@ -11,6 +11,9 @@
   }, {
     "name": "Identity",
     "manifestFile": "Identity-manifest.json"
+  }, {
+    "name": "UdfSchema",
+    "manifestFile": "UdfSchema-manifest.json"
   }],
   "databaseOptions": [{
     "optionName": "default_time_zone",

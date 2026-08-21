@@ -313,7 +313,12 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < vals.size(); i++) {
       Map<String, Object> row = new HashMap<>();
-      row.put("id", i + 1);
+      // We specifically want to test primary key partitioning.
+      if (colPrefix.toLowerCase().contains("_pk")) {
+        row.put("id", vals.get(i));
+      } else {
+        row.put("id", i + 1);
+      }
       row.put(String.format("%s_col", colPrefix), vals.get(i));
       rows.add(row);
     }
@@ -611,6 +616,13 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
         "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967295", "NULL"));
+    expectedData.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
+    expectedData.put(
+        "uuid_pk",
+        createRows(
+            "uuid_pk",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     return expectedData;
   }
 

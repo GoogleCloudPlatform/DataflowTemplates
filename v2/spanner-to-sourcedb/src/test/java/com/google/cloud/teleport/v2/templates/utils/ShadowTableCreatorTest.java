@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.collect.ImmutableList;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -69,7 +71,7 @@ public final class ShadowTableCreatorTest {
     when(mockSpannerAccessor.getDatabaseAdminClient()).thenReturn(mockDatabaseClient);
     when(mockDatabaseClient.updateDatabaseDdl(any(), any(), any(), any()))
         .thenReturn(mockUpdateDatabaseDdlFuture);
-    when(mockUpdateDatabaseDdlFuture.get(15, TimeUnit.MINUTES)).thenReturn(null);
+    when(mockUpdateDatabaseDdlFuture.get(5, TimeUnit.MINUTES)).thenReturn(null);
   }
 
   @Test
@@ -318,5 +320,24 @@ public final class ShadowTableCreatorTest {
 
     // Verify that updateDatabaseDdl was NOT called!
     verify(mockDatabaseClient, never()).updateDatabaseDdl(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testCreateShadowTables_Exception() throws Exception {
+    Ddl primaryDbDdl = getPrimaryDbDdl();
+    Ddl metadataDbDdl = getMetadataDbDdl();
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    when(mockUpdateDatabaseDdlFuture.get(5, TimeUnit.MINUTES))
+        .thenThrow(new ExecutionException(new RuntimeException("Spanner error")));
+
+    assertThrows(RuntimeException.class, () -> shadowTableCreator.createShadowTablesInSpanner());
   }
 }
