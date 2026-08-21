@@ -61,6 +61,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  * environment setup and assertConditions.
  */
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
+  protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
 
   public MySQLResourceManager setUpMySQLResourceManager() {
@@ -69,6 +70,80 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
     return CloudMySQLResourceManager.builder(testName).build();
+  }
+
+  public org.apache.beam.it.jdbc.OracleResourceManager setUpOracleResourceManager() {
+    return org.apache.beam.it.jdbc.OracleResourceManager.builder(testName).build();
+  }
+
+  protected void loadOracleSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath) throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadOracleSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath, String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql, targetUsername);
+  }
+
+  protected void loadOracleSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql) throws Exception {
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql, "SYSTEM");
+  }
+
+  protected void loadOracleSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql, String targetUsername) throws Exception {
+    LOG.info("Loading Oracle sql to jdbc resource manager in schema {}", targetUsername);
+    try (Connection connection =
+        DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      // Ensure creation of tables occurs in the isolated namespace
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+        }
+      }
+
+      // Preprocess SQL to handle multi-line statements and newlines
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+
+      // Split into individual statements based on -- SPLIT --
+      String[] statements = sql.split("-- SPLIT --");
+
+      // Execute each statement
+      try (Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isEmpty()) {
+            LOG.info("Executing Oracle statement: {}", stmt);
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
+      throw new Exception("Failed to load SQL into database", e);
+    }
+    LOG.info("Successfully loaded sql to jdbc resource manager");
+  }
+
+  protected String setupOracleIsolatedUser(JDBCResourceManager jdbcResourceManager) {
+    String testUsername =
+        "BULK_"
+            + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    LOG.info("Creating isolated Oracle user: {}", testUsername);
+    jdbcResourceManager.runSQLUpdate("CREATE USER " + testUsername + " IDENTIFIED BY password");
+    jdbcResourceManager.runSQLUpdate("GRANT ALL PRIVILEGES TO " + testUsername);
+    return testUsername;
   }
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
@@ -109,15 +184,39 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
   }
 
+  protected void loadSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath, String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql, targetUsername);
+  }
+
   protected void loadSQLToJdbcResourceManager(JDBCResourceManager jdbcResourceManager, String sql)
       throws Exception {
-    LOG.info("Loading sql to jdbc resource manager with uri: {}", jdbcResourceManager.getUri());
-    try {
-      Connection connection =
-          DriverManager.getConnection(
-              jdbcResourceManager.getUri(),
-              jdbcResourceManager.getUsername(),
-              jdbcResourceManager.getPassword());
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql, "SYSTEM");
+  }
+
+  protected void loadSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql, String targetUsername) throws Exception {
+    LOG.info(
+        "Loading sql to jdbc resource manager with uri: {} as user: {}",
+        jdbcResourceManager.getUri(),
+        targetUsername);
+    try (Connection connection =
+        DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      // Ensure creation of tables occurs in the isolated namespace
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)
+          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        try (Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+        }
+      }
 
       // Preprocess SQL to handle multi-line statements and newlines
       sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
@@ -126,13 +225,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       String[] statements = sql.split(";");
 
       // Execute each statement
-      Statement statement = connection.createStatement();
-      for (String stmt : statements) {
-        if (!stmt.trim().isEmpty()) {
-          // Skip SELECT statements
-          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
-            LOG.info("Executing statement: {}", stmt);
-            statement.executeUpdate(stmt);
+      try (Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isEmpty()) {
+            // Skip SELECT statements
+            if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+              LOG.info("Executing statement: {}", stmt);
+              statement.executeUpdate(stmt);
+            }
           }
         }
       }
@@ -303,6 +403,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
+    if (jobParameters != null && jobParameters.containsKey("namespace")) {
+      shard.setNamespace(jobParameters.get("namespace"));
+    } else if (testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword("password");
+    }
+
     if (jdbcResourceManager instanceof PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
@@ -328,6 +436,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     if (jobParameters != null && jobParameters.containsKey("namespace")) {
       shard.setNamespace(jobParameters.get("namespace"));
+    } else if (testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword("password");
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
@@ -457,6 +571,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (resourceManager instanceof PostgresResourceManager) {
       return SQLDialect.POSTGRESQL.name();
     }
+    if (resourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      return "ORACLE";
+    }
     return SQLDialect.MYSQL.name();
   }
 
@@ -464,6 +581,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     try {
       if (jdbcResourceManager instanceof PostgresResourceManager) {
         return Class.forName("org.postgresql.Driver").getCanonicalName();
+      }
+      if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        return "oracle.jdbc.OracleDriver";
       }
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {
