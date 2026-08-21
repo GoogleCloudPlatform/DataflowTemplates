@@ -139,39 +139,39 @@ public class MysqlJdbcValueMappingsTest {
   }
 
   @Test
-  public void testSqlDateToAvroDate() throws Exception {
-    Field field = MysqlJdbcValueMappings.class.getDeclaredField("sqlDateToAvroDate");
+  public void testSqlDateToAvroTimestampMicros() throws Exception {
+    Field field = MysqlJdbcValueMappings.class.getDeclaredField("sqlDateToAvroTimestampMicros");
     field.setAccessible(true);
     @SuppressWarnings("unchecked")
     ResultSetValueMapper<Date> mapper = (ResultSetValueMapper<Date>) field.get(null);
 
     // Standard date
-    int epochDay1 = (int) LocalDate.parse("2012-09-17").toEpochDay();
+    long epochMicros1 = TimeUnit.DAYS.toMicros(LocalDate.parse("2012-09-17").toEpochDay());
     Date d1 = Date.valueOf("2012-09-17");
-    assertEquals(epochDay1, (int) mapper.map(d1, null));
+    assertEquals(epochMicros1, (long) mapper.map(d1, null));
 
     // Min date (1000-01-01)
-    int epochDay2 = (int) LocalDate.parse("1000-01-01").toEpochDay();
+    long epochMicros2 = TimeUnit.DAYS.toMicros(LocalDate.parse("1000-01-01").toEpochDay());
     Date d2 = Date.valueOf("1000-01-01");
-    assertEquals(epochDay2, (int) mapper.map(d2, null));
+    assertEquals(epochMicros2, (long) mapper.map(d2, null));
 
     // Max date (9999-12-31)
-    int epochDay3 = (int) LocalDate.parse("9999-12-31").toEpochDay();
+    long epochMicros3 = TimeUnit.DAYS.toMicros(LocalDate.parse("9999-12-31").toEpochDay());
     Date d3 = Date.valueOf("9999-12-31");
-    assertEquals(epochDay3, (int) mapper.map(d3, null));
+    assertEquals(epochMicros3, (long) mapper.map(d3, null));
 
     // Leap year (2000-02-29)
-    int epochDay4 = (int) LocalDate.parse("2000-02-29").toEpochDay();
+    long epochMicros4 = TimeUnit.DAYS.toMicros(LocalDate.parse("2000-02-29").toEpochDay());
     Date d4 = Date.valueOf("2000-02-29");
-    assertEquals(epochDay4, (int) mapper.map(d4, null));
+    assertEquals(epochMicros4, (long) mapper.map(d4, null));
 
     // Leap year (2024-02-29)
-    int epochDay5 = (int) LocalDate.parse("2024-02-29").toEpochDay();
+    long epochMicros5 = TimeUnit.DAYS.toMicros(LocalDate.parse("2024-02-29").toEpochDay());
     Date d5 = Date.valueOf("2024-02-29");
-    assertEquals(epochDay5, (int) mapper.map(d5, null));
+    assertEquals(epochMicros5, (long) mapper.map(d5, null));
 
     // Epoch day zero (1970-01-01)
     Date d6 = Date.valueOf("1970-01-01");
-    assertEquals(0, (int) mapper.map(d6, null));
+    assertEquals(0L, (long) mapper.map(d6, null));
   }
 }

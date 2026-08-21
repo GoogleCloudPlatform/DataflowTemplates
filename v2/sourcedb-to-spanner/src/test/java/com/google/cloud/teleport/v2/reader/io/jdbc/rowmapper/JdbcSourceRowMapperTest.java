@@ -53,6 +53,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.After;
@@ -338,7 +339,7 @@ public class JdbcSourceRowMapperTest {
                 .derbyColumnType("DATE")
                 .sourceColumnType("DATE")
                 .inputValue(Date.valueOf("2024-05-02"))
-                .mappedValue((int) LocalDate.parse("2024-05-02").toEpochDay())
+                .mappedValue(TimeUnit.DAYS.toMicros(LocalDate.parse("2024-05-02").toEpochDay()))
                 .build())
         .add(
             Column.builder()
