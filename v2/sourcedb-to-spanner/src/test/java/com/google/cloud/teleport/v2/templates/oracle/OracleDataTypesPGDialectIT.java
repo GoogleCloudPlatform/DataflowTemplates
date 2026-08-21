@@ -29,7 +29,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,7 +41,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class OracleDataTypesPGDialectIT extends SourceDbToSpannerITBase {
 
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager pgDialectSpannerResourceManager;
   private static final String ORACLE_DUMP_FILE_RESOURCE =
       "oracle/OracleDataTypesPGDialectIT/oracle-schema.sql";
@@ -51,18 +50,19 @@ public class OracleDataTypesPGDialectIT extends SourceDbToSpannerITBase {
 
   @Before
   public void setUp() throws Exception {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(oracleResourceManager, pgDialectSpannerResourceManager);
+    ResourceManagerUtils.cleanResources(pgDialectSpannerResourceManager);
   }
 
   @Test
   public void allTypesTestPGDialect() throws Exception {
-    loadSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE);
+    loadSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE, testUsername);
     createSpannerDDL(pgDialectSpannerResourceManager, SPANNER_DDL_RESOURCE);
 
     org.apache.beam.it.common.PipelineLauncher.LaunchInfo jobInfo =
@@ -72,7 +72,13 @@ public class OracleDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             null,
             oracleResourceManager,
             pgDialectSpannerResourceManager,
-            java.util.Map.of("maxConnections", "10", "jdbcDriverJars", oracleDriverGCSPath()),
+            java.util.Map.of(
+                "namespace",
+                testUsername,
+                "maxConnections",
+                "10",
+                "jdbcDriverJars",
+                oracleDriverGCSPath()),
             null);
 
     PipelineOperator.Result result =

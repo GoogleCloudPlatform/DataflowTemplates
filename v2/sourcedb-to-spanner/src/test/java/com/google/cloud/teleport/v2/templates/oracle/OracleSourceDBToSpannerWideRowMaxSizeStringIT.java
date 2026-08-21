@@ -60,10 +60,11 @@ public class OracleSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpa
   public void setUp() throws Exception {
     synchronized (OracleSourceDBToSpannerWideRowMaxSizeStringIT.class) {
       if (!initialized) {
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleBulkITContainer.getInstance();
         spannerResourceManager = setUpSpannerResourceManager();
+        testUsername = setupOracleIsolatedUser(oracleResourceManager);
 
-        loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE);
+        loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE, testUsername);
 
         initialized = true;
       }
@@ -72,7 +73,7 @@ public class OracleSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpa
 
   @AfterClass
   public static void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(oracleResourceManager, spannerResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test

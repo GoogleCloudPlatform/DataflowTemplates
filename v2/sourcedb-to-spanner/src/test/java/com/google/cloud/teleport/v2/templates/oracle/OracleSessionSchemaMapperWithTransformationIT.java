@@ -29,7 +29,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,7 +50,7 @@ public class OracleSessionSchemaMapperWithTransformationIT extends SourceDbToSpa
       LoggerFactory.getLogger(OracleSessionSchemaMapperWithTransformationIT.class);
   private PipelineLauncher.LaunchInfo jobInfo;
 
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   private static final String ORACLE_DDL_RESOURCE =
@@ -64,18 +63,19 @@ public class OracleSessionSchemaMapperWithTransformationIT extends SourceDbToSpa
 
   @Before
   public void setUp() {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, oracleResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void transformationTest() throws Exception {
-    loadSQLFileResource(oracleResourceManager, ORACLE_DDL_RESOURCE);
+    loadSQLFileResource(oracleResourceManager, ORACLE_DDL_RESOURCE, testUsername);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_WITH_TRANSFORMATION_RESOURCE);
 
     Map<String, String> jobParams = new HashMap<>();
