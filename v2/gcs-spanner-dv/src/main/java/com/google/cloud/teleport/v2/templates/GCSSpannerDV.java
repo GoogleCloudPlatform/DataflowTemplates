@@ -37,6 +37,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -254,6 +255,16 @@ public class GCSSpannerDV {
     String getTransformationCustomParameters();
 
     void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
   public static void main(String[] args) {
@@ -327,11 +338,20 @@ public class GCSSpannerDV {
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(Options options) {
-    return SpannerConfig.create()
-        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    SpannerConfig config =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isEmpty()) {
+      config =
+          SpannerServiceFactoryImpl.createSpannerService(
+              config, options.getFailureInjectionParameter());
+    }
+    return config;
   }
 }
