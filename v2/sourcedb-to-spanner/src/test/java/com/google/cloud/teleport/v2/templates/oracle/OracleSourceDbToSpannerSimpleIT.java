@@ -22,7 +22,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +33,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -58,7 +56,7 @@ public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static HashSet<OracleSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
   private PipelineLauncher.LaunchInfo jobInfo;
 
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE =
@@ -99,22 +97,75 @@ public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
 
   @Before
   public void setUp() {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, oracleResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
+  }
+
+  private void createAndWriteTable(String tableName, String pkCol, List<Map<String, Object>> data)
+      throws Exception {
+    try (java.sql.Connection c =
+            java.sql.DriverManager.getConnection(
+                oracleResourceManager.getUri(), testUsername, "password");
+        java.sql.Statement s = c.createStatement()) {
+      s.execute(
+          "CREATE TABLE "
+              + tableName
+              + " (\"id\" INTEGER NOT NULL, \"name\" VARCHAR2(200), PRIMARY KEY ("
+              + pkCol
+              + "))");
+      for (Map<String, Object> r : data) {
+        s.execute(
+            "INSERT INTO "
+                + tableName
+                + " (\"id\", \"name\") VALUES ("
+                + r.get("\"id\"")
+                + ", '"
+                + r.get("\"name\"")
+                + "')");
+      }
+    }
+  }
+
+  private void writeTable(String tableName, List<Map<String, Object>> data) throws Exception {
+    try (java.sql.Connection c =
+            java.sql.DriverManager.getConnection(
+                oracleResourceManager.getUri(), testUsername, "password");
+        java.sql.Statement s = c.createStatement()) {
+      for (Map<String, Object> r : data) {
+        s.execute(
+            "INSERT INTO "
+                + tableName
+                + " (\"id\", \"name\") VALUES ("
+                + r.get("\"id\"")
+                + ", '"
+                + r.get("\"name\"")
+                + "')");
+      }
+    }
+  }
+
+  private void truncateTableAsUser(String tableName) throws Exception {
+    try (java.sql.Connection c =
+            java.sql.DriverManager.getConnection(
+                oracleResourceManager.getUri(), testUsername, "password");
+        java.sql.Statement s = c.createStatement()) {
+      s.execute("TRUNCATE TABLE " + tableName);
+    }
   }
 
   @Test
-  public void testOracleToSpanner() throws IOException {
+  public void testOracleToSpanner() throws Exception {
     List<Map<String, Object>> oracleData = getOracleData();
-    oracleResourceManager.createTable(TABLE1, getOracleSchema("\"id\""));
-    oracleResourceManager.createTable(TABLE2, getOracleSchema("\"name\""));
-    oracleResourceManager.write(TABLE1, oracleData);
-    oracleResourceManager.write(TABLE2, oracleData);
+    createAndWriteTable(TABLE1, "\"id\"", oracleData);
+    createAndWriteTable(TABLE2, "\"name\"", oracleData);
+    // deleted write TABLE1
+    // deleted write TABLE2
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -136,11 +187,11 @@ public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             spannerResourceManager.readTableRecords("StringTable", "id", "name"))
         .hasRecordsUnorderedCaseInsensitiveColumns(expectedData);
 
-    oracleResourceManager.runSQLUpdate("TRUNCATE TABLE " + TABLE2);
+    truncateTableAsUser(TABLE2);
     List<Map<String, Object>> updatedOracleData = getOracleData();
     List<Map<String, Object>> expectedUpdatedData = getSpannerExpectedData(updatedOracleData);
     assertThat(updatedOracleData).isNotEqualTo(oracleData);
-    oracleResourceManager.write(TABLE2, updatedOracleData);
+    writeTable(TABLE2, updatedOracleData);
 
     jobInfo =
         launchDataflowJob(

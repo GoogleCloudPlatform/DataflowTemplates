@@ -27,7 +27,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +47,7 @@ public class OracleForeignKeyDependencyIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(OracleForeignKeyDependencyIT.class);
   private PipelineLauncher.LaunchInfo jobInfo;
 
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   private static final String ORACLE_DUMP_FILE_RESOURCE =
@@ -62,19 +61,20 @@ public class OracleForeignKeyDependencyIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, oracleResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void linearDependencyTest() throws Exception {
-    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE);
+    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE, testUsername);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     java.util.Map<String, String> jobParams = new java.util.HashMap<>();
     jobParams.put("jdbcDriverJars", oracleDriverGCSPath());

@@ -26,7 +26,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +38,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class OracleSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSpannerITBase {
   private PipelineLauncher.LaunchInfo jobInfo;
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -50,18 +49,19 @@ public class OracleSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToS
 
   @Before
   public void setUp() {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, oracleResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void wideRowInterleaveDepthTest() throws Exception {
-    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE);
+    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE, testUsername);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
         launchDataflowJob(

@@ -31,7 +31,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,14 +46,15 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class OracleNamespaceIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(OracleNamespaceIT.class);
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setUp() {
-    oracleResourceManager = OracleResourceManager.builder("testora").build();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager =
         SpannerResourceManager.builder("test-span-" + testName, PROJECT, REGION).build();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @Test
@@ -131,7 +131,7 @@ public class OracleNamespaceIT extends SourceDbToSpannerITBase {
   @After
   public void cleanUp() {
     if (oracleResourceManager != null) {
-      oracleResourceManager.cleanupAll();
+      // oracleResourceManager is shared; skipped cleanup
     }
     if (spannerResourceManager != null) {
       spannerResourceManager.cleanupAll();

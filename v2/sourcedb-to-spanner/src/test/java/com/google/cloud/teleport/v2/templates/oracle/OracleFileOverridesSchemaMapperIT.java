@@ -32,7 +32,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +55,7 @@ public class OracleFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   private static final HashSet<OracleFileOverridesSchemaMapperIT> testInstances = new HashSet<>();
   private PipelineLauncher.LaunchInfo jobInfo;
 
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
 
@@ -73,8 +72,9 @@ public class OracleFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() throws Exception {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
     gcsResourceManager = setUpSpannerITGcsResourceManager();
 
     gcsResourceManager.uploadArtifact(
@@ -92,16 +92,16 @@ public class OracleFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, oracleResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, gcsResourceManager);
   }
 
   @Test
   public void testMigrationWithFileOverridesAndCommonSchema() throws Exception {
-    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DDL_RESOURCE);
+    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DDL_RESOURCE, testUsername);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put("namespace", testUsername);
     jobParameters.put(
         "schemaOverridesFilePath",
         getGcsPath(SCHEMA_OVERRIDE_GCS_PREFIX + "/file-overrides.json", gcsResourceManager));

@@ -32,7 +32,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,23 +50,24 @@ public class OracleSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDb
       "oracle/OracleSourceDbToSpannerWideRowMaxColumnsTableKeyIT/oracle-GOOGLE_STANDARD_SQL-spanner-schema.sql";
 
   private PipelineLauncher.LaunchInfo jobInfo;
-  private OracleResourceManager oracleResourceManager;
+  private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setUp() throws Exception {
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleBulkITContainer.getInstance();
     spannerResourceManager = setUpSpannerResourceManager();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
   }
 
   @After
   public void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(oracleResourceManager, spannerResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void wideRowMaxColumnsTableKeyTest() throws Exception {
-    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE);
+    loadOracleSQLFileResource(oracleResourceManager, ORACLE_DUMP_FILE_RESOURCE, testUsername);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     Map<String, String> jobParams = new HashMap<>();
     jobParams.put("jdbcDriverJars", oracleDriverGCSPath());
