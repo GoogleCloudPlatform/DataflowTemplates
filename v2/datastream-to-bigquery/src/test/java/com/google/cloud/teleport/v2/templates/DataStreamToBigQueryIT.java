@@ -67,6 +67,7 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -103,16 +104,19 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
 
   private CloudSqlResourceManager cloudSqlResourceManager;
   private PubsubResourceManager pubsubResourceManager;
-  private DatastreamResourceManager datastreamResourceManager;
+  private static DatastreamResourceManager datastreamResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() throws IOException {
-    datastreamResourceManager =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2")
-            .build();
+    if (datastreamResourceManager == null) {
+      datastreamResourceManager =
+          DatastreamResourceManager.builder(
+                  DataStreamToBigQueryIT.class.getSimpleName(), PROJECT, REGION)
+              .setCredentialsProvider(credentialsProvider)
+              .setPrivateConnectivity("datastream-connect-2")
+              .build();
+    }
 
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
@@ -143,10 +147,12 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        cloudSqlResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager,
-        bigQueryResourceManager);
+        cloudSqlResourceManager, pubsubResourceManager, bigQueryResourceManager);
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    ResourceManagerUtils.cleanResources(datastreamResourceManager);
   }
 
   @Test
