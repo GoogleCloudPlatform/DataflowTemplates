@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -111,7 +112,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(3))
             .setNodeCount(SPANNER_NODE_COUNT)
             .setMonitoringClient(monitoringClient)
             .build();
