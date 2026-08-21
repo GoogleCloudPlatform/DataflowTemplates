@@ -56,6 +56,7 @@ import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -594,7 +595,9 @@ public class SpannerToSourceDb {
 
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
+    Optional<Integer> resourceHintsMinCpus =
+        DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =

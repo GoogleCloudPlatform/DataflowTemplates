@@ -282,7 +282,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "100");
     params.put("sourceType", sourceType);
-    params.put("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
       params.put(
@@ -299,7 +298,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"))
+        .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     options.setParameters(params);
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());

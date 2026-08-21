@@ -354,7 +354,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
     }
     params.put("inputFileFormat", "avro");
-    params.put("workerMachineType", "n2-standard-4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {
@@ -426,6 +425,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
