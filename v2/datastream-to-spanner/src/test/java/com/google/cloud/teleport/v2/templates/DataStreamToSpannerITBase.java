@@ -423,8 +423,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     String jobName = PipelineUtils.createJobName(identifierSuffix);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
+    String machineType = System.getProperty("workerMachineType", "n2-standard-4");
+    params.putIfAbsent("workerMachineType", machineType);
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("machineType", machineType);
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Run
