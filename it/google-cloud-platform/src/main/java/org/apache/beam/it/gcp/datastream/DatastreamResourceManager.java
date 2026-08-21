@@ -69,6 +69,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
@@ -640,7 +641,7 @@ public final class DatastreamResourceManager implements ResourceManager {
 
   public synchronized void cleanupAll() {
     LOG.info("Cleaning up Datastream resource manager at {}.", java.time.Instant.now());
-    boolean producedError = false;
+    AtomicBoolean producedError = new AtomicBoolean(false);
 
     for (String stream : createdStreamIds) {
       try {
@@ -662,56 +663,62 @@ public final class DatastreamResourceManager implements ResourceManager {
               "Stream {} not found in project {}. Assuming already deleted.", stream, projectId);
         } else {
           LOG.error("Failed to delete stream {}.", stream, e);
-          producedError = true;
+          producedError.set(true);
         }
       }
     }
     LOG.info("Successfully deleted stream(s) at {}. ", java.time.Instant.now());
 
-    for (String connectionProfile : createdConnectionProfileIds) {
-      try {
-        LOG.info(
-            "Starting deleteConnectionProfileAsync get for {} at {}",
-            connectionProfile,
-            java.time.Instant.now());
-        Failsafe.with(retryOnException())
-            .get(
-                () ->
-                    datastreamClient
-                        .deleteConnectionProfileAsync(
-                            DeleteConnectionProfileRequest.newBuilder()
-                                .setName(
-                                    ConnectionProfileName.format(
-                                        projectId, location, connectionProfile))
-                                .build())
-                        .get());
-        LOG.info(
-            "Finished deleteConnectionProfileAsync get for {} at {}",
-            connectionProfile,
-            java.time.Instant.now());
-      } catch (Exception e) {
-        if (ExceptionUtils.containsType(e, NotFoundException.class)
-            || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
-          LOG.warn(
-              "Connection Profile {} not found in project {}. Assuming already deleted.",
-              connectionProfile,
-              projectId);
-        } else {
-          LOG.error("Failed to delete connection profile {}.", connectionProfile, e);
-          producedError = true;
-        }
-      }
-    }
+    createdConnectionProfileIds.parallelStream()
+        .forEach(
+            connectionProfile -> {
+              try {
+                LOG.info(
+                    "Starting deleteConnectionProfileAsync get for {} at {}",
+                    connectionProfile,
+                    java.time.Instant.now());
+                Failsafe.with(retryOnException())
+                    .get(
+                        () ->
+                            datastreamClient
+                                .deleteConnectionProfileAsync(
+                                    DeleteConnectionProfileRequest.newBuilder()
+                                        .setName(
+                                            ConnectionProfileName.format(
+                                                projectId, location, connectionProfile))
+                                        .build())
+                                .get());
+                LOG.info(
+                    "Finished deleteConnectionProfileAsync get for {} at {}",
+                    connectionProfile,
+                    java.time.Instant.now());
+              } catch (Exception e) {
+                if (ExceptionUtils.containsType(e, NotFoundException.class)
+                    || ExceptionUtils.containsMessage(e, "NOT_FOUND")) {
+                  LOG.warn(
+                      "Connection Profile {} not found in project {}. Assuming already deleted.",
+                      connectionProfile,
+                      projectId);
+                } else {
+                  LOG.error(
+                      "Failed to delete connection profile {} at {}.",
+                      connectionProfile,
+                      java.time.Instant.now(),
+                      e);
+                  producedError.set(true);
+                }
+              }
+            });
     LOG.info("Successfully deleted connection profile(s) at {}. ", java.time.Instant.now());
 
     try {
       datastreamClient.close();
     } catch (Exception e) {
       LOG.error("Failed to close datastream client. ");
-      producedError = true;
+      producedError.set(true);
     }
 
-    if (producedError) {
+    if (producedError.get()) {
       throw new DatastreamResourceManagerException(
           "Failed to delete resources. Check above for errors.");
     }

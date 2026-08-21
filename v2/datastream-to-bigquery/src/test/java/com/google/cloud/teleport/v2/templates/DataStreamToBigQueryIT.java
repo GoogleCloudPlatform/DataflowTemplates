@@ -393,7 +393,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
     // Job needs to be cancelled as draining will time out
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(25)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
     // Assert
     checkBigQueryTable(tableName, cdcEvents);
