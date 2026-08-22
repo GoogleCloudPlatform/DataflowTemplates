@@ -33,6 +33,7 @@ import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -68,6 +69,34 @@ public class ComparisonRecordMapper implements Serializable {
               ? shardIdObj.toString()
               : null;
       GenericRecord payload = (GenericRecord) avroRecord.get("payload");
+
+      Object primaryKeysObj = avroRecord.get("primaryKeys");
+      if (primaryKeysObj == null) {
+        throw new RuntimeException("primaryKeys metadata is missing in Avro record for table " + tableName);
+      }
+      List<String> sourcePkNames = new ArrayList<>();
+      if (primaryKeysObj instanceof Iterable) {
+        for (Object pkName : (Iterable<?>) primaryKeysObj) {
+          sourcePkNames.add(pkName.toString());
+        }
+      }
+      if (sourcePkNames.isEmpty()) {
+        throw new RuntimeException("primaryKeys metadata is empty in Avro record for table " + tableName);
+      }
+
+      List<Column> sourcePrimaryKeyColumns = new ArrayList<>();
+      for (String sourcePkName : sourcePkNames) {
+        if (payload.getSchema().getField(sourcePkName) == null) {
+          throw new RuntimeException("Primary key column is missing in Avro payload schema for column: " + sourcePkName);
+        }
+        Object sourcePkVal = payload.get(sourcePkName);
+        sourcePrimaryKeyColumns.add(
+            Column.builder()
+                .setColName(sourcePkName)
+                .setColValue(sourcePkVal == null ? null : sourcePkVal.toString())
+                .build());
+      }
+
       GenericRecordTypeConvertor convertor =
           new GenericRecordTypeConvertor(schemaMapper, "", shardId, transformer);
       Map<String, Value> values = convertor.transformChangeEvent(payload, tableName);
@@ -84,7 +113,7 @@ public class ComparisonRecordMapper implements Serializable {
       }
       List<String> pkNames =
           table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
-      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames, shardId);
+      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames, shardId, sourcePrimaryKeyColumns);
     } catch (Exception e) {
       throw new RuntimeException(
           "Error mapping GenericRecord to ComparisonRecord: " + e.getMessage(), e);
@@ -106,7 +135,7 @@ public class ComparisonRecordMapper implements Serializable {
     List<String> pkNames =
         table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
 
-    return buildRecord(tableName, values, pkNames, null);
+    return buildRecord(tableName, values, pkNames, null, null);
   }
 
   /**
@@ -131,7 +160,7 @@ public class ComparisonRecordMapper implements Serializable {
    * on.
    */
   private ComparisonRecord buildRecord(
-      String tableName, TreeMap<String, Value> data, List<String> pkNames, String shardId) {
+      String tableName, TreeMap<String, Value> data, List<String> pkNames, String shardId, List<Column> sourcePrimaryKeyColumns) {
 
     // 1. Use the record data to compute the hash
     Hasher hasher = Hashing.murmur3_128().newHasher();
@@ -169,6 +198,7 @@ public class ComparisonRecordMapper implements Serializable {
         .setTableName(cleanTableName)
         .setHash(hash)
         .setPrimaryKeyColumns(primaryKeyColumns)
+        .setSourcePrimaryKeyColumns(sourcePrimaryKeyColumns)
         .setSchemaName(schemaName)
         .setShardId(shardId)
         .build();
