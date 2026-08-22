@@ -195,10 +195,16 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "char", createRows("char", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
-    // date_to_string is commented out to avoid failing the test case; returned data has format
-    // "YYYY-MM-DDTHH:mm:SSZ" which is unexpected even if it's not necessarily incorrect
-    // expectedData.put("date_to_string", createRows("date_to_string", "2012-09-17", "1000-01-01",
-    // "9999-12-31", "NULL"));
+    // date_to_string produces ISO 8601 timestamp strings ("YYYY-MM-DDTHH:mm:SSZ") since MySQL
+    // DATE is mapped to timestamp micros for Datastream alignment and live migration parity.
+    expectedData.put(
+        "date_to_string",
+        createRows(
+            "date_to_string",
+            "2012-09-17T00:00:00Z",
+            "1000-01-01T00:00:00Z",
+            "9999-12-31T00:00:00Z",
+            "NULL"));
     expectedData.put(
         "datetime",
         createRows(
