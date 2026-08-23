@@ -326,11 +326,6 @@ public class AvroToValueMapper {
     }
   }
 
-  static java.util.UUID avroFieldToUuid(Object recordValue, Schema fieldSchema) {
-    String uuidStr = avroFieldToString(recordValue, fieldSchema);
-    return uuidStr == null ? null : java.util.UUID.fromString(uuidStr);
-  }
-
   static String avroFieldToString(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
@@ -411,6 +406,23 @@ public class AvroToValueMapper {
           "Unable to convert "
               + fieldSchema.getType()
               + " to byte array, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
+  static java.util.UUID avroFieldToUuid(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      return java.util.UUID.fromString(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getName()
+              + " to UUID, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());

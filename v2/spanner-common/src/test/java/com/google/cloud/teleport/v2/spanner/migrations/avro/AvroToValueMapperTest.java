@@ -293,6 +293,31 @@ public class AvroToValueMapperTest {
   }
 
   @Test
+  public void testAvroFieldToUuid() {
+    String uuidStr = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+    java.util.UUID expectedUuid = java.util.UUID.fromString(uuidStr);
+
+    Value valueGsql =
+        getGsqlMap().get(Type.uuid()).apply(uuidStr, SchemaBuilder.builder().stringType());
+    assertEquals("Test gsql uuid input", Value.uuid(expectedUuid), valueGsql);
+
+    Value valuePg =
+        getPgMap().get(Type.pgUuid()).apply(uuidStr, SchemaBuilder.builder().stringType());
+    assertEquals("Test pg uuid input", Value.uuid(expectedUuid), valuePg);
+
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(uuidStr, SchemaBuilder.builder().stringType());
+    assertEquals(expectedUuid, result);
+
+    assertNull(AvroToValueMapper.avroFieldToUuid(null, SchemaBuilder.builder().stringType()));
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_Exception() {
+    AvroToValueMapper.avroFieldToUuid("not-a-uuid", SchemaBuilder.builder().stringType());
+  }
+
+  @Test
   public void testAvroFieldToString_NullInput() {
     assertNull(AvroToValueMapper.avroFieldToString(null, SchemaBuilder.builder().nullType()));
   }
