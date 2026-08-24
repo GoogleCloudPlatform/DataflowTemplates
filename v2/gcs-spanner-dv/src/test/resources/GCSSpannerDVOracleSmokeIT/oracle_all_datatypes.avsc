@@ -1,0 +1,86 @@
+{
+  "type": "record",
+  "name": "SourceRowWithMetadata",
+  "fields": [
+    { "name": "tableName", "type": "string" },
+    { "name": "shardId", "type": [ "null", "string" ], "default": null },
+    { "name": "primaryKeys", "type": { "type": "array", "items": "string" } },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "OracleAllDatatypesPayload",
+        "fields": [
+          { "name": "id", "type": "long" },
+          { "name": "varchar2_col", "type": [ "null", "string" ], "default": null },
+          { "name": "varchar_col", "type": [ "null", "string" ], "default": null },
+          { "name": "char_col", "type": [ "null", "string" ], "default": null },
+          { "name": "character_col", "type": [ "null", "string" ], "default": null },
+          { "name": "nvarchar2_col", "type": [ "null", "string" ], "default": null },
+          { "name": "nchar_col", "type": [ "null", "string" ], "default": null },
+          {
+            "name": "number_col",
+            "type": [ "null", { "type": "bytes", "logicalType": "decimal", "precision": 38, "scale": 9 } ],
+            "default": null
+          },
+          {
+            "name": "numeric_col",
+            "type": [ "null", { "type": "bytes", "logicalType": "decimal", "precision": 38, "scale": 9 } ],
+            "default": null
+          },
+          {
+            "name": "decimal_col",
+            "type": [ "null", { "type": "bytes", "logicalType": "decimal", "precision": 38, "scale": 9 } ],
+            "default": null
+          },
+          {
+            "name": "dec_col",
+            "type": [ "null", { "type": "bytes", "logicalType": "decimal", "precision": 38, "scale": 9 } ],
+            "default": null
+          },
+          { "name": "float_col", "type": [ "null", "double" ], "default": null },
+          { "name": "double_precision_col", "type": [ "null", "double" ], "default": null },
+          { "name": "real_col", "type": [ "null", "double" ], "default": null },
+          { "name": "binary_float_col", "type": [ "null", "float" ], "default": null },
+          { "name": "binary_double_col", "type": [ "null", "double" ], "default": null },
+          { "name": "integer_col", "type": [ "null", "long" ], "default": null },
+          { "name": "int_col", "type": [ "null", "long" ], "default": null },
+          { "name": "smallint_col", "type": [ "null", "long" ], "default": null },
+          {
+            "name": "date_col",
+            "type": [ "null", { "type": "long", "logicalType": "timestamp-micros" } ],
+            "default": null
+          },
+          {
+            "name": "timestamp_col",
+            "type": [ "null", { "type": "long", "logicalType": "timestamp-micros" } ],
+            "default": null
+          },
+          {
+            "name": "timestamp_tz_col",
+            "type": [ "null", { "type": "long", "logicalType": "timestamp-micros" } ],
+            "default": null
+          },
+          {
+            "name": "timestamp_ltz_col",
+            "type": [ "null", { "type": "long", "logicalType": "timestamp-micros" } ],
+            "default": null
+          },
+          { "name": "interval_ym_col", "type": [ "null", "string" ], "default": null },
+          { "name": "interval_ds_col", "type": [ "null", "string" ], "default": null },
+          { "name": "raw_col", "type": [ "null", "bytes" ], "default": null },
+          { "name": "blob_col", "type": [ "null", "bytes" ], "default": null },
+          { "name": "clob_col", "type": [ "null", "string" ], "default": null },
+          { "name": "nclob_col", "type": [ "null", "string" ], "default": null },
+          { "name": "rowid_col", "type": [ "null", "string" ], "default": null },
+          {
+            "name": "json_col",
+            "type": [ "null", { "type": "string", "logicalType": "json" } ],
+            "default": null
+          },
+          { "name": "xmltype_col", "type": [ "null", "string" ], "default": null }
+        ]
+      }
+    }
+  ]
+}

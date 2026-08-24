@@ -65,6 +65,39 @@ public class IUnifiedVisitorTest {
   }
 
   @Test
+  public void testDispatchMatchesFloat32() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    float input = 123.456f;
+    Value value = Value.float32(input);
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitFloat32(input);
+  }
+
+  @Test
+  public void testDispatchMatchesPgNumeric() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    BigDecimal input = new BigDecimal("123.456");
+    Value value = Value.pgNumeric(input.toString());
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitNumeric(input);
+  }
+
+  @Test
+  public void testDispatchMatchesPgJsonb() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    String input = "{\"key\": \"value\"}";
+    Value value = Value.pgJsonb(input);
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitJson(input);
+  }
+
+  @Test
   public void testDispatchMatchesBool() {
     IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
     boolean input = true;

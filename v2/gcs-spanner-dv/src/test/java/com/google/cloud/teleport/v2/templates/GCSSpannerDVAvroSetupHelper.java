@@ -29,6 +29,18 @@ import org.apache.avro.generic.GenericRecordBuilder;
  */
 public class GCSSpannerDVAvroSetupHelper {
 
+  public static Schema parseAvroSchema(String resourceName) {
+    try (java.io.InputStream is =
+        GCSSpannerDVAvroSetupHelper.class.getClassLoader().getResourceAsStream(resourceName)) {
+      if (is == null) {
+        throw new IllegalArgumentException("Resource not found: " + resourceName);
+      }
+      return new Schema.Parser().parse(is);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse Avro schema from resource: " + resourceName, e);
+    }
+  }
+
   /**
    * Defines standard table schemas that are universally used across multiple integration tests.
    * Centralizing these definitions prevents schema drift across tests and minimizes setup code.
@@ -36,13 +48,12 @@ public class GCSSpannerDVAvroSetupHelper {
   public static class TableDef {
     public static final TableDef USERS =
         new TableDef(
-            GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc"),
+            parseAvroSchema("GCSSpannerDVAvroSetupHelper/users.avsc"),
             "Users",
             Arrays.asList("user_id", "event_id"));
     public static final TableDef ACCOUNT_ROLES =
         new TableDef(
-            GCSSpannerDVITBase.getSchemaFromAvscFile(
-                "GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
+            parseAvroSchema("GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
             "AccountRoles",
             Arrays.asList("role_id"));
 
@@ -120,6 +131,16 @@ public class GCSSpannerDVAvroSetupHelper {
     if (value instanceof Instant) {
       Instant t = (Instant) value;
       return (t.getEpochSecond() * 1_000_000L) + (t.getNano() / 1000L);
+    }
+
+    if (value instanceof java.math.BigDecimal) {
+      java.math.BigDecimal bd = (java.math.BigDecimal) value;
+      return java.nio.ByteBuffer.wrap(
+          bd.setScale(9, java.math.RoundingMode.HALF_UP).unscaledValue().toByteArray());
+    }
+
+    if (value instanceof byte[]) {
+      return java.nio.ByteBuffer.wrap((byte[]) value);
     }
 
     // Default fallback (String, Integer, Long, Double, Float)
