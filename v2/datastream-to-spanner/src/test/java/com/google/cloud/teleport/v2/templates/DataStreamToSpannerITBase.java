@@ -89,6 +89,19 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .maybeUseStaticInstance()
         .build();
   }
+  public org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager setUpOracleResourceManager() {
+    org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder = 
+        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
+    if (System.getProperty("hostIp") != null) {
+      builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+      builder.setHost(System.getProperty("hostIp"));
+      builder.setPort(1521);
+      builder.setUsername(System.getProperty("cloudProxyUsername", "system"));
+      builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
+      builder.setDatabaseName("XEPDB1");
+    }
+    return (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+  }
 
   public String generateSessionFile(
       int numOfTables, String srcDb, String spannerDb, List<String> tableNames, String sessionFile)
@@ -614,4 +627,32 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     }
     return combinedCondition;
   }
+
+  public void flushOracleRedoLogs(org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager oracleResourceManager) {
+    boolean success = false;
+    if (oracleResourceManager != null) {
+      try {
+        oracleResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class).info("Successfully flushed Oracle redo logs natively.");
+        success = true;
+      } catch (Exception e) {
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class).warn("Failed to switch Oracle log via ResourceManager, attempting raw JDBC fallback...", e);
+      }
+    }
+    
+    if (!success && System.getProperty("hostIp") != null) {
+        String url = "jdbc:oracle:thin:@//" + System.getProperty("hostIp") + ":1521/XE";
+        String user = System.getProperty("cloudProxyUsername", "system");
+        String pass = System.getProperty("cloudProxyPassword", "TestPassword123");
+        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
+             java.sql.Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER SYSTEM SWITCH LOGFILE");
+            org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class).info("Successfully flushed Oracle redo logs via raw JDBC fallback.");
+        } catch (Exception ex) {
+            org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class).error("Raw JDBC fallback log flush also failed.", ex);
+        }
+    }
+  }
+
+
 }

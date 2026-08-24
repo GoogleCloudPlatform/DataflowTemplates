@@ -1,0 +1,33 @@
+--- v2/datastream-to-spanner/src/test/java/com/google/cloud/teleport/v2/templates/oracle/OracleDataStreamToSpannerIT.java
++++ v2/datastream-to-spanner/src/test/java/com/google/cloud/teleport/v2/templates/oracle/OracleDataStreamToSpannerIT.java
+@@ -134,16 +134,19 @@
+ 
+   private void setUpOracleUser(String user, String password) {
+     cloudOracleSysUser.runSQLUpdate(
+-        String.format("CREATE USER %s IDENTIFIED BY %s", user, password));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE_CATALOG_ROLE TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CONNECT TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE SESSION TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PDBS TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(
+-        String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s", user));
+-    cloudOracleSysUser.runSQLUpdate(
+-        String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s", user));
++        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CONNECT TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE TABLE TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SET CONTAINER TO %s CONTAINER=ALL", user));
++    cloudOracleSysUser.runSQLUpdate(String.format("GRANT LOGMINING TO %s CONTAINER=ALL", user));
+   }
+ 
