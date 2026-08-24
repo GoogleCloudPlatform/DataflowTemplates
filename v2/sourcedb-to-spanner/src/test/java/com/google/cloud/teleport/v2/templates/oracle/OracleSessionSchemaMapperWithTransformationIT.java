@@ -93,7 +93,9 @@ public class OracleSessionSchemaMapperWithTransformationIT extends SourceDbToSpa
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"company_id\", \"company_name\" FROM \"company\"");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
@@ -103,7 +105,7 @@ public class OracleSessionSchemaMapperWithTransformationIT extends SourceDbToSpa
     SpannerAsserts.assertThatStructs(companySpanner).hasRows(companyOracle.size());
 
     List<Map<String, Object>> employeeOracle =
-        oracleResourceManager.runSQLQuery("SELECT * FROM \"employee\"");
+        runIsolatedSQLQuery(oracleResourceManager, testUsername, "SELECT * FROM \"employee\"");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
             "employee_sp", "employee_id", "company_id", "employee_name", "employee_address_sp");

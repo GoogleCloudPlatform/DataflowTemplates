@@ -90,7 +90,9 @@ public class OracleIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"company_id\", \"company_name\" FROM \"company\"");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
@@ -99,7 +101,9 @@ public class OracleIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
         .hasRecordsUnorderedCaseInsensitiveColumns(companyOracle);
 
     List<Map<String, Object>> employeeOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"employee_id\", \"company_id\", \"employee_name\", \"employee_address\" FROM \"employee\"");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(

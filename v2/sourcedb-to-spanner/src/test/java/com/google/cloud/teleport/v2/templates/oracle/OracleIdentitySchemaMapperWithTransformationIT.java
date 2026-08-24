@@ -95,7 +95,9 @@ public class OracleIdentitySchemaMapperWithTransformationIT extends SourceDbToSp
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"company_id\", \"company_name\" FROM \"company\"");
 
     // We expect the Spanner output structs to have case preserved field names based on the Spanner

@@ -32,8 +32,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -598,5 +600,37 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       return builder.setTimeoutAfter(Duration.ofMinutes(15));
     }
     return builder;
+  }
+
+  public static List<Map<String, Object>> runIsolatedSQLQuery(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String testUsername,
+      String query) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)
+          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
+      List<Map<String, Object>> result = new ArrayList<>();
+      try (ResultSet rs = stmt.executeQuery(query)) {
+        java.sql.ResultSetMetaData md = rs.getMetaData();
+        int columns = md.getColumnCount();
+        while (rs.next()) {
+          Map<String, Object> row = new HashMap<>(columns);
+          for (int i = 1; i <= columns; ++i) {
+            row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
+          }
+          result.add(row);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException("Error running isolated query", e);
+    }
   }
 }

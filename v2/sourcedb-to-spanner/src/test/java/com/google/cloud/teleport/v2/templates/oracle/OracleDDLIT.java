@@ -92,7 +92,8 @@ public class OracleDDLIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyOracle =
-        oracleResourceManager.runSQLQuery("SELECT COMPANY_ID, COMPANY_NAME FROM COMPANY");
+        runIsolatedSQLQuery(
+            oracleResourceManager, testUsername, "SELECT COMPANY_ID, COMPANY_NAME FROM COMPANY");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("COMPANY", "COMPANY_ID", "COMPANY_NAME");
 
@@ -100,7 +101,9 @@ public class OracleDDLIT extends SourceDbToSpannerITBase {
         .hasRecordsUnorderedCaseInsensitiveColumns(companyOracle);
 
     List<Map<String, Object>> employeeOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT EMPLOYEE_ID, COMPANY_ID, EMPLOYEE_NAME, EMPLOYEE_ADDRESS FROM EMPLOYEE");
     ImmutableList<Struct> employeeSpanner =
         spannerResourceManager.readTableRecords(
@@ -121,6 +124,7 @@ public class OracleDDLIT extends SourceDbToSpannerITBase {
     SpannerAsserts.assertThatStructs(vendor).hasRows(3);
     SpannerAsserts.assertThatStructs(vendor)
         .hasRecordsUnorderedCaseInsensitiveColumns(
-            oracleResourceManager.runSQLQuery("SELECT VENDOR_ID, FULL_NAME FROM VENDOR"));
+            runIsolatedSQLQuery(
+                oracleResourceManager, testUsername, "SELECT VENDOR_ID, FULL_NAME FROM VENDOR"));
   }
 }

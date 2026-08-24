@@ -59,13 +59,16 @@ public class OracleNamespaceIT extends SourceDbToSpannerITBase {
 
   @Test
   public void testOracleNamespace() throws java.io.IOException, InterruptedException {
-    String namespace = oracleResourceManager.getUsername().toUpperCase();
+    String namespace = testUsername;
     try (Connection connection =
             DriverManager.getConnection(
                 oracleResourceManager.getUri(),
                 oracleResourceManager.getUsername(),
                 oracleResourceManager.getPassword());
         Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
 
       try {
         stmt.execute(

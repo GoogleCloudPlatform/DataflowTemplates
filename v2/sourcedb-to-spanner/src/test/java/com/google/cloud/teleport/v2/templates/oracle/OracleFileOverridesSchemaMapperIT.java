@@ -122,7 +122,9 @@ public class OracleFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
 
     // Assertions for source_table1 -> Target_Table_1
     List<Map<String, Object>> sourceTable1Data =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"id_col1\", \"name_col1\", TO_CHAR(\"data_col1\") AS \"data_col1\" FROM \"source_table1\"");
 
     // Prepare expected data for Spanner with overridden column names for comparison
@@ -144,7 +146,9 @@ public class OracleFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
 
     // Assertions for source_table2 (table not renamed, one column renamed)
     List<Map<String, Object>> sourceTable2Data =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"key_col2\", \"category_col2\", TO_CHAR(\"value_col2\") AS \"value_col2\" FROM \"source_table2\"");
 
     List<Map<String, Object>> expectedSpannerTable2 = new java.util.ArrayList<>();

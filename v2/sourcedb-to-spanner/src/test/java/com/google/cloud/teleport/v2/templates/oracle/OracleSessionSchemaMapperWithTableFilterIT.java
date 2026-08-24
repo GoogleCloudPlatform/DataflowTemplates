@@ -102,7 +102,9 @@ public class OracleSessionSchemaMapperWithTableFilterIT extends SourceDbToSpanne
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     List<Map<String, Object>> companyOracle =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"company_id\", \"company_name\" FROM \"company\"");
     ImmutableList<Struct> companySpanner =
         spannerResourceManager.readTableRecords("company", "company_id", "company_name");
