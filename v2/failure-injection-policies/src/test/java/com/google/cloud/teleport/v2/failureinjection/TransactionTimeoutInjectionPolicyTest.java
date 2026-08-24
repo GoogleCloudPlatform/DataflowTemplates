@@ -271,24 +271,27 @@ public class TransactionTimeoutInjectionPolicyTest {
   public void shouldInjectError_concurrentCallsCoverDoubleCheckedLocking() throws Exception {
     ObjectNode input = JsonNodeFactory.instance.objectNode();
     input.put("transactionTimeoutBakeDuration", "PT5M");
-    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
+    TransactionTimeoutInjectionPolicy policy =
+        new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
 
-    Thread waitingThread = new Thread(() -> {
-      policy.shouldInjectionError();
-    });
+    Thread waitingThread =
+        new Thread(
+            () -> {
+              policy.shouldInjectionError();
+            });
 
     synchronized (policy) {
       waitingThread.start();
       Thread.sleep(500);
 
-      java.lang.reflect.Field startTimeField = 
+      java.lang.reflect.Field startTimeField =
           TransactionTimeoutInjectionPolicy.class.getDeclaredField("startTime");
       startTimeField.setAccessible(true);
       startTimeField.set(policy, Instant.now());
     }
 
     waitingThread.join();
-    java.lang.reflect.Field startTimeField = 
+    java.lang.reflect.Field startTimeField =
         TransactionTimeoutInjectionPolicy.class.getDeclaredField("startTime");
     startTimeField.setAccessible(true);
     assertThat(startTimeField.get(policy)).isNotNull();
@@ -322,10 +325,11 @@ public class TransactionTimeoutInjectionPolicyTest {
   public void shouldInjectionError_initializesClockIfNull() throws Exception {
     ObjectNode input = JsonNodeFactory.instance.objectNode();
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input);
-    java.lang.reflect.Field clockField = TransactionTimeoutInjectionPolicy.class.getDeclaredField("clock");
+    java.lang.reflect.Field clockField =
+        TransactionTimeoutInjectionPolicy.class.getDeclaredField("clock");
     clockField.setAccessible(true);
     clockField.set(policy, null);
-    
+
     assertThat(policy.shouldInjectionError()).isFalse();
   }
 
@@ -333,19 +337,23 @@ public class TransactionTimeoutInjectionPolicyTest {
   public void shouldInjectDelay_handlesInterruptedException() throws Exception {
     ObjectNode input = JsonNodeFactory.instance.objectNode();
     input.put("transactionTimeoutBakeDuration", "PT5M");
-    input.put("transactionDelayDuration", "PT5M"); 
-    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
-    
-    policy.setRandomForTesting(new Random() {
-      @Override
-      public double nextDouble() { return 0.1; }
-    });
+    input.put("transactionDelayDuration", "PT5M");
+    TransactionTimeoutInjectionPolicy policy =
+        new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
+
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.1;
+          }
+        });
 
     Thread thread = new Thread(() -> policy.shouldInjectionError());
     thread.start();
-    Thread.sleep(200); 
+    Thread.sleep(200);
     thread.interrupt();
-    
+
     thread.join(1000);
     assertThat(thread.isAlive()).isFalse();
   }

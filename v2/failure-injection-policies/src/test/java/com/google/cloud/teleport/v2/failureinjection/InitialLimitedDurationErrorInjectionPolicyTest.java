@@ -295,6 +295,5 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     InitialLimitedDurationErrorInjectionPolicy policy =
         new InitialLimitedDurationErrorInjectionPolicy(input, clock);
-
   }
 }
