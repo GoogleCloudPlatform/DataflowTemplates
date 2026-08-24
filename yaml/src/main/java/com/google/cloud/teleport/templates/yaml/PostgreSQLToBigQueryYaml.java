@@ -26,13 +26,20 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "PostgreSQL to BigQuery (YAML)",
-    description = "The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to connect to PostgreSQL.",
+    description =
+        "The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to connect to PostgreSQL.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PostgreSQLToBigQuery.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/postgres_options.yaml", "options/bigquery_options.yaml"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/postgres_options.yaml",
+      "options/bigquery_options.yaml"
+    },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The PostgreSQL database must be accessible from the Dataflow workers.",
+    requirements = {
+      "The PostgreSQL database must be accessible from the Dataflow workers.",
       "The target BigQuery dataset and table must exist."
     },
     streaming = false,
@@ -45,8 +52,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db"
-    )
+      example = "jdbc:postgresql://your-host:5432/your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -56,8 +62,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "Username for the JDBC connection.",
       helpText = "The database username.",
-      example = "my_user"
-    )
+      example = "my_user")
   String getUsername();
 
   @TemplateParameter.Password(
@@ -66,8 +71,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "Password for the JDBC connection.",
       helpText = "The database password.",
-      example = "my_secret_password"
-    )
+      example = "my_secret_password")
   String getPassword();
 
   @TemplateParameter.Text(
@@ -76,8 +80,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "JDBC connection properties.",
       helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2"
-    )
+      example = "key1=value1;key2=value2")
   String getConnectionProperties();
 
   @TemplateParameter.Text(
@@ -86,8 +89,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "The name of the Postgres table.",
       helpText = "The name of the database table.",
-      example = "public.my_table"
-    )
+      example = "public.my_table")
   String getPostgresTable();
 
   @TemplateParameter.Text(
@@ -96,8 +98,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "The SQL query/statement to execute.",
       helpText = "The SQL query/statement to execute on the source/sink.",
-      example = "SELECT * FROM my_table WHERE status = 'active'"
-    )
+      example = "SELECT * FROM my_table WHERE status = 'active'")
   String getQuery();
 
   @TemplateParameter.Text(
@@ -106,8 +107,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
       helpText = "The name of a numeric column that will be used for partitioning the data.",
-      example = "id"
-    )
+      example = "id")
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
@@ -116,8 +116,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "The number of partitions to divide the data into.",
       helpText = "The number of partitions to create for parallel reading.",
-      example = "10"
-    )
+      example = "10")
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
@@ -125,9 +124,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
-      helpText = "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
-      example = "50000"
-    )
+      helpText =
+          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
+      example = "50000")
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
@@ -135,9 +134,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read. Required for some databases like Postgres.",
-      example = "True"
-    )
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
+      example = "True")
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
@@ -146,8 +145,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
       helpText = "If true, the resulting PCollection will be reshuffled.",
-      example = "True"
-    )
+      example = "True")
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
@@ -155,9 +153,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "table",
       optional = false,
       description = "BigQuery table",
-      helpText = "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.",
-      example = ""
-    )
+      helpText =
+          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.",
+      example = "")
   @Validation.Required
   String getTable();
 
@@ -166,9 +164,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "createDisposition",
       optional = true,
       description = "How to create",
-      helpText = "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
-      example = ""
-    )
+      helpText =
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+      example = "")
   @Default.String("CREATE_IF_NEEDED")
   String getCreateDisposition();
 
@@ -177,9 +175,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "writeDisposition",
       optional = true,
       description = "How to write",
-      helpText = "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
-      example = ""
-    )
+      helpText =
+          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
+      example = "")
   @Default.String("WRITE_APPEND")
   String getWriteDisposition();
 
@@ -188,9 +186,9 @@ public interface PostgreSQLToBigQueryYaml {
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
-      helpText = "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = ""
-    )
+      helpText =
+          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
+      example = "")
   @Default.Integer(1)
   Integer getNumStreams();
 }
