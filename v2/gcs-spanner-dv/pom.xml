@@ -89,6 +89,7 @@
                          parent POM(s). -->
                         <exclude>com/google/cloud/teleport/v2/dto/**</exclude>
                         <exclude>com/google/cloud/teleport/v2/constants/**</exclude>
+                        <exclude>com/google/cloud/teleport/v2/templates/GCSSpannerDV.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>
