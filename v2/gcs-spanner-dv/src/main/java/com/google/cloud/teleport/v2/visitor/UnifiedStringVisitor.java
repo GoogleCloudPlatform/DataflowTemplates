@@ -75,6 +75,11 @@ public class UnifiedStringVisitor implements IUnifiedVisitor {
   }
 
   @Override
+  public void visitUuid(java.util.UUID u) {
+    result = u.toString();
+  }
+
+  @Override
   public void visitJson(String j) {
     result = j;
   }
