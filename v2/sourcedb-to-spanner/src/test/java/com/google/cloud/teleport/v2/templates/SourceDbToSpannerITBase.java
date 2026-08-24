@@ -405,13 +405,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
-    if (jobParameters != null && jobParameters.containsKey("namespace")) {
-      shard.setNamespace(jobParameters.get("namespace"));
-    } else if (testUsername != null) {
-      shard.setNamespace(testUsername);
-      shard.setUser(testUsername);
-      shard.setPassword("password");
-    }
 
     if (jdbcResourceManager instanceof PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
@@ -436,14 +429,16 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
           "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());
     }
 
-    if (jobParameters != null && jobParameters.containsKey("namespace")) {
-      shard.setNamespace(jobParameters.get("namespace"));
-    } else if (testUsername != null) {
+    if (testUsername != null) {
       shard.setNamespace(testUsername);
       shard.setUser(testUsername);
       shard.setPassword("password");
     } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
       shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    }
+
+    if (jobParameters != null && jobParameters.containsKey("namespace")) {
+      shard.setNamespace(jobParameters.get("namespace"));
     }
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();

@@ -96,8 +96,10 @@ public class OracleToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpa
 
     loadOracleSQLFileResource(
         oracleResourceManager,
-        "oracle/OracleToSpannerWiderowForMaxColumnsPerTableIT/oracle-schema.sql");
-    loadOracleSQLToJdbcResourceManager(oracleResourceManager, getOracleInsertStatement(maxColumns));
+        "oracle/OracleToSpannerWiderowForMaxColumnsPerTableIT/oracle-schema.sql",
+        testUsername);
+    loadOracleSQLToJdbcResourceManager(
+        oracleResourceManager, getOracleInsertStatement(maxColumns), testUsername);
 
     createSpannerDDL(
         spannerResourceManager,

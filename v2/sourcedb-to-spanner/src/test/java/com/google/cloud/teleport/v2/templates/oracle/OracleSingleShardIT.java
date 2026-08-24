@@ -106,10 +106,10 @@ public class OracleSingleShardIT extends SourceDbToSpannerITBase {
 
   private List<Map<String, Object>> getExpectedData() {
     return List.of(
-        Map.of(PKID, 1L, NAME, "Alice", STATUS, "active", SHARD_ID, "NULL"),
-        Map.of(PKID, 2L, NAME, "Bob", STATUS, "inactive", SHARD_ID, "NULL"),
-        Map.of(PKID, 3L, NAME, "Carol", STATUS, "pending", SHARD_ID, "NULL"),
-        Map.of(PKID, 4L, NAME, "David", STATUS, "complete", SHARD_ID, "NULL"),
-        Map.of(PKID, 5L, NAME, "Emily", STATUS, "error", SHARD_ID, "NULL"));
+        Map.of(PKID, 1L, NAME, "Alice", STATUS, "active", SHARD_ID, "Shard1"),
+        Map.of(PKID, 2L, NAME, "Bob", STATUS, "inactive", SHARD_ID, "Shard1"),
+        Map.of(PKID, 3L, NAME, "Carol", STATUS, "pending", SHARD_ID, "Shard1"),
+        Map.of(PKID, 4L, NAME, "David", STATUS, "complete", SHARD_ID, "Shard1"),
+        Map.of(PKID, 5L, NAME, "Emily", STATUS, "error", SHARD_ID, "Shard1"));
   }
 }
