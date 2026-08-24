@@ -103,9 +103,10 @@ public class UnifiedHasherVisitor implements IUnifiedVisitor {
 
   @Override
   public void visitUuid(java.util.UUID u) {
-    // UUID values are encoded with a sentinel byte 1 followed by the UUID as a string
-    markNonNull();
-    hasher.putString(u.toString(), StandardCharsets.UTF_8);
+    // We treat UUIDs identically to Strings to ensure they hash to the same value.
+    // This allows PostgreSQL UUID types (which we map to Strings on the source side)
+    // to match perfectly with Spanner's native UUID types during validation.
+    visitString(u.toString());
   }
 
   @Override

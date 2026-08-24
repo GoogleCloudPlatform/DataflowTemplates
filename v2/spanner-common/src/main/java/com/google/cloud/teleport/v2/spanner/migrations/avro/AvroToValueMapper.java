@@ -150,7 +150,7 @@ public class AvroToValueMapper {
 
     gsqlFunctions.put(
         Type.uuid(),
-        (recordValue, fieldSchema) -> Value.uuid(avroFieldToUuid(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
 
     gsqlFunctions.put(
         Type.json(),
@@ -251,7 +251,7 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgUuid(),
-        (recordValue, fieldSchema) -> Value.uuid(avroFieldToUuid(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     return pgFunctions;
   }
 
@@ -406,23 +406,6 @@ public class AvroToValueMapper {
           "Unable to convert "
               + fieldSchema.getType()
               + " to byte array, with value: "
-              + recordValue
-              + ", Exception: "
-              + e.getMessage());
-    }
-  }
-
-  static java.util.UUID avroFieldToUuid(Object recordValue, Schema fieldSchema) {
-    try {
-      if (recordValue == null) {
-        return null;
-      }
-      return java.util.UUID.fromString(recordValue.toString());
-    } catch (Exception e) {
-      throw new AvroTypeConvertorException(
-          "Unable to convert "
-              + fieldSchema.getName()
-              + " to UUID, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());

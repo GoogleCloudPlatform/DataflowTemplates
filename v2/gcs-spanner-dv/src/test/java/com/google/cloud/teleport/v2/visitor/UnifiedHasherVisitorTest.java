@@ -66,6 +66,7 @@ public class UnifiedHasherVisitorTest {
         Hashing.murmur3_128()
             .newHasher()
             .putByte((byte) 1)
+            .putInt(input.toString().length())
             .putString(input.toString(), UTF_8)
             .hash();
 
