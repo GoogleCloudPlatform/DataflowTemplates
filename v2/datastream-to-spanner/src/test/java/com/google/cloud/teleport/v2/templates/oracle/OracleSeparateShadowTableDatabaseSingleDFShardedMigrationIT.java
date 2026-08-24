@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates.oracle;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -39,9 +54,10 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends DataStreamToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT.class);
-
+public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
+    extends DataStreamToSpannerITBase {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT.class);
 
   private static final String TABLE = "Users";
   private static final String SPANNER_DDL_RESOURCE =
@@ -50,7 +66,8 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
       "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-session.json";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static HashSet<OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT> testInstances = new HashSet<>();
+  private static HashSet<OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT>
+      testInstances = new HashSet<>();
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
@@ -67,19 +84,21 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
     synchronized (OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        datastreamResourceManager = DatastreamResourceManager.builder(testName, PROJECT, REGION)
+        datastreamResourceManager =
+            DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity(System.getProperty("privateConnectivity", "datastream-connect-2"))
+                .setPrivateConnectivity(
+                    System.getProperty("privateConnectivity", "datastream-connect-2"))
                 .build();
-                
+
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        
+
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder = 
+        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
         builder.setPassword(System.getProperty("cloudProxyPassword"));
@@ -88,57 +107,84 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
         builder.setDatabaseName("XE");
         cloudOracleSysUser = (CloudOracleResourceManager) builder.build();
 
-        jdbcResourceManagerShardA = (CloudOracleResourceManager) CloudOracleResourceManager.builder(testName)
-            .setUsername(System.getProperty("cloudProxyUsername", "system"))
-            .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
-            .setDatabaseName("XEPDB1")
-            .setHost(System.getProperty("hostIp"))
-            .setPort(1521)
-            .build();
+        jdbcResourceManagerShardA =
+            (CloudOracleResourceManager)
+                CloudOracleResourceManager.builder(testName)
+                    .setUsername(System.getProperty("cloudProxyUsername", "system"))
+                    .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
+                    .setDatabaseName("XEPDB1")
+                    .setHost(System.getProperty("hostIp"))
+                    .setPort(1521)
+                    .build();
 
-        try { jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\""); } catch (Exception e) {}
+        try {
+          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\"");
+        } catch (Exception e) {
+        }
 
-        try { jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\""); } catch (Exception e) {}
-        executeSqlScript(jdbcResourceManagerShardA, "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-schema.sql");
+        try {
+          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\"");
+        } catch (Exception e) {
+        }
+        executeSqlScript(
+            jdbcResourceManagerShardA,
+            "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-schema.sql");
 
-        OracleSource jdbcSource = OracleSource.builder(
-            jdbcResourceManagerShardA.getHost(),
-            jdbcResourceManagerShardA.getUsername(),
-            jdbcResourceManagerShardA.getPassword(),
-            jdbcResourceManagerShardA.getPort(),
-            jdbcResourceManagerShardA.getDatabaseName())
-            .setAllowedTables(Map.of(jdbcResourceManagerShardA.getUsername().toUpperCase(), List.of("Users")))
-            .build();
+        OracleSource jdbcSource =
+            OracleSource.builder(
+                    jdbcResourceManagerShardA.getHost(),
+                    jdbcResourceManagerShardA.getUsername(),
+                    jdbcResourceManagerShardA.getPassword(),
+                    jdbcResourceManagerShardA.getPort(),
+                    jdbcResourceManagerShardA.getDatabaseName())
+                .setAllowedTables(
+                    Map.of(jdbcResourceManagerShardA.getUsername().toUpperCase(), List.of("Users")))
+                .build();
 
-        com.google.cloud.datastream.v1.SourceConfig sourceConfig = datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
-        com.google.cloud.datastream.v1.DestinationConfig destinationConfig = datastreamResourceManager.buildGCSDestinationConfig(
-                "gcs-profile", gcsResourceManager.getBucket(), "oracle-shard-cdc/cdc/", DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
-        com.google.cloud.datastream.v1.Stream stream = datastreamResourceManager.createStream(
-                "test-stream-"+ RandomStringUtils.randomAlphanumeric(5).toLowerCase(), sourceConfig, destinationConfig);
+        com.google.cloud.datastream.v1.SourceConfig sourceConfig =
+            datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
+        com.google.cloud.datastream.v1.DestinationConfig destinationConfig =
+            datastreamResourceManager.buildGCSDestinationConfig(
+                "gcs-profile",
+                gcsResourceManager.getBucket(),
+                "oracle-shard-cdc/cdc/",
+                DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
+        com.google.cloud.datastream.v1.Stream stream =
+            datastreamResourceManager.createStream(
+                "test-stream-" + RandomStringUtils.randomAlphanumeric(5).toLowerCase(),
+                sourceConfig,
+                destinationConfig);
         datastreamResourceManager.startStream(stream);
         streamNameA = stream.getName().substring(stream.getName().lastIndexOf('/') + 1);
 
-        gcsResourceManager.createArtifact("input/shardingConfig.conf", generateSourceConfig(streamNameA, "system", "L1"));
-        
+        gcsResourceManager.createArtifact(
+            "input/shardingConfig.conf", generateSourceConfig(streamNameA, "system", "L1"));
+
         Map<String, String> jobParams = new HashMap<>();
         jobParams.put("inputFileFormat", "avro");
-        jobParams.put("inputFilePattern", "gs://" + gcsResourceManager.getBucket() + "/oracle-shard-cdc/cdc/");
+        jobParams.put(
+            "inputFilePattern",
+            "gs://" + gcsResourceManager.getBucket() + "/oracle-shard-cdc/cdc/");
         jobParams.put("datastreamSourceType", "oracle");
-        jobParams.put("sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
+        jobParams.put(
+            "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
         jobParams.put("shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
         jobParams.put("shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
 
         if (System.getProperty("jdbcDriverJars") != null) {
-            String driverPath = System.getProperty("jdbcDriverJars");
-            jobParams.put("jdbcDriverJars", driverPath);
+          String driverPath = System.getProperty("jdbcDriverJars");
+          jobParams.put("jdbcDriverJars", driverPath);
         }
 
         String sessionFileContent =
-            com.google.common.io.Resources.toString(com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE), java.nio.charset.StandardCharsets.UTF_8);
-        sessionFileContent = sessionFileContent.replace("it_test", "system").replace("shard_1", "L1");
-        
+            com.google.common.io.Resources.toString(
+                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
+                java.nio.charset.StandardCharsets.UTF_8);
+        sessionFileContent =
+            sessionFileContent.replace("it_test", "system").replace("shard_1", "L1");
+
         jobInfo =
-                        launchDataflowJob(
+            launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
                 null,
                 null,
@@ -152,45 +198,73 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
                 datastreamResourceManager,
                 sessionFileContent,
                 jdbcSource);
-
       }
     }
   }
 
   private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT CONNECT TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOG TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGFILE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$THREAD TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PARAMETER TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$NLS_PARAMETERS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$TIMEZONE_NAMES TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGMNR_LOGS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$ARCHIVE_DEST_STATUS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$TRANSACTION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.DBA_REGISTRY TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.OBJ$ TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.ENC$ TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOG TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGFILE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$THREAD TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$PARAMETER TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$NLS_PARAMETERS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$TIMEZONE_NAMES TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGMNR_LOGS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$ARCHIVE_DEST_STATUS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$TRANSACTION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.DBA_REGISTRY TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.OBJ$ TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.ENC$ TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT SET CONTAINER TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT LOGMINING TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE ON DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE ON DBMS_LOGMNR_D TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_EXTENTS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE ANY TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE ON DBMS_LOGMNR TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE ON DBMS_LOGMNR_D TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY TABLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON DBA_EXTENTS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT CREATE ANY TABLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate("ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
   }
@@ -201,7 +275,13 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, shadowSpannerResourceManager, pubsubResourceManager, gcsResourceManager, jdbcResourceManagerShardA, datastreamResourceManager, cloudOracleSysUser);
+        spannerResourceManager,
+        shadowSpannerResourceManager,
+        pubsubResourceManager,
+        gcsResourceManager,
+        jdbcResourceManagerShardA,
+        datastreamResourceManager,
+        cloudOracleSysUser);
   }
 
   @Test
@@ -212,29 +292,32 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
         org.apache.beam.it.conditions.ChainedConditionCheck.builder(
                 List.of(
                     new ConditionCheck() {
-                        boolean executed = false;
-                        @Override
-                        protected String getDescription() { return "Insert Data into Oracle"; }
-                        @Override
-                        protected CheckResult check() {
-                            if (!executed) {
-                                insertDataInOracle();
-                                executed = true;
-                            }
-                            return new CheckResult(true, "Inserted successfully");
+                      boolean executed = false;
+
+                      @Override
+                      protected String getDescription() {
+                        return "Insert Data into Oracle";
+                      }
+
+                      @Override
+                      protected CheckResult check() {
+                        if (!executed) {
+                          insertDataInOracle();
+                          executed = true;
                         }
+                        return new CheckResult(true, "Inserted successfully");
+                      }
                     },
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(12)
                         .setMaxRows(12)
-                        .build()
-                )
-        ).build();
-            
+                        .build()))
+            .build();
+
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), rowsConditionCheck);
-            
+
     assertThatResult(result).meetsConditions();
 
     assertUsersTableContents();
@@ -242,25 +325,41 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
 
   private void insertDataInOracle() {
     LOG.info("Inserting rows into Users table in Oracle");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)");
-    jdbcResourceManagerShardA.runSQLUpdate("INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)");
+    jdbcResourceManagerShardA.runSQLUpdate(
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)");
     jdbcResourceManagerShardA.runSQLUpdate("COMMIT");
 
-    try (java.sql.Connection conn = java.sql.DriverManager.getConnection("jdbc:oracle:thin:@" + System.getProperty("hostIp", "localhost") + ":1521/XEPDB1", "system", "TestPassword123");
-         java.sql.Statement stmt = conn.createStatement()) {
-        flushOracleRedoLogs(null);
+    try (java.sql.Connection conn =
+            java.sql.DriverManager.getConnection(
+                "jdbc:oracle:thin:@" + System.getProperty("hostIp", "localhost") + ":1521/XEPDB1",
+                "system",
+                "TestPassword123");
+        java.sql.Statement stmt = conn.createStatement()) {
+      flushOracleRedoLogs(null);
     } catch (Exception e) {
-        flushOracleRedoLogs(jdbcResourceManagerShardA);
+      flushOracleRedoLogs(jdbcResourceManagerShardA);
     }
   }
 
@@ -283,14 +382,19 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT extends
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
-  private String generateSourceConfig(
-      String streamA, String dbA, String shardA) {
+  private String generateSourceConfig(String streamA, String dbA, String shardA) {
     return "{\n"
         + "  \"shardConfigs\": [\n"
         + "    {\n"
-        + "      \"logicalShardId\": \"" + shardA + "\",\n"
-        + "      \"dbName\": \"" + dbA + "\",\n"
-        + "      \"streamId\": \"" + streamA + "\"\n"
+        + "      \"logicalShardId\": \""
+        + shardA
+        + "\",\n"
+        + "      \"dbName\": \""
+        + dbA
+        + "\",\n"
+        + "      \"streamId\": \""
+        + streamA
+        + "\"\n"
         + "    }\n"
         + "  ]\n"
         + "}";

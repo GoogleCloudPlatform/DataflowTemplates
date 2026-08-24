@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates.oracle;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -38,12 +53,12 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBase {
-  private static final String SESSION_FILE_RESOURCE = "oracle/OracleDataStreamToSpannerMixedIT/oracle-session.json";
-
+  private static final String SESSION_FILE_RESOURCE =
+      "oracle/OracleDataStreamToSpannerMixedIT/oracle-session.json";
 
   private static final String SPANNER_DDL_RESOURCE =
       "oracle/OracleSeparateShadowTableDatabaseMixedIT/oracle-google_standard_sql-spanner-schema.sql";
-      
+
   private static HashSet<OracleSeparateShadowTableDatabaseMixedIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
@@ -66,14 +81,14 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
                 .setCredentialsProvider(credentialsProvider)
                 .setPrivateConnectivity(System.getProperty("privateConnectivity"))
                 .build();
-        
+
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder = 
+        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
         builder.setPassword(System.getProperty("cloudProxyPassword"));
@@ -86,15 +101,19 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
         String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
         setUpOracleUser(oracleUser, oraclePassword);
 
-        cloudSqlResourceManager = (CloudOracleResourceManager) CloudOracleResourceManager.builder(testName)
-            .setUsername(oracleUser)
-            .setPassword(oraclePassword)
-            .setDatabaseName("XEPDB1")
-            .setHost(System.getProperty("hostIp"))
-            .setPort(1521)
-            .build();
+        cloudSqlResourceManager =
+            (CloudOracleResourceManager)
+                CloudOracleResourceManager.builder(testName)
+                    .setUsername(oracleUser)
+                    .setPassword(oraclePassword)
+                    .setDatabaseName("XEPDB1")
+                    .setHost(System.getProperty("hostIp"))
+                    .setPort(1521)
+                    .build();
 
-        executeSqlScript(cloudSqlResourceManager, "oracle/OracleSeparateShadowTableDatabaseMixedIT/oracle-schema.sql");
+        executeSqlScript(
+            cloudSqlResourceManager,
+            "oracle/OracleSeparateShadowTableDatabaseMixedIT/oracle-schema.sql");
 
         OracleSource jdbcSource =
             OracleSource.builder(
@@ -119,8 +138,12 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
                 pubsubResourceManager,
                 new HashMap<>() {
                   {
-                    put("shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
-                    put("shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
+                    put(
+                        "shadowTableSpannerInstanceId",
+                        shadowSpannerResourceManager.getInstanceId());
+                    put(
+                        "shadowTableSpannerDatabaseId",
+                        shadowSpannerResourceManager.getDatabaseId());
                     put("inputFileFormat", "avro");
                     put("datastreamSourceType", "oracle");
                   }
@@ -136,42 +159,70 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
   }
 
   private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT CONNECT TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOG TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGFILE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$THREAD TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$PARAMETER TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$NLS_PARAMETERS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$TIMEZONE_NAMES TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$LOGMNR_LOGS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$ARCHIVE_DEST_STATUS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.V_$TRANSACTION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.DBA_REGISTRY TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.OBJ$ TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.ENC$ TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOG TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGFILE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$THREAD TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$PARAMETER TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$NLS_PARAMETERS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$TIMEZONE_NAMES TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$LOGMNR_LOGS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$ARCHIVE_DEST_STATUS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.V_$TRANSACTION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.DBA_REGISTRY TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.OBJ$ TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON SYS.ENC$ TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT SET CONTAINER TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT LOGMINING TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE ON DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT EXECUTE ON DBMS_LOGMNR_D TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON DBA_EXTENTS TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT CREATE ANY TABLE TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE ON DBMS_LOGMNR TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT EXECUTE ON DBMS_LOGMNR_D TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ANY TABLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT SELECT ON DBA_EXTENTS TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("GRANT CREATE ANY TABLE TO %s CONTAINER=ALL", user));
+    cloudOracleSysUser.runSQLUpdate(
+        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate("ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
-
   }
 
   @AfterClass
@@ -195,15 +246,23 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
         ChainedConditionCheck.builder(
                 List.of(
                     writeInitialData(),
-                    SpannerRowsCheck.builder(spannerResourceManager, "Authors").setMinRows(4).setMaxRows(4).build(),
-                    SpannerRowsCheck.builder(spannerResourceManager, "Books").setMinRows(3).setMaxRows(3).build(),
-                    SpannerRowsCheck.builder(spannerResourceManager, "Genre").setMinRows(1).setMaxRows(1).build()))
+                    SpannerRowsCheck.builder(spannerResourceManager, "Authors")
+                        .setMinRows(4)
+                        .setMaxRows(4)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, "Books")
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, "Genre")
+                        .setMinRows(1)
+                        .setMaxRows(1)
+                        .build()))
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 
@@ -214,6 +273,7 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
   private ConditionCheck writeInitialData() {
     return new ConditionCheck() {
       boolean executed = false;
+
       @Override
       protected String getDescription() {
         return "Write JDBC data";
@@ -222,31 +282,40 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
       @Override
       protected CheckResult check() {
         if (!executed) {
-          
+
           List<Map<String, Object>> authorRows = new ArrayList<>();
           authorRows.add(Map.of("author_id", 4, "full_name", "Stephen King"));
           authorRows.add(Map.of("author_id", 1, "full_name", "Jane Austen"));
           authorRows.add(Map.of("author_id", 2, "full_name", "Charles Dickens"));
           authorRows.add(Map.of("author_id", 3, "full_name", "Leo Tolstoy"));
-          
+
           List<Map<String, Object>> bookRows = new ArrayList<>();
           bookRows.add(Map.of("id", 1, "title", "Pride and Prejudice", "author_id", 1));
           bookRows.add(Map.of("id", 2, "title", "Oliver Twist", "author_id", 2));
           bookRows.add(Map.of("id", 3, "title", "War and Peace", "author_id", 3));
-          
+
           List<Map<String, Object>> genreRows = new ArrayList<>();
           genreRows.add(Map.of("genre_id", 1, "name", "Fiction"));
 
           for (Map<String, Object> r : authorRows) {
-            cloudSqlResourceManager.runSQLUpdate(String.format("INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (%d, '%s')", r.get("author_id"), r.get("full_name")));
+            cloudSqlResourceManager.runSQLUpdate(
+                String.format(
+                    "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (%d, '%s')",
+                    r.get("author_id"), r.get("full_name")));
           }
           for (Map<String, Object> r : bookRows) {
-            cloudSqlResourceManager.runSQLUpdate(String.format("INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (%d, '%s', %d)", r.get("id"), r.get("title"), r.get("author_id")));
+            cloudSqlResourceManager.runSQLUpdate(
+                String.format(
+                    "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (%d, '%s', %d)",
+                    r.get("id"), r.get("title"), r.get("author_id")));
           }
           for (Map<String, Object> r : genreRows) {
-            cloudSqlResourceManager.runSQLUpdate(String.format("INSERT INTO \"Genre\"(\"genre_id\",\"name\") VALUES (%d, '%s')", r.get("genre_id"), r.get("name")));
+            cloudSqlResourceManager.runSQLUpdate(
+                String.format(
+                    "INSERT INTO \"Genre\"(\"genre_id\",\"name\") VALUES (%d, '%s')",
+                    r.get("genre_id"), r.get("name")));
           }
-          
+
           cloudSqlResourceManager.runSQLUpdate("COMMIT");
           cloudOracleSysUser.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
           executed = true;

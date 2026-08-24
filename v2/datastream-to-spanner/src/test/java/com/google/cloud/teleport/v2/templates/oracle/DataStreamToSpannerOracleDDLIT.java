@@ -18,20 +18,19 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
-import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -61,7 +60,8 @@ import org.slf4j.LoggerFactory;
 public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerOracleDDLIT.class);
 
-  private static final String SPANNER_DDL_RESOURCE = "oracle/DataStreamToSpannerOracleDDLIT/oracle-GOOGLE_STANDARD_SQL-spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "oracle/DataStreamToSpannerOracleDDLIT/oracle-GOOGLE_STANDARD_SQL-spanner-schema.sql";
 
   private static final String TABLE1 = "AllDatatypeColumns";
   private static final String TABLE2 = "AllDatatypeColumns2";
@@ -81,34 +81,38 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager oracleResourceManager;
-  public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager datastreamResourceManager;
+  public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
+      datastreamResourceManager;
 
-  
   private void flushOracleLogs() {
-      try {
-          Class.forName("oracle.jdbc.OracleDriver");
-          try (Connection conn = DriverManager.getConnection("jdbc:oracle:thin:@//" + System.getProperty("hostIp", "localhost") + ":1521/XE", "system", "TestPassword123");
-               Statement stmt = conn.createStatement()) {
-              flushOracleRedoLogs(null);
-          }
-      } catch (Exception e) {
-          throw new RuntimeException("Failed to switch logfile", e);
+    try {
+      Class.forName("oracle.jdbc.OracleDriver");
+      try (Connection conn =
+              DriverManager.getConnection(
+                  "jdbc:oracle:thin:@//" + System.getProperty("hostIp", "localhost") + ":1521/XE",
+                  "system",
+                  "TestPassword123");
+          Statement stmt = conn.createStatement()) {
+        flushOracleRedoLogs(null);
       }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to switch logfile", e);
+    }
   }
 
   @Before
-
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleDDLIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         oracleResourceManager = setUpOracleResourceManager();
-        
+
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity(System.getProperty("privateConnectivity", "datastream-connect-2"))
+                .setPrivateConnectivity(
+                    System.getProperty("privateConnectivity", "datastream-connect-2"))
                 .build();
 
         spannerResourceManager = setUpSpannerResourceManager();
@@ -120,22 +124,33 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
                 .build();
-        
-    String[] tables = {"AllDatatypeColumns", "AllDatatypeColumns2", "DatatypeColumnsWithSizes", "DatatypeColumnsReducedSizes", "Users", "Authors", "AllDatatypeTransformation", "Singers", "Books"};
-    for (String table : tables) {
-      try {
-        oracleResourceManager.runSQLUpdate("DROP TABLE \"" + table + "\" CASCADE CONSTRAINTS");
-      } catch (Exception e) {
-        // Ignore if doesn't exist
-      }
-    }
-    
-    // Also drop sequences
-    try {
-      oracleResourceManager.runSQLUpdate("DROP SEQUENCE sequence_id");
-    } catch (Exception e) {
-    }
-executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql");
+
+        String[] tables = {
+          "AllDatatypeColumns",
+          "AllDatatypeColumns2",
+          "DatatypeColumnsWithSizes",
+          "DatatypeColumnsReducedSizes",
+          "Users",
+          "Authors",
+          "AllDatatypeTransformation",
+          "Singers",
+          "Books"
+        };
+        for (String table : tables) {
+          try {
+            oracleResourceManager.runSQLUpdate("DROP TABLE \"" + table + "\" CASCADE CONSTRAINTS");
+          } catch (Exception e) {
+            // Ignore if doesn't exist
+          }
+        }
+
+        // Also drop sequences
+        try {
+          oracleResourceManager.runSQLUpdate("DROP SEQUENCE sequence_id");
+        } catch (Exception e) {
+        }
+        executeSqlScript(
+            oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql");
         flushOracleLogs();
 
         jobInfo =
@@ -157,12 +172,17 @@ executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/o
                 datastreamResourceManager,
                 null, // sessionResourceContent
                 org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleResourceManager.getUsername(), // Explicit Datastream logminer user instead of 'system'
-                    oracleResourceManager.getPassword(), // Datastream user password
-                    oracleResourceManager.getPort(),
-                    "XEPDB1")
-                    .setAllowedTables(java.util.Map.of(oracleResourceManager.getUsername().toUpperCase(), java.util.Arrays.asList(TABLE1, TABLE2, TABLE3, TABLE4, TABLE5, TABLE6, TABLE7, TABLE8)))
+                        oracleResourceManager.getHost(),
+                        oracleResourceManager
+                            .getUsername(), // Explicit Datastream logminer user instead of 'system'
+                        oracleResourceManager.getPassword(), // Datastream user password
+                        oracleResourceManager.getPort(),
+                        "XEPDB1")
+                    .setAllowedTables(
+                        java.util.Map.of(
+                            oracleResourceManager.getUsername().toUpperCase(),
+                            java.util.Arrays.asList(
+                                TABLE1, TABLE2, TABLE3, TABLE4, TABLE5, TABLE6, TABLE7, TABLE8)))
                     .build());
       }
     }
@@ -189,11 +209,16 @@ executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/o
                 List.of(
                     new ConditionCheck() {
                       @Override
-                      protected String getDescription() { return "Run SQL inserts"; }
+                      protected String getDescription() {
+                        return "Run SQL inserts";
+                      }
+
                       @Override
                       protected CheckResult check() {
                         try {
-                          executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql");
+                          executeSqlScript(
+                              oracleResourceManager,
+                              "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql");
                           flushOracleLogs();
                           return new CheckResult(true, "Success");
                         } catch (Exception e) {
@@ -225,7 +250,8 @@ executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/o
     List<Map<String, Object>> events = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
     row.put("varchar_column", "value1");
-    // Only asserting primary key + simple int column to verify end-to-end sync without complex base64 logic
+    // Only asserting primary key + simple int column to verify end-to-end sync without complex
+    // base64 logic
     row.put("int_column", "50000");
     events.add(row);
 
@@ -234,7 +260,6 @@ executeSqlScript(oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/o
                 "select varchar_column, int_column from AllDatatypeColumns"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
-
 
   private void assertAllDatatypeColumnsTableCdcContents() {
     List<Map<String, Object>> events = new ArrayList<>();

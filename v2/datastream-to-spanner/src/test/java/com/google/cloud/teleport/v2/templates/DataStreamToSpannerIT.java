@@ -507,7 +507,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
         // Force log file archive - needed so Datastream can see changes which are read from
         // archived log files.
         if (isOracle) {
-          flushOracleRedoLogs(cloudSqlResourceManager);
+          ((org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) cloudSqlResourceManager).runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
         }
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }
@@ -578,7 +578,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
         // Force log file archive - needed so Datastream can see changes which are read from
         // archived log files.
         if (isOracle) {
-          flushOracleRedoLogs(cloudSqlResourceManager);
+          ((org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) cloudSqlResourceManager).runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
         }
         return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
       }
