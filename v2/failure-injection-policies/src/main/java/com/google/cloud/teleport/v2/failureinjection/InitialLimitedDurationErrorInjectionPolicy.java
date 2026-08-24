@@ -22,6 +22,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +41,18 @@ public class InitialLimitedDurationErrorInjectionPolicy
       LoggerFactory.getLogger(InitialLimitedDurationErrorInjectionPolicy.class);
   private static final long serialVersionUID = 1L;
 
-  private static Instant startTime;
+  private static class SharedState {
+    volatile Instant startTime = null;
+    final AtomicLong callCount = new AtomicLong(0);
+  }
+
+  private static final ConcurrentMap<String, SharedState> sharedStates = new ConcurrentHashMap<>();
+
+  private final String instanceId;
   private final Duration injectionDuration;
   private final String effectiveDurationParameter;
-  private String errorCodeToBeInjected;
+  private String errorCodeToBeInjected = io.grpc.Status.Code.DEADLINE_EXCEEDED.name();
   private Clock clock;
-  private static final AtomicLong callCount = new AtomicLong(0);
 
   private static final String DEFAULT_DURATION = "PT10M";
   private static final String DURATION_FIELD_IN_OBJECT = "duration";
@@ -69,6 +78,7 @@ public class InitialLimitedDurationErrorInjectionPolicy
    */
   public InitialLimitedDurationErrorInjectionPolicy(JsonNode inputParameter, Clock clock) {
     this.clock = clock;
+    this.instanceId = UUID.randomUUID().toString();
     String durationString = DEFAULT_DURATION;
 
     if (inputParameter != null && !inputParameter.isMissingNode() && !inputParameter.isNull()) {
@@ -96,6 +106,10 @@ public class InitialLimitedDurationErrorInjectionPolicy
                 ERROR_CODE_IN_OBJECT,
                 Code.DEADLINE_EXCEEDED);
           }
+        }
+        JsonNode jobStartTimePath = inputParameter.path("jobStartTime");
+        if (jobStartTimePath.isTextual()) {
+          LOG.warn("jobStartTime is ignored in InitialLimitedDurationErrorInjectionPolicy because lazy initialization is preferred.");
         }
       }
     }
@@ -125,25 +139,28 @@ public class InitialLimitedDurationErrorInjectionPolicy
    */
   @Override
   public boolean shouldInjectionError() {
-    if (startTime == null) {
-      synchronized (InitialLimitedDurationErrorInjectionPolicy.class) {
-        if (startTime == null) {
-          startTime = Instant.now(clock);
+    SharedState state = sharedStates.computeIfAbsent(this.instanceId, k -> new SharedState());
+
+    if (state.startTime == null) {
+      synchronized (state) {
+        if (state.startTime == null) {
+          state.startTime = Instant.now(clock);
           LOG.info(
-              "First call detected. Errors will be injected for {} starting from {}.",
+              "First call detected for instance {}. Errors will be injected for {} starting from {}.",
+              this.instanceId,
               this.injectionDuration,
-              startTime);
+              state.startTime);
         }
       }
     }
-    long currentCallCount = callCount.incrementAndGet();
+    long currentCallCount = state.callCount.incrementAndGet();
 
     if (currentCallCount < INITIAL_ALLOWED_CALLS_COUNT) {
       return false;
     }
 
     Instant now = Instant.now(clock);
-    Duration elapsed = Duration.between(startTime, now);
+    Duration elapsed = Duration.between(state.startTime, now);
 
     // Compare elapsed time with the configured duration.
     // elapsed.compareTo(injectionDuration) < 0 means elapsed < injectionDuration
@@ -178,23 +195,20 @@ public class InitialLimitedDurationErrorInjectionPolicy
   }
 
   public Instant getStartTime() {
-    return startTime;
+    SharedState state = sharedStates.get(this.instanceId);
+    return state != null ? state.startTime : null;
   }
 
   void setClockForTesting(Clock clock) {
     this.clock = clock;
   }
 
-  static void resetForTest() {
-    startTime = null;
-    callCount.set(0);
-  }
-
   @Override
   public String toString() {
     return "InitialLimitedDurationErrorInjectionPolicy{"
-        + "startTime="
-        + startTime
+        + "instanceId='"
+        + instanceId
+        + '\''
         + ", injectionDuration="
         + injectionDuration
         + ", effectiveDurationParameter='"

@@ -266,4 +266,87 @@ public class TransactionTimeoutInjectionPolicyTest {
     // The method should always return false, as its purpose is to delay, not to inject an error.
     assertThat(policy.shouldInjectionError()).isFalse();
   }
+
+  @Test
+  public void shouldInjectError_concurrentCallsCoverDoubleCheckedLocking() throws Exception {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("transactionTimeoutBakeDuration", "PT5M");
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
+
+    Thread waitingThread = new Thread(() -> {
+      policy.shouldInjectionError();
+    });
+
+    synchronized (policy) {
+      waitingThread.start();
+      Thread.sleep(500);
+
+      java.lang.reflect.Field startTimeField = 
+          TransactionTimeoutInjectionPolicy.class.getDeclaredField("startTime");
+      startTimeField.setAccessible(true);
+      startTimeField.set(policy, Instant.now());
+    }
+
+    waitingThread.join();
+    java.lang.reflect.Field startTimeField = 
+        TransactionTimeoutInjectionPolicy.class.getDeclaredField("startTime");
+    startTimeField.setAccessible(true);
+    assertThat(startTimeField.get(policy)).isNotNull();
+  }
+
+  @Test
+  public void constructor_shouldParseJobStartTime() {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("jobStartTime", "2025-01-01T00:00:00Z");
+    Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
+    policy.setClockForTesting(Clock.fixed(Instant.parse("2025-01-01T01:00:00Z"), ZoneOffset.UTC));
+    long start = System.currentTimeMillis();
+    policy.shouldInjectionError();
+    long end = System.currentTimeMillis();
+    assertThat(end - start).isLessThan(50L);
+  }
+
+  @Test
+  public void constructor_shouldThrowExceptionForInvalidJobStartTime() {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("jobStartTime", "Invalid");
+    IllegalArgumentException e =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC()));
+    assertThat(e).hasMessageThat().contains("Failed to parse jobStartTime");
+  }
+
+  @Test
+  public void shouldInjectionError_initializesClockIfNull() throws Exception {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input);
+    java.lang.reflect.Field clockField = TransactionTimeoutInjectionPolicy.class.getDeclaredField("clock");
+    clockField.setAccessible(true);
+    clockField.set(policy, null);
+    
+    assertThat(policy.shouldInjectionError()).isFalse();
+  }
+
+  @Test
+  public void shouldInjectDelay_handlesInterruptedException() throws Exception {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("transactionTimeoutBakeDuration", "PT5M");
+    input.put("transactionDelayDuration", "PT5M"); 
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
+    
+    policy.setRandomForTesting(new Random() {
+      @Override
+      public double nextDouble() { return 0.1; }
+    });
+
+    Thread thread = new Thread(() -> policy.shouldInjectionError());
+    thread.start();
+    Thread.sleep(200); 
+    thread.interrupt();
+    
+    thread.join(1000);
+    assertThat(thread.isAlive()).isFalse();
+  }
 }

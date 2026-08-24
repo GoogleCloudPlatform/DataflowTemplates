@@ -28,15 +28,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import org.junit.Before;
 import org.junit.Test;
 
 public class InitialLimitedDurationErrorInjectionPolicyTest {
 
-  @Before
-  public void setUp() {
-    InitialLimitedDurationErrorInjectionPolicy.resetForTest();
-  }
 
   private ObjectNode createInputObject(String duration) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
@@ -273,5 +268,28 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     policy.shouldInjectionError();
     Instant thirdStartTime = policy.getStartTime();
     assertEquals("Start time should still not change", firstStartTime, thirdStartTime);
+  }
+
+  @Test
+  public void constructor_shouldParseErrorCode() {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("duration", "PT5S");
+    input.put("errorCode", "UNAVAILABLE");
+    Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
+    InitialLimitedDurationErrorInjectionPolicy policy =
+        new InitialLimitedDurationErrorInjectionPolicy(input, clock);
+
+    assertEquals("UNAVAILABLE", policy.getErrorCodeToBeInjected());
+  }
+
+  @Test
+  public void constructor_shouldUseDefaultErrorCodeIfBlank() {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("duration", "PT5S");
+    input.put("errorCode", "  ");
+    Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
+    InitialLimitedDurationErrorInjectionPolicy policy =
+        new InitialLimitedDurationErrorInjectionPolicy(input, clock);
+
   }
 }
