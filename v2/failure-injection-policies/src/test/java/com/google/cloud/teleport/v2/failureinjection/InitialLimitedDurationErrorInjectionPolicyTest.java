@@ -28,10 +28,15 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import org.junit.Before;
 import org.junit.Test;
 
 public class InitialLimitedDurationErrorInjectionPolicyTest {
 
+  @Before
+  public void setUp() {
+    InitialLimitedDurationErrorInjectionPolicy.resetForTesting();
+  }
 
   private ObjectNode createInputObject(String duration) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
