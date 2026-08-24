@@ -181,7 +181,7 @@ CREATE TABLE `integer_unsigned_table` (
 
 CREATE TABLE `timestamp_table` (
     `id` INT PRIMARY KEY,
-    `timestamp_col` TIMESTAMP DEFAULT NULL
+    `timestamp_col` TIMESTAMP NULL DEFAULT NULL
 );
 
 CREATE TABLE set_table (
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS datetime_to_string_table (
 
 CREATE TABLE IF NOT EXISTS timestamp_to_string_table (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  timestamp_to_string_col TIMESTAMP
+  timestamp_to_string_col TIMESTAMP NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS binary_to_string_table (
@@ -468,8 +468,8 @@ CREATE TABLE date_time_pk_table (
 );
 
 CREATE TABLE timestamp_pk_table (
-                                    id TIMESTAMP(6),
-                                    timestamp_pk_col TIMESTAMP(6) NOT NULL,
+                                    id TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+                                    timestamp_pk_col TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                                     CONSTRAINT PRIMARY KEY (id)
 );
 CREATE TABLE year_pk_table (
@@ -915,7 +915,7 @@ INSERT INTO `uuid_pk_table` (`id`, `uuid_pk_col`) VALUES ('a0eebc99-9c0b-4ef8-bb
 
 CREATE TABLE IF NOT EXISTS `utf8mb4_pk_table` (
     `id` VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin PRIMARY KEY,
-    `utf8mb4_pk_col` VARCHAR(200) NOT NULL
+    `utf8mb4_pk_col` VARCHAR(200) CHARACTER SET utf8mb4 NOT NULL
 );
 
 INSERT INTO `utf8mb4_pk_table` (`id`, `utf8mb4_pk_col`) VALUES ('😀', '😀'), ('😁', '😁'), ('😂', '😂');

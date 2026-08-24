@@ -1087,13 +1087,13 @@ public class AssignShardIdFnTest {
 
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
 
-    // Mock ReadOnlyTransaction to throw a Permanent SpannerException (e.g. Table
-    // not found)
+    // Mock ReadOnlyTransaction to throw a Permanent SpannerException (e.g. Invalid
+    // Argument)
     when(mockReadOnlyTransaction.read(
             eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenThrow(
             SpannerExceptionFactory.newSpannerException(
-                ErrorCode.NOT_FOUND, "Detailed permanent error"));
+                ErrorCode.INVALID_ARGUMENT, "Detailed permanent error"));
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(

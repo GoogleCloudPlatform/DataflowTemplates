@@ -1537,7 +1537,8 @@ public final class MySQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"bit_column\":\"SGVsbG8=\"}"); // "Hello" in base64
 
-    String res = MySQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    String res =
+        MySQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
     assertEquals("x'48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
   }
 

@@ -1,6 +1,4 @@
-ALTER DATABASE `%DATABASE_NAME%` SET OPTIONS ( optimizer_version = 1, default_leader = 'us-east4' );
-
-CREATE PLACEMENT `my_placement` OPTIONS(instance_partition='default');
+ALTER DATABASE `%DATABASE_NAME%` SET OPTIONS ( optimizer_version = 1 );
 
 -- With Named Schema
 CREATE SCHEMA `my_schema`;

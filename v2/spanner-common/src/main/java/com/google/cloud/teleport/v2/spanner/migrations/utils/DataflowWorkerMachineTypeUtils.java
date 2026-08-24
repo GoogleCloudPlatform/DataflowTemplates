@@ -18,8 +18,13 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import com.google.cloud.compute.v1.MachineType;
 import com.google.cloud.compute.v1.MachineTypesClient;
 import com.google.common.base.Preconditions;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.resourcehints.ResourceHintsOptions;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,10 +116,15 @@ public class DataflowWorkerMachineTypeUtils {
     }
   }
 
-  public static void validateMachineSpecs(String workerMachineType, Integer minCPUs) {
+  public static void validateMachineSpecs(
+      String workerMachineType, Integer minCPUs, Optional<Integer> resourceHintsMinCpus) {
+    if (resourceHintsMinCpus.isPresent() && resourceHintsMinCpus.get() >= minCPUs) {
+      return;
+    }
+
     Preconditions.checkArgument(
         workerMachineType != null && !StringUtils.isBlank(workerMachineType),
-        "Policy Violation: You must specify a workerMachineType with at least %s vCPUs.",
+        "Policy Violation: You must specify a workerMachineType or resource hints minCpu with at least %s vCPUs.",
         minCPUs);
 
     // Handle custom machine types first, format is custom-{vCPU}-{RAM}
@@ -139,7 +149,7 @@ public class DataflowWorkerMachineTypeUtils {
           minCPUs);
     } else {
       // Handle standard machine types.
-      java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(".*-(\\d+)$");
+      Pattern pattern = Pattern.compile(".*-(\\d+)$");
       java.util.regex.Matcher matcher = pattern.matcher(workerMachineType);
 
       if (matcher.find()) {
@@ -164,6 +174,29 @@ public class DataflowWorkerMachineTypeUtils {
             minCPUs);
       }
     }
+  }
+
+  public static Optional<Integer> getMinCpuResourceHint(PipelineOptions options) {
+    List<String> resourceHints = options.as(ResourceHintsOptions.class).getResourceHints();
+    if (resourceHints == null) {
+      return Optional.empty();
+    }
+    for (String hint : resourceHints) {
+      if (hint.startsWith("cpu_count=")) {
+        try {
+          return Optional.of(Integer.parseInt(hint.substring("cpu_count=".length())));
+        } catch (NumberFormatException e) {
+          LOG.warn("Invalid cpu_count in resource hints: {}", hint);
+        }
+      } else if (hint.startsWith("min_cpu=")) {
+        try {
+          return Optional.of(Integer.parseInt(hint.substring("min_cpu=".length())));
+        } catch (NumberFormatException e) {
+          LOG.warn("Invalid min_cpu in resource hints: {}", hint);
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   @com.google.common.annotations.VisibleForTesting

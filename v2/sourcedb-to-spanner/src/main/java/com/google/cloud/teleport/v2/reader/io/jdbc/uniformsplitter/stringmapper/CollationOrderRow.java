@@ -30,11 +30,7 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Represents a row of the minimum required columns from the collations output query. You can refer
- * to src/test/resources/TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv for example of
- * the columns.
- */
+/** Represents a row of the minimum required columns from the collations output query. */
 @AutoValue
 public abstract class CollationOrderRow {
 
@@ -194,6 +190,9 @@ public abstract class CollationOrderRow {
      */
     public static final String CODEPOINT_RANK_PAD_SPACE_COL = "codepoint_rank_pad_space";
 
-    private CollationsOrderQueryColumns() {}
+    /** Byte array weight of the character as per the db_collation. */
+    public static final String WEIGHT_COL = "weight";
+
+    protected CollationsOrderQueryColumns() {}
   }
 }

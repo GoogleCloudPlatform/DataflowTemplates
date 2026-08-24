@@ -19,6 +19,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Visitor interface for Spanner {@link Value}s.
@@ -29,6 +30,8 @@ import java.math.BigDecimal;
  */
 public interface IUnifiedVisitor {
   void visitString(String s);
+
+  void visitUuid(UUID u);
 
   void visitInt64(long l);
 
@@ -58,14 +61,15 @@ public interface IUnifiedVisitor {
 
     switch (value.getType().getCode()) {
       case STRING -> visitor.visitString(value.getString());
+      case UUID -> visitor.visitUuid(value.getUuid());
       case INT64 -> visitor.visitInt64(value.getInt64());
       case FLOAT64 -> visitor.visitFloat64(value.getFloat64());
       case BOOL -> visitor.visitBool(value.getBool());
       case BYTES -> visitor.visitBytes(value.getBytes().toByteArray());
       case DATE -> visitor.visitDate(value.getDate());
-      case NUMERIC -> visitor.visitNumeric(value.getNumeric());
+      case NUMERIC, PG_NUMERIC -> visitor.visitNumeric(value.getNumeric());
       case TIMESTAMP -> visitor.visitTimestamp(value.getTimestamp());
-      case JSON -> visitor.visitJson(value.getJson());
+      case JSON, PG_JSONB -> visitor.visitJson(value.getJson());
       default -> visitor.visitDefault(value);
     }
   }

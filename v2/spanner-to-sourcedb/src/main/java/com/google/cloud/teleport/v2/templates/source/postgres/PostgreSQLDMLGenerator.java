@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -98,7 +99,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            PostgreSQLDMLGenerator::getMappedColumnValue);
+            PostgreSQLDMLGenerator::getMappedColumnValue,
+            new ArrayList<>());
     if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -204,7 +206,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            PostgreSQLDMLGenerator::getMappedColumnValue);
+            PostgreSQLDMLGenerator::getMappedColumnValue,
+            new ArrayList<>());
     columnNameValues.putAll(pkcolumnNameValues);
     return getUpsertStatement(
         sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
@@ -215,7 +218,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset,
+      List<Object> preparedStatementParameters) {
 
     String colInputValue = "";
     Type colType = spannerColDef.type();

@@ -63,6 +63,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>spanner-common</artifactId>
             <version>1.0-SNAPSHOT</version>
@@ -95,7 +101,6 @@
             </plugin>
         </plugins>
     </build>
-
     <profiles>
         <profile>
             <id>useRealSpanner</id>

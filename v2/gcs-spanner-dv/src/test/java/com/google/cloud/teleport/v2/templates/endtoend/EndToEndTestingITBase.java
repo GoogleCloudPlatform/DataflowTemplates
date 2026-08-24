@@ -13,20 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVITBase;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -49,28 +52,15 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
 
   public record Database(String dbName, String databaseId, String refDataShardId) {}
 
-  protected void createAndUploadBulkShardConfigToGcs(
+  protected void createAndUploadShardConfigToGcs(
       List<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
-    JSONObject bulkConfig = new JSONObject();
-    bulkConfig.put("configType", "dataflow");
+    JSONObject config = new JSONObject();
+    JSONArray shardConfigs = new JSONArray();
 
-    JSONObject shardConfigBulk = new JSONObject();
-
-    JSONObject schemaSourceJson = new JSONObject();
-    schemaSourceJson.put("dataShardId", "");
-    schemaSourceJson.put("host", "");
-    schemaSourceJson.put("user", "");
-    schemaSourceJson.put("password", "");
-    schemaSourceJson.put("port", "");
-    schemaSourceJson.put("dbName", "");
-    shardConfigBulk.put("schemaSource", schemaSourceJson);
-
-    JSONArray dataShardsArray = new JSONArray();
     if (dataShardsList != null) {
       for (DataShard shardData : dataShardsList) {
         JSONObject shardJson = new JSONObject();
-
-        shardJson.put("dataShardId", shardData.dataShardId());
+        shardJson.put("logicalShardId", shardData.dataShardId());
         shardJson.put("host", shardData.host());
         shardJson.put("user", shardData.user());
         shardJson.put("password", shardData.password());
@@ -78,25 +68,13 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
         shardJson.put("dbName", shardData.dbName());
         shardJson.put("namespace", shardData.namespace());
         shardJson.put("connectionProperties", shardData.connectionProperties());
-
-        JSONArray databasesArray = new JSONArray();
-
-        for (Database dbData : shardData.databases()) {
-          JSONObject dbJson = new JSONObject();
-          dbJson.put("dbName", dbData.dbName());
-          dbJson.put("databaseId", dbData.databaseId());
-          dbJson.put("refDataShardId", dbData.refDataShardId());
-          databasesArray.put(dbJson);
-        }
-        shardJson.put("databases", databasesArray);
-        dataShardsArray.put(shardJson);
+        shardConfigs.put(shardJson);
       }
     }
-    shardConfigBulk.put("dataShards", dataShardsArray);
 
-    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
-    String shardFileContents = bulkConfig.toString();
-    gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+    config.put("shardConfigs", shardConfigs);
+    String shardFileContents = config.toString();
+    gcsResourceManager.createArtifact("input/shard-config.json", shardFileContents);
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -128,35 +106,51 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
     }
 
-    if (multiSharded) {
-      builder.addParameter(
-          "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager));
-    } else {
-      builder.addParameter(
-          "sourceConfigURL",
-          cloudSqlResourceManager.getUri() + "?useSSL=false&allowPublicKeyRetrieval=true");
-      builder.addParameter("username", cloudSqlResourceManager.getUsername());
-      builder.addParameter("password", cloudSqlResourceManager.getPassword());
-      builder.addParameter("jdbcDriverClassName", "com.mysql.cj.jdbc.Driver");
+    String connectionProps = "useSSL=false&allowPublicKeyRetrieval=true";
+    String jdbcDriver = "com.mysql.cj.jdbc.Driver";
+    String dialect = "MYSQL";
+
+    if (cloudSqlResourceManager instanceof CloudPostgresResourceManager) {
+      connectionProps = null;
+      jdbcDriver = "org.postgresql.Driver";
+      dialect = "POSTGRESQL";
     }
 
-    flexTemplateDataflowJobResourceManager = builder.build();
+    if (!multiSharded) {
+      DataShard dataShard =
+          new DataShard(
+              "shard1",
+              cloudSqlResourceManager.getHost(),
+              cloudSqlResourceManager.getUsername(),
+              cloudSqlResourceManager.getPassword(),
+              String.valueOf(cloudSqlResourceManager.getPort()),
+              cloudSqlResourceManager.getDatabaseName(),
+              null,
+              connectionProps,
+              Collections.emptyList());
+      createAndUploadShardConfigToGcs(Collections.singletonList(dataShard), gcsResourceManager);
+    }
 
-    // Run
+    builder.addParameter(
+        "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager));
+    builder.addParameter("sourceDbDialect", dialect);
+    builder.addParameter("jdbcDriverClassName", jdbcDriver);
+
+    flexTemplateDataflowJobResourceManager = builder.build();
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
 
-  protected void createMySQLDDL(CloudSqlResourceManager cloudSqlResourceManager, String ddlResource)
+  protected void executeSqlScript(JDBCResourceManager jdbcResourceManager, String ddlResource)
       throws IOException {
-    String mysqlSql =
+    String sqlString =
         Resources.toString(Resources.getResource(ddlResource), StandardCharsets.UTF_8);
     // Since the DDL file contains multiple CREATE statements, we split them by semicolon and
     // execute one single SQL statement at a time.
-    for (String stmt : mysqlSql.split("(?m);\\s*$")) {
+    for (String stmt : sqlString.split("(?m);\\s*$")) {
       if (!stmt.trim().isEmpty()) {
-        cloudSqlResourceManager.runSQLUpdate(stmt);
+        jdbcResourceManager.runSQLUpdate(stmt);
       }
     }
   }

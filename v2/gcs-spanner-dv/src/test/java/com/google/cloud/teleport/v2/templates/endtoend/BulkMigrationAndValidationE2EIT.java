@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -23,6 +23,8 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchedRecordDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
@@ -81,7 +83,7 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
   @Test
   public void migrationAndValidationE2E() throws Exception {
     // 1. Generate and Upload Source Records to MySQL
-    createMySQLDDL(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+    executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
     // Insert records into source MySQL DB
     List<Map<String, Object>> usersData = new ArrayList<>();
@@ -130,7 +132,7 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
     mySQLResourceManager.write("AccountRoles", rolesData);
 
     // 2. Launch Bulk Pipeline (SourceDbToSpanner)
-    String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testName;
+    String gcsOutputDirectory = "gs://" + artifactBucketName + "/" + testId;
 
     LaunchInfo bulkJobInfo =
         launchBulkDataflowJob(
@@ -236,9 +238,9 @@ public class BulkMigrationAndValidationE2EIT extends EndToEndTestingITBase {
         bigQueryResourceManager,
         Arrays.asList(
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
+                "shard1", null, "Users", "[user_id:2, event_id:E2]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(
-                null, null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
+                "shard1", null, "Users", "[user_id:4, event_id:E4]", "MISSING_IN_DESTINATION"),
             new MismatchedRecordDto(
                 null, null, "Users", "[user_id:3, event_id:E3]", "MISSING_IN_SOURCE"),
             new MismatchedRecordDto(

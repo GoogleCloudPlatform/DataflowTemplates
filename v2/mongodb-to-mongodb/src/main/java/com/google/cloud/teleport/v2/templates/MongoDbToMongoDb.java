@@ -21,8 +21,9 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
+import com.google.cloud.teleport.v2.transforms.ReadSplitGenerator;
+import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.mongodb.FindQuery;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -39,14 +41,19 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.bson.BsonDocument;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Dataflow template which copies data from one MongoDB database to another. */
 @Template(
@@ -58,8 +65,7 @@ import org.bson.Document;
     optionsClass = MongoDbToMongoDb.Options.class)
 public class MongoDbToMongoDb {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(MongoDbToMongoDb.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
   public interface Options extends JavascriptTextTransformer.JavascriptTextTransformerOptions {
     @TemplateParameter.Text(
@@ -126,29 +132,22 @@ public class MongoDbToMongoDb {
 
     void setTargetCollection(String value);
 
-    @TemplateParameter.Boolean(
+    @TemplateParameter.Integer(
         order = 7,
         groupName = "Source",
         optional = true,
-        description = "Use BucketAuto",
-        helpText = "Enable withBucketAuto for Atlas compatibility.")
-    @Default.Boolean(false)
-    Boolean getUseBucketAuto();
+        description = "Number of Read Splits",
+        helpText =
+            "Number of parallel queries to generate for high-throughput reads (e.g., 16 or 32)."
+                + " Uses MongoDB's $sample aggregation to discover data-driven boundaries across"
+                + " active BSON types.")
+    @Default.Integer(0)
+    Integer getNumReadSplits();
 
-    void setUseBucketAuto(Boolean value);
+    void setNumReadSplits(Integer value);
 
     @TemplateParameter.Integer(
         order = 8,
-        groupName = "Source",
-        optional = true,
-        description = "Number of Splits",
-        helpText = "Suggest a specific number of partitions for reading.")
-    Integer getNumSplits();
-
-    void setNumSplits(Integer value);
-
-    @TemplateParameter.Integer(
-        order = 9,
         groupName = "Target",
         optional = true,
         description = "Batch Size",
@@ -158,8 +157,78 @@ public class MongoDbToMongoDb {
 
     void setBatchSize(Integer value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Integer(
+        order = 9,
+        groupName = "Target",
+        optional = true,
+        description = "Max Concurrent Async Writes",
+        helpText = "Maximum number of concurrent asynchronous batch writes per worker.")
+    @Default.Integer(10)
+    Integer getMaxConcurrentAsyncWrites();
+
+    void setMaxConcurrentAsyncWrites(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 10,
+        groupName = "Target",
+        optional = true,
+        description = "Max Write Retries",
+        helpText = "Maximum number of retry attempts for transient failures during write.")
+    @Default.Integer(3)
+    Integer getMaxWriteRetries();
+
+    void setMaxWriteRetries(Integer value);
+
+    @TemplateParameter.Integer(
         order = 11,
+        groupName = "Target",
+        optional = true,
+        description = "Initial Write Rate Per Worker",
+        helpText =
+            "Initial maximum documents/second written per worker thread during linear write rate"
+                + " ramp-up. Set to <= 0 to disable throttling.")
+    @Default.Integer(5000)
+    Integer getInitialWriteRatePerWorker();
+
+    void setInitialWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 12,
+        groupName = "Target",
+        optional = true,
+        description = "Write Rate Ramp Up Minutes",
+        helpText =
+            "Number of minutes between linear rate limit increases during write rate ramp-up.")
+    @Default.Integer(5)
+    Integer getWriteRateRampUpMinutes();
+
+    void setWriteRateRampUpMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 13,
+        groupName = "Target",
+        optional = true,
+        description = "Max Write Rate Per Worker",
+        helpText =
+            "Maximum target documents/second per worker after completing ramp-up. Default is 25000.")
+    @Default.Integer(25000)
+    Integer getMaxWriteRatePerWorker();
+
+    void setMaxWriteRatePerWorker(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 14,
+        groupName = "Target",
+        optional = true,
+        description = "Write Rate Ramp Up Steps",
+        helpText = "Number of discrete linear step increases over the ramp-up period.")
+    @Default.Integer(5)
+    Integer getWriteRateRampUpSteps();
+
+    void setWriteRateRampUpSteps(Integer value);
+
+    @TemplateParameter.Text(
+        order = 15,
         optional = true,
         description = "DLQ Directory",
         helpText =
@@ -170,27 +239,7 @@ public class MongoDbToMongoDb {
     void setDlqDirectory(String value);
 
     @TemplateParameter.Integer(
-        order = 13,
-        optional = true,
-        description = "Max Concurrent Async Writes",
-        helpText = "Maximum number of concurrent asynchronous batch writes per worker.")
-    @Default.Integer(10)
-    Integer getMaxConcurrentAsyncWrites();
-
-    void setMaxConcurrentAsyncWrites(Integer value);
-
-    @TemplateParameter.Integer(
-        order = 14,
-        optional = true,
-        description = "Max Write Retries",
-        helpText = "Maximum number of retry attempts for transient failures during write.")
-    @Default.Integer(3)
-    Integer getMaxWriteRetries();
-
-    void setMaxWriteRetries(Integer value);
-
-    @TemplateParameter.Integer(
-        order = 15,
+        order = 16,
         optional = true,
         description = "DLQ Max Retries",
         helpText = "Maximum number of times to retry events from DLQ.")
@@ -200,7 +249,7 @@ public class MongoDbToMongoDb {
     void setDlqMaxRetries(Integer value);
 
     @TemplateParameter.Text(
-        order = 16,
+        order = 17,
         groupName = "Source",
         optional = true,
         description = "Reconsume DLQ Path",
@@ -212,7 +261,7 @@ public class MongoDbToMongoDb {
     void setReconsumeDlqPath(String value);
 
     @TemplateParameter.Boolean(
-        order = 17,
+        order = 18,
         groupName = "Source",
         optional = true,
         description = "Read from DLQ",
@@ -240,7 +289,7 @@ public class MongoDbToMongoDb {
       sourceCollections.add(sourceCollection);
     } else {
       // List collections from source
-      try (MongoClient mongoClient = MongoClients.create(sourceUri)) {
+      try (MongoClient mongoClient = MongoDbTransforms.createMongoClient(sourceUri)) {
         MongoDatabase db = mongoClient.getDatabase(sourceDatabase);
         for (String name : db.listCollectionNames()) {
           sourceCollections.add(name);
@@ -268,6 +317,38 @@ public class MongoDbToMongoDb {
     String retryableDlqPath = baseDlqPath + timestampPath + "/retryable";
     String permanentDlqPath = baseDlqPath + timestampPath + "/permanent";
 
+    LOG.info("Starting MongoDB-to-MongoDB Pipeline");
+    LOG.info("  Source URI:              {}", UriSanitizer.sanitize(options.getSourceUri()));
+    LOG.info("  Target URI:              {}", UriSanitizer.sanitize(options.getTargetUri()));
+    LOG.info("  Source Database:         {}", options.getSourceDatabase());
+    LOG.info("  Target Database:         {}", options.getTargetDatabase());
+    LOG.info("  Source Collections:      {}", sourceCollections);
+    LOG.info(
+        "  Read Strategy:           {}",
+        (options.getNumReadSplits() != null && options.getNumReadSplits() > 1)
+            ? "Parallel Index-Slice Reading (numReadSplits=" + options.getNumReadSplits() + ")"
+            : "Standard unpartitioned MongoDbIO.read()");
+    LOG.info(
+        "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
+            + " dlqMaxRetries={}",
+        options.getBatchSize(),
+        options.getMaxConcurrentAsyncWrites(),
+        options.getMaxWriteRetries(),
+        options.getDlqMaxRetries());
+    LOG.info(
+        "  Write Rate Limiting:     linear ramp-up from {} to {} docs/s/worker over {} mins in"
+            + " {} steps",
+        options.getInitialWriteRatePerWorker(),
+        options.getMaxWriteRatePerWorker(),
+        options.getWriteRateRampUpMinutes(),
+        options.getWriteRateRampUpSteps());
+    LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
+    LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
+    LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
+    LOG.info(
+        "  DLQ Inspection Command:  gcloud storage cat \"{}/**/output-*\" | head -n 5",
+        permanentDlqPath);
+
     if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
       String reconsumePath = options.getReconsumeDlqPath();
       if (reconsumePath == null || reconsumePath.isEmpty()) {
@@ -276,7 +357,8 @@ public class MongoDbToMongoDb {
       }
       PCollection<DocumentWithMetadata> documents = readFromDlq(pipeline, reconsumePath);
       documents.apply(
-          "ProcessDlq", new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+          "ProcessDlq",
+          new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
     } else {
       for (String inputCollection : sourceCollections) {
         String targetCollectionRaw = options.getTargetCollection();
@@ -289,7 +371,7 @@ public class MongoDbToMongoDb {
             readFromMongo(pipeline, options, inputCollection, targetCollection);
         documents.apply(
             "Process_" + inputCollection,
-            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
       }
     }
 
@@ -301,11 +383,14 @@ public class MongoDbToMongoDb {
     private final transient Options options;
     private final String retryableDlqPath;
     private final String permanentDlqPath;
+    private final String tmpDirectory;
 
-    public ProcessDocuments(Options options, String retryableDlqPath, String permanentDlqPath) {
+    public ProcessDocuments(
+        Options options, String retryableDlqPath, String permanentDlqPath, String tmpDirectory) {
       this.options = options;
       this.retryableDlqPath = retryableDlqPath;
       this.permanentDlqPath = permanentDlqPath;
+      this.tmpDirectory = tmpDirectory;
     }
 
     @Override
@@ -347,8 +432,7 @@ public class MongoDbToMongoDb {
             .get(udfFailureTag)
             .apply(
                 "WriteToDlq_UDF",
-                new MongoDbTransforms.WriteToDlq(
-                    retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+                new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents =
             udfProcessed
@@ -396,8 +480,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new MongoDbTransforms.WriteToDlq(
-                  retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+              new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       // Write Stage with DLQ
       PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
@@ -411,12 +494,27 @@ public class MongoDbToMongoDb {
                   .withBatchSize(options.getBatchSize())
                   .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
                   .withMaxWriteRetries(options.getMaxWriteRetries())
-                  .withDlqMaxRetries(options.getDlqMaxRetries()));
+                  .withDlqMaxRetries(options.getDlqMaxRetries())
+                  .withInitialWriteRatePerWorker(
+                      options.getInitialWriteRatePerWorker() != null
+                          ? options.getInitialWriteRatePerWorker()
+                          : 100)
+                  .withMaxWriteRatePerWorker(
+                      options.getMaxWriteRatePerWorker() != null
+                          ? options.getMaxWriteRatePerWorker()
+                          : 500)
+                  .withWriteRateRampUpMinutes(
+                      options.getWriteRateRampUpMinutes() != null
+                          ? options.getWriteRateRampUpMinutes()
+                          : 5)
+                  .withWriteRateRampUpSteps(
+                      options.getWriteRateRampUpSteps() != null
+                          ? options.getWriteRateRampUpSteps()
+                          : 5));
 
       writeFailures.apply(
           "WriteToDlq_Write",
-          new MongoDbTransforms.WriteToDlq(
-              retryableDlqPath, permanentDlqPath, options.getTempLocation()));
+          new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(input.getPipeline());
     }
@@ -452,24 +550,72 @@ public class MongoDbToMongoDb {
 
   private static PCollection<DocumentWithMetadata> readFromMongo(
       Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
+    Integer numReadSplits = options.getNumReadSplits();
+    if (numReadSplits != null && numReadSplits > 1) {
+      List<BsonDocument> filters;
+      try (MongoClient client = MongoDbTransforms.createMongoClient(options.getSourceUri())) {
+        filters =
+            ReadSplitGenerator.generateIndexSliceFilters(
+                client, options.getSourceDatabase(), sourceCollection, numReadSplits);
+      } catch (Exception e) {
+        LOG.warn(
+            "Could not connect to MongoDB during setup to generate data-driven read splits ({})."
+                + " Using offline uniform split generation.",
+            e.getMessage());
+        filters = ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
+      }
+
+      List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
+
+      LOG.info(
+          "Generating {} parallel index-slice read branches for collection '{}'",
+          filters.size(),
+          sourceCollection);
+
+      String readGroup = "ReadSlices(" + sourceCollection + ")";
+      for (int i = 0; i < filters.size(); i++) {
+        final String filterJson = filters.get(i).toJson();
+        LOG.info("  Read Branch [{}/{}] Query Filter: {}", i, filters.size() - 1, filterJson);
+        MongoDbIO.Read read =
+            MongoDbIO.read()
+                .withUri(options.getSourceUri())
+                .withDatabase(options.getSourceDatabase())
+                .withCollection(sourceCollection)
+                .withQueryFn(FindQuery.create().withFilters(filters.get(i)));
+
+        PCollection<DocumentWithMetadata> branch =
+            pipeline
+                .apply(readGroup + "/Slice_" + i + "/Read", read)
+                .apply(
+                    readGroup + "/Slice_" + i + "/MapToMetadata",
+                    ParDo.of(
+                        new DoFn<Document, DocumentWithMetadata>() {
+                          @ProcessElement
+                          public void processElement(ProcessContext c) {
+                            c.output(
+                                DocumentWithMetadata.of(
+                                    c.element(), sourceCollection, targetCollection));
+                          }
+                        }));
+        readBranches.add(branch);
+      }
+
+      return PCollectionList.of(readBranches).apply(readGroup + "/Merge", Flatten.pCollections());
+    }
+
+    LOG.info("Using standard unpartitioned MongoDbIO.read() for collection '{}'", sourceCollection);
+
     MongoDbIO.Read read =
         MongoDbIO.read()
             .withUri(options.getSourceUri())
             .withDatabase(options.getSourceDatabase())
             .withCollection(sourceCollection);
 
-    if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
-      read = read.withBucketAuto(true);
-    }
-
-    if (options.getNumSplits() != null) {
-      read = read.withNumSplits(options.getNumSplits());
-    }
-
+    String readGroup = "Read(" + sourceCollection + ")";
     return pipeline
-        .apply("Read_" + sourceCollection, read)
+        .apply(readGroup + "/Read", read)
         .apply(
-            "MapToMetadata_" + sourceCollection,
+            readGroup + "/MapToMetadata",
             ParDo.of(
                 new DoFn<Document, DocumentWithMetadata>() {
                   @ProcessElement

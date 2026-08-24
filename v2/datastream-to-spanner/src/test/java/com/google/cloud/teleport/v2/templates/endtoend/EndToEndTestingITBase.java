@@ -236,55 +236,34 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  protected void createAndUploadBulkShardConfigToGcs(
-      ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
-    JSONObject bulkConfig = new JSONObject();
-    bulkConfig.put("configType", "dataflow");
+  protected void createAndUploadShardConfigToGcs(
+      List<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
+    JSONObject config = new JSONObject();
+    JSONArray shardConfigs = new JSONArray();
 
-    JSONObject shardConfigBulk = new JSONObject();
-
-    JSONObject schemaSourceJson = new JSONObject();
-    schemaSourceJson.put("dataShardId", "");
-    schemaSourceJson.put("host", "");
-    schemaSourceJson.put("user", "");
-    schemaSourceJson.put("password", "");
-    schemaSourceJson.put("port", "");
-    schemaSourceJson.put("dbName", "");
-    shardConfigBulk.put("schemaSource", schemaSourceJson);
-
-    JSONArray dataShardsArray = new JSONArray();
     if (dataShardsList != null) {
       for (DataShard shardData : dataShardsList) {
         JSONObject shardJson = new JSONObject();
-
-        shardJson.put("dataShardId", shardData.dataShardId);
+        shardJson.put("logicalShardId", shardData.dataShardId);
         shardJson.put("host", shardData.host);
         shardJson.put("user", shardData.user);
         shardJson.put("password", shardData.password);
         shardJson.put("port", shardData.port);
         shardJson.put("dbName", shardData.dbName);
-        shardJson.put("namespace", shardData.namespace);
-        shardJson.put("connectionProperties", shardData.connectionProperties);
-
-        JSONArray databasesArray = new JSONArray();
-
-        for (Database dbData : shardData.databases) {
-          JSONObject dbJson = new JSONObject();
-          dbJson.put("dbName", dbData.dbName);
-          dbJson.put("databaseId", dbData.databaseId);
-          dbJson.put("refDataShardId", dbData.refDataShardId);
-          databasesArray.put(dbJson);
+        if (shardData.namespace != null) {
+          shardJson.put("namespace", shardData.namespace);
         }
-        shardJson.put("databases", databasesArray);
-        dataShardsArray.put(shardJson);
+        if (shardData.connectionProperties != null) {
+          shardJson.put("connectionProperties", shardData.connectionProperties);
+        }
+        shardConfigs.put(shardJson);
       }
     }
-    shardConfigBulk.put("dataShards", dataShardsArray);
 
-    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
-    String shardFileContents = bulkConfig.toString();
+    config.put("shardConfigs", shardConfigs);
+    String shardFileContents = config.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard-config.json", shardFileContents);
   }
 
   protected void createAndUploadShardContextFileToGcs(
@@ -316,39 +295,38 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       Boolean multiSharded)
       throws IOException {
     // launch dataflow template
-    if (multiSharded) {
-      flexTemplateDataflowJobResourceManager =
-          FlexTemplateDataflowJobResourceManager.builder(jobName)
-              .withTemplateName("Sourcedb_to_Spanner_Flex")
-              .withTemplateModulePath("v2/sourcedb-to-spanner")
-              .addParameter("instanceId", spannerResourceManager.getInstanceId())
-              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-              .addParameter("projectId", PROJECT)
-              .addParameter("outputDirectory", "gs://" + artifactBucketName)
-              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-              .addParameter(
-                  "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
-              .addEnvironmentVariable(
-                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-              .build();
-    } else {
-      flexTemplateDataflowJobResourceManager =
-          FlexTemplateDataflowJobResourceManager.builder(jobName)
-              .withTemplateName("Sourcedb_to_Spanner_Flex")
-              .withTemplateModulePath("v2/sourcedb-to-spanner")
-              .addParameter("instanceId", spannerResourceManager.getInstanceId())
-              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-              .addParameter("projectId", PROJECT)
-              .addParameter("outputDirectory", "gs://" + artifactBucketName)
-              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-              .addParameter("sourceConfigURL", cloudSqlResourceManager.getUri())
-              .addParameter("username", cloudSqlResourceManager.getUsername())
-              .addParameter("password", cloudSqlResourceManager.getPassword())
-              .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
-              .addEnvironmentVariable(
-                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-              .build();
+    if (!multiSharded) {
+      DataShard dataShard =
+          new DataShard(
+              "shard1",
+              cloudSqlResourceManager.getHost(),
+              cloudSqlResourceManager.getUsername(),
+              cloudSqlResourceManager.getPassword(),
+              String.valueOf(cloudSqlResourceManager.getPort()),
+              cloudSqlResourceManager.getDatabaseName(),
+              null,
+              "useSSL=false&allowPublicKeyRetrieval=true",
+              new ArrayList<>());
+
+      ArrayList<DataShard> shards = new ArrayList<>();
+      shards.add(dataShard);
+      createAndUploadShardConfigToGcs(shards, gcsResourceManager);
     }
+
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Sourcedb_to_Spanner_Flex")
+            .withTemplateModulePath("v2/sourcedb-to-spanner")
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("outputDirectory", "gs://" + artifactBucketName)
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            .addParameter(
+                "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager))
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+            .build();
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();

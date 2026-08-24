@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -136,7 +137,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .build();
     String ddl =
         String.join(
@@ -161,7 +162,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
       builder.setInstanceId(metadataInstanceId).useStaticInstance();
     } else {
-      builder.maybeUseStaticInstance();
+      builder.maybeUseStaticInstance(Optional.of(2));
     }
 
     SpannerResourceManager spannerMetadataResourceManager = builder.build();
@@ -282,7 +283,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "100");
     params.put("sourceType", sourceType);
-    params.put("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
       params.put(
@@ -299,7 +299,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"))
+        .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     options.setParameters(params);
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());

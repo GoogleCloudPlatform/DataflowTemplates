@@ -31,23 +31,4 @@ public interface IDao {
    */
   void write(DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
       throws Exception;
-
-  /**
-   * Executes a given write dmlGeneratorResponse against the data source under a specific
-   * transaction context. If the transaction context is null, it delegates to {@link #write(Object,
-   * TransactionalCheck)}.
-   *
-   * @param dmlGeneratorResponse Query dmlGeneratorResponse.
-   * @param transactionalCheck Callback function which will be executed and checked before
-   *     committing the transaction.
-   * @param transactionContext The transaction context to execute the write under.
-   * @throws Exception If the write could not be successfully executed.
-   */
-  default void write(
-      DMLGeneratorResponse dmlGeneratorResponse,
-      TransactionalCheck transactionalCheck,
-      Object transactionContext)
-      throws Exception {
-    write(dmlGeneratorResponse, transactionalCheck);
-  }
 }

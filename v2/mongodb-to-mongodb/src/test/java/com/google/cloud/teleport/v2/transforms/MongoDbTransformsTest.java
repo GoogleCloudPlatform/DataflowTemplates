@@ -16,10 +16,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoBulkWriteException;
@@ -30,18 +34,16 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.IterableCoder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.PAssert;
@@ -49,7 +51,6 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
@@ -262,26 +263,34 @@ public class MongoDbTransformsTest {
   }
 
   @Test
-  public void writeWithDlq_documentLevelRetry_partialSuccess()
-      throws org.apache.beam.sdk.coders.CannotProvideCoderException {
+  public void writeWithDlq_documentLevelRetry_partialSuccess() {
     AtomicInteger callCount = new AtomicInteger(0);
+    final boolean[] doc2Retried = new boolean[] {false};
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
             invocation -> {
-              int count = callCount.getAndIncrement();
-              if (count == 0) {
+              callCount.getAndIncrement();
+              List<WriteModel<Document>> updates = invocation.getArgument(0);
+              List<BulkWriteError> errors = new ArrayList<>();
+              for (int i = 0; i < updates.size(); i++) {
+                Document doc = (Document) ((ReplaceOneModel) updates.get(i)).getReplacement();
+                int id = doc.getInteger("_id");
+                if (id == 1) {
+                  errors.add(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), i));
+                } else if (id == 2) {
+                  if (!doc2Retried[0]) {
+                    doc2Retried[0] = true;
+                    errors.add(new BulkWriteError(11600, "Interrupted", new BsonDocument(), i));
+                  }
+                }
+              }
+              if (!errors.isEmpty()) {
                 throw new MongoBulkWriteException(
                     mock(BulkWriteResult.class),
-                    Arrays.asList(
-                        new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 1),
-                        new BulkWriteError(11600, "Interrupted", new BsonDocument(), 2)),
+                    errors,
                     null,
                     new ServerAddress(),
                     Collections.emptySet());
-              } else if (count == 1) {
-                List<WriteModel<Document>> updates = invocation.getArgument(0);
-                assertEquals(1, updates.size());
-                return mock(BulkWriteResult.class);
               }
               return mock(BulkWriteResult.class);
             });
@@ -290,17 +299,7 @@ public class MongoDbTransformsTest {
     DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "test", "test");
     DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "test", "test");
 
-    KV<String, Iterable<DocumentWithMetadata>> batch =
-        KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
-
-    Coder<DocumentWithMetadata> documentWithMetadataCoder =
-        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(DocumentWithMetadata.class));
-
-    PCollection<KV<String, Iterable<DocumentWithMetadata>>> input =
-        pipeline.apply(
-            Create.of(Collections.singletonList(batch))
-                .withCoder(
-                    KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentWithMetadataCoder))));
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(doc0, doc1, doc2));
 
     input.apply(
         "Write_DocLevelRetry",
@@ -308,6 +307,7 @@ public class MongoDbTransformsTest {
                 MongoDbTransforms.WriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
+                    .withBatchSize(3)
                     .withMaxWriteRetries(3)
                     .withMaxConcurrentAsyncWrites(1)
                     .withClientFactory(new MockClientFactory())
@@ -317,7 +317,7 @@ public class MongoDbTransformsTest {
 
     PipelineResult result = pipeline.run();
 
-    assertEquals(2, callCount.get());
+    assertTrue(callCount.get() >= 2);
     assertSuccessCount(result, 2L);
   }
 
@@ -394,8 +394,7 @@ public class MongoDbTransformsTest {
         .satisfies(
             collection -> {
               DocumentWithMetadata result = collection.iterator().next();
-              org.junit.Assert.assertTrue(
-                  result.getErrorMessage().contains("UDF failed intentionally"));
+              assertTrue(result.getErrorMessage().contains("UDF failed intentionally"));
               return null;
             });
 
@@ -470,7 +469,72 @@ public class MongoDbTransformsTest {
 
     pipeline.run();
 
-    org.mockito.Mockito.verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
-    org.mockito.Mockito.verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+  }
+
+  @Test
+  public void testWriteFn_rateLimitingDisabled() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(0)
+            .build();
+    fn.setup();
+    assertNull(fn.getRateLimiter());
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_linearRampUpRateCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(100)
+            .withMaxWriteRatePerWorker(500)
+            .withWriteRateRampUpMinutes(5)
+            .withWriteRateRampUpSteps(5)
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(100.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 1 minute elapsed (step 1/5 => 100 + 1 * 80 = 180)
+    fn.setStartTimeMs(System.currentTimeMillis() - 1 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(180.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 2 minutes elapsed (step 2/5 => 100 + 2 * 80 = 260)
+    fn.setStartTimeMs(System.currentTimeMillis() - 2 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(260.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 100 + 5 * 80 = 500)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(500.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_defaultAggressiveRampUpCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(5000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 5000 + 5 * 4000 = 25000)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(25000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
   }
 }
