@@ -71,33 +71,25 @@ providers:
     transforms:
       ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
 
-  - type: yaml
+  - type: renaming
     transforms:
-      WriteToLakehouse:
-        body: |
-          type: WriteToIceberg
-          config:
-            table: "{{table}}"
-            catalog_name: "{{catalog_name}}"
-            catalog_properties: {{catalog_properties}}
-            {% if config_properties %}
-            config_properties: {{config_properties}}
-            {% endif %}
-            {% if drop %}
-            drop: {{drop}}
-            {% endif %}
-            {% if keep %}
-            keep: {{keep}}
-            {% endif %}
-            {% if only %}
-            only: {{only}}
-            {% endif %}
-            {% if partition_fields %}
-            partition_fields: {{partition_fields}}
-            {% endif %}
-            {% if table_properties %}
-            table_properties: {{table_properties}}
-            {% endif %}
+      WriteToLakehouse: WriteToIceberg
+    config:
+      mappings:
+        WriteToLakehouse:
+          table: table
+          catalog_name: catalog_name
+          catalog_properties: catalog_properties
+          config_properties: config_properties
+          drop: drop
+          keep: keep
+          only: only
+          partition_fields: partition_fields
+          table_properties: table_properties
+      underlying_provider:
+        type: python
+        transforms:
+          WriteToIceberg: 'apache_beam.yaml.yaml_io.write_to_iceberg'
 
 options:
   streaming: false
