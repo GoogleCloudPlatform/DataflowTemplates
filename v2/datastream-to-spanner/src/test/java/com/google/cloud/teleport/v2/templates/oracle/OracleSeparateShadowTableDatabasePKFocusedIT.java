@@ -162,7 +162,8 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           sysBuilder.setDatabaseName("XE");
         }
         oracleSysUser =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) sysBuilder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(sysBuilder);
 
         String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
         String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
@@ -180,7 +181,8 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           builder.setDatabaseName("/XEPDB1");
         }
         oracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(builder);
 
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
@@ -420,16 +422,25 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
               try {
                 // 1
                 oracleResourceManager.runSQLUpdate(
-                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD, BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) "
-                        + "VALUES ('true', 1, 3.14, 'This is a test string for MySQL.', '564768', TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20', 'YYYY-MM-DD'), 12345.1234, 10)");
+                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
+                        + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
+                        + " ('true', 1, 3.14, 'This is a test string for MySQL.', '564768',"
+                        + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
+                        + " 'YYYY-MM-DD'), 12345.1234, 10)");
                 // 2
                 oracleResourceManager.runSQLUpdate(
-                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD, BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) "
-                        + "VALUES ('true', 2, 3.1415, 'This is a test string for MySQL.', '564768', TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20', 'YYYY-MM-DD'), 12345.1234, 20)");
+                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
+                        + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
+                        + " ('true', 2, 3.1415, 'This is a test string for MySQL.', '564768',"
+                        + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
+                        + " 'YYYY-MM-DD'), 12345.1234, 20)");
                 // 3
                 oracleResourceManager.runSQLUpdate(
-                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD, BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) "
-                        + "VALUES ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768', TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20', 'YYYY-MM-DD'), 12345.1234, 30)");
+                    "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
+                        + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
+                        + " ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768',"
+                        + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
+                        + " 'YYYY-MM-DD'), 12345.1234, 30)");
                 flushOracleLogs();
                 executed = true;
               } catch (Exception e) {

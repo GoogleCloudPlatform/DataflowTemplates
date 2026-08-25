@@ -322,7 +322,8 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
                   conn.prepareStatement(
                       "INSERT INTO "
                           + tableName
-                          + " (ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, LARGE_BLOB) VALUES (?, ?, ?, ?, ?, ?)")) {
+                          + " (ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, LARGE_BLOB) VALUES (?, ?, ?,"
+                          + " ?, ?, ?)")) {
             for (Map<String, Object> values : rows) {
               pstmt.setLong(1, ((Number) values.get(COLUMNS.get(0))).longValue());
               pstmt.setString(2, (String) values.get(COLUMNS.get(1)));

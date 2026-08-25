@@ -175,7 +175,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
     builder.setHost(System.getProperty("hostIp"));
     builder.setPort(1521);
     builder.setSystemIdentifier("XE");
-    cloudOracleSysUser = (CloudOracleResourceManager) builder.build();
+    cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
     String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
     String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
     setUpOracleUser(oracleUser, oraclePassword);

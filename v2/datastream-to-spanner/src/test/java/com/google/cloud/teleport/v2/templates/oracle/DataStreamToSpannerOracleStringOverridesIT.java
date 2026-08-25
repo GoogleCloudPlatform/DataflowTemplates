@@ -171,9 +171,11 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
                       protected CheckResult check() {
                         try {
                           oracleResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES ('John', 'Doe')");
+                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                  + " ('John', 'Doe')");
                           oracleResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES ('Alice', 'Johnson')");
+                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                  + " ('Alice', 'Johnson')");
                           return new CheckResult(true, "Inserted successfully");
                         } catch (Exception e) {
                           return new CheckResult(false, "Failed to insert");

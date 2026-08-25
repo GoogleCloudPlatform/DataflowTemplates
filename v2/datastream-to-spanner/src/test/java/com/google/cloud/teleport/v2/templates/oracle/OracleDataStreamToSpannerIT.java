@@ -216,13 +216,14 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
 
     cloudOracleSysUser =
         (CloudOracleResourceManager)
-            CloudOracleResourceManager.builder(testName)
-                .setUsername("sys as sysdba")
-                .setPassword(System.getProperty("cloudProxyPassword"))
-                .setDatabaseName("XE")
-                .setHost(System.getProperty("hostIp"))
-                .setPort(1521)
-                .build();
+            new SpannerOracleResourceManager(
+                (CloudOracleResourceManager.Builder)
+                    CloudOracleResourceManager.builder(testName)
+                        .setUsername("sys as sysdba")
+                        .setPassword(System.getProperty("cloudProxyPassword"))
+                        .setDatabaseName("XE")
+                        .setHost(System.getProperty("hostIp"))
+                        .setPort(1521));
     String oracleUser = System.getProperty("cloudProxyUsername");
     String oraclePassword = System.getProperty("cloudProxyPassword");
     // setUpOracleUser(oracleUser, oraclePassword);
@@ -230,13 +231,14 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
 
     cloudSqlResourceManager =
         (CloudOracleResourceManager)
-            CloudOracleResourceManager.builder(testName)
-                .setUsername(oracleUser)
-                .setPassword(oraclePassword)
-                .setDatabaseName("/XEPDB1")
-                .setHost(System.getProperty("hostIp"))
-                .setPort(1521)
-                .build();
+            new SpannerOracleResourceManager(
+                (CloudOracleResourceManager.Builder)
+                    CloudOracleResourceManager.builder(testName)
+                        .setUsername(oracleUser)
+                        .setPassword(oraclePassword)
+                        .setDatabaseName("/XEPDB1")
+                        .setHost(System.getProperty("hostIp"))
+                        .setPort(1521));
 
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)

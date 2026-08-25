@@ -90,7 +90,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
-  public org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager setUpOracleResourceManager() {
+  public com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
+      setUpOracleResourceManager() {
     org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
     if (System.getProperty("hostIp") != null) {
@@ -99,9 +100,10 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       builder.setPort(1521);
       builder.setUsername(System.getProperty("cloudProxyUsername", "system"));
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
-      builder.setDatabaseName("/XEPDB1");
+      builder.setDatabaseName("XEPDB1");
     }
-    return (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+    builder.maybeUseStaticInstance();
+    return new com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager(builder);
   }
 
   public String generateSessionFile(

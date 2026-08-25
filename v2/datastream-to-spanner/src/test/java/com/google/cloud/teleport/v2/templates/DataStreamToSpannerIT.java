@@ -24,6 +24,7 @@ import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -225,7 +226,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     cloudSqlResourceManager =
         jdbcType.equals(JDBCType.MYSQL)
             ? CloudMySQLResourceManager.builder(testName).build()
-            : CloudOracleResourceManager.builder(testName).build();
+            : new SpannerOracleResourceManager(
+                (CloudOracleResourceManager.Builder) CloudOracleResourceManager.builder(testName));
 
     // Create Spanner Resource Manager
     SpannerResourceManager.Builder spannerResourceManagerBuilder =

@@ -89,9 +89,11 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
       shardBuilder.setHost(System.getProperty("hostIp"));
       shardBuilder.setPort(1521);
       shardBuilder.setDatabaseName("/XEPDB1");
-      return shardBuilder.build();
+      return new SpannerOracleResourceManager(shardBuilder);
     } else {
-      return CloudOracleResourceManager.builder(testName + shardName).build();
+      return new SpannerOracleResourceManager(
+          (CloudOracleResourceManager.Builder)
+              CloudOracleResourceManager.builder(testName + shardName));
     }
   }
 
@@ -408,13 +410,17 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
   private void insertDataInOracle() {
     LOG.info("Inserting data in Oracle Shard A");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
+        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (3, 101, 1000, 'Website')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (3, 101, 1000, 'Website')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (2, 102, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (2, 102, 1000, 'AppStore')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (4, 103, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (4, 103, 1000, 'AppStore')");
 
     LOG.info("Inserting data in Oracle Shard B");
     jdbcResourceManagerShardA.runSQLUpdate(

@@ -147,7 +147,8 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
                     oracleResourceManager.getPassword());
             PreparedStatement pstmt =
                 conn.prepareStatement(
-                    "INSERT INTO \"LargeCell\" (\"id\", \"max_string_col_to_bytes\", \"max_string_col_to_str\") VALUES (1, ?, ?)"); ) {
+                    "INSERT INTO \"LargeCell\" (\"id\", \"max_string_col_to_bytes\","
+                        + " \"max_string_col_to_str\") VALUES (1, ?, ?)"); ) {
 
           byte[] bytes = new byte[4000];
           Arrays.fill(bytes, (byte) 'b');

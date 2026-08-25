@@ -105,7 +105,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         builder.setHost(System.getProperty("hostIp"));
         builder.setPort(1521);
         builder.setDatabaseName("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) builder.build();
+        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
 
         jdbcResourceManagerShardA =
             (CloudOracleResourceManager)

@@ -369,7 +369,8 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
             sysBuilder.setDatabaseName("XE");
 
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager cloudOracleSysUser =
-                (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) sysBuilder.build();
+                (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                    new SpannerOracleResourceManager(sysBuilder);
             flushOracleRedoLogs(cloudOracleSysUser);
             cloudOracleSysUser.cleanupAll();
           } catch (Throwable e) {

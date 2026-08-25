@@ -116,7 +116,8 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
           builder.setDatabaseName("/XEPDB1");
         }
         cloudOracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(builder);
 
         String sessionContent = generateBaseSchema();
         sessionContent =

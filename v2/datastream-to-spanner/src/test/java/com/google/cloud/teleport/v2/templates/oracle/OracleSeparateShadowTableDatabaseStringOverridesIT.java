@@ -97,7 +97,7 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
         builder.setHost(System.getProperty("hostIp"));
         builder.setPort(1521);
         builder.setDatabaseName("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) builder.build();
+        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
 
         cloudSqlResourceManager =
             (CloudOracleResourceManager)
@@ -256,9 +256,11 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
                       protected CheckResult check() {
                         if (!executed) {
                           cloudSqlResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES ('John', 'Doe')");
+                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                  + " ('John', 'Doe')");
                           cloudSqlResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES ('Alice', 'Johnson')");
+                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                  + " ('Alice', 'Johnson')");
                           cloudSqlResourceManager.runSQLUpdate("COMMIT");
                           flushOracleRedoLogs(cloudOracleSysUser);
                           executed = true;

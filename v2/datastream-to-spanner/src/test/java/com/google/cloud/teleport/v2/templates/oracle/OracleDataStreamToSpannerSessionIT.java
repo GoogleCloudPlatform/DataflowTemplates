@@ -110,17 +110,22 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
 
         // Pre-insert books
         oracleResourceManager.runSQLUpdate(
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the Rings', 1)");
+            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the"
+                + " Rings', 1)");
         oracleResourceManager.runSQLUpdate(
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and Prejudice', 2)");
+            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and"
+                + " Prejudice', 2)");
         oracleResourceManager.runSQLUpdate(
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers Guide to the Galaxy', 3)");
+            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers"
+                + " Guide to the Galaxy', 3)");
 
         // Pre-insert categories
         oracleResourceManager.runSQLUpdate(
-            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz', CURRENT_TIMESTAMP)");
+            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz',"
+                + " CURRENT_TIMESTAMP)");
         oracleResourceManager.runSQLUpdate(
-            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc', CURRENT_TIMESTAMP)");
+            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
+                + " CURRENT_TIMESTAMP)");
 
         flushOracleLogs();
 
@@ -218,9 +223,11 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
     assertCategoryTableBackfillContents();
 
     oracleResourceManager.runSQLUpdate(
-        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(3, 'def', CURRENT_TIMESTAMP)");
+        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(3, 'def',"
+            + " CURRENT_TIMESTAMP)");
     oracleResourceManager.runSQLUpdate(
-        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(4, 'ghi', CURRENT_TIMESTAMP)");
+        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(4, 'ghi',"
+            + " CURRENT_TIMESTAMP)");
     oracleResourceManager.runSQLUpdate(
         "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2");
     oracleResourceManager.runSQLUpdate("DELETE FROM \"Category\" WHERE \"category_id\"=1");

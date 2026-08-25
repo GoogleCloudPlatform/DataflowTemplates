@@ -102,7 +102,7 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
         builder.setHost(System.getProperty("hostIp"));
         builder.setPort(1521);
         builder.setSystemIdentifier("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) builder.build();
+        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
 
         String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
         String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
@@ -343,9 +343,11 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       protected CheckResult check() {
         if (!executed) {
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\") VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))");
+              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                  + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))");
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\") VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
+              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                  + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
           cloudSqlResourceManager.runSQLUpdate("COMMIT");
           executed = true;
         }
@@ -367,7 +369,8 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       protected CheckResult check() {
         if (!executed) {
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\") VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
+              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                  + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
           cloudSqlResourceManager.runSQLUpdate("COMMIT");
           executed = true;
         }
@@ -389,9 +392,11 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       protected CheckResult check() {
         if (!executed) {
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (1, 'movie1', TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)");
+              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (1, 'movie1',"
+                  + " TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)");
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (2, 'movie2', TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)");
+              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (2, 'movie2',"
+                  + " TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)");
           cloudSqlResourceManager.runSQLUpdate("COMMIT");
           executed = true;
         }
@@ -422,13 +427,17 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
               "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (4, 'a4')");
 
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
+              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                  + " (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
+              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                  + " (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)");
+              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                  + " (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)");
           cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)");
+              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                  + " (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)");
 
           cloudSqlResourceManager.runSQLUpdate(
               "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (1, 'Book005', 3)");

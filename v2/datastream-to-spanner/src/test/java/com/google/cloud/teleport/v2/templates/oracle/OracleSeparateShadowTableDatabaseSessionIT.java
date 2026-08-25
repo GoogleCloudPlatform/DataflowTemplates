@@ -375,15 +375,18 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
         try {
           cloudOracleResourceManager.runSQLUpdate(
               String.format(
-                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (1, 'The Lord of the Rings', 1)",
+                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (1, 'The Lord of"
+                      + " the Rings', 1)",
                   TABLE2));
           cloudOracleResourceManager.runSQLUpdate(
               String.format(
-                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (2, 'Pride and Prejudice', 2)",
+                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (2, 'Pride and"
+                      + " Prejudice', 2)",
                   TABLE2));
           cloudOracleResourceManager.runSQLUpdate(
               String.format(
-                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (3, 'The Hitchhikers Guide to the Galaxy', 3)",
+                  "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (3, 'The"
+                      + " Hitchhikers Guide to the Galaxy', 3)",
                   TABLE2));
           cloudOracleResourceManager.runSQLUpdate("COMMIT");
           flushOracleRedoLogs(cloudOracleSysUser);

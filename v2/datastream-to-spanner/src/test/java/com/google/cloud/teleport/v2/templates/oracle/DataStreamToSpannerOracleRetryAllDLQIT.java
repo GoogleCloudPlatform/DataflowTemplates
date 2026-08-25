@@ -93,7 +93,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         sysBuilder.setUsername("sys as sysdba");
         sysBuilder.setPassword(System.getProperty("cloudProxyPassword"));
         sysBuilder.setDatabaseName(sysUser.getDatabaseName());
-        CloudOracleResourceManager trueSysUser = (CloudOracleResourceManager) sysBuilder.build();
+        CloudOracleResourceManager trueSysUser =
+            (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
 
         String oracleUser = System.getProperty("cloudProxyUsername", "system");
         String oraclePassword = System.getProperty("cloudProxyPassword", "TestPassword123");
@@ -106,7 +107,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         builder.setPassword(oraclePassword);
         builder.setDatabaseName("/XEPDB1");
 
-        jdbcResourceManager = (CloudOracleResourceManager) builder.build();
+        jdbcResourceManager =
+            (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
 
         // Create Oracle Schema using helper
         executeSqlScript(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE);
@@ -352,13 +354,17 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
 
   private void insertDataInOracle() {
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
+        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (3, 101, 1000, 'Website')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (3, 101, 1000, 'Website')");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (2, 102, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (2, 102, 1000, 'AppStore')");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (4, 103, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (4, 103, 1000, 'AppStore')");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (1, 'test1')");
     jdbcResourceManager.runSQLUpdate(

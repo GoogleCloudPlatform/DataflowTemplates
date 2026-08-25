@@ -90,13 +90,14 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
 
         jdbcResourceManagerShardA =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName)
-                    .setUsername(oracleUser)
-                    .setPassword(oraclePassword)
-                    .setDatabaseName("/XEPDB1")
-                    .setHost(System.getProperty("hostIp"))
-                    .setPort(1521)
-                    .build();
+                new SpannerOracleResourceManager(
+                    (CloudOracleResourceManager.Builder)
+                        CloudOracleResourceManager.builder(testName)
+                            .setUsername(oracleUser)
+                            .setPassword(oraclePassword)
+                            .setDatabaseName("/XEPDB1")
+                            .setHost(System.getProperty("hostIp"))
+                            .setPort(1521));
         try {
           jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Customers\"");
         } catch (Exception e) {
@@ -406,13 +407,17 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
   private void insertDataInOracle() {
     LOG.info("Inserting data in Oracle");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
+        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (3, 101, 1000, 'Website')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (3, 101, 1000, 'Website')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (2, 102, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (2, 102, 1000, 'AppStore')");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\") VALUES (4, 103, 1000, 'AppStore')");
+        "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
+            + " VALUES (4, 103, 1000, 'AppStore')");
     jdbcResourceManagerShardA.runSQLUpdate(
         "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
     jdbcResourceManagerShardA.runSQLUpdate(

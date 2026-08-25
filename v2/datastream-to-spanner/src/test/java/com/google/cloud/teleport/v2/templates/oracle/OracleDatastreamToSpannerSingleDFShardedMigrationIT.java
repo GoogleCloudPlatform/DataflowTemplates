@@ -105,13 +105,14 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
 
         jdbcResourceManagerShardA =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName)
-                    .setUsername(oracleUser)
-                    .setPassword(oraclePassword)
-                    .setDatabaseName("/XEPDB1")
-                    .setHost(System.getProperty("hostIp"))
-                    .setPort(1521)
-                    .build();
+                new SpannerOracleResourceManager(
+                    (CloudOracleResourceManager.Builder)
+                        CloudOracleResourceManager.builder(testName)
+                            .setUsername(oracleUser)
+                            .setPassword(oraclePassword)
+                            .setDatabaseName("/XEPDB1")
+                            .setHost(System.getProperty("hostIp"))
+                            .setPort(1521));
         try {
           jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\"");
         } catch (Exception e) {

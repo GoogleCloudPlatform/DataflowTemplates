@@ -144,10 +144,12 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         "CREATE TABLE T_SPRG_R8_NATIONAL_C (ID NUMBER PRIMARY KEY, COL_8 NATIONAL CHAR(255))",
         "ALTER TABLE T_SPRG_R8_NATIONAL_C ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R8_NATIONAL_C (ID, COL_8) VALUES (1, NULL)",
-        "CREATE TABLE T_SPRG_R9_NATIONAL_C (ID NUMBER PRIMARY KEY, COL_9 NATIONAL CHARACTER VARYING(255))",
+        "CREATE TABLE T_SPRG_R9_NATIONAL_C (ID NUMBER PRIMARY KEY, COL_9 NATIONAL CHARACTER"
+            + " VARYING(255))",
         "ALTER TABLE T_SPRG_R9_NATIONAL_C ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R9_NATIONAL_C (ID, COL_9) VALUES (1, NULL)",
-        "CREATE TABLE T_SPRG_R10_NATIONAL_C (ID NUMBER PRIMARY KEY, COL_10 NATIONAL CHAR VARYING(255))",
+        "CREATE TABLE T_SPRG_R10_NATIONAL_C (ID NUMBER PRIMARY KEY, COL_10 NATIONAL CHAR"
+            + " VARYING(255))",
         "ALTER TABLE T_SPRG_R10_NATIONAL_C ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R10_NATIONAL_C (ID, COL_10) VALUES (1, NULL)",
         "CREATE TABLE T_SPRG_R11_NUMBER (ID NUMBER PRIMARY KEY, COL_11 NUMBER)",
@@ -192,10 +194,12 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         "CREATE TABLE T_SPRG_R24_TIMESTAMP (ID NUMBER PRIMARY KEY, COL_24 TIMESTAMP)",
         "ALTER TABLE T_SPRG_R24_TIMESTAMP ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R24_TIMESTAMP (ID, COL_24) VALUES (1, NULL)",
-        "CREATE TABLE T_SPRG_R25_TIMESTAMP_ (ID NUMBER PRIMARY KEY, COL_25 TIMESTAMP WITH TIME ZONE)",
+        "CREATE TABLE T_SPRG_R25_TIMESTAMP_ (ID NUMBER PRIMARY KEY, COL_25 TIMESTAMP WITH TIME"
+            + " ZONE)",
         "ALTER TABLE T_SPRG_R25_TIMESTAMP_ ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R25_TIMESTAMP_ (ID, COL_25) VALUES (1, NULL)",
-        "CREATE TABLE T_SPRG_R26_TIMESTAMP_ (ID NUMBER PRIMARY KEY, COL_26 TIMESTAMP WITH LOCAL TIME ZONE)",
+        "CREATE TABLE T_SPRG_R26_TIMESTAMP_ (ID NUMBER PRIMARY KEY, COL_26 TIMESTAMP WITH LOCAL"
+            + " TIME ZONE)",
         "ALTER TABLE T_SPRG_R26_TIMESTAMP_ ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS",
         "INSERT INTO T_SPRG_R26_TIMESTAMP_ (ID, COL_26) VALUES (1, NULL)",
         "CREATE TABLE T_SPRG_R27_INTERVAL_Y (ID NUMBER PRIMARY KEY, DUMMY VARCHAR2(10))",
@@ -410,7 +414,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
           sysBuilder.setDatabaseName("XE");
         }
         oracleSysUser =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) sysBuilder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(sysBuilder);
 
         String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
         String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
@@ -429,7 +434,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
           builder.setDatabaseName("/XEPDB1");
         }
         oracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(builder);
 
         LOG.info("Setting up Spanner resource manager...");
         spannerResourceManager = setUpSpannerResourceManager();

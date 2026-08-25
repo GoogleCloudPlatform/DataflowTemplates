@@ -92,7 +92,8 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         sysBuilder.setPort(1521);
         sysBuilder.setUsername("system");
         sysBuilder.setDatabaseName("/XEPDB1");
-        cloudOracleSysUser = (CloudOracleResourceManager) sysBuilder.build();
+        cloudOracleSysUser =
+            (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -174,9 +175,13 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
           protected CheckResult check() {
             try {
               oracleResourceManager.runSQLUpdate(
-                  "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\") VALUES (1, TIMESTAMP '2024-02-02 10:00:00.000000', TIMESTAMP '2024-02-02 20:00:00.000000')");
+                  "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
+                      + " VALUES (1, TIMESTAMP '2024-02-02 10:00:00.000000', TIMESTAMP '2024-02-02"
+                      + " 20:00:00.000000')");
               oracleResourceManager.runSQLUpdate(
-                  "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\") VALUES (2, TIMESTAMP '2024-02-02 20:00:00.000000', TIMESTAMP '2024-02-03 06:00:00.000000')");
+                  "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
+                      + " VALUES (2, TIMESTAMP '2024-02-02 20:00:00.000000', TIMESTAMP '2024-02-03"
+                      + " 06:00:00.000000')");
 
               flushOracleRedoLogs(cloudOracleSysUser);
               return new CheckResult(true, "Data inserted successfully");

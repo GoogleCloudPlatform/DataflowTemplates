@@ -160,7 +160,8 @@ public class OracleSeparateShadowTableDatabaseFileOverridesIT extends DataStream
           sysBuilder.setDatabaseName("XE");
         }
         oracleSysUser =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) sysBuilder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(sysBuilder);
 
         String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
         String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
@@ -178,7 +179,8 @@ public class OracleSeparateShadowTableDatabaseFileOverridesIT extends DataStream
           builder.setDatabaseName("/XEPDB1");
         }
         oracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
+            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                new SpannerOracleResourceManager(builder);
 
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
@@ -265,9 +267,11 @@ public class OracleSeparateShadowTableDatabaseFileOverridesIT extends DataStream
           protected CheckResult check() {
             try {
               oracleResourceManager.runSQLUpdate(
-                  "INSERT INTO \"person1\" (\"ID\", \"first_name1\", \"last_name1\") VALUES (1, 'John', 'Doe')");
+                  "INSERT INTO \"person1\" (\"ID\", \"first_name1\", \"last_name1\") VALUES (1,"
+                      + " 'John', 'Doe')");
               oracleResourceManager.runSQLUpdate(
-                  "INSERT INTO \"person1\" (\"ID\", \"first_name1\", \"last_name1\") VALUES (2, 'Alice', 'Johnson')");
+                  "INSERT INTO \"person1\" (\"ID\", \"first_name1\", \"last_name1\") VALUES (2,"
+                      + " 'Alice', 'Johnson')");
 
               try (java.sql.Connection conn =
                       java.sql.DriverManager.getConnection(

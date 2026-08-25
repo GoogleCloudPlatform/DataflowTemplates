@@ -317,13 +317,13 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, tinyint_column, date_column"
-                    + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
-                    + ", double_column, datetime_column, timestamp_column, time_column, year_column"
-                    + ", tinyblob_column, blob_column, mediumblob_column"
-                    + ", longblob_column, enum_column, bool_column, other_bool_column"
-                    + ", varbinary_column, bit_column, decimal_column, text_column, binary_column"
-                    + ", char_column, tinytext_column, mediumtext_column, longtext_column from AllDatatypeColumns"))
+                "select varchar_column, tinyint_column, date_column, smallint_column,"
+                    + " mediumint_column, int_column, bigint_column, float_column, double_column,"
+                    + " datetime_column, timestamp_column, time_column, year_column,"
+                    + " tinyblob_column, blob_column, mediumblob_column, longblob_column,"
+                    + " enum_column, bool_column, other_bool_column, varbinary_column, bit_column,"
+                    + " decimal_column, text_column, binary_column, char_column, tinytext_column,"
+                    + " mediumtext_column, longtext_column from AllDatatypeColumns"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -396,12 +396,13 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, tinyint_column, text_column, date_column"
-                    + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
-                    + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
-                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column"
-                    + ", longblob_column, longtext_column, enum_column, bool_column, binary_column"
-                    + ", varbinary_column, bit_column, decimal_column from AllDatatypeColumns2"))
+                "select varchar_column, tinyint_column, text_column, date_column, smallint_column,"
+                    + " mediumint_column, int_column, bigint_column, float_column, double_column,"
+                    + " datetime_column, timestamp_column, time_column, year_column, char_column,"
+                    + " tinyblob_column, tinytext_column, blob_column, mediumblob_column,"
+                    + " mediumtext_column, longblob_column, longtext_column, enum_column,"
+                    + " bool_column, binary_column, varbinary_column, bit_column, decimal_column"
+                    + " from AllDatatypeColumns2"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -473,7 +474,11 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column, bigint_column, float_column, double_column, decimal_column, datetime_column, timestamp_column, time_column, year_column, blob_column, enum_column, bool_column, binary_column, bit_column FROM AllDatatypeTransformation"))
+                "SELECT varchar_column, tinyint_column, text_column, date_column, int_column,"
+                    + " bigint_column, float_column, double_column, decimal_column,"
+                    + " datetime_column, timestamp_column, time_column, year_column, blob_column,"
+                    + " enum_column, bool_column, binary_column, bit_column FROM"
+                    + " AllDatatypeTransformation"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -563,12 +568,13 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, tinyint_column, text_column, date_column"
-                    + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
-                    + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
-                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column"
-                    + ", longblob_column, longtext_column, enum_column, bool_column, binary_column"
-                    + ", varbinary_column, bit_column, decimal_column from AllDatatypeColumns2"))
+                "select varchar_column, tinyint_column, text_column, date_column, smallint_column,"
+                    + " mediumint_column, int_column, bigint_column, float_column, double_column,"
+                    + " datetime_column, timestamp_column, time_column, year_column, char_column,"
+                    + " tinyblob_column, tinytext_column, blob_column, mediumblob_column,"
+                    + " mediumtext_column, longblob_column, longtext_column, enum_column,"
+                    + " bool_column, binary_column, varbinary_column, bit_column, decimal_column"
+                    + " from AllDatatypeColumns2"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -599,8 +605,9 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, float_column, decimal_column, char_column, bool_column"
-                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsWithSizes"))
+                "select varchar_column, float_column, decimal_column, char_column, bool_column,"
+                    + " binary_column, varbinary_column, bit_column, from"
+                    + " DatatypeColumnsWithSizes"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -621,8 +628,9 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select varchar_column, float_column, decimal_column, char_column, bool_column"
-                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsReducedSizes"))
+                "select varchar_column, float_column, decimal_column, char_column, bool_column,"
+                    + " binary_column, varbinary_column, bit_column, from"
+                    + " DatatypeColumnsReducedSizes"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
