@@ -293,17 +293,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       case "multilinestring":
       case "polygon":
       case "multipolygon":
-        response = getQuotedEscapedString(colValue, spannerColType);
-        break;
       case "tinyblob":
       case "mediumblob":
       case "blob":
       case "longblob":
-        if (isStringType(spannerColType)) {
-          response = "UNHEX(" + getQuotedEscapedString(colValue, spannerColType) + ")";
-        } else {
-          response = getQuotedEscapedString(colValue, spannerColType);
-        }
+        response = getQuotedEscapedString(colValue, spannerColType);
         break;
       case "timestamp":
       case "datetime":
@@ -318,22 +312,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         break;
       case "binary":
       case "varbinary":
-        if (isStringType(spannerColType)) {
-          response = "UNHEX(" + getQuotedEscapedString(colValue, spannerColType) + ")";
-        } else {
-          response = getBinaryString(colValue, spannerColType);
-        }
+        response = getBinaryString(colValue, spannerColType);
         break;
       default:
         response = colValue;
     }
     return response;
-  }
-
-  private static boolean isStringType(String spannerColType) {
-    return "STRING".equalsIgnoreCase(spannerColType)
-        || "PG_VARCHAR".equalsIgnoreCase(spannerColType)
-        || "PG_TEXT".equalsIgnoreCase(spannerColType);
   }
 
   private static String escapeString(String input) {
