@@ -89,15 +89,19 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManagerShardA = OracleResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardA = setupOracleIsolatedUser(jdbcResourceManagerShardA);
         createOracleSchema(
             jdbcResourceManagerShardA,
-            SpannerToSourceDBShardedOracleRetryAllDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            SpannerToSourceDBShardedOracleRetryAllDLQIT.MYSQL_SCHEMA_FILE_RESOURCE,
+            testUsernameShardA);
 
-        jdbcResourceManagerShardB = OracleResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardB = setupOracleIsolatedUser(jdbcResourceManagerShardB);
         createOracleSchema(
             jdbcResourceManagerShardB,
-            SpannerToSourceDBShardedOracleRetryAllDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            SpannerToSourceDBShardedOracleRetryAllDLQIT.MYSQL_SCHEMA_FILE_RESOURCE,
+            testUsernameShardB);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -153,11 +157,7 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardB,
-        spannerMetadataResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, spannerMetadataResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -334,12 +334,14 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
             .get());
 
     List<Map<String, Object>> shardAAllTypes =
-        jdbcResourceManagerShardA.runSQLQuery("SELECT \"id\" FROM \"AllDataTypes\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardA, testUsernameShardA, "SELECT \"id\" FROM \"AllDataTypes\"");
     List<Integer> shardAAllTypesIds =
         shardAAllTypes.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
 
     List<Map<String, Object>> shardBAllTypes =
-        jdbcResourceManagerShardB.runSQLQuery("SELECT \"id\" FROM \"AllDataTypes\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardB, testUsernameShardB, "SELECT \"id\" FROM \"AllDataTypes\"");
     List<Integer> shardBAllTypesIds =
         shardBAllTypes.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
 
@@ -351,12 +353,18 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
     assertTrue("id=888 should NOT exist on Shard B", !shardBAllTypesIds.contains(888));
 
     List<Map<String, Object>> shardACust =
-        jdbcResourceManagerShardA.runSQLQuery("SELECT \"CustomerId\" FROM \"Customers\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardA,
+            testUsernameShardA,
+            "SELECT \"CustomerId\" FROM \"Customers\"");
     List<Integer> shardACustIds =
         shardACust.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
 
     List<Map<String, Object>> shardBCust =
-        jdbcResourceManagerShardB.runSQLQuery("SELECT \"CustomerId\" FROM \"Customers\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardB,
+            testUsernameShardB,
+            "SELECT \"CustomerId\" FROM \"Customers\"");
     List<Integer> shardBCustIds =
         shardBCust.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
 
@@ -368,12 +376,14 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
     assertTrue("id=2 should exist on Shard B", shardBCustIds.contains(2));
 
     List<Map<String, Object>> shardAOrders =
-        jdbcResourceManagerShardA.runSQLQuery("SELECT \"OrderId\" FROM \"Orders\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardA, testUsernameShardA, "SELECT \"OrderId\" FROM \"Orders\"");
     List<Integer> shardAOrderIds =
         shardAOrders.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
 
     List<Map<String, Object>> shardBOrders =
-        jdbcResourceManagerShardB.runSQLQuery("SELECT \"OrderId\" FROM \"Orders\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardB, testUsernameShardB, "SELECT \"OrderId\" FROM \"Orders\"");
     List<Integer> shardBOrderIds =
         shardBOrders.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
 
@@ -481,5 +491,11 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
       return "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
     }
     return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

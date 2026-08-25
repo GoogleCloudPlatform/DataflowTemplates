@@ -39,7 +39,8 @@ public class OracleGeneratedColumnUtils {
 
   public static ConditionCheck buildConditionCheck(
       Map<String, List<Map<String, Value>>> spannerTableData,
-      OracleResourceManager jdbcResourceManager) {
+      OracleResourceManager jdbcResourceManager,
+      String testUsername) {
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
       String tableName = getTableName(entry.getKey());
@@ -54,7 +55,10 @@ public class OracleGeneratedColumnUtils {
             @Override
             protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
               return new CheckResult(
-                  jdbcResourceManager.getRowCount("\"" + tableName + "\"") == numRows,
+                  com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase
+                          .runIsolatedGetRowCount(
+                              jdbcResourceManager, testUsername, "\"" + tableName + "\"")
+                      == numRows,
                   getDescription());
             }
           };
@@ -70,7 +74,8 @@ public class OracleGeneratedColumnUtils {
 
   public static void assertRowInOracle(
       Map<String, List<Map<String, Object>>> expectedData,
-      OracleResourceManager jdbcResourceManager) {
+      OracleResourceManager jdbcResourceManager,
+      String testUsername) {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String type = expectedTableData.getKey();
       String tableName = getTableName(type);
@@ -84,7 +89,9 @@ public class OracleGeneratedColumnUtils {
             jdbcResourceManager.runSQLQuery(
                 "SELECT \"id\", CAST(\"time_col\" as char) as \"time_col\" FROM \"time_table\"");
       } else {
-        rawRows = jdbcResourceManager.readTable("\"" + tableName + "\"");
+        rawRows =
+            com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase.runIsolatedReadTable(
+                jdbcResourceManager, testUsername, "\"" + tableName + "\"");
       }
 
       List<Map<String, Object>> rows = cleanValues(rawRows);

@@ -77,9 +77,10 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
     spannerResourceManager = setUpPGDialectSpannerResourceManager();
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createPGDialectSpannerMetadataDatabase();
-    jdbcResourceManager = OracleResourceManager.builder(testName).build();
+    jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+    testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
-    createOracleSchema(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE);
+    createOracleSchema(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, testUsername);
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -128,7 +129,6 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -229,7 +229,9 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
 
             @Override
             public CheckResult check() {
-              return new CheckResult(jdbcResourceManager.getRowCount(tableName) >= finalNumRows);
+              return new CheckResult(
+                  runIsolatedGetRowCount(jdbcResourceManager, testUsername, tableName)
+                      >= finalNumRows);
             }
           };
       if (combinedCondition == null) {
@@ -245,7 +247,8 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String tableName = expectedTableData.getKey();
-      List<Map<String, Object>> rawRows = jdbcResourceManager.readTable(tableName);
+      List<Map<String, Object>> rawRows =
+          runIsolatedReadTable(jdbcResourceManager, testUsername, tableName);
       List<Map<String, Object>> rows = cleanValues(rawRows);
 
       for (Map<String, Object> row : rows) {
@@ -1195,5 +1198,11 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
           createRows(col, isPk, new BigDecimal("1"), new BigDecimal("0"), null));
     }
     return orMap;
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

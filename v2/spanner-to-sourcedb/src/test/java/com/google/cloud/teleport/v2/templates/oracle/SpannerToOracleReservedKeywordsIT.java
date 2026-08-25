@@ -75,8 +75,9 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
   public void setUp() throws IOException {
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
-    oracleResourceManager = OracleResourceManager.builder(testName).build();
-    createOracleSchema(oracleResourceManager, ORACLE_DDL_RESOURCE);
+    oracleResourceManager = SharedOracleReverseITContainer.getInstance();
+    testUsername = setupOracleIsolatedUser(oracleResourceManager);
+    createOracleSchema(oracleResourceManager, ORACLE_DDL_RESOURCE, testUsername);
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createAndUploadShardConfigToGcs(gcsResourceManager, oracleResourceManager);
     gcsResourceManager.uploadArtifact(
@@ -114,7 +115,6 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
   public static void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        oracleResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -128,10 +128,11 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> oracleResourceManager.getRowCount("\"true\"") == 2);
+                () -> runIsolatedGetRowCount(oracleResourceManager, testUsername, "\"true\"") == 2);
     assertThatResult(result).meetsConditions();
 
-    List<Map<String, Object>> actualData = oracleResourceManager.readTable("\"true\"");
+    List<Map<String, Object>> actualData =
+        runIsolatedReadTable(oracleResourceManager, testUsername, "\"true\"");
     for (Map<String, Object> row : actualData) {
       if (row.get("COLUMN") instanceof Number) {
         row.put("COLUMN", ((Number) row.get("COLUMN")).longValue());
@@ -182,5 +183,11 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
     row2.put("WITH", "value2");
     rows.add(row2);
     return rows;
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

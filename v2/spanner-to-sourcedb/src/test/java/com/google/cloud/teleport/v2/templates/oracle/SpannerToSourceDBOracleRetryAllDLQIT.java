@@ -105,10 +105,13 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         createOracleSchema(
-            jdbcResourceManager, SpannerToSourceDBOracleRetryAllDLQIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager,
+            SpannerToSourceDBOracleRetryAllDLQIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsername);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -167,10 +170,7 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, spannerMetadataResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -332,7 +332,7 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     // id=999 should exist (fixed)
     // id=888 should NOT exist (written back since the transformation error wasn't fixed)
     List<Map<String, Object>> allDataTypesRows =
-        jdbcResourceManager.runSQLQuery("SELECT * FROM \"AllDataTypes\"");
+        runIsolatedSQLQuery(jdbcResourceManager, testUsername, "SELECT * FROM \"AllDataTypes\"");
     List<Integer> allDataTypesIds =
         allDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
     assertTrue("id=1 should exist", allDataTypesIds.contains(1));
@@ -355,7 +355,8 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     // id=1 should NOT exist (check constraint violation wasn't fixed: CreditLimit was 500 but must
     // be > 1000)
     List<Map<String, Object>> customersRows =
-        jdbcResourceManager.runSQLQuery("SELECT \"CustomerId\" FROM \"Customers\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"CustomerId\" FROM \"Customers\"");
     List<Integer> customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
     assertTrue("id=1 should NOT exist", !customersIds.contains(1));
@@ -366,7 +367,8 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     // id=101 should exist (FK issue fixed by inserting parent)
     // id=102 should exist (parent was seeded originally)
     List<Map<String, Object>> ordersRows =
-        jdbcResourceManager.runSQLQuery("SELECT \"OrderId\" FROM \"Orders\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"OrderId\" FROM \"Orders\"");
     List<Integer> ordersIds =
         ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
     assertTrue("id=101 should exist", ordersIds.contains(101));
@@ -682,5 +684,11 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
                 exp.equals(act) || isDatePrefix || isTimePrefix);
           }
         });
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

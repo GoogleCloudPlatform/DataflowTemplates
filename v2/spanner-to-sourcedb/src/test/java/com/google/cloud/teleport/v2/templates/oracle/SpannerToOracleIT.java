@@ -103,11 +103,16 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     skipBaseCleanup = true;
     synchronized (SpannerToOracleIT.class) {
       testInstances.add(this);
+      if (testUsername == null) {
+        testUsername = setupOracleIsolatedUser(SharedOracleReverseITContainer.getInstance());
+      }
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SpannerToOracleIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
-        createOracleSchema(jdbcResourceManager, SpannerToOracleIT.ORACLE_SCHEMA_FILE_RESOURCE);
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+
+        createOracleSchema(
+            jdbcResourceManager, SpannerToOracleIT.ORACLE_SCHEMA_FILE_RESOURCE, testUsername);
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
@@ -155,7 +160,6 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -220,10 +224,11 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 () ->
-                    jdbcResourceManager.getRowCount("\"" + TABLE + "\"")
+                    runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"" + TABLE + "\"")
                         == 1); // only one row is inserted
     assertThatResult(result).meetsConditions();
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable("\"" + TABLE + "\"");
+    List<Map<String, Object>> rows =
+        runIsolatedReadTable(jdbcResourceManager, testUsername, "\"" + TABLE + "\"");
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
@@ -241,8 +246,14 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 () ->
-                    (jdbcResourceManager.getRowCount("\"" + TABLE_WITH_STORED_GEN_COL + "\"") == 2)
-                        && (jdbcResourceManager.getRowCount(
+                    (runIsolatedGetRowCount(
+                                jdbcResourceManager,
+                                testUsername,
+                                "\"" + TABLE_WITH_STORED_GEN_COL + "\"")
+                            == 2)
+                        && (runIsolatedGetRowCount(
+                                jdbcResourceManager,
+                                testUsername,
                                 "\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"")
                             == 2)); // only two rows is inserted
     assertGenColRowsInOracleAfterInsert(result);
@@ -281,7 +292,12 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
-                () -> jdbcResourceManager.getRowCount("\"" + TABLE_WITH_IDENTITY_COL + "\"") == 2);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManager,
+                            testUsername,
+                            "\"" + TABLE_WITH_IDENTITY_COL + "\"")
+                        == 2);
     assertIdentityColRowsInOracleAfterInsert(result);
   }
 
@@ -297,11 +313,11 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager));
+                    spannerTableData, jdbcResourceManager, testUsername));
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
     // Assert events on Oracle
-    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager);
+    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
     // Validating update and delete events.
     Map<String, List<Map<String, Value>>> updateSpannerTableData =
         OracleGeneratedColumnUtils.updateGeneratedColRowsInSpanner(spannerResourceManager);
@@ -311,10 +327,10 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager));
+                    spannerTableData, jdbcResourceManager, testUsername));
     expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
-    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager);
+    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
   }
 
   private void writeMaxColRowsInSpanner() {
@@ -334,7 +350,10 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
-                () -> jdbcResourceManager.getRowCount("\"" + BOUNDARY_CHECK_TABLE + "\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManager, testUsername, "\"" + BOUNDARY_CHECK_TABLE + "\"")
+                        == 1);
   }
 
   private void writeRowsWithGenColInSpanner() {
@@ -373,7 +392,8 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   private void assertGenColRowsInOracleAfterInsert(PipelineOperator.Result result) {
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        jdbcResourceManager.readTable("\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"");
+        runIsolatedReadTable(
+            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("column1")).isEqualTo(new java.math.BigDecimal("1"));
@@ -383,7 +403,9 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(1).get("column1")).isEqualTo(new java.math.BigDecimal("2"));
     assertThat(rows.get(1).get("virtual_generated_column"))
         .isEqualTo(new java.math.BigDecimal("4"));
-    rows = jdbcResourceManager.readTable("\"" + TABLE_WITH_STORED_GEN_COL + "\"");
+    rows =
+        runIsolatedReadTable(
+            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_STORED_GEN_COL + "\"");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("column1")).isEqualTo(new java.math.BigDecimal("1"));
@@ -414,7 +436,9 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
 
   private boolean checkGenColRowsInOracleAfterUpdate() {
     List<Map<String, Object>> rows =
-        jdbcResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
             "select * from \"TableWithVirtualGeneratedColumn\" where \"id\"=1");
     if (rows.size() != 1) {
       return false;
@@ -426,7 +450,9 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
       return false;
     }
     rows =
-        jdbcResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
             "select * from \"TableWithStoredGeneratedColumn\" where \"id\"=1");
     if (rows.size() != 1) {
       return false;
@@ -452,8 +478,12 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   }
 
   private boolean allGenColRowsDeleted() {
-    long rowCountTable1 = jdbcResourceManager.getRowCount("\"" + TABLE_WITH_STORED_GEN_COL + "\"");
-    long rowCountTable2 = jdbcResourceManager.getRowCount("\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"");
+    long rowCountTable1 =
+        runIsolatedGetRowCount(
+            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_STORED_GEN_COL + "\"");
+    long rowCountTable2 =
+        runIsolatedGetRowCount(
+            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"");
     return (rowCountTable1 == 0) && (rowCountTable2 == 0);
   }
 
@@ -479,11 +509,18 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   private void assertIdentityColRowsInOracleAfterInsert(PipelineOperator.Result result) {
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        jdbcResourceManager.readTable("\"" + TABLE_WITH_IDENTITY_COL + "\"");
+        runIsolatedReadTable(
+            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_IDENTITY_COL + "\"");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id").toString()).isEqualTo("1");
     assertThat(rows.get(0).get("column1")).isEqualTo("id1");
     assertThat(rows.get(1).get("id").toString()).isEqualTo("2");
     assertThat(rows.get(1).get("column1")).isEqualTo("id2");
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

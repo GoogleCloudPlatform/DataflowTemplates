@@ -92,7 +92,8 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
             createSpannerDBAndTableWithNColumns(TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         createOracleTableWithNColumns(jdbcResourceManager, TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
 
@@ -144,7 +145,6 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -181,10 +181,13 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount("\"" + TABLE1 + "\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"" + TABLE1 + "\"")
+                        == 1);
     assertThatResult(result).meetsConditions();
 
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable("\"" + TABLE1 + "\"");
+    List<Map<String, Object>> rows =
+        runIsolatedReadTable(jdbcResourceManager, testUsername, "\"" + TABLE1 + "\"");
     assertThat(rows).hasSize(1);
     Map<String, Object> row = rows.get(0);
 
@@ -206,5 +209,11 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
     if (!assertionErrors.isEmpty()) {
       throw new MultipleFailureException(assertionErrors);
     }
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }
