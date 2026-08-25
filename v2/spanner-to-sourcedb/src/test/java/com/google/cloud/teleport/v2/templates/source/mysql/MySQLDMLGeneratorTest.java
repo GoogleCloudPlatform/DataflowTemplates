@@ -1650,4 +1650,54 @@ public final class MySQLDMLGeneratorTest {
 
     assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
   }
+
+  @Test
+  public void testBinaryAndBlobFromStringDML() throws Exception {
+    Column spannerStringCol = Mockito.mock(Column.class);
+    Mockito.when(spannerStringCol.name()).thenReturn("binary_col");
+    Mockito.when(spannerStringCol.type()).thenReturn(Type.string());
+
+    SourceColumn sourceBinaryCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceBinaryCol.name()).thenReturn("binary_col");
+    Mockito.when(sourceBinaryCol.type()).thenReturn("binary");
+
+    JSONObject json = new JSONObject("{\"binary_col\":\"7835383030\"}");
+
+    String binaryRes =
+        MySQLDMLGenerator.getMappedColumnValue(
+            spannerStringCol, sourceBinaryCol, json, "+00:00", null);
+    assertEquals("UNHEX('7835383030')", binaryRes);
+
+    SourceColumn sourceBlobCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceBlobCol.name()).thenReturn("blob_col");
+    Mockito.when(sourceBlobCol.type()).thenReturn("blob");
+
+    Column spannerBlobStringCol = Mockito.mock(Column.class);
+    Mockito.when(spannerBlobStringCol.name()).thenReturn("blob_col");
+    Mockito.when(spannerBlobStringCol.type()).thenReturn(Type.string());
+
+    JSONObject jsonBlob = new JSONObject("{\"blob_col\":\"7835383030\"}");
+    String blobRes =
+        MySQLDMLGenerator.getMappedColumnValue(
+            spannerBlobStringCol, sourceBlobCol, jsonBlob, "+00:00", null);
+    assertEquals("UNHEX('7835383030')", blobRes);
+  }
+
+  @Test
+  public void testBitFromStringDML() throws Exception {
+    Column spannerStringCol = Mockito.mock(Column.class);
+    Mockito.when(spannerStringCol.name()).thenReturn("bit_col");
+    Mockito.when(spannerStringCol.type()).thenReturn(Type.string());
+
+    SourceColumn sourceBitCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceBitCol.name()).thenReturn("bit_col");
+    Mockito.when(sourceBitCol.type()).thenReturn("bit");
+
+    JSONObject json = new JSONObject("{\"bit_col\":\"32767\"}");
+
+    String bitRes =
+        MySQLDMLGenerator.getMappedColumnValue(
+            spannerStringCol, sourceBitCol, json, "+00:00", null);
+    assertEquals("32767", bitRes);
+  }
 }
