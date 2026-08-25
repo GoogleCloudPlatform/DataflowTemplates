@@ -16,7 +16,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **jdbcUrl**: The JDBC connection URL. For example, `jdbc:postgresql://your-host:5432/your-db`.
-* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.
+* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.
 
 ### Optional parameters
 
