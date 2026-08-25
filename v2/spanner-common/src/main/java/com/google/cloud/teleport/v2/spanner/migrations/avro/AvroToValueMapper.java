@@ -331,6 +331,15 @@ public class AvroToValueMapper {
       if (recordValue == null) {
         return null;
       }
+      if (recordValue instanceof ByteBuffer) {
+        ByteBuffer byteBuffer = ((ByteBuffer) recordValue).duplicate();
+        byte[] bytes = new byte[byteBuffer.remaining()];
+        byteBuffer.get(bytes);
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+      }
+      if (recordValue instanceof byte[]) {
+        return new String((byte[]) recordValue, java.nio.charset.StandardCharsets.UTF_8);
+      }
       return recordValue.toString();
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
