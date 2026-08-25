@@ -449,10 +449,4 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
     }
     return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

@@ -184,10 +184,4 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
     rows.add(row2);
     return rows;
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

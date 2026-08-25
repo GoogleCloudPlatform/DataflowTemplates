@@ -685,10 +685,4 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
           }
         });
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

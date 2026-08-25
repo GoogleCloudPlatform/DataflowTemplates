@@ -54,9 +54,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
-  protected static String testUsername;
-  protected static String testUsernameShardA;
-  protected static String testUsernameShardB;
+  protected String testUsername;
+  protected String testUsernameShardA;
+  protected String testUsernameShardB;
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -683,21 +683,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       int arg2,
       String arg3) {}
 
-  public static void flushOracleRedoLogs(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
-    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
-      try {
-        jdbcResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
-        jdbcResourceManager.runSQLUpdate("ALTER SYSTEM CHECKPOINT");
-        LOG.info("Manually flushed Oracle Redo Logs to protect Shared Container.");
-      } catch (Exception e) {
-        LOG.warn("Failed to flush Oracle Redo Logs", e);
-      }
-    }
-  }
-
-  @org.junit.AfterClass
-  public static void clearIsolatedUser() {
+  @org.junit.After
+  public void clearIsolatedUser() {
     testUsername = null;
   }
 }

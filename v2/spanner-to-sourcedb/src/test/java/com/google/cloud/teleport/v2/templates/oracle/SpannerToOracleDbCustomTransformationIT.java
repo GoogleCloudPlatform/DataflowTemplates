@@ -388,10 +388,4 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
                 TABLE2, "varchar_column", "example1"));
     assertThat(rows).hasSize(0);
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

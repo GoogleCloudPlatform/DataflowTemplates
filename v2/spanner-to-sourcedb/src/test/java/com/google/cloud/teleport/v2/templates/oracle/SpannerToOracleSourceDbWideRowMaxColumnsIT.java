@@ -210,10 +210,4 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
       throw new MultipleFailureException(assertionErrors);
     }
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

@@ -176,10 +176,4 @@ public class SpannerToOracleWithoutSessionIT extends SpannerToSourceDbITBase {
     OracleGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
     OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }
