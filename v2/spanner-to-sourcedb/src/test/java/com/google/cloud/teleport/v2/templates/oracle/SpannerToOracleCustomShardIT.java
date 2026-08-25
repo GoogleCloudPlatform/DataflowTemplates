@@ -225,10 +225,4 @@ public class SpannerToOracleCustomShardIT extends SpannerToSourceDbITBase {
             .build();
     spannerResourceManager.write(m);
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

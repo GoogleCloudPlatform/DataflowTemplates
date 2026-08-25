@@ -87,6 +87,7 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
+  private static String classLevelTestUsername = null;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -103,9 +104,11 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     skipBaseCleanup = true;
     synchronized (SpannerToOracleIT.class) {
       testInstances.add(this);
-      if (testUsername == null) {
-        testUsername = setupOracleIsolatedUser(SharedOracleReverseITContainer.getInstance());
+      if (classLevelTestUsername == null) {
+        classLevelTestUsername =
+            setupOracleIsolatedUser(SharedOracleReverseITContainer.getInstance());
       }
+      this.testUsername = classLevelTestUsername;
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SpannerToOracleIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
@@ -163,6 +166,7 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
+    classLevelTestUsername = null;
   }
 
   @Test
@@ -516,11 +520,5 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(0).get("column1")).isEqualTo("id1");
     assertThat(rows.get(1).get("id").toString()).isEqualTo("2");
     assertThat(rows.get(1).get("column1")).isEqualTo("id2");
-  }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

@@ -207,10 +207,4 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(2).get("id")).isEqualTo(java.math.BigDecimal.valueOf(3));
     assertThat(rows.get(2).get("time_colm").toString()).isEqualTo("2024-02-03 06:00:00.0");
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

@@ -230,10 +230,4 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
     assertThat(oracleTable2.get(1).get("category_col2")).isEqualTo("Category Beta");
     assertThat(oracleTable2.get(1).get("value_col2")).isEqualTo("Value Beta");
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

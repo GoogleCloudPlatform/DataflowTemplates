@@ -235,10 +235,4 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
       throw new MultipleFailureException(assertionErrors);
     }
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }

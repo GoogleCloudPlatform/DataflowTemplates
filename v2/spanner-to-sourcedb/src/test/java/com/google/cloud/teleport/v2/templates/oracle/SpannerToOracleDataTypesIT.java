@@ -1227,10 +1227,4 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
     }
     return orMap;
   }
-
-  @org.junit.AfterClass
-  public static void flushRedo() {
-    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
-    SpannerToSourceDbITBase.clearIsolatedUser();
-  }
 }
