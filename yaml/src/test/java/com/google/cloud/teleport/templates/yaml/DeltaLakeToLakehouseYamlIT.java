@@ -42,19 +42,19 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link DeltaLakeToIcebergYaml} template. */
+/** Integration test for {@link DeltaLakeToLakehouseYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(DeltaLakeToIcebergYaml.class)
+@TemplateIntegrationTest(DeltaLakeToLakehouseYaml.class)
 @RunWith(JUnit4.class)
-public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
+public class DeltaLakeToLakehouseYamlIT extends TemplateTestBase {
 
   private IcebergResourceManager icebergResourceManager;
 
   private static final String CATALOG_NAME = "hadoop_catalog";
   private final String namespace =
-      "deltalake_iceberg_ns_" + UUID.randomUUID().toString().replace("-", "");
-  private static final String ICEBERG_TABLE_NAME = "iceberg_table";
-  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
+      "deltalake_lakehouse_ns_" + UUID.randomUUID().toString().replace("-", "");
+  private static final String LAKEHOUSE_TABLE_NAME = "lakehouse_table";
+  private final String lakehouseTableIdentifier = namespace + "." + LAKEHOUSE_TABLE_NAME;
 
   @Before
   public void setUp() throws IOException {
@@ -74,7 +74,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testDeltaLakeToIceberg() throws IOException {
+  public void testDeltaLakeToLakehouse() throws IOException {
     // 1. Arrange: Create Delta Lake source table in GCS
     String deltaTableDir = "delta-table";
     org.apache.avro.Schema avroSchema =
@@ -114,14 +114,14 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
 
     String deltaTableGcsPath = getGcsPath(deltaTableDir);
 
-    // 2. Arrange: Create destination Iceberg table
+    // 2. Arrange: Create destination Lakehouse table
     icebergResourceManager.createNamespace(namespace);
     Schema icebergSchema =
         new Schema(
             Types.NestedField.required(1, "id", Types.StringType.get()),
             Types.NestedField.required(2, "state", Types.StringType.get()),
             Types.NestedField.required(3, "price", Types.DoubleType.get()));
-    icebergResourceManager.createTable(icebergTableIdentifier, icebergSchema);
+    icebergResourceManager.createTable(lakehouseTableIdentifier, icebergSchema);
 
     // 3. Act: Configure options and launch template
     LaunchConfig.Builder options =
@@ -129,7 +129,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
             .addParameter("deltaLakeTable", deltaTableGcsPath)
             .addParameter(
                 "deltaLakeHadoopConfig", new org.json.JSONObject(getGcsHadoopConfig()).toString())
-            .addParameter("lakehouseTable", icebergTableIdentifier)
+            .addParameter("lakehouseTable", lakehouseTableIdentifier)
             .addParameter("lakehouseCatalogName", CATALOG_NAME)
             .addParameter(
                 "lakehouseCatalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
@@ -142,7 +142,7 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
     // 4. Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Record> records = icebergResourceManager.read(icebergTableIdentifier);
+    List<Record> records = icebergResourceManager.read(lakehouseTableIdentifier);
     assertEquals(1, records.size());
 
     Record record = records.get(0);

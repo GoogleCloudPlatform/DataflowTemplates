@@ -22,14 +22,14 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "DeltaLake_To_Iceberg_Yaml",
+    name = "DeltaLake_To_Lakehouse_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Delta Lake to Lakehouse",
-    description = "The Delta Lake to Iceberg template is a batch pipeline that reads data from a Delta Lake table and outputs the records to an Apache Iceberg table.",
+    description = "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table and outputs the records to an Lakehouse table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "DeltaLakeToIceberg.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/iceberg_options.yaml"},
+    yamlTemplateFile = "DeltaLakeToLakehouse.yaml",
+    filesToCopy = {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/lakehouse_options.yaml"},
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The Input Delta Lake table must exist and be accessible.",
@@ -37,7 +37,7 @@ import org.apache.beam.sdk.options.Validation;
     },
     streaming = false,
     hidden = false)
-public interface DeltaLakeToIcebergYaml {
+public interface DeltaLakeToLakehouseYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -77,7 +77,7 @@ public interface DeltaLakeToIcebergYaml {
       name = "lakehouseCatalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
-      helpText = "The name of the Iceberg catalog that contains the table.",
+      helpText = "The name of the Lakehouse catalog that contains the table.",
       example = "my_hadoop_catalog"
     )
   @Validation.Required
@@ -87,8 +87,8 @@ public interface DeltaLakeToIcebergYaml {
       order = 5,
       name = "lakehouseCatalogProperties",
       optional = false,
-      description = "Properties used to set up the Iceberg catalog.",
-      helpText = "A map of properties for setting up the Iceberg catalog.",
+      description = "Properties used to set up the Lakehouse catalog.",
+      helpText = "A map of properties for setting up the Lakehouse catalog.",
       example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
     )
   @Validation.Required
@@ -119,7 +119,7 @@ public interface DeltaLakeToIcebergYaml {
       name = "lakehouseFilter",
       optional = true,
       description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
+      helpText = "A filter expression to apply to records from the Lakehouse table.",
       example = "age > 18"
     )
   String getLakehouseFilter();
@@ -158,8 +158,8 @@ public interface DeltaLakeToIcebergYaml {
       order = 12,
       name = "lakehouseTableProperties",
       optional = true,
-      description = "Iceberg table properties to be set on table creation.",
-      helpText = "A map of Iceberg table properties to set when the table is created.",
+      description = "Lakehouse table properties to be set on table creation.",
+      helpText = "A map of Lakehouse table properties to set when the table is created.",
       example = "{\"commit.retry.num-retries\": \"2\"}"
     )
   String getLakehouseTableProperties();

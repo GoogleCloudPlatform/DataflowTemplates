@@ -1,15 +1,15 @@
 template:
-  name: "DeltaLake_To_Iceberg_Yaml"
+  name: "DeltaLake_To_Lakehouse_Yaml"
   category: "BATCH"
   type: "YAML"
   display_name: "Delta Lake to Lakehouse"
   description: >
-    The Delta Lake to Iceberg template is a batch pipeline that reads data from a Delta Lake table
-    and outputs the records to an Apache Iceberg table.
+    The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table
+    and outputs the records to an Lakehouse table.
   flex_container_name: "pipeline-yaml"
-  yamlTemplateFile: "DeltaLakeToIceberg.yaml"
+  yamlTemplateFile: "DeltaLakeToLakehouse.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/iceberg_options.yaml"}
+    {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/lakehouse_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input Delta Lake table must exist and be accessible.",
@@ -38,7 +38,7 @@ pipeline:
         hadoop_config: {{ deltaLakeHadoopConfig }}
         {% endif %}
 
-    - type: WriteToIceberg
+    - type: WriteToLakehouse
       name: WriteToLakehouse
       config:
         table: "{{ lakehouseTable }}"
@@ -70,6 +70,7 @@ providers:
         - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz
     transforms:
       ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
+      WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
 
 options:
   streaming: false

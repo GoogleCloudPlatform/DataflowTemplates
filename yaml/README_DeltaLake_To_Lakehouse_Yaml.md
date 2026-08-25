@@ -1,8 +1,8 @@
 
 Delta Lake to Lakehouse template
 ---
-The Delta Lake to Iceberg template is a batch pipeline that reads data from a
-Delta Lake table and outputs the records to an Apache Iceberg table.
+The Delta Lake to Lakehouse template is a batch pipeline that reads data from a
+Delta Lake table and outputs the records to an Lakehouse table.
 
 
 
@@ -16,19 +16,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **deltaLakeTable**: The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table. For example, `gs://your-bucket/path/to/table`.
 * **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **lakehouseCatalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
-* **lakehouseCatalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
+* **lakehouseCatalogName**: The name of the Lakehouse catalog that contains the table. For example, `my_hadoop_catalog`.
+* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 
 ### Optional parameters
 
 * **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **lakehouseFilter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
+* **lakehouseFilter**: A filter expression to apply to records from the Lakehouse table. For example, `age > 18`.
 * **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
-* **lakehouseTableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
 
 
 
@@ -45,7 +45,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/DeltaLakeToIcebergYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/DeltaLakeToLakehouseYaml.java)
 
 ### Templates Plugin
 
@@ -87,7 +87,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="DeltaLake_To_Iceberg_Yaml" \
+-DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
 -f yaml
 ```
 
@@ -98,7 +98,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/DeltaLake_To_Iceberg_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/DeltaLake_To_Lakehouse_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -118,7 +118,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Iceberg_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Lakehouse_Yaml"
 
 ### Required
 export DELTA_LAKE_TABLE=<deltaLakeTable>
@@ -136,7 +136,7 @@ export LAKEHOUSE_ONLY=<lakehouseOnly>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
 
-gcloud dataflow flex-template run "deltalake-to-iceberg-yaml-job" \
+gcloud dataflow flex-template run "deltalake-to-lakehouse-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -190,8 +190,8 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="deltalake-to-iceberg-yaml-job" \
--DtemplateName="DeltaLake_To_Iceberg_Yaml" \
+-DjobName="deltalake-to-lakehouse-yaml-job" \
+-DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
 -Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
 -f yaml
 ```
@@ -210,7 +210,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/DeltaLake_To_Iceberg_Yaml
+cd yaml/terraform/DeltaLake_To_Lakehouse_Yaml
 terraform init
 terraform apply
 ```
@@ -230,11 +230,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "deltalake_to_iceberg_yaml" {
+resource "google_dataflow_flex_template_job" "deltalake_to_lakehouse_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/DeltaLake_To_Iceberg_Yaml"
-  name              = "deltalake-to-iceberg-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/DeltaLake_To_Lakehouse_Yaml"
+  name              = "deltalake-to-lakehouse-yaml"
   region            = var.region
   parameters        = {
     deltaLakeTable = "<deltaLakeTable>"
