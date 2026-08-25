@@ -112,7 +112,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
                 CloudOracleResourceManager.builder(testName)
                     .setUsername(System.getProperty("cloudProxyUsername", "system"))
                     .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
-                    .setDatabaseName("XEPDB1")
+                    .setDatabaseName("/XEPDB1")
                     .setHost(System.getProperty("hostIp"))
                     .setPort(1521)
                     .build();

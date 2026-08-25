@@ -113,7 +113,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
           builder.setHost(System.getProperty("hostIp"));
           builder.setPort(1521);
           builder.setUsername(System.getProperty("cloudProxyUsername"));
-          builder.setDatabaseName("XEPDB1");
+          builder.setDatabaseName("/XEPDB1");
         }
         cloudOracleResourceManager =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();

@@ -61,7 +61,7 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
   @Override
   public synchronized @NonNull String getUri() {
     return String.format(
-        "jdbc:%s:thin:@//%s:%d/%s",
+        "jdbc:%s:thin:@%s:%d:%s",
         getJDBCPrefix(), this.getHost(), this.getPort(getJDBCPort()), this.getDatabaseName());
   }
 

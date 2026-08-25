@@ -233,7 +233,7 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
             CloudOracleResourceManager.builder(testName)
                 .setUsername(oracleUser)
                 .setPassword(oraclePassword)
-                .setDatabaseName("XEPDB1")
+                .setDatabaseName("/XEPDB1")
                 .setHost(System.getProperty("hostIp"))
                 .setPort(1521)
                 .build();

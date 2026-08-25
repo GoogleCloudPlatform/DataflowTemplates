@@ -177,7 +177,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           builder.setHost(System.getProperty("hostIp"));
           builder.setPort(1521);
           builder.setUsername(oracleUser);
-          builder.setDatabaseName("XEPDB1");
+          builder.setDatabaseName("/XEPDB1");
         }
         oracleResourceManager =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();

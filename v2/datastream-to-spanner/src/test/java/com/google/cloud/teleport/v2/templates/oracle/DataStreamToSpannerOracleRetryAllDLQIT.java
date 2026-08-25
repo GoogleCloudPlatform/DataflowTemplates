@@ -104,7 +104,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         builder.setPort(sysUser.getPort());
         builder.setUsername(oracleUser);
         builder.setPassword(oraclePassword);
-        builder.setDatabaseName("XEPDB1");
+        builder.setDatabaseName("/XEPDB1");
 
         jdbcResourceManager = (CloudOracleResourceManager) builder.build();
 

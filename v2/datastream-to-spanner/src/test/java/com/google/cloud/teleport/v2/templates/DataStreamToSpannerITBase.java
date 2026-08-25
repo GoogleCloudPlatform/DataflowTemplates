@@ -99,7 +99,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       builder.setPort(1521);
       builder.setUsername(System.getProperty("cloudProxyUsername", "system"));
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
-      builder.setDatabaseName("XEPDB1");
+      builder.setDatabaseName("/XEPDB1");
     }
     return (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager) builder.build();
   }
