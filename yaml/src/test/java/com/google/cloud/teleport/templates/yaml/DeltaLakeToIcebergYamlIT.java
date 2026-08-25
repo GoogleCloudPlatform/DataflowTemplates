@@ -129,10 +129,10 @@ public class DeltaLakeToIcebergYamlIT extends TemplateTestBase {
             .addParameter("deltaLakeTable", deltaTableGcsPath)
             .addParameter(
                 "deltaLakeHadoopConfig", new org.json.JSONObject(getGcsHadoopConfig()).toString())
-            .addParameter("table", icebergTableIdentifier)
-            .addParameter("catalogName", CATALOG_NAME)
+            .addParameter("lakehouseTable", icebergTableIdentifier)
+            .addParameter("lakehouseCatalogName", CATALOG_NAME)
             .addParameter(
-                "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
+                "lakehouseCatalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();

@@ -20,12 +20,12 @@ template:
 
   options_file:
     - "deltalake_options"
-    - "iceberg_options"
+    - "lakehouse_options"
 
   parameters:
     - deltalake_read_options
-    - iceberg_common_options
-    - iceberg_write_options
+    - lakehouse_common_options
+    - lakehouse_write_options
 
 pipeline:
   type: chain
@@ -39,28 +39,28 @@ pipeline:
         {% endif %}
 
     - type: WriteToIceberg
-      name: WriteToIceberg
+      name: WriteToLakehouse
       config:
-        table: "{{ table }}"
-        catalog_name: "{{ catalogName }}"
-        catalog_properties: {{ catalogProperties }}
-        {% if configProperties %}
-        config_properties: {{ configProperties }}
+        table: "{{ lakehouseTable }}"
+        catalog_name: "{{ lakehouseCatalogName }}"
+        catalog_properties: {{ lakehouseCatalogProperties }}
+        {% if lakehouseConfigProperties %}
+        config_properties: {{ lakehouseConfigProperties }}
         {% endif %}
-        {% if drop %}
-        drop: {{ drop }}
+        {% if lakehouseDrop %}
+        drop: {{ lakehouseDrop }}
         {% endif %}
-        {% if keep %}
-        keep: {{ keep }}
+        {% if lakehouseKeep %}
+        keep: {{ lakehouseKeep }}
         {% endif %}
-        {% if only %}
-        only: {{ only }}
+        {% if lakehouseOnly %}
+        only: {{ lakehouseOnly }}
         {% endif %}
-        {% if partitionFields %}
-        partition_fields: {{ partitionFields }}
+        {% if lakehousePartitionFields %}
+        partition_fields: {{ lakehousePartitionFields }}
         {% endif %}
-        {% if tableProperties %}
-        table_properties: {{ tableProperties }}
+        {% if lakehouseTableProperties %}
+        table_properties: {{ lakehouseTableProperties }}
         {% endif %}
 
 providers:

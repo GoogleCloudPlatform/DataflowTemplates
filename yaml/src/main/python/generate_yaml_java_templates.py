@@ -163,7 +163,8 @@ def generate_java_interface(yaml_path, java_path):
         if 'default' in param:
             has_defaults = True
             if java_type == 'String':
-                param_code += f'  @Default.String("{param["default"]}")\n'
+                escaped_default = str(param["default"]).replace('"', '\\"')
+                param_code += f'  @Default.String("{escaped_default}")\n'
             else:        
                 param_code += f"  @Default.{java_type}({param['default']})\n"
 

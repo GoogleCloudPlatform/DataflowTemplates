@@ -14,5 +14,6 @@ options:
         help: "A map of properties to pass to Hadoop Configuration, e.g. key-value pairs."
         example: '{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}'
         required: false
+        default: '{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}'
         type: map
 

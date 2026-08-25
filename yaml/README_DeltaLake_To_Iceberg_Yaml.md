@@ -15,20 +15,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **deltaLakeTable**: The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table. For example, `gs://your-bucket/path/to/table`.
-* **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
-* **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
+* **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
+* **lakehouseCatalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
+* **lakehouseCatalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 
 ### Optional parameters
 
-* **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
-* **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
-* **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
-* **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
-* **tableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
+* **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
+* **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **lakehouseFilter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
+* **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
+* **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
+* **lakehouseTableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
 
 
 
@@ -122,19 +122,19 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Iceb
 
 ### Required
 export DELTA_LAKE_TABLE=<deltaLakeTable>
-export TABLE=<table>
-export CATALOG_NAME=<catalogName>
-export CATALOG_PROPERTIES=<catalogProperties>
+export LAKEHOUSE_TABLE=<lakehouseTable>
+export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
-export DELTA_LAKE_HADOOP_CONFIG=<deltaLakeHadoopConfig>
-export CONFIG_PROPERTIES=<configProperties>
-export DROP=<drop>
-export FILTER=<filter>
-export KEEP=<keep>
-export ONLY=<only>
-export PARTITION_FIELDS=<partitionFields>
-export TABLE_PROPERTIES=<tableProperties>
+export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
+export LAKEHOUSE_DROP=<lakehouseDrop>
+export LAKEHOUSE_FILTER=<lakehouseFilter>
+export LAKEHOUSE_KEEP=<lakehouseKeep>
+export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
+export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
 
 gcloud dataflow flex-template run "deltalake-to-iceberg-yaml-job" \
   --project "$PROJECT" \
@@ -142,16 +142,16 @@ gcloud dataflow flex-template run "deltalake-to-iceberg-yaml-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "deltaLakeTable=$DELTA_LAKE_TABLE" \
   --parameters "deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG" \
-  --parameters "table=$TABLE" \
-  --parameters "catalogName=$CATALOG_NAME" \
-  --parameters "catalogProperties=$CATALOG_PROPERTIES" \
-  --parameters "configProperties=$CONFIG_PROPERTIES" \
-  --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
-  --parameters "keep=$KEEP" \
-  --parameters "only=$ONLY" \
-  --parameters "partitionFields=$PARTITION_FIELDS" \
-  --parameters "tableProperties=$TABLE_PROPERTIES"
+  --parameters "lakehouseTable=$LAKEHOUSE_TABLE" \
+  --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
+  --parameters "lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES" \
+  --parameters "lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES" \
+  --parameters "lakehouseDrop=$LAKEHOUSE_DROP" \
+  --parameters "lakehouseFilter=$LAKEHOUSE_FILTER" \
+  --parameters "lakehouseKeep=$LAKEHOUSE_KEEP" \
+  --parameters "lakehouseOnly=$LAKEHOUSE_ONLY" \
+  --parameters "lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS" \
+  --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES"
 ```
 
 For more information about the command, please check:
@@ -171,19 +171,19 @@ export REGION=us-central1
 
 ### Required
 export DELTA_LAKE_TABLE=<deltaLakeTable>
-export TABLE=<table>
-export CATALOG_NAME=<catalogName>
-export CATALOG_PROPERTIES=<catalogProperties>
+export LAKEHOUSE_TABLE=<lakehouseTable>
+export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
-export DELTA_LAKE_HADOOP_CONFIG=<deltaLakeHadoopConfig>
-export CONFIG_PROPERTIES=<configProperties>
-export DROP=<drop>
-export FILTER=<filter>
-export KEEP=<keep>
-export ONLY=<only>
-export PARTITION_FIELDS=<partitionFields>
-export TABLE_PROPERTIES=<tableProperties>
+export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
+export LAKEHOUSE_DROP=<lakehouseDrop>
+export LAKEHOUSE_FILTER=<lakehouseFilter>
+export LAKEHOUSE_KEEP=<lakehouseKeep>
+export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
+export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -192,7 +192,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="deltalake-to-iceberg-yaml-job" \
 -DtemplateName="DeltaLake_To_Iceberg_Yaml" \
--Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -238,17 +238,17 @@ resource "google_dataflow_flex_template_job" "deltalake_to_iceberg_yaml" {
   region            = var.region
   parameters        = {
     deltaLakeTable = "<deltaLakeTable>"
-    table = "<table>"
-    catalogName = "<catalogName>"
-    catalogProperties = "<catalogProperties>"
-    # deltaLakeHadoopConfig = "<deltaLakeHadoopConfig>"
-    # configProperties = "<configProperties>"
-    # drop = "<drop>"
-    # filter = "<filter>"
-    # keep = "<keep>"
-    # only = "<only>"
-    # partitionFields = "<partitionFields>"
-    # tableProperties = "<tableProperties>"
+    lakehouseTable = "<lakehouseTable>"
+    lakehouseCatalogName = "<lakehouseCatalogName>"
+    lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
+    # deltaLakeHadoopConfig = ""{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": }""
+    # lakehouseConfigProperties = "<lakehouseConfigProperties>"
+    # lakehouseDrop = "<lakehouseDrop>"
+    # lakehouseFilter = "<lakehouseFilter>"
+    # lakehouseKeep = "<lakehouseKeep>"
+    # lakehouseOnly = "<lakehouseOnly>"
+    # lakehousePartitionFields = "<lakehousePartitionFields>"
+    # lakehouseTableProperties = "<lakehouseTableProperties>"
   }
 }
 ```
