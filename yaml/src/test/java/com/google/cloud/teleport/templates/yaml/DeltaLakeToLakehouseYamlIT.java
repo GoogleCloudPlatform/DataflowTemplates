@@ -132,7 +132,8 @@ public class DeltaLakeToLakehouseYamlIT extends TemplateTestBase {
             .addParameter("lakehouseTable", lakehouseTableIdentifier)
             .addParameter("lakehouseCatalogName", CATALOG_NAME)
             .addParameter(
-                "lakehouseCatalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
+                "lakehouseCatalogProperties",
+                new org.json.JSONObject(getCatalogProperties()).toString());
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
