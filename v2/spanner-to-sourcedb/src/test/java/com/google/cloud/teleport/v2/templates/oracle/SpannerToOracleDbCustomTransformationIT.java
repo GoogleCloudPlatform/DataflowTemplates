@@ -91,11 +91,13 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
             createSpannerDatabase(SpannerToOracleDbCustomTransformationIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         createOracleSchema(
             jdbcResourceManager,
-            SpannerToOracleDbCustomTransformationIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            SpannerToOracleDbCustomTransformationIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsername);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -145,7 +147,6 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -342,7 +343,9 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount("\"" + TABLE + "\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"" + TABLE + "\"")
+                        == 1);
 
     assertThatResult(result).meetsConditions();
 
@@ -350,11 +353,14 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount("\"" + TABLE2 + "\"") == 2);
+                () ->
+                    runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"" + TABLE2 + "\"")
+                        == 2);
 
     assertThatResult(result).meetsConditions();
 
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable("\"" + TABLE + "\"");
+    List<Map<String, Object>> rows =
+        runIsolatedReadTable(jdbcResourceManager, testUsername, "\"" + TABLE + "\"");
     assertThat(rows).hasSize(1);
     assertThat(((Number) rows.get(0).get("id")).longValue()).isEqualTo(1L);
     assertThat(rows.get(0).get("first_name")).isEqualTo("AA");
@@ -381,5 +387,11 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
                 "select * from \"%s\" where \"%s\" like '%s'",
                 TABLE2, "varchar_column", "example1"));
     assertThat(rows).hasSize(0);
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

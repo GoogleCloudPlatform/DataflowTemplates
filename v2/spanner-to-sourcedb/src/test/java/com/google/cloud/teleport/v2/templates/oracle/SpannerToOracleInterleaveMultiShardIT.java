@@ -92,13 +92,19 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
             createSpannerDatabase(SpannerToOracleInterleaveMultiShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManagerShardA = OracleResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardA = setupOracleIsolatedUser(jdbcResourceManagerShardA);
         createOracleSchema(
-            jdbcResourceManagerShardA, SpannerToOracleInterleaveMultiShardIT.ORACLE_DDL_RESOURCE);
+            jdbcResourceManagerShardA,
+            SpannerToOracleInterleaveMultiShardIT.ORACLE_DDL_RESOURCE,
+            testUsernameShardA);
 
-        jdbcResourceManagerShardB = OracleResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardB = setupOracleIsolatedUser(jdbcResourceManagerShardB);
         createOracleSchema(
-            jdbcResourceManagerShardB, SpannerToOracleInterleaveMultiShardIT.ORACLE_DDL_RESOURCE);
+            jdbcResourceManagerShardB,
+            SpannerToOracleInterleaveMultiShardIT.ORACLE_DDL_RESOURCE,
+            testUsernameShardB);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(
@@ -150,8 +156,6 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardB,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -230,54 +234,74 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"parent1\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"parent1\"")
+                        == 1);
     assertThatResult(parent1Result).meetsConditions();
 
     PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"child11\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"child11\"")
+                        == 1);
     assertThatResult(child1Result).meetsConditions();
 
     PipelineOperator.Result parent2Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"parent2\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"parent2\"")
+                        == 1);
     assertThatResult(parent2Result).meetsConditions();
 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"child21\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"child21\"")
+                        == 1);
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result result2 =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"child31\"") == 1);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"child31\"")
+                        == 1);
     assertThatResult(result2).meetsConditions();
 
-    List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("\"parent1\"");
+    List<Map<String, Object>> rows =
+        runIsolatedReadTable(jdbcResourceManagerShardA, testUsernameShardA, "\"parent1\"");
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
 
-    List<Map<String, Object>> rows1 = jdbcResourceManagerShardB.readTable("\"parent2\"");
+    List<Map<String, Object>> rows1 =
+        runIsolatedReadTable(jdbcResourceManagerShardB, testUsernameShardB, "\"parent2\"");
     assertThat(rows1).hasSize(1);
     assertThat(rows1.get(0).get("id")).isEqualTo(new java.math.BigDecimal("2"));
 
-    List<Map<String, Object>> rows2 = jdbcResourceManagerShardA.readTable("\"child11\"");
+    List<Map<String, Object>> rows2 =
+        runIsolatedReadTable(jdbcResourceManagerShardA, testUsernameShardA, "\"child11\"");
     assertThat(rows2).hasSize(1);
     assertThat(rows2.get(0).get("child_id")).isEqualTo(new java.math.BigDecimal("11"));
 
-    List<Map<String, Object>> rows3 = jdbcResourceManagerShardB.readTable("\"child21\"");
+    List<Map<String, Object>> rows3 =
+        runIsolatedReadTable(jdbcResourceManagerShardB, testUsernameShardB, "\"child21\"");
     assertThat(rows3).hasSize(1);
     assertThat(rows3.get(0).get("child_id")).isEqualTo(new java.math.BigDecimal("22"));
 
-    List<Map<String, Object>> rows4 = jdbcResourceManagerShardB.readTable("\"child31\"");
+    List<Map<String, Object>> rows4 =
+        runIsolatedReadTable(jdbcResourceManagerShardB, testUsernameShardB, "\"child31\"");
     assertThat(rows4).hasSize(1);
     assertThat(rows4.get(0).get("child_id")).isEqualTo(new java.math.BigDecimal("33"));
   }
@@ -325,16 +349,22 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"child11\"") == 2);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"child11\"")
+                        == 2);
     assertThatResult(result).meetsConditions();
 
-    List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("\"parent1\"");
+    List<Map<String, Object>> rows =
+        runIsolatedReadTable(jdbcResourceManagerShardA, testUsernameShardA, "\"parent1\"");
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("update_ts").toString()).isEqualTo("1980-01-01 00:00:00.0");
 
     List<Map<String, Object>> rows2 =
-        jdbcResourceManagerShardA.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardA,
+            testUsernameShardA,
             "SELECT \"child_id\",\"update_ts\" FROM \"child11\" ORDER BY \"child_id\"");
     assertThat(rows2).hasSize(2);
     assertThat(rows2.get(0).get("child_id")).isEqualTo(new java.math.BigDecimal("11"));
@@ -360,26 +390,44 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"parent2\"") == 0);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"parent2\"")
+                        == 0);
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(45)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"parent1\"") == 0);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"parent1\"")
+                        == 0);
     assertThatResult(parent1Result).meetsConditions();
     PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"child11\"") == 0);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"child11\"")
+                        == 0);
     assertThatResult(child1Result).meetsConditions();
     PipelineOperator.Result child2Result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofSeconds(1)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"child22\"") == 0);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"child22\"")
+                        == 0);
     assertThatResult(child2Result).meetsConditions();
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

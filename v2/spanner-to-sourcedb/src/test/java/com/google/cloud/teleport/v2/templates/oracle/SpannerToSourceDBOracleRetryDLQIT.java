@@ -85,12 +85,15 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         createOracleTableWithNColumns(jdbcResourceManager, "test", 1, "25");
 
         createOracleSchema(
-            jdbcResourceManager, SpannerToSourceDBOracleRetryDLQIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager,
+            SpannerToSourceDBOracleRetryDLQIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsername);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -150,7 +153,6 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -194,20 +196,23 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
 
     LOG.info("Verifying Oracle state before retry job runs");
     List<Map<String, Object>> customersRows =
-        jdbcResourceManager.runSQLQuery("SELECT \"CustomerId\" FROM \"Customers\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"CustomerId\" FROM \"Customers\"");
     List<Integer> customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
     assertTrue("id=1 should NOT exist yet", !customersIds.contains(1));
 
     List<Map<String, Object>> ordersRows =
-        jdbcResourceManager.runSQLQuery("SELECT \"OrderId\" FROM \"Orders\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"OrderId\" FROM \"Orders\"");
     List<Integer> ordersIds =
         ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
     assertTrue("id=101 should NOT exist yet", !ordersIds.contains(101));
     assertTrue("id=102 should exist", ordersIds.contains(102));
 
     List<Map<String, Object>> allDataTypesRows =
-        jdbcResourceManager.runSQLQuery("SELECT \"id\" FROM \"AllDataTypes\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"id\" FROM \"AllDataTypes\"");
     List<Integer> allDataTypesIds =
         allDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
     assertTrue("id=1 should exist", allDataTypesIds.contains(1));
@@ -271,19 +276,24 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
 
     LOG.info("Verifying final target Oracle database contents");
 
-    customersRows = jdbcResourceManager.runSQLQuery("SELECT \"CustomerId\" FROM \"Customers\"");
+    customersRows =
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"CustomerId\" FROM \"Customers\"");
     customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
     assertTrue("id=1 should NOT exist", !customersIds.contains(1));
     assertTrue("id=2 should exist", customersIds.contains(2));
     assertTrue("id=3 should exist", customersIds.contains(3));
 
-    ordersRows = jdbcResourceManager.runSQLQuery("SELECT \"OrderId\" FROM \"Orders\"");
+    ordersRows =
+        runIsolatedSQLQuery(
+            jdbcResourceManager, testUsername, "SELECT \"OrderId\" FROM \"Orders\"");
     ordersIds = ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
     assertTrue("id=101 should exist", ordersIds.contains(101));
     assertTrue("id=102 should exist", ordersIds.contains(102));
 
-    allDataTypesRows = jdbcResourceManager.runSQLQuery("SELECT * FROM \"AllDataTypes\"");
+    allDataTypesRows =
+        runIsolatedSQLQuery(jdbcResourceManager, testUsername, "SELECT * FROM \"AllDataTypes\"");
     allDataTypesIds =
         allDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
     assertTrue("id=1 should exist", allDataTypesIds.contains(1));
@@ -444,5 +454,11 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
                 exp.equals(act) || isDatePrefix || isTimePrefix);
           }
         });
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

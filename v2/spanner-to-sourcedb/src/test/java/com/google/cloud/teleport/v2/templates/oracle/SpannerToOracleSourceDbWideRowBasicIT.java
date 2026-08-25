@@ -213,4 +213,10 @@ public class SpannerToOracleSourceDbWideRowBasicIT extends SpannerToSourceDbITBa
 
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
+  }
 }

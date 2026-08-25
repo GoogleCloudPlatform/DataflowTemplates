@@ -83,11 +83,14 @@ public class SpannerToOracleWithoutSessionIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToOracleWithoutSessionIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         try {
           createOracleSchema(
-              jdbcResourceManager, SpannerToOracleWithoutSessionIT.ORACLE_SCHEMA_FILE_RESOURCE);
+              jdbcResourceManager,
+              SpannerToOracleWithoutSessionIT.ORACLE_SCHEMA_FILE_RESOURCE,
+              testUsername);
         } catch (Exception e) {
           throw new IOException("Failed to create Oracle Schema", e);
         }
@@ -132,7 +135,6 @@ public class SpannerToOracleWithoutSessionIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -152,12 +154,12 @@ public class SpannerToOracleWithoutSessionIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager));
+                    spannerTableData, jdbcResourceManager, testUsername));
     assertThatResult(result).meetsConditions();
 
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
-    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager);
+    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
 
     Map<String, List<Map<String, Value>>> updateSpannerTableData =
         OracleGeneratedColumnUtils.updateGeneratedColRowsInSpanner(spannerResourceManager);
@@ -167,11 +169,17 @@ public class SpannerToOracleWithoutSessionIT extends SpannerToSourceDbITBase {
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
                 OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager));
+                    spannerTableData, jdbcResourceManager, testUsername));
     assertThatResult(result).meetsConditions();
 
     expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
-    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager);
+    OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

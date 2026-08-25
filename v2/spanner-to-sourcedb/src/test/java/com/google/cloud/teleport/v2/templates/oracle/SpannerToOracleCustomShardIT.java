@@ -89,15 +89,21 @@ public class SpannerToOracleCustomShardIT extends SpannerToSourceDbITBase {
         spannerResourceManager =
             createSpannerDatabase(SpannerToOracleCustomShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        jdbcResourceManagerShardA = OracleResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardA = setupOracleIsolatedUser(jdbcResourceManagerShardA);
 
         createOracleSchema(
-            jdbcResourceManagerShardA, SpannerToOracleCustomShardIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManagerShardA,
+            SpannerToOracleCustomShardIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsernameShardA);
 
-        jdbcResourceManagerShardB = OracleResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB = SharedOracleReverseITContainer.getInstance();
+        testUsernameShardB = setupOracleIsolatedUser(jdbcResourceManagerShardB);
 
         createOracleSchema(
-            jdbcResourceManagerShardB, SpannerToOracleCustomShardIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManagerShardB,
+            SpannerToOracleCustomShardIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsernameShardB);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
@@ -152,8 +158,6 @@ public class SpannerToOracleCustomShardIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardB,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -176,24 +180,34 @@ public class SpannerToOracleCustomShardIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardA.getRowCount("\"Singers\"") == 2);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardA, testUsernameShardA, "\"Singers\"")
+                        == 2);
     assertThatResult(result).meetsConditions();
     PipelineOperator.Result shardBResult =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManagerShardB.getRowCount("\"Singers\"") == 2);
+                () ->
+                    runIsolatedGetRowCount(
+                            jdbcResourceManagerShardB, testUsernameShardB, "\"Singers\"")
+                        == 2);
     assertThatResult(shardBResult).meetsConditions();
 
     List<Map<String, Object>> rows =
-        jdbcResourceManagerShardA.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardA,
+            testUsernameShardA,
             "SELECT \"SingerId\",\"FirstName\" FROM \"Singers\" ORDER BY \"SingerId\"");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("SingerId").toString()).isEqualTo("1");
     assertThat(rows.get(1).get("SingerId").toString()).isEqualTo("3");
 
     List<Map<String, Object>> shardBRows =
-        jdbcResourceManagerShardB.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManagerShardB,
+            testUsernameShardB,
             "SELECT \"SingerId\",\"FirstName\" FROM \"Singers\" ORDER BY \"SingerId\"");
     assertThat(shardBRows).hasSize(2);
     assertThat(shardBRows.get(0).get("SingerId").toString()).isEqualTo("2");
@@ -210,5 +224,11 @@ public class SpannerToOracleCustomShardIT extends SpannerToSourceDbITBase {
             .to(firstName)
             .build();
     spannerResourceManager.write(m);
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

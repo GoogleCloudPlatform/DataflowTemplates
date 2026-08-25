@@ -88,9 +88,12 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
             createSpannerDatabase(SpannerToOracleSourceDbWideRow10MbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
         createOracleSchema(
-            jdbcResourceManager, SpannerToOracleSourceDbWideRow10MbIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager,
+            SpannerToOracleSourceDbWideRow10MbIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsername);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -135,7 +138,6 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -186,7 +188,7 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> {
                   try {
-                    return jdbcResourceManager.getRowCount(TABLE1) == 1;
+                    return runIsolatedGetRowCount(jdbcResourceManager, testUsername, TABLE1) == 1;
                   } catch (Exception e) {
                     LOG.error("Error while getting row count from Oracle", e);
                     return false;
@@ -196,7 +198,8 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
     assertThatResult(result).meetsConditions();
 
     try {
-      List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
+      List<Map<String, Object>> rows =
+          runIsolatedReadTable(jdbcResourceManager, testUsername, TABLE1);
       assertThat(rows).hasSize(1);
 
       Map<String, Object> row = rows.get(0);
@@ -231,5 +234,11 @@ public class SpannerToOracleSourceDbWideRow10MbIT extends SpannerToSourceDbITBas
     if (!assertionErrors.isEmpty()) {
       throw new MultipleFailureException(assertionErrors);
     }
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

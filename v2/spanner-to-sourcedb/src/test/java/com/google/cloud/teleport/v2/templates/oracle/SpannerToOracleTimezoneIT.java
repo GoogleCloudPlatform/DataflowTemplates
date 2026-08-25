@@ -90,10 +90,13 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToOracleTimezoneIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = OracleResourceManager.builder(testName).build();
+        jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
 
         createOracleSchema(
-            jdbcResourceManager, SpannerToOracleTimezoneIT.ORACLE_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager,
+            SpannerToOracleTimezoneIT.ORACLE_SCHEMA_FILE_RESOURCE,
+            testUsername);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -143,7 +146,6 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -190,10 +192,12 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount("\"Users\"") == 3);
+                () -> runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"Users\"") == 3);
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        jdbcResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
             "SELECT \"id\",\"time_colm\" FROM \"Users\" ORDER BY \"id\"");
     assertThat(rows).hasSize(3);
     assertThat(rows.get(0).get("id")).isEqualTo(java.math.BigDecimal.valueOf(1));
@@ -202,5 +206,11 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(1).get("time_colm").toString()).isEqualTo("2024-02-02 20:00:00.0");
     assertThat(rows.get(2).get("id")).isEqualTo(java.math.BigDecimal.valueOf(3));
     assertThat(rows.get(2).get("time_colm").toString()).isEqualTo("2024-02-03 06:00:00.0");
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

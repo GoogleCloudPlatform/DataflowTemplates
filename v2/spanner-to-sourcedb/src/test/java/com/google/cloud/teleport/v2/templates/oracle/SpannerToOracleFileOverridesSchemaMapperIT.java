@@ -84,8 +84,9 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        oracleResourceManager = OracleResourceManager.builder(testName).build();
-        createOracleSchema(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE);
+        oracleResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(oracleResourceManager);
+        createOracleSchema(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, testUsername);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, oracleResourceManager);
@@ -139,7 +140,6 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        oracleResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
@@ -192,13 +192,19 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () ->
-                    (oracleResourceManager.getRowCount("\"source_table1\"") == 2
-                        && oracleResourceManager.getRowCount("\"source_table2\"") == 2));
+                    (runIsolatedGetRowCount(
+                                oracleResourceManager, testUsername, "\"source_table1\"")
+                            == 2
+                        && runIsolatedGetRowCount(
+                                oracleResourceManager, testUsername, "\"source_table2\"")
+                            == 2));
     assertThatResult(result).meetsConditions();
 
     // Assert Oracle table1 (should be source_table1, with column name_col1 renamed)
     List<Map<String, Object>> oracleTable1 =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"id_col1\", \"name_col1\", TO_CHAR(\"data_col1\") AS \"data_col1\" FROM \"source_table1\" ORDER BY \"id_col1\" ASC");
     assertThat(oracleTable1).hasSize(2);
     // Note: Oracle might return BigDecimal for INT columns depending on JDBC mapping, using
@@ -212,7 +218,9 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
 
     // Assert Oracle table2 (should be source_table2, with column category_col2 renamed)
     List<Map<String, Object>> oracleTable2 =
-        oracleResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            oracleResourceManager,
+            testUsername,
             "SELECT \"key_col2\", \"category_col2\", TO_CHAR(\"value_col2\") AS \"value_col2\" FROM \"source_table2\" ORDER BY \"key_col2\" ASC");
     assertThat(oracleTable2).hasSize(2);
     assertThat(oracleTable2.get(0).get("key_col2")).isEqualTo("K1");
@@ -221,5 +229,11 @@ public class SpannerToOracleFileOverridesSchemaMapperIT extends SpannerToSourceD
     assertThat(oracleTable2.get(1).get("key_col2")).isEqualTo("K2");
     assertThat(oracleTable2.get(1).get("category_col2")).isEqualTo("Category Beta");
     assertThat(oracleTable2.get(1).get("value_col2")).isEqualTo("Value Beta");
+  }
+
+  @org.junit.AfterClass
+  public static void flushRedo() {
+    SpannerToSourceDbITBase.flushOracleRedoLogs(SharedOracleReverseITContainer.getInstance());
+    SpannerToSourceDbITBase.clearIsolatedUser();
   }
 }

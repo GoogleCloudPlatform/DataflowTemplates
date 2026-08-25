@@ -54,6 +54,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  protected static String testUsername;
+  protected static String testUsernameShardA;
+  protected static String testUsernameShardB;
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -166,6 +169,21 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
+    if (shardId.equals("Shard1") && testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword("password");
+    } else if (shardId.equals("shardA") && testUsernameShardA != null) {
+      shard.setNamespace(testUsernameShardA);
+      shard.setUser(testUsernameShardA);
+      shard.setPassword("password");
+    } else if (shardId.equals("shardB") && testUsernameShardB != null) {
+      shard.setNamespace(testUsernameShardB);
+      shard.setUser(testUsernameShardB);
+      shard.setPassword("password");
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
@@ -570,23 +588,92 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     }
   }
 
+  protected static String setupOracleIsolatedUser(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
+    String username =
+        "REV_"
+            + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    LOG.info("Creating isolated Oracle user: {}", username);
+    jdbcResourceManager.runSQLUpdate("CREATE USER " + username + " IDENTIFIED BY password");
+    jdbcResourceManager.runSQLUpdate("GRANT ALL PRIVILEGES TO " + username);
+    jdbcResourceManager.runSQLUpdate("GRANT UNLIMITED TABLESPACE TO " + username);
+    jdbcResourceManager.runSQLUpdate("GRANT DBA TO " + username);
+    return username;
+  }
+
+  public static long runIsolatedGetRowCount(
+      org.apache.beam.it.jdbc.JDBCResourceManager manager, String testUsername, String tableName) {
+    String fullTableName = testUsername + "." + tableName;
+    return manager.getRowCount(fullTableName);
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> runIsolatedReadTable(
+      org.apache.beam.it.jdbc.JDBCResourceManager manager, String testUsername, String tableName) {
+    String fullTableName = testUsername + "." + tableName;
+    return manager.readTable(fullTableName);
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> runIsolatedSQLQuery(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String testUsername,
+      String query) {
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(), testUsername, "password");
+        java.sql.Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)
+          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
+      java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+      try (java.sql.ResultSet rs = stmt.executeQuery(query)) {
+        java.sql.ResultSetMetaData md = rs.getMetaData();
+        int columns = md.getColumnCount();
+        while (rs.next()) {
+          java.util.Map<String, Object> row = new java.util.HashMap<>(columns);
+          for (int i = 1; i <= columns; ++i) {
+            row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
+          }
+          result.add(row);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException("Error running isolated query", e);
+    }
+  }
+
   protected void createOracleSchema(
-      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager, String mySqlSchemaFile)
-      throws IOException {
+      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager,
+      String mySqlSchemaFile,
+      String targetUsername)
+      throws java.io.IOException {
     String ddl =
         String.join(
             " ",
-            Resources.readLines(
-                Resources.getResource(mySqlSchemaFile), java.nio.charset.StandardCharsets.UTF_8));
-    ddl = ddl.trim();
+            com.google.common.io.Resources.readLines(
+                com.google.common.io.Resources.getResource(mySqlSchemaFile),
+                java.nio.charset.StandardCharsets.UTF_8));
+    ddl = ddl.replaceAll("\r\n", " ").replaceAll("\n", " ");
     String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.trim().isEmpty()) {
-        try {
-          jdbcResourceManager.runSQLUpdate(d);
-        } catch (Exception e) {
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(), targetUsername, "password");
+        java.sql.Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+      }
+      for (String d : ddls) {
+        if (!d.trim().isEmpty() && !d.trim().toUpperCase().startsWith("SELECT")) {
+          try {
+            stmt.executeUpdate(d);
+          } catch (Exception e) {
+            throw new RuntimeException("Failed to execute schema DDL: " + d, e);
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException("failed creating isolated oracle schema", e);
     }
   }
 
@@ -595,4 +682,22 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String arg1,
       int arg2,
       String arg3) {}
+
+  public static void flushOracleRedoLogs(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
+    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      try {
+        jdbcResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        jdbcResourceManager.runSQLUpdate("ALTER SYSTEM CHECKPOINT");
+        LOG.info("Manually flushed Oracle Redo Logs to protect Shared Container.");
+      } catch (Exception e) {
+        LOG.warn("Failed to flush Oracle Redo Logs", e);
+      }
+    }
+  }
+
+  @org.junit.AfterClass
+  public static void clearIsolatedUser() {
+    testUsername = null;
+  }
 }
