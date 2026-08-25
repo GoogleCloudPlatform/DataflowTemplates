@@ -91,7 +91,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         sysBuilder.setHost(sysUser.getHost());
         sysBuilder.setPort(sysUser.getPort());
         sysBuilder.setUsername("sys as sysdba");
-        sysBuilder.setPassword(System.getProperty("cloudProxyPassword"));
+        sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
         sysBuilder.setDatabaseName(sysUser.getDatabaseName());
         CloudOracleResourceManager trueSysUser =
             (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
@@ -105,7 +105,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         builder.setPort(sysUser.getPort());
         builder.setUsername(oracleUser);
         builder.setPassword(oraclePassword);
-        builder.setDatabaseName("/XEPDB1");
+        builder.setDatabaseName("XEPDB1");
 
         jdbcResourceManager =
             (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);

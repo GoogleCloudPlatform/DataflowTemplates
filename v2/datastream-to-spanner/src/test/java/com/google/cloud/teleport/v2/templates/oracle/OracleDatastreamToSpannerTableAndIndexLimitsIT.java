@@ -167,7 +167,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
                         + oracleResourceManager.getHost()
                         + ":"
                         + oracleResourceManager.getPort()
-                        + "/XEPDB1",
+                        + "XEPDB1",
                     "system",
                     "TestPassword123");
             Statement stmt = conn.createStatement(); ) {

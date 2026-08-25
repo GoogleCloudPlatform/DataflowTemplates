@@ -91,7 +91,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         sysBuilder.setHost("" + System.getProperty("hostIp") + "");
         sysBuilder.setPort(1521);
         sysBuilder.setUsername("system");
-        sysBuilder.setDatabaseName("/XEPDB1");
+        sysBuilder.setDatabaseName("XEPDB1");
         cloudOracleSysUser =
             (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
 

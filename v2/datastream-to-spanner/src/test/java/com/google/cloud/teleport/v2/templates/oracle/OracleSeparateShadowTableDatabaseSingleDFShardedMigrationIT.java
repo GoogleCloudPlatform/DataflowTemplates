@@ -101,7 +101,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
-        builder.setPassword(System.getProperty("cloudProxyPassword"));
+        builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
         builder.setHost(System.getProperty("hostIp"));
         builder.setPort(1521);
         builder.setDatabaseName("XE");
@@ -112,7 +112,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
                 CloudOracleResourceManager.builder(testName)
                     .setUsername(System.getProperty("cloudProxyUsername", "system"))
                     .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
-                    .setDatabaseName("/XEPDB1")
+                    .setDatabaseName("XEPDB1")
                     .setHost(System.getProperty("hostIp"))
                     .setPort(1521)
                     .build();

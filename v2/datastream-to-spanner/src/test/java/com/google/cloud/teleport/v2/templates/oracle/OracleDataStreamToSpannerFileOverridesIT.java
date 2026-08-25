@@ -151,7 +151,7 @@ public class OracleDataStreamToSpannerFileOverridesIT extends DataStreamToSpanne
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         if (System.getProperty("hostIp") != null) {
-          sysBuilder.setPassword(System.getProperty("cloudProxyPassword"));
+          sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
           sysBuilder.setHost(System.getProperty("hostIp"));
           sysBuilder.setPort(1521);
           sysBuilder.setUsername("sys as sysdba");
@@ -174,7 +174,7 @@ public class OracleDataStreamToSpannerFileOverridesIT extends DataStreamToSpanne
           builder.setHost(System.getProperty("hostIp"));
           builder.setPort(1521);
           builder.setUsername(oracleUser);
-          builder.setDatabaseName("/XEPDB1");
+          builder.setDatabaseName("XEPDB1");
         }
         oracleResourceManager =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
