@@ -70,7 +70,34 @@ providers:
         - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz
     transforms:
       ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
-      WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
+
+  - type: yaml
+    transforms:
+      WriteToLakehouse:
+        body: |
+          type: WriteToIceberg
+          config:
+            table: "{{table}}"
+            catalog_name: "{{catalog_name}}"
+            catalog_properties: {{catalog_properties}}
+            {% if config_properties %}
+            config_properties: {{config_properties}}
+            {% endif %}
+            {% if drop %}
+            drop: {{drop}}
+            {% endif %}
+            {% if keep %}
+            keep: {{keep}}
+            {% endif %}
+            {% if only %}
+            only: {{only}}
+            {% endif %}
+            {% if partition_fields %}
+            partition_fields: {{partition_fields}}
+            {% endif %}
+            {% if table_properties %}
+            table_properties: {{table_properties}}
+            {% endif %}
 
 options:
   streaming: false
