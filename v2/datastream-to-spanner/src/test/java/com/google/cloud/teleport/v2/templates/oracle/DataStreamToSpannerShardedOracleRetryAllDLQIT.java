@@ -129,7 +129,11 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
                 .build();
         org.apache.beam.it.gcp.datastream.OracleSource jdbcSource =
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    System.getProperty("cloudOracleHost"), oracleUser, oraclePassword, 1521, "XEPDB1")
+                    System.getProperty("cloudOracleHost"),
+                    oracleUser,
+                    oraclePassword,
+                    1521,
+                    "XEPDB1")
                 .setAllowedTables(
                     java.util.Map.of(
                         oracleUser, java.util.List.of("Customers", "Orders", "AllDataTypes")))

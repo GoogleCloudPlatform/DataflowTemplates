@@ -361,7 +361,9 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
 
     try (java.sql.Connection conn =
             java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XEPDB1",
+                "jdbc:oracle:thin:@"
+                    + System.getProperty("cloudOracleHost", "localhost")
+                    + ":1521/XEPDB1",
                 "system",
                 "TestPassword123");
         java.sql.Statement stmt = conn.createStatement()) {

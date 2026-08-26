@@ -191,7 +191,9 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
   private void flushOracleLogs() {
     try (Connection conn =
             DriverManager.getConnection(
-                "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost", "localhost") + ":1521/FREE",
+                "jdbc:oracle:thin:@//"
+                    + System.getProperty("cloudOracleHost", "localhost")
+                    + ":1521/FREE",
                 "system",
                 "TestPassword123");
         Statement stmt = conn.createStatement()) {

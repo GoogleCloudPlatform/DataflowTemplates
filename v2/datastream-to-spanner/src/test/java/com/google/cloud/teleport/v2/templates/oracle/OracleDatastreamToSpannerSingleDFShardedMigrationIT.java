@@ -131,7 +131,11 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 .build();
         org.apache.beam.it.gcp.datastream.OracleSource jdbcSource =
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    System.getProperty("cloudOracleHost"), oracleUser, oraclePassword, 1521, "XEPDB1")
+                    System.getProperty("cloudOracleHost"),
+                    oracleUser,
+                    oraclePassword,
+                    1521,
+                    "XEPDB1")
                 .setAllowedTables(java.util.Map.of(oracleUser, java.util.List.of("Users")))
                 .build();
 
@@ -277,7 +281,8 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
     // Force log file archive - needed so Datastream can see changes which are read from archived
     // log files.
     // Explicit constraint: Hard-boot raw JDBC strictly mapping to FREE at " +
-    // System.getProperty("cloudOracleHost") + ":1521 (User: system, Pass: TestPassword123) calling ALTER
+    // System.getProperty("cloudOracleHost") + ":1521 (User: system, Pass: TestPassword123) calling
+    // ALTER
     // SYSTEM SWITCH LOGFILE.
     try (java.sql.Connection conn =
             java.sql.DriverManager.getConnection(
