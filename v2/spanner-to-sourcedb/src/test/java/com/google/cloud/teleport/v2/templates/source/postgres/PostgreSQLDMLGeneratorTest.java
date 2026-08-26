@@ -475,7 +475,8 @@ public final class PostgreSQLDMLGeneratorTest {
     when(sourceCol.name()).thenReturn("bytea_column");
     when(sourceCol.type()).thenReturn("bytea");
 
-    JSONObject json = new JSONObject("{\"bytea_column\":\"48656c6c6f\"}"); // "Hello" in hex, passed as string
+    JSONObject json =
+        new JSONObject("{\"bytea_column\":\"48656c6c6f\"}"); // "Hello" in hex, passed as string
 
     String res =
         PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);

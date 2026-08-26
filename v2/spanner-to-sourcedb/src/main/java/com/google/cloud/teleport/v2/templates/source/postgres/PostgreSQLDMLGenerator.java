@@ -302,7 +302,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
         if (isStringType(spannerColType)) {
           response = "decode(" + getQuotedEscapedString(colValue, spannerColType) + ", 'hex')";
         } else {
-          response = colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
+          response =
+              colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
         }
         break;
       default:
