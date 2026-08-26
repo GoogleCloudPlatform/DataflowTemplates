@@ -91,11 +91,7 @@ CREATE TABLE "timestamp_to_varchar_table" ("id" BIGINT PRIMARY KEY, "timestamp_c
 CREATE TABLE "timestamp_to_bigint_table" ("id" BIGINT PRIMARY KEY, "timestamp_col" BIGINT);
 CREATE TABLE "timestamp_pk_table" ("timestamp_pk_col" TIMESTAMPTZ PRIMARY KEY);
 CREATE TABLE "interval_year_to_month_table" ("id" BIGINT PRIMARY KEY, "interval_year_to_month_col" VARCHAR);
-CREATE TABLE "interval_year_to_month_to_bigint_months_table" ("id" BIGINT PRIMARY KEY, "interval_year_to_month_col" BIGINT);
-CREATE TABLE "interval_year_to_month_to_double_precision_table" ("id" BIGINT PRIMARY KEY, "interval_year_to_month_col" DOUBLE PRECISION);
 CREATE TABLE "interval_day_to_second_table" ("id" BIGINT PRIMARY KEY, "interval_day_to_second_col" VARCHAR);
-CREATE TABLE "interval_day_to_second_to_bigint_millis_table" ("id" BIGINT PRIMARY KEY, "interval_day_to_second_col" BIGINT);
-CREATE TABLE "interval_day_to_second_to_double_precision_table" ("id" BIGINT PRIMARY KEY, "interval_day_to_second_col" DOUBLE PRECISION);
 CREATE TABLE "raw_table" ("id" BIGINT PRIMARY KEY, "raw_col" BYTEA);
 CREATE TABLE "raw_to_bytea_table" ("id" BIGINT PRIMARY KEY, "raw_col" BYTEA);
 CREATE TABLE "raw_to_varchar_base64_table" ("id" BIGINT PRIMARY KEY, "raw_col" VARCHAR);

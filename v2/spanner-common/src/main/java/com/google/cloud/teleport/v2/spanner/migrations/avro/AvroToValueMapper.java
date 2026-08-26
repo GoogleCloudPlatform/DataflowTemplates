@@ -275,12 +275,22 @@ public class AvroToValueMapper {
     return BooleanUtils.toBoolean(val);
   }
 
+
+
   static Long avroFieldToLong(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
       }
       return Long.parseLong(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to Long, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
@@ -306,6 +316,14 @@ public class AvroToValueMapper {
               + recordValue
               + ", Exception: "
               + e.getMessage());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to float, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     }
   }
 
@@ -315,6 +333,14 @@ public class AvroToValueMapper {
         return null;
       }
       return Double.valueOf(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to double, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
@@ -398,7 +424,14 @@ public class AvroToValueMapper {
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }
-        return ByteArray.copyFrom(Hex.decodeHex(s));
+        try {
+          return ByteArray.copyFrom(Hex.decodeHex(s));
+        } catch (org.apache.commons.codec.DecoderException e) {
+          // If the string is not a valid hex string (e.g., JSON string or char mapped to BYTES),
+          // fallback to standard UTF-8 bytes to prevent pipeline drops.
+          return ByteArray.copyFrom(
+              recordValue.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
       }
       return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {

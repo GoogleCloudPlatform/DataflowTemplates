@@ -92,23 +92,29 @@ public class OracleSourceDbToSpannerTimezoneIT extends SourceDbToSpannerITBase {
     row.put("id", 1);
     row.put("timestamp_column", "2024-02-02T00:00:00Z");
     row.put("datetime_column", "2024-02-02T10:00:00Z");
+    row.put("timestamp_tz_column", "2024-02-02T00:00:00Z");
+    row.put("date_column", "2024-02-02T10:00:00Z");
     expectedRows.add(row);
 
     row = new HashMap<>();
     row.put("id", 2);
     row.put("timestamp_column", "2024-02-02T10:00:00Z");
     row.put("datetime_column", "2024-02-02T20:00:00Z");
+    row.put("timestamp_tz_column", "2024-02-02T10:00:00Z");
+    row.put("date_column", "2024-02-02T20:00:00Z");
     expectedRows.add(row);
 
     row = new HashMap<>();
     row.put("id", 3);
     row.put("timestamp_column", "2024-02-02T20:00:00Z");
     row.put("datetime_column", "2024-02-03T06:00:00Z");
+    row.put("timestamp_tz_column", "2024-02-02T20:00:00Z");
+    row.put("date_column", "2024-02-03T06:00:00Z");
     expectedRows.add(row);
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "select id, timestamp_column, datetime_column from DateData"))
+                "select id, timestamp_column, datetime_column, timestamp_tz_column, date_column from DateData"))
         .hasRecordsUnorderedCaseInsensitiveColumns(expectedRows);
   }
 }

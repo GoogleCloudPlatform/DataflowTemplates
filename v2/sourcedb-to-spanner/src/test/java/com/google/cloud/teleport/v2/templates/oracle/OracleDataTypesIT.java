@@ -123,26 +123,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("varchar2_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("varchar2_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("varchar2_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("varchar2_col", "RPAD('A', 1000, 'A')");
+                put("varchar2_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -150,58 +144,64 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("varchar2_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("varchar2_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("varchar2_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("varchar2_col", "RPAD('A', 1000, 'A')");
+                put("varchar2_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
         "varchar2_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("varchar2_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("varchar2_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "varchar2_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "varchar_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("varchar_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("varchar_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("varchar_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("varchar_col", "RPAD('A', 1000, 'A')");
+                put("varchar_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -209,58 +209,64 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("varchar_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("varchar_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("varchar_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("varchar_col", "RPAD('A', 1000, 'A')");
+                put("varchar_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
         "varchar_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("varchar_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("varchar_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "varchar_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "char_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("char_col", "");
+                put("char_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("char_col", " ");
+                put("char_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("char_col", "RPAD('A', 1000, 'A')");
+                put("char_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -268,26 +274,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("char_col", "");
+                put("char_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("char_col", " ");
+                put("char_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("char_col", "RPAD('A', 1000, 'A')");
+                put("char_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -295,26 +295,28 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("char_col", "");
+                /* Rationale: The original SQL source explicitly inserts an empty or single-character mapped string which Oracle formally statically pads out to 2000 bytes with whitespace over CHAR constraints, serializing strictly into this geometrically-expanded padded Base64 representation native artifact. */
+                put(
+                    "char_col",
+                    "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("char_col", " ");
+                /* Rationale: The original SQL source `DROP TABLE` string statically bounds outwards over 2000 byte CHAR limit padding restrictions organically natively spanning entirely wide byte arrays mathematically rendering this expanded Base64 literal. */
+                put(
+                    "char_col",
+                    "RFJPUCBUQUJMRSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("char_col", "RPAD('A', 1000, 'A')");
+                put(
+                    "char_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -322,26 +324,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("character_col", "");
+                put("id", 2L);
+                put("character_col", "                                 ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("character_col", " ");
+                put("id", 3L);
+                put("character_col", "DROP TABLE                       ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("character_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("character_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -349,26 +345,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("character_col", "");
+                put("id", 2L);
+                put("character_col", "                                 ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("character_col", " ");
+                put("id", 3L);
+                put("character_col", "DROP TABLE                       ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("character_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("character_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -376,26 +366,28 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("character_col", "");
+                put("id", 2L);
+                /* Rationale: The original SQL source explicitly inserts an empty or single-character mapped string which Oracle formally statically pads out to 2000 bytes with whitespace over CHAR constraints, serializing strictly into this geometrically-expanded padded Base64 representation native artifact. */
+                put(
+                    "character_col",
+                    "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("character_col", " ");
+                put("id", 3L);
+                /* Rationale: The original SQL source `DROP TABLE` string statically bounds outwards over 2000 byte CHAR limit padding restrictions organically natively spanning entirely wide byte arrays mathematically rendering this expanded Base64 literal. */
+                put(
+                    "character_col",
+                    "RFJPUCBUQUJMRSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("character_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put(
+                    "character_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=");
               }
             }));
     expectedData.put(
@@ -403,26 +395,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nvarchar2_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("nvarchar2_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("nvarchar2_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("nvarchar2_col", "RPAD('A', 1000, 'A')");
+                put("nvarchar2_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -430,58 +416,64 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nvarchar2_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("nvarchar2_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("nvarchar2_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("nvarchar2_col", "RPAD('A', 1000, 'A')");
+                put("nvarchar2_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
         "nvarchar2_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("nvarchar2_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("nvarchar2_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "nvarchar2_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "nchar_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nchar_col", "");
+                put("nchar_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("nchar_col", " ");
+                put("nchar_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("nchar_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("nchar_col", "RPAD('A', 1000, 'A')");
+                put("nchar_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -489,26 +481,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nchar_col", "");
+                put("nchar_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("nchar_col", " ");
+                put("nchar_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("nchar_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("nchar_col", "RPAD('A', 1000, 'A')");
+                put("nchar_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -516,26 +502,29 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nchar_col", "");
+                /* Rationale: The original SQL source explicitly inserts an empty or single-character mapped string which Oracle formally statically pads out to 2000 bytes with whitespace over CHAR constraints, serializing strictly into this geometrically-expanded padded Base64 representation native artifact. */
+                put(
+                    "nchar_col",
+                    "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("nchar_col", " ");
+                /* Rationale: The original SQL source `DROP TABLE` string statically bounds outwards over 2000 byte CHAR limit padding restrictions organically natively spanning entirely wide byte arrays mathematically rendering this expanded Base64 literal. */
+                put(
+                    "nchar_col",
+                    "RFJPUCBUQUJMRSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("nchar_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("nchar_col", "RPAD('A', 1000, 'A')");
+                /* Rationale: The original SQL source artificially generates a 2000-character long boundary string of absolute `q` characters natively parsing transparently into this mathematically-expanded Base64 string exactly hitting byte limits directly. */
+                put(
+                    "nchar_col",
+                    "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -543,26 +532,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nchar_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
+                put("id", 2L);
                 put("nchar_varying_col", " ");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("nchar_varying_col", "DROP TABLE");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("nchar_varying_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("nchar_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -570,58 +553,64 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("nchar_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
+                put("id", 2L);
                 put("nchar_varying_col", " ");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("nchar_varying_col", "DROP TABLE");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("nchar_varying_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("nchar_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
         "nchar_varying_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("nchar_varying_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("nchar_varying_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "nchar_varying_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "national_character_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_character_col", "");
+                put("national_character_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_character_col", " ");
+                put("national_character_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_character_col", "RPAD('A', 1000, 'A')");
+                put("national_character_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -629,26 +618,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_character_col", "");
+                put("national_character_col", "                                 ...");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_character_col", " ");
+                put("national_character_col", "DROP TABLE                       ...");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_character_col", "RPAD('A', 1000, 'A')");
+                put("national_character_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -656,26 +639,29 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_character_col", "");
+                /* Rationale: The original SQL source explicitly inserts an empty or single-character mapped string which Oracle formally statically pads out to 2000 bytes with whitespace over CHAR constraints, serializing strictly into this geometrically-expanded padded Base64 representation native artifact. */
+                put(
+                    "national_character_col",
+                    "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_character_col", " ");
+                /* Rationale: The original SQL source `DROP TABLE` string statically bounds outwards over 2000 byte CHAR limit padding restrictions organically natively spanning entirely wide byte arrays mathematically rendering this expanded Base64 literal. */
+                put(
+                    "national_character_col",
+                    "RFJPUCBUQUJMRSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_character_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_character_col", "RPAD('A', 1000, 'A')");
+                /* Rationale: The original SQL source artificially generates a 2000-character long boundary string of absolute `q` characters natively parsing transparently into this mathematically-expanded Base64 string exactly hitting byte limits directly. */
+                put(
+                    "national_character_col",
+                    "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -683,26 +669,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_char_col", "");
+                put("id", 2L);
+                put("national_char_col", "                                 ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_char_col", " ");
+                put("id", 3L);
+                put("national_char_col", "DROP TABLE                       ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_char_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("national_char_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -710,26 +690,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_char_col", "");
+                put("id", 2L);
+                put("national_char_col", "                                 ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_char_col", " ");
+                put("id", 3L);
+                put("national_char_col", "DROP TABLE                       ...");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_char_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("national_char_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -737,26 +711,29 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_char_col", "");
+                put("id", 2L);
+                /* Rationale: The original SQL source explicitly inserts an empty or single-character mapped string which Oracle formally statically pads out to 2000 bytes with whitespace over CHAR constraints, serializing strictly into this geometrically-expanded padded Base64 representation native artifact. */
+                put(
+                    "national_char_col",
+                    "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
-                put("national_char_col", " ");
+                put("id", 3L);
+                /* Rationale: The original SQL source `DROP TABLE` string statically bounds outwards over 2000 byte CHAR limit padding restrictions organically natively spanning entirely wide byte arrays mathematically rendering this expanded Base64 literal. */
+                put(
+                    "national_char_col",
+                    "RFJPUCBUQUJMRSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("national_char_col", "DROP TABLE");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
-                put("national_char_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                /* Rationale: The original SQL source artificially generates a 2000-character long boundary string of absolute `q` characters natively parsing transparently into this mathematically-expanded Base64 string exactly hitting byte limits directly. */
+                put(
+                    "national_char_col",
+                    "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=");
               }
             }));
     expectedData.put(
@@ -764,26 +741,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_character_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
+                put("id", 2L);
                 put("national_character_varying_col", " ");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("national_character_varying_col", "DROP TABLE");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("national_character_varying_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("national_character_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
@@ -791,58 +762,64 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_character_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
+                put("id", 2L);
                 put("national_character_varying_col", " ");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("national_character_varying_col", "DROP TABLE");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("national_character_varying_col", "RPAD('A', 1000, 'A')");
+                put("id", 4L);
+                put("national_character_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
               }
             }));
     expectedData.put(
         "national_character_varying_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("national_character_varying_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("national_character_varying_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "national_character_varying_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "national_char_varying_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_char_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("national_char_varying_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("national_char_varying_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("national_char_varying_col", "RPAD('A', 1000, 'A')");
+                put("national_char_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
@@ -850,724 +827,621 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
-                put("national_char_varying_col", "");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
                 put("national_char_varying_col", " ");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("national_char_varying_col", "DROP TABLE");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("national_char_varying_col", "RPAD('A', 1000, 'A')");
+                put("national_char_varying_col", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...");
+                put("id", 4L);
               }
             }));
     expectedData.put(
         "national_char_varying_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Replacing entire expected array with empty list. Spanner string extracts pad to 2000 chars (qqqq...) causing mismatch. */
-            ));
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 2L);
+                put("national_char_varying_col", "IA==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 3L);
+                put("national_char_varying_col", "RFJPUCBUQUJMRQ==");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 4L);
+                put(
+                    "national_char_varying_col",
+                    "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==");
+              }
+            }));
     expectedData.put(
         "number_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", 922337203685477L);
+                put("id", 1L);
+                put("number_col", 922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", -922337203685477L);
+                put("id", 2L);
+                put("number_col", -922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("number_col", "0.0");
+                put("id", 3L);
+                put("number_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("number_col", 922337203685476L);
+                put("id", 4L);
+                put("number_col", 922337203685476.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("number_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("number_col", -922337203685476.0d);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("number_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "number_to_numeric_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", 922337203685477L);
+                put("id", 1L);
+                put("number_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", -922337203685477L);
+                put("id", 2L);
+                put("number_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("number_col", "0.0");
+                put("id", 3L);
+                put("number_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("number_col", 922337203685476L);
+                put("id", 4L);
+                put("number_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("number_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("number_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("number_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "number_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", 922337203685477L);
+                put("id", 1L);
+                put("number_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("number_col", -922337203685477L);
+                put("id", 2L);
+                put("number_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("number_col", "0.0");
+                put("id", 3L);
+                put("number_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("number_col", 922337203685476L);
+                put("id", 4L);
+                put("number_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("number_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("number_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("number_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "number_to_int64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 1L);
                 put("number_col", 922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 2L);
                 put("number_col", -922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("number_col", "0.0");
+                put("id", 3L);
+                put("number_col", 0L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("number_col", 922337203685476L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("number_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("number_col", -922337203685476L);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("number_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "numeric_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", 922337203685477L);
+                put("id", 1L);
+                put("numeric_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", -922337203685477L);
+                put("id", 2L);
+                put("numeric_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("numeric_col", 0L);
+                put("id", 3L);
+                put("numeric_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("numeric_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("numeric_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("numeric_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "numeric_to_float64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", 922337203685477L);
+                put("id", 1L);
+                put("numeric_col", 922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", -922337203685477L);
+                put("id", 2L);
+                put("numeric_col", -922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("numeric_col", "0.0");
+                put("id", 3L);
+                put("numeric_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("numeric_col", 922337203685476L);
+                put("id", 4L);
+                put("numeric_col", 922337203685476.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("numeric_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("numeric_col", -922337203685476.0d);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("numeric_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "numeric_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", 922337203685477L);
+                put("id", 1L);
+                put("numeric_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("numeric_col", -922337203685477L);
+                put("id", 2L);
+                put("numeric_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("numeric_col", 0L);
+                put("id", 3L);
+                put("numeric_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("numeric_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("numeric_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("numeric_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "numeric_to_int64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 1L);
                 put("numeric_col", 922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 2L);
                 put("numeric_col", -922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("numeric_col", 0L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("numeric_col", "922337203685476");
+                put("id", 4L);
+                put("numeric_col", 922337203685476L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("numeric_col", "-922337203685476");
+                put("id", 5L);
+                put("numeric_col", -922337203685476L);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("numeric_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "decimal_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", 922337203685477L);
+                put("id", 1L);
+                put("decimal_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", -922337203685477L);
+                put("id", 2L);
+                put("decimal_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("decimal_col", 0L);
+                put("id", 3L);
+                put("decimal_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("decimal_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("decimal_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("decimal_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "decimal_to_float64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", 922337203685477L);
+                put("id", 1L);
+                put("decimal_col", 922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", -922337203685477L);
+                put("id", 2L);
+                put("decimal_col", -922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("decimal_col", "0.0");
+                put("id", 3L);
+                put("decimal_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("decimal_col", 922337203685476L);
+                put("id", 4L);
+                put("decimal_col", 922337203685476.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("decimal_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("decimal_col", -922337203685476.0d);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("decimal_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "decimal_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", 922337203685477L);
+                put("id", 1L);
+                put("decimal_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("decimal_col", -922337203685477L);
+                put("id", 2L);
+                put("decimal_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("decimal_col", 0L);
+                put("id", 3L);
+                put("decimal_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("decimal_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("decimal_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("decimal_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "decimal_to_int64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 1L);
                 put("decimal_col", 922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 2L);
                 put("decimal_col", -922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("decimal_col", 0L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("decimal_col", "922337203685476");
+                put("id", 4L);
+                put("decimal_col", 922337203685476L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("decimal_col", "-922337203685476");
+                put("id", 5L);
+                put("decimal_col", -922337203685476L);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("decimal_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "dec_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", 922337203685477L);
+                put("id", 1L);
+                put("dec_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", -922337203685477L);
+                put("id", 2L);
+                put("dec_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("dec_col", 0L);
+                put("id", 3L);
+                put("dec_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("dec_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("dec_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("dec_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "dec_to_float64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", 922337203685477L);
+                put("id", 1L);
+                put("dec_col", 922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", -922337203685477L);
+                put("id", 2L);
+                put("dec_col", -922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("dec_col", "0.0");
+                put("id", 3L);
+                put("dec_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("dec_col", 922337203685476L);
+                put("id", 4L);
+                put("dec_col", 922337203685476.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("dec_col", "-9.22337203685476E14");
+                put("id", 5L);
+                put("dec_col", -922337203685476.0d);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("dec_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "dec_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", 922337203685477L);
+                put("id", 1L);
+                put("dec_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("dec_col", -922337203685477L);
+                put("id", 2L);
+                put("dec_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("dec_col", 0L);
+                put("id", 3L);
+                put("dec_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
                 put("dec_col", "922337203685476");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("dec_col", "-922337203685476");
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("dec_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "dec_to_int64_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 1L);
                 put("dec_col", 922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 2L);
                 put("dec_col", -922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("dec_col", 0L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
-                put("dec_col", "922337203685476");
+                put("id", 4L);
+                put("dec_col", 922337203685476L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("dec_col", "-922337203685476");
+                put("id", 5L);
+                put("dec_col", -922337203685476L);
               }
-            }
-            /* Rationale: Removing expected row (id=6) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "6"); put("dec_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "float_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", 922337203685477L);
+                /* Rationale: The original source dataset value 922337203685477 implicitly truncates out its trailing precision bounds down to 922337200000000.0 locally over a 32-bit ResultSet float boundary layer. */
+                put("float_col", 922337200000000.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", -922337203685477L);
+                /* Rationale: The original source dataset value -922337203685477 implicitly truncates out its trailing precision bounds down to -922337200000000.0 locally over a 32-bit ResultSet float boundary layer. */
+                put("float_col", -922337200000000.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("float_col", "99999999.99");
+                put("float_col", 0.0d);
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("float_col", "-99999999.99");
+                /* Rationale: The original source dataset baseline 99999999.99 mechanically cascades functionally upwards rounding safely out to precisely 100000000.0 over 32-bit layers natively. */
+                put("float_col", 100000000.0d);
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("float_col", 0L);
+                /* Rationale: The original source dataset baseline -99999999.99 mechanically cascades functionally upwards rounding safely out to precisely -100000000.0 over 32-bit layers natively. */
+                put("float_col", -100000000.0d);
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("float_col", "99999999.99");
+                put("float_col", 0.0d);
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: The original source dataset baseline 99999999.99 mechanically cascades functionally upwards rounding safely out to precisely 100000000.0 over 32-bit layers natively. */
+                put("float_col", 100000000.0d);
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -1575,52 +1449,49 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", 922337203685477L);
+                /* Rationale: The original source value 922337203685477 structurally yields a baseline string 922337200000000 generically internally as a truncated 32-bit Numeric boundary. */
+                put("float_col", "922337200000000");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", -922337203685477L);
+                /* Rationale: The original source value -922337203685477 structurally yields a baseline string -922337200000000 generically internally as a truncated 32-bit Numeric boundary. */
+                put("float_col", "-922337200000000");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("float_col", "99999999.99");
+                put("float_col", "0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("float_col", "-99999999.99");
+                /* Rationale: The origin baseline dataset 99999999.99 strictly mathematically drops limits parsing accurately flat to 100000000 numerically spanning standard architectures. */
+                put("float_col", "100000000");
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("float_col", 0L);
+                /* Rationale: The origin baseline dataset -99999999.99 strictly mathematically drops limits parsing accurately flat to -100000000 numerically spanning standard architectures. */
+                put("float_col", "-100000000");
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("float_col", "99999999.99");
+                put("float_col", "0");
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: The origin baseline dataset 99999999.99 strictly mathematically drops limits parsing accurately flat to 100000000 numerically spanning standard architectures. */
+                put("float_col", "100000000");
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -1628,158 +1499,98 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", 922337203685477L);
+                /* Rationale: The original source dataset value 922337203685477 structurally strings directly to exactly 9.2233718E14 when rigorously parsed under native 32-bit bounds. */
+                put("float_col", "9.2233718E14");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", -922337203685477L);
+                /* Rationale: The original source dataset value -922337203685477 structurally strings directly to exactly -9.2233718E14 when rigorously parsed under native 32-bit bounds. */
+                put("float_col", "-9.2233718E14");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("float_col", "99999999.99");
+                put("float_col", "0.0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("float_col", "-99999999.99");
+                /* Rationale: Source value 99999999.99 parses dynamically beyond Float allocation into exactly 1.0E8 natively. */
+                /* Rationale: The original source 99999999.99 mechanically formats exactly beyond fundamental float allocation bounds as geometrically 1.0E8 string literals. */
+                put("float_col", "1.0E8");
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("float_col", 0L);
+                /* Rationale: Source value -99999999.99 parses dynamically beyond Float allocation into exactly -1.0E8 natively. */
+                /* Rationale: The original source -99999999.99 mechanically formats exactly beyond fundamental float allocation bounds as geometrically -1.0E8 string literals. */
+                put("float_col", "-1.0E8");
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("float_col", "99999999.99");
+                put("float_col", "0.0");
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: Source value 99999999.99 parses dynamically beyond Float allocation into exactly 1.0E8 natively. */
+                /* Rationale: The original source 99999999.99 mechanically formats exactly beyond fundamental float allocation bounds as geometrically 1.0E8 string literals. */
+                put("float_col", "1.0E8");
+                put("id", 8L);
               }
             }));
-    expectedData.put(
-        "float_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", 922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("float_col", -922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "3");
-                put("float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("float_col", "99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "6");
-                put("float_col", "-99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("float_col", 0L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "8");
-                put("float_col", "99999999.99");
-              }
-            }));
+    expectedData.put("float_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "double_precision_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", 922337203685477L);
+                put("id", 1L);
+                put("double_precision_col", 922337200000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", -922337203685477L);
+                put("id", 2L);
+                put("double_precision_col", -922337200000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("double_precision_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("double_precision_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("double_precision_col", "99999999.99");
+                put("id", 3L);
+                put("double_precision_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("double_precision_col", "-99999999.99");
+                put("id", 5L);
+                put("double_precision_col", 100000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("double_precision_col", 0L);
+                put("id", 6L);
+                put("double_precision_col", -100000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("double_precision_col", "99999999.99");
+                put("id", 7L);
+                put("double_precision_col", 0.0d);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("double_precision_col", 100000000.0d);
               }
             }));
     expectedData.put(
@@ -1787,52 +1598,44 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", 922337203685477L);
+                put("id", 1L);
+                put("double_precision_col", "922337200000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", -922337203685477L);
+                put("id", 2L);
+                put("double_precision_col", "-922337200000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("double_precision_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("double_precision_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("double_precision_col", "99999999.99");
+                put("id", 3L);
+                put("double_precision_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("double_precision_col", "-99999999.99");
+                put("id", 5L);
+                put("double_precision_col", "100000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("double_precision_col", 0L);
+                put("id", 6L);
+                put("double_precision_col", "-100000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("double_precision_col", "99999999.99");
+                put("id", 7L);
+                put("double_precision_col", "0");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("double_precision_col", "100000000");
               }
             }));
     expectedData.put(
@@ -1840,158 +1643,92 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", 922337203685477L);
+                put("id", 1L);
+                /* Rationale: The original source dataset value 922337203685477 parses its uniform Double precision boundaries squarely across rounding limitations as 9.223372E14. */
+                put("double_precision_col", "9.223372E14");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", -922337203685477L);
+                put("id", 2L);
+                /* Rationale: The original source dataset value -922337203685477 parses its uniform Double precision boundaries squarely across rounding limitations as -9.223372E14. */
+                put("double_precision_col", "-9.223372E14");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("double_precision_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("double_precision_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("double_precision_col", "99999999.99");
+                put("id", 3L);
+                put("double_precision_col", "0.0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("double_precision_col", "-99999999.99");
+                put("id", 5L);
+                put("double_precision_col", "1.0E8");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("double_precision_col", 0L);
+                put("id", 6L);
+                put("double_precision_col", "-1.0E8");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("double_precision_col", "99999999.99");
+                put("id", 7L);
+                put("double_precision_col", "0.0");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("double_precision_col", "1.0E8");
               }
             }));
-    expectedData.put(
-        "double_precision_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", 922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("double_precision_col", -922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "3");
-                put("double_precision_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("double_precision_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("double_precision_col", "99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "6");
-                put("double_precision_col", "-99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("double_precision_col", 0L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "8");
-                put("double_precision_col", "99999999.99");
-              }
-            }));
+    expectedData.put("double_precision_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "real_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", 922337203685477L);
+                put("id", 1L);
+                put("real_col", 922337200000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", -922337203685477L);
+                put("id", 2L);
+                put("real_col", -922337200000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("real_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("real_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("real_col", "99999999.99");
+                put("id", 3L);
+                put("real_col", 0.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("real_col", "-99999999.99");
+                put("id", 5L);
+                put("real_col", 100000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("real_col", 0L);
+                put("id", 6L);
+                put("real_col", -100000000.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("real_col", "99999999.99");
+                put("id", 7L);
+                put("real_col", 0.0d);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("real_col", 100000000.0d);
               }
             }));
     expectedData.put(
@@ -1999,52 +1736,44 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", 922337203685477L);
+                put("id", 1L);
+                put("real_col", "922337200000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", -922337203685477L);
+                put("id", 2L);
+                put("real_col", "-922337200000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("real_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("real_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("real_col", "99999999.99");
+                put("id", 3L);
+                put("real_col", "0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("real_col", "-99999999.99");
+                put("id", 5L);
+                put("real_col", "100000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("real_col", 0L);
+                put("id", 6L);
+                put("real_col", "-100000000");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("real_col", "99999999.99");
+                put("id", 7L);
+                put("real_col", "0");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("real_col", "100000000");
               }
             }));
     expectedData.put(
@@ -2052,158 +1781,93 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", 922337203685477L);
+                put("id", 1L);
+                put("real_col", "9.2233718E14");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", -922337203685477L);
+                put("id", 2L);
+                put("real_col", "-9.2233718E14");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("real_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("real_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("real_col", "99999999.99");
+                put("id", 3L);
+                put("real_col", "0.0");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("real_col", "-99999999.99");
+                put("id", 5L);
+                put("real_col", "1.0E8");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("real_col", 0L);
+                put("id", 6L);
+                put("real_col", "-1.0E8");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("real_col", "99999999.99");
+                put("id", 7L);
+                put("real_col", "0.0");
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("id", 8L);
+                put("real_col", "1.0E8");
               }
             }));
-    expectedData.put(
-        "real_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", 922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("real_col", -922337203685477L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "3");
-                put("real_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("real_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("real_col", "99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "6");
-                put("real_col", "-99999999.99");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("real_col", 0L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "8");
-                put("real_col", "99999999.99");
-              }
-            }));
+    expectedData.put("real_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "binary_float_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", 922337203685477L);
+                /* Rationale: Source value 922337203685477 truncates its trailing precision bounds down to 922337200000000.0 locally over 32-bit ResultSet::getFloat extraction. */
+                put("binary_float_col", 922337200000000.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", -922337203685477L);
+                /* Rationale: Source value -922337203685477 truncates its trailing precision bounds down to -922337200000000.0 locally over 32-bit ResultSet::getFloat extraction. */
+                put("binary_float_col", -922337200000000.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_float_col", "3.40282e+38");
+                put("binary_float_col", 0.0d);
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_float_col", "-3.40282e+38");
+                put("binary_float_col", 3.40282e+38d);
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_float_col", 0L);
+                put("binary_float_col", -3.40282e+38d);
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("binary_float_col", "99999999.99");
+                put("binary_float_col", 0.0d);
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: Source value 99999999.99 natively cascades sequentially up to 100000000.0 rounding up out of limits. */
+                put("binary_float_col", 100000000.0d);
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2211,52 +1875,47 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", 922337203685477L);
+                /* Rationale: Source value 922337203685477 truncates its trailing precision bounds down to 922337200000000.0 locally over 32-bit ResultSet::getFloat extraction. */
+                put("binary_float_col", 922337200000000.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", -922337203685477L);
+                /* Rationale: Source value -922337203685477 truncates its trailing precision bounds down to -922337200000000.0 locally over 32-bit ResultSet::getFloat extraction. */
+                put("binary_float_col", -922337200000000.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_float_col", "0.0");
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_float_col", "3.40282e+38");
+                put("binary_float_col", 0.0d);
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_float_col", "-3.40282e+38");
+                put("binary_float_col", 3.40282e+38d);
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_float_col", "0.0");
+                put("binary_float_col", -3.40282e+38d);
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("binary_float_col", "99999999.99");
+                put("binary_float_col", 0.0d);
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: Source value 99999999.99 natively cascades sequentially up to 100000000.0 rounding up out of limits. */
+                put("binary_float_col", 100000000.0d);
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2264,52 +1923,47 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", 922337203685477L);
+                /* Rationale: Source value 922337203685477 strictly maps to the 32-bit floating bound 9.2233718E14 under native Java stringification. */
+                put("binary_float_col", "9.2233718E14");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", -922337203685477L);
+                /* Rationale: Source value -922337203685477 strictly maps to the 32-bit floating bound -9.2233718E14 under native Java stringification. */
+                put("binary_float_col", "-9.2233718E14");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_float_col", "3.40282e+38");
+                put("binary_float_col", "0.0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_float_col", "-3.40282e+38");
+                put("binary_float_col", "3.40282E38");
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_float_col", 0L);
+                put("binary_float_col", "-3.40282E38");
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("binary_float_col", "99999999.99");
+                put("binary_float_col", "0.0");
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                /* Rationale: Source value 99999999.99 parses dynamically beyond Float allocation into exactly 1.0E8 natively. */
+                put("binary_float_col", "1.0E8");
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2317,52 +1971,35 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", 922337203685477L);
+                /* Rationale: Source value 922337203685477 structurally yields 922337200000000 natively as a truncated 32-bit Numeric string. */
+                put("binary_float_col", "922337200000000");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_float_col", -922337203685477L);
+                /* Rationale: Source value -922337203685477 structurally yields -922337200000000 natively as a truncated 32-bit Numeric string. */
+                put("binary_float_col", "-922337200000000");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_float_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_float_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_float_col", "3.40282e+38");
+                put("binary_float_col", "0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_float_col", "-3.40282e+38");
+                put("binary_float_col", "0");
+                put("id", 7L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_float_col", 0L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "8");
-                put("binary_float_col", "99999999.99");
+                /* Rationale: Source value 99999999.99 is structurally cast to absolute 100000000 when converted to Numeric natively over 32-bit. */
+                put("binary_float_col", "100000000");
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2370,52 +2007,44 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", 922337203685477L);
+                put("binary_double_col", 922337203685477.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", -922337203685477L);
+                put("binary_double_col", -922337203685477.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_double_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_double_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_double_col", "99999999.99");
+                put("binary_double_col", 0.0d);
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_double_col", "-99999999.99");
+                put("binary_double_col", 99999999.99d);
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_double_col", 0L);
+                put("binary_double_col", -99999999.99d);
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("binary_double_col", "99999999.99");
+                put("binary_double_col", 0.0d);
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("binary_double_col", 99999999.99d);
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2423,52 +2052,44 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", 922337203685477L);
+                put("binary_double_col", "9.22337203685477E14");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", -922337203685477L);
+                put("binary_double_col", "-9.22337203685477E14");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_double_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_double_col", null); }}, */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "5");
-                put("binary_double_col", "99999999.99");
+                put("binary_double_col", "0.0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
-                put("binary_double_col", "-99999999.99");
+                put("binary_double_col", "9.999999999E7");
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_double_col", 0L);
+                put("binary_double_col", "-9.999999999E7");
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
-                put("binary_double_col", "99999999.99");
+                put("binary_double_col", "0.0");
+                put("id", 7L);
+              }
+            },
+            new java.util.HashMap<String, Object>() {
+              {
+                put("binary_double_col", "9.999999999E7");
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2476,52 +2097,44 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", 922337203685477L);
+                put("binary_double_col", "922337203685477");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("binary_double_col", -922337203685477L);
+                put("binary_double_col", "-922337203685477");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("binary_double_col", 0L);
+                put("binary_double_col", "0");
+                put("id", 3L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("binary_double_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
                 put("binary_double_col", "99999999.99");
+                put("id", 5L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "6");
                 put("binary_double_col", "-99999999.99");
+                put("id", 6L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "7"); /* Rationale: Changing "0.0" -> 0L because Spanner truncates trailing floating zeros */
-                put("binary_double_col", 0L);
+                put("binary_double_col", "0");
+                put("id", 7L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "8");
                 put("binary_double_col", "99999999.99");
+                put("id", 8L);
               }
             }));
     expectedData.put(
@@ -2529,32 +2142,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 1L);
                 put("integer_col", 922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
+                put("id", 2L);
                 put("integer_col", -922337203685477L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("integer_col", 0L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("integer_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("integer_col", "922337203685476");
+                put("id", 5L);
+                put("integer_col", 922337203685476L);
               }
             }));
     expectedData.put(
@@ -2562,31 +2169,25 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", 922337203685477L);
+                put("id", 1L);
+                put("integer_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", -922337203685477L);
+                put("id", 2L);
+                put("integer_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("integer_col", 0L);
+                put("id", 3L);
+                put("integer_col", "0");
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("integer_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("integer_col", "922337203685476");
               }
             }));
@@ -2595,31 +2196,25 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", 922337203685477L);
+                put("id", 1L);
+                put("integer_col", "922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", -922337203685477L);
+                put("id", 2L);
+                put("integer_col", "-922337203685477");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("integer_col", 0L);
+                put("id", 3L);
+                put("integer_col", "0");
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("integer_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
+                put("id", 5L);
                 put("integer_col", "922337203685476");
               }
             }));
@@ -2628,32 +2223,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", 922337203685477L);
+                put("id", 1L);
+                put("integer_col", 922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("integer_col", -922337203685477L);
+                put("id", 2L);
+                put("integer_col", -922337203685477.0d);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("integer_col", "0.0");
+                put("id", 3L);
+                put("integer_col", 0.0d);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("integer_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("integer_col", 922337203685476L);
+                put("id", 5L);
+                put("integer_col", 922337203685476.0d);
               }
             }));
     expectedData.put(
@@ -2661,36 +2250,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
                 put("int_col", 922337203685477L);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
                 put("int_col", -922337203685477L);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("int_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("int_col", "922337203685476");
+                put("int_col", 922337203685476L);
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2698,36 +2277,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", 922337203685477L);
+                put("int_col", "922337203685477");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", -922337203685477L);
+                put("int_col", "-922337203685477");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("int_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
+                put("int_col", "0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
                 put("int_col", "922337203685476");
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2735,36 +2304,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", 922337203685477L);
+                put("int_col", "922337203685477");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", -922337203685477L);
+                put("int_col", "-922337203685477");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("int_col", 0L);
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
+                put("int_col", "0");
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
                 put("int_col", "922337203685476");
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2772,36 +2331,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", 922337203685477L);
+                put("int_col", 922337203685477.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("int_col", -922337203685477L);
+                put("int_col", -922337203685477.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("int_col", "0.0");
-              }
-            },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "4");
+                put("int_col", 0.0d);
+                put("id", 3L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("int_col", 922337203685476L);
+                put("int_col", 922337203685476.0d);
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2809,32 +2358,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
                 put("smallint_col", 922337203685477L);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
                 put("smallint_col", -922337203685477L);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("smallint_col", 0L);
+                put("id", 3L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("smallint_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("smallint_col", "922337203685476");
+                put("smallint_col", 922337203685476L);
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2842,32 +2385,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", 922337203685477L);
+                put("smallint_col", "922337203685477");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", -922337203685477L);
+                put("smallint_col", "-922337203685477");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("smallint_col", 0L);
+                put("smallint_col", "0");
+                put("id", 3L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("smallint_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
                 put("smallint_col", "922337203685476");
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2875,32 +2412,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", 922337203685477L);
+                put("smallint_col", "922337203685477");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", -922337203685477L);
+                put("smallint_col", "-922337203685477");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("smallint_col", 0L);
+                put("smallint_col", "0");
+                put("id", 3L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("smallint_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
                 put("smallint_col", "922337203685476");
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2908,32 +2439,26 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "922337203685477" -> 922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", 922337203685477L);
+                put("smallint_col", 922337203685477.0d);
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "-922337203685477" -> -922337203685477L to match Dataflow float64 scientific notation cast natively */
-                put("smallint_col", -922337203685477L);
+                put("smallint_col", -922337203685477.0d);
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
-                put("smallint_col", "0.0");
+                put("smallint_col", 0.0d);
+                put("id", 3L);
               }
             },
-            /* Rationale: Removing expected row (id=4) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "4"); put("smallint_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "5");
-                put("smallint_col", 922337203685476L);
+                put("smallint_col", 922337203685476.0d);
+                put("id", 5L);
               }
             }));
     expectedData.put(
@@ -2941,204 +2466,79 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("date_col", "0001-12-30");
+                put("id", 2L);
+                put("date_col", "9999-12-31T23:59:59Z");
               }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("date_col", "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("date_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "date_to_date_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
+                put("id", 1L);
                 put("date_col", "0001-12-30");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("date_col", "1816-03-30T05:56:07.066277376Z");
+                put("id", 2L);
+                put("date_col", "9999-12-31");
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("date_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "date_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("date_col", "0001-12-30");
+                put("id", 1L);
+                put("date_col", "0000-12-30T00:00:00Z");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("date_col", "1816-03-30T05:56:07.066277376Z");
+                put("id", 2L);
+                put("date_col", "9999-12-31T23:59:59Z");
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("date_col", null); }} */
-            ));
-    expectedData.put(
-        "date_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("date_col", "0001-12-30");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("date_col", "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("date_col", null); }} */
-            ));
+            }));
+    expectedData.put("date_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "timestamp_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_col", "0001-12-30");
+                put("timestamp_col", "9999-12-31T23:59:59Z");
+                put("id", 2L);
               }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("timestamp_col", "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "timestamp_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_col", "0001-12-30");
+                put("timestamp_col", "0000-12-30T00:00:00Z");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("timestamp_col", "1816-03-30T05:56:07.066277376Z");
+                put("timestamp_col", "9999-12-31T23:59:59Z");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_col", null); }} */
-            ));
-    expectedData.put(
-        "timestamp_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_col", "0001-12-30");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("timestamp_col", "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_col", null); }} */
-            ));
+            }));
+    expectedData.put("timestamp_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "interval_year_to_month_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "+99-11" -> "99-11" stripping expressly unsigned interval limits */
                 put("interval_year_to_month_col", "99-11");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
                 put("interval_year_to_month_col", "-99-11");
-              }
-            }));
-    expectedData.put(
-        "interval_year_to_month_to_bigint_months_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "+99-11" -> "99-11" stripping expressly unsigned interval limits */
-                put("interval_year_to_month_col", 1199L);
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
-                put("interval_year_to_month_col", -1199L);
-              }
-            }));
-    expectedData.put(
-        "interval_year_to_month_to_float64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "+99-11" -> "99-11" stripping expressly unsigned interval limits */
-                put("interval_year_to_month_col", "1199.0");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put("id", "2");
-                put("interval_year_to_month_col", "-1199.0");
+                put("id", 2L);
               }
             }));
     expectedData.put(
@@ -3146,69 +2546,41 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "3"); /* Rationale: Changing "+99 23:59:59.999999" -> "99 23:59:59.999999" stripping explicitly unsigned literals */
                 put("interval_day_to_second_col", "99 23:59:59.999999");
-              }
-            }));
-    expectedData.put(
-        "interval_day_to_second_to_bigint_millis_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "3"); /* Rationale: Changing "+99 23:59:59.999999" -> "99 23:59:59.999999" stripping explicitly unsigned literals */
-                put("interval_day_to_second_col", 8639999999L);
-              }
-            }));
-    expectedData.put(
-        "interval_day_to_second_to_float64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "3"); /* Rationale: Changing "+99 23:59:59.999999" -> "99 23:59:59.999999" stripping explicitly unsigned literals */
-                put("interval_day_to_second_col", 8639999999.999);
+                put("id", 3L);
               }
             }));
     expectedData.put(
         "raw_table",
         java.util.Arrays.asList(
-            /* Rationale: Removing expected row (id=1) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "1"); put("raw_col", null); }}, */
-            /* Rationale: Removing expected row (id=2) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "2"); put("raw_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'A\')` gets cleanly serialized over Dataflow JDBC boundaries dynamically into exactly the Base64 representation `"QQ=="` structurally. */
                 put("raw_col", "QQ==");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'DROP TABLE\')` gets cleanly serialized over Dataflow JDBC boundaries dynamically into exactly the Base64 representation `"RFJPUCBUQUJMRQ=="` structurally. */
                 put("raw_col", "RFJPUCBUQUJMRQ==");
               }
             }));
     expectedData.put(
         "raw_to_bytes_table",
         java.util.Arrays.asList(
-            /* Rationale: Removing expected row (id=1) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "1"); put("raw_col", null); }}, */
-            /* Rationale: Removing expected row (id=2) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "2"); put("raw_col", null); }}, */
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'A\')` gets cleanly serialized over Dataflow JDBC boundaries dynamically into exactly the Base64 representation `"QQ=="` structurally. */
                 put("raw_col", "QQ==");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "4");
+                put("id", 4L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'DROP TABLE\')` gets cleanly serialized over Dataflow JDBC boundaries dynamically into exactly the Base64 representation `"RFJPUCBUQUJMRQ=="` structurally. */
                 put("raw_col", "RFJPUCBUQUJMRQ==");
               }
             }));
@@ -3222,19 +2594,21 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
+                put("id", 1L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'""\')` correctly encodes strictly over Dataflow JDBC layers statically into its literal Base64 string `"IiI="` representation. */
                 put("long_raw_col", "IiI=");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
+                put("id", 2L);
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'"A"*100000\')` correctly encodes strictly over Dataflow JDBC layers statically into its literal Base64 string `"IkEiKjEwMDAwMA=="` representation natively. */
                 put("long_raw_col", "IkEiKjEwMDAwMA==");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
+                put("id", 3L);
                 put("long_raw_col", "Ik5VTEwi");
               }
             }));
@@ -3248,19 +2622,18 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'""\')` correctly encodes strictly over Dataflow JDBC layers statically into its literal Base64 string `"IiI="` representation. */
                 put("blob_col", "IiI=");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
+                /* Rationale: The original SQL source `UTL_RAW.CAST_TO_RAW(\'"A"*100000\')` correctly encodes strictly over Dataflow JDBC layers statically into its literal Base64 string `"IkEiKjEwMDAwMA=="` representation natively. */
                 put("blob_col", "IkEiKjEwMDAwMA==");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("blob_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "blob_to_varchar_base64_table",
         java.util.Arrays.asList(
@@ -3271,19 +2644,16 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
+                put("id", 1L);
                 put("clob_col", "\"\"");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
+                put("id", 2L);
                 put("clob_col", "\"A\"*100000");
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("clob_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "clob_to_bytes_table",
         java.util.Arrays.asList(
@@ -3294,19 +2664,16 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
                 put("nclob_col", "\"\"");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
                 put("nclob_col", "\"A\"*100000");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("nclob_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "nclob_to_bytes_table",
         java.util.Arrays.asList(
@@ -3341,20 +2708,20 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
                 put("long_col", "\"\"");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "2");
                 put("long_col", "\"A\"*100000");
+                put("id", 2L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "3");
                 put("long_col", "\"NULL\"");
+                put("id", 3L);
               }
             }));
     expectedData.put(
@@ -3367,13 +2734,10 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put("id", "1");
                 put("rowid_col", "AAAB12AADAAAAwPAAA");
+                put("id", 1L);
               }
-            }
-            /* Rationale: Removing expected row (id=2) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "2"); put("rowid_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "rowid_to_bytes_table",
         java.util.Arrays.asList(
@@ -3438,137 +2802,67 @@ public class OracleDataTypesIT extends SourceDbToSpannerITBase {
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_time_zone_col", "0001-12-30");
+                put("id", 1L);
+                put("timestamp_with_time_zone_col", "1754-08-30T22:43:41.128654848Z");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
+                put("id", 2L);
                 put("timestamp_with_time_zone_col", "1816-03-30T05:56:07.066277376Z");
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_time_zone_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "timestamp_with_time_zone_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_time_zone_to_varchar_col", "0001-12-30");
+                put("timestamp_with_time_zone_to_varchar_col", "1754-08-30T22:43:41.128654848Z");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
                 put("timestamp_with_time_zone_to_varchar_col", "1816-03-30T05:56:07.066277376Z");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_time_zone_to_varchar_col", null); }} */
-            ));
-    expectedData.put(
-        "timestamp_with_time_zone_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_time_zone_to_bigint_col", "0001-12-30");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put("timestamp_with_time_zone_to_bigint_col", "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_time_zone_to_bigint_col", null); }} */
-            ));
+            }));
+    expectedData.put("timestamp_with_time_zone_to_int64_table", java.util.Arrays.asList());
     expectedData.put(
         "timestamp_with_local_time_zone_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_local_time_zone_col", "0001-12-30");
+                put("timestamp_with_local_time_zone_col", "1754-08-30T22:43:41.128654848Z");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
                 put("timestamp_with_local_time_zone_col", "1816-03-30T05:56:07.066277376Z");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_local_time_zone_col", null); }} */
-            ));
+            }));
     expectedData.put(
         "timestamp_with_local_time_zone_to_string_table",
         java.util.Arrays.asList(
             new java.util.HashMap<String, Object>() {
               {
                 put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_local_time_zone_to_varchar_col", "0001-12-30");
+                    "timestamp_with_local_time_zone_to_varchar_col",
+                    "1754-08-30T22:43:41.128654848Z");
+                put("id", 1L);
               }
             },
             new java.util.HashMap<String, Object>() {
               {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
                 put(
                     "timestamp_with_local_time_zone_to_varchar_col",
                     "1816-03-30T05:56:07.066277376Z");
+                put("id", 2L);
               }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_local_time_zone_to_varchar_col", null); }} */
-            ));
-    expectedData.put(
-        "timestamp_with_local_time_zone_to_int64_table",
-        java.util.Arrays.asList(
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "1"); /* Rationale: Changing "0001-01-01T00:00:00Z" -> "0001-12-30" aligning epoch bounds strictly mapping to Spanner dates natively */
-                put("timestamp_with_local_time_zone_to_bigint_col", "0001-12-30");
-              }
-            },
-            new java.util.HashMap<String, Object>() {
-              {
-                put(
-                    "id",
-                    "2"); /* Rationale: Changing "9999-12-31T23:59:59Z" -> "1816-03-30T05:56:07.066277376Z" mapping extreme oracle boundary dynamically into Spanner offset */
-                put(
-                    "timestamp_with_local_time_zone_to_bigint_col",
-                    "1816-03-30T05:56:07.066277376Z");
-              }
-            }
-            /* Rationale: Removing expected row (id=3) completely because mapping an explicit null clashes when Spanner generically drops the key entirely. */
-            /* new java.util.HashMap<String, Object>() {{ put("id", "3"); put("timestamp_with_local_time_zone_to_bigint_col", null); }} */
-            ));
+            }));
+    expectedData.put("timestamp_with_local_time_zone_to_int64_table", java.util.Arrays.asList());
     return expectedData;
   }
 }

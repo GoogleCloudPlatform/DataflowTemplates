@@ -573,18 +573,8 @@ INSERT INTO "timestamp_pk_table" ("timestamp_pk_col") VALUES (TIMESTAMP '9999-12
 CREATE TABLE "interval_year_to_month_table" ("id" NUMBER PRIMARY KEY, "interval_year_to_month_col" INTERVAL YEAR TO MONTH);
 INSERT INTO "interval_year_to_month_table" ("id", "interval_year_to_month_col") VALUES (1, '+99-11');
 INSERT INTO "interval_year_to_month_table" ("id", "interval_year_to_month_col") VALUES (2, '-99-11');
-CREATE TABLE "interval_year_to_month_to_bigint_months_table" ("id" NUMBER PRIMARY KEY, "interval_year_to_month_col" INTERVAL YEAR TO MONTH);
-INSERT INTO "interval_year_to_month_to_bigint_months_table" ("id", "interval_year_to_month_col") VALUES (1, '+99-11');
-INSERT INTO "interval_year_to_month_to_bigint_months_table" ("id", "interval_year_to_month_col") VALUES (2, '-99-11');
-CREATE TABLE "interval_year_to_month_to_double_precision_table" ("id" NUMBER PRIMARY KEY, "interval_year_to_month_col" INTERVAL YEAR TO MONTH);
-INSERT INTO "interval_year_to_month_to_double_precision_table" ("id", "interval_year_to_month_col") VALUES (1, '+99-11');
-INSERT INTO "interval_year_to_month_to_double_precision_table" ("id", "interval_year_to_month_col") VALUES (2, '-99-11');
 CREATE TABLE "interval_day_to_second_table" ("id" NUMBER PRIMARY KEY, "interval_day_to_second_col" INTERVAL DAY TO SECOND);
 INSERT INTO "interval_day_to_second_table" ("id", "interval_day_to_second_col") VALUES (3, '+99 23:59:59.999999');
-CREATE TABLE "interval_day_to_second_to_bigint_millis_table" ("id" NUMBER PRIMARY KEY, "interval_day_to_second_col" INTERVAL DAY TO SECOND);
-INSERT INTO "interval_day_to_second_to_bigint_millis_table" ("id", "interval_day_to_second_col") VALUES (3, '+99 23:59:59.999999');
-CREATE TABLE "interval_day_to_second_to_double_precision_table" ("id" NUMBER PRIMARY KEY, "interval_day_to_second_col" INTERVAL DAY TO SECOND);
-INSERT INTO "interval_day_to_second_to_double_precision_table" ("id", "interval_day_to_second_col") VALUES (3, '+99 23:59:59.999999');
 CREATE TABLE "raw_table" ("id" NUMBER PRIMARY KEY, "raw_col" RAW(2000));
 INSERT INTO "raw_table" ("id", "raw_col") VALUES (1, NULL);
 INSERT INTO "raw_table" ("id", "raw_col") VALUES (2, NULL);

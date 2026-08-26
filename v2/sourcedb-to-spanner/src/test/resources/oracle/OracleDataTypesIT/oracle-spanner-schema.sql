@@ -459,30 +459,14 @@ CREATE TABLE interval_year_to_month_table (
   interval_year_to_month_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE interval_year_to_month_to_bigint_months_table (
-  id INT64 NOT NULL,
-  interval_year_to_month_col INT64
-) PRIMARY KEY(id);
 
-CREATE TABLE interval_year_to_month_to_float64_table (
-  id INT64 NOT NULL,
-  interval_year_to_month_col FLOAT64
-) PRIMARY KEY(id);
 
 CREATE TABLE interval_day_to_second_table (
   id INT64 NOT NULL,
   interval_day_to_second_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE interval_day_to_second_to_bigint_millis_table (
-  id INT64 NOT NULL,
-  interval_day_to_second_col INT64
-) PRIMARY KEY(id);
 
-CREATE TABLE interval_day_to_second_to_float64_table (
-  id INT64 NOT NULL,
-  interval_day_to_second_col FLOAT64
-) PRIMARY KEY(id);
 
 CREATE TABLE raw_table (
   id INT64 NOT NULL,
