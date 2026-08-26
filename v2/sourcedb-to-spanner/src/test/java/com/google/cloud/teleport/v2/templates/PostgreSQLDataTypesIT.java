@@ -183,12 +183,9 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
         createRows(ByteArray.copyFrom("0").toBase64(), ByteArray.copyFrom("1").toBase64(), "NULL"));
     result.put(
         "bit_to_string",
-        createRows(
-            "30".repeat(32),
-            "30".repeat(31) + "31",
-            "NULL"));
+        createRows("00000000000000000000000000000000", "00000000000000000000000000000001", "NULL"));
     result.put("bit_varying", createRows(ByteArray.copyFrom("0101").toBase64(), "NULL"));
-    result.put("bit_varying_to_string", createRows("30313031", "NULL"));
+    result.put("bit_varying_to_string", createRows("0101", "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));
