@@ -290,6 +290,14 @@ public class AvroToValueMapperTest {
 
     result = AvroToValueMapper.avroFieldToString(325.532, SchemaBuilder.builder().doubleType());
     assertEquals("325.532", result);
+
+    byte[] byteArray = new byte[] {0x68, 0x65, 0x6c, 0x6c, 0x6f};
+    result = AvroToValueMapper.avroFieldToString(byteArray, SchemaBuilder.builder().bytesType());
+    assertEquals("68656c6c6f", result);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
+    result = AvroToValueMapper.avroFieldToString(byteBuffer, SchemaBuilder.builder().bytesType());
+    assertEquals("68656c6c6f", result);
   }
 
   @Test

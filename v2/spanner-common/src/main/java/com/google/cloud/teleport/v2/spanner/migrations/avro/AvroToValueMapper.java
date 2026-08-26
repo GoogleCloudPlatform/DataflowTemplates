@@ -335,10 +335,10 @@ public class AvroToValueMapper {
         ByteBuffer byteBuffer = ((ByteBuffer) recordValue).duplicate();
         byte[] bytes = new byte[byteBuffer.remaining()];
         byteBuffer.get(bytes);
-        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        return Hex.encodeHexString(bytes);
       }
       if (recordValue instanceof byte[]) {
-        return new String((byte[]) recordValue, java.nio.charset.StandardCharsets.UTF_8);
+        return Hex.encodeHexString((byte[]) recordValue);
       }
       return recordValue.toString();
     } catch (Exception e) {
