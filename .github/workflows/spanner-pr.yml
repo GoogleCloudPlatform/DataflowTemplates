@@ -166,6 +166,8 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Integration Smoke Tests
+      env:
+        JAVA_TOOL_OPTIONS: "-Doracle.net.disableOob=true"
       run: |
         ./cicd/run-it-smoke-tests \
         --modules-to-build="SPANNER" \
@@ -209,6 +211,7 @@ jobs:
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        JAVA_TOOL_OPTIONS: "-Doracle.net.disableOob=true"
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
@@ -258,6 +261,8 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Load Tests
+      env:
+        JAVA_TOOL_OPTIONS: "-Doracle.net.disableOob=true"
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
