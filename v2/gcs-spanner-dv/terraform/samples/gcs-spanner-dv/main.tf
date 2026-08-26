@@ -14,10 +14,11 @@ data "google_compute_default_service_account" "gce_account" {
   project = var.project
 }
 
+# Add roles to the service account that will run Dataflow for data validation
 resource "google_project_iam_member" "dataflow_roles" {
   for_each = var.add_policies_to_service_account ? toset([
     "roles/dataflow.worker",
-    "roles/spanner.databaseAdmin",
+    "roles/spanner.databaseReader",
     "roles/storage.objectViewer",
     "roles/bigquery.dataEditor"
   ]) : toset([])
@@ -26,6 +27,7 @@ resource "google_project_iam_member" "dataflow_roles" {
   member  = var.service_account_email != null ? "serviceAccount:${var.service_account_email}" : "serviceAccount:${data.google_compute_default_service_account.gce_account.email}"
 }
 
+# Define the Dataflow Flex Template job for GCS to Spanner Data Validation
 resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   provider                = google-beta
   name                    = var.job_name
