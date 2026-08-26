@@ -167,7 +167,9 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
     assertThatPipeline(jobInfo).isRunning();
 
     jdbcResourceManagerShardB.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
+        "INSERT INTO \""
+            + testUsernameShardB
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
 
     insertDataInSpanner();
     LOG.info("Data inserted into Spanner successfully");
@@ -181,17 +183,23 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
                     .setMinEvents(2)
                     .build()
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Orders\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardB,
+                                "\"" + testUsernameShardB + "\".\"Orders\"")
                             .setMinRows(1)
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardA,
+                                "\"" + testUsernameShardA + "\".\"AllDataTypes\"")
                             .setMinRows(1)
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Customers\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardB,
+                                "\"" + testUsernameShardB + "\".\"Customers\"")
                             .setMinRows(1)
                             .setMaxRows(1)
                             .build()));
@@ -255,7 +263,9 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
 
     LOG.info("Applying partial fixes in Oracle (inserting missing parent row for Orders)");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer A', 2000, 'Gold')");
+        "INSERT INTO \""
+            + testUsernameShardA
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
     LOG.info("Waiting for the retryDLQ job to complete automatically");
     PipelineOperator.Result retryJobResult =
@@ -274,11 +284,14 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"Orders\"")
+                JDBCRowsCheck.builder(
+                        jdbcResourceManagerShardA, "\"" + testUsernameShardA + "\".\"Orders\"")
                     .setMinRows(1)
                     .build()
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardA,
+                                "\"" + testUsernameShardA + "\".\"AllDataTypes\"")
                             .setMinRows(2)
                             .build()));
     assertThatResult(finalWaitResult).meetsConditions();

@@ -182,7 +182,9 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     //    since Dataflow processes asynchronously and might process child rows before parent rows.
     LOG.info("Inserting parent rows directly into Oracle");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
+        "INSERT INTO \""
+            + testUsername
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
 
     // 2. Insert all test data into the source Spanner database. This will generate:
     // - 2 severe errors (for id=999 and id=888) due to the custom transformation throwing exception
@@ -208,17 +210,20 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
                             .setMinEvents(2)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"Orders\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"Orders\"")
                             .setMinRows(1) // id=102
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"AllDataTypes\"")
                             .setMinRows(1) // id=1
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"Customers\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"Customers\"")
                             .setMinRows(1) // id=2
                             .setMaxRows(1)
                             .build()));
@@ -234,7 +239,9 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     // Insert parent for Orders to fix the foreign key violation.
     LOG.info("Applying partial fixes in Oracle (inserting missing parent row for Orders)");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer', 2000, 'Gold')");
+        "INSERT INTO \""
+            + testUsername
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer', 2000, 'Gold')");
 
     // 6. Launch a new Dataflow job in retryAllDLQ mode to process the DLQ items.
     LOG.info("Launching retryAllDLQ job with schema overrides to process DLQ");
@@ -289,11 +296,12 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
                     .setMaxEvents(1)
                     .build())
             .and(
-                JDBCRowsCheck.builder(jdbcResourceManager, "\"Orders\"")
+                JDBCRowsCheck.builder(jdbcResourceManager, "\"" + testUsername + "\".\"Orders\"")
                     .setMinRows(2) // id = 102 and 101
                     .build())
             .and(
-                JDBCRowsCheck.builder(jdbcResourceManager, "\"AllDataTypes\"")
+                JDBCRowsCheck.builder(
+                        jdbcResourceManager, "\"" + testUsername + "\".\"AllDataTypes\"")
                     .setMinRows(2) // id = 1 and 999
                     .build());
 
@@ -309,19 +317,19 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     LOG.info("Verifying target Oracle database contents");
 
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManager, "\"AllDataTypes\"")
+        JDBCRowsCheck.builder(jdbcResourceManager, "\"" + testUsername + "\".\"AllDataTypes\"")
             .setMinRows(2)
             .setMaxRows(2)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManager, "\"Customers\"")
+        JDBCRowsCheck.builder(jdbcResourceManager, "\"" + testUsername + "\".\"Customers\"")
             .setMinRows(2)
             .setMaxRows(2)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManager, "\"Orders\"")
+        JDBCRowsCheck.builder(jdbcResourceManager, "\"" + testUsername + "\".\"Orders\"")
             .setMinRows(2)
             .setMaxRows(2)
             .build()
