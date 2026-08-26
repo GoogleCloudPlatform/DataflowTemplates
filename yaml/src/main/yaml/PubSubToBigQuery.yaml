@@ -31,20 +31,6 @@ template:
     - bigquery_common_options
     - bigquery_write_options
 
-    - name: "outputDeadletterTable"
-      description: "The dead-letter table name to output failed messages to BigQuery"
-      help: >
-        BigQuery table for failed messages. Messages failed to reach the output 
-        table for different reasons (e.g., mismatched schema, malformed json) 
-        are written to this table. If it doesn't exist, it will be created 
-        during pipeline execution. If not specified, 
-        'outputTableSpec_error_records' is used instead. The dead-letter table
-        name to output failed messages to BigQuery.
-      example: "your-project-id:your-dataset.your-table-name"
-      required: true
-      type: text
-      order: 5
-
 pipeline:
   transforms:
     - type: ReadFromPubSub
@@ -55,32 +41,16 @@ pipeline:
         format: {{ format | default('JSON') }}
         schema: {{ schema }}
         attributes: {{ attributes }}
-        attribute_map: {{ attributeMap }}
+        attribute_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
-        error_handling:
-          output: errors
     - type: WriteToBigQuery
-      name: WriteGoodMessagesToBigQuery
+      name: WriteToBigQuery
       input: ReadMessages
       config:
         table: {{ table }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
         create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
-        num_streams: {{ numStreams | default(1) }}
-        error_handling:
-          output: errors
-    - type: WriteToBigQuery
-      name: WriteBadReadMessages
-      input: ReadMessages.errors
-      config:
-        table: {{ outputDeadletterTable }}
-        num_streams: {{ numStreams | default(1) }}
-    - type: WriteToBigQuery
-      name: WriteBadWriteMessages
-      input: WriteGoodMessagesToBigQuery.errors
-      config:
-        table: {{ outputDeadletterTable }}
         num_streams: {{ numStreams | default(1) }}
 
 options:

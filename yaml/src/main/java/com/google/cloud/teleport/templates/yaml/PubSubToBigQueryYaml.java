@@ -175,15 +175,4 @@ public interface PubSubToBigQueryYaml {
       example = "")
   @Default.Integer(1)
   Integer getNumStreams();
-
-  @TemplateParameter.Text(
-      order = 14,
-      name = "outputDeadletterTable",
-      optional = false,
-      description = "The dead-letter table name to output failed messages to BigQuery",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output  table for different reasons (e.g., mismatched schema, malformed json)  are written to this table. If it doesn't exist, it will be created  during pipeline execution. If not specified,  'outputTableSpec_error_records' is used instead. The dead-letter table name to output failed messages to BigQuery.",
-      example = "your-project-id:your-dataset.your-table-name")
-  @Validation.Required
-  String getOutputDeadletterTable();
 }

@@ -116,8 +116,7 @@ public final class PubSubToBigQueryYamlIT extends TemplateTestBase {
                 .addParameter("topic", topic.toString())
                 .addParameter("format", "JSON")
                 .addParameter("schema", schema)
-                .addParameter("table", toTableSpecStandard(table))
-                .addParameter("outputDeadletterTable", toTableSpecStandard(table) + "_dlq"));
+                .addParameter("table", toTableSpecStandard(table)));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
