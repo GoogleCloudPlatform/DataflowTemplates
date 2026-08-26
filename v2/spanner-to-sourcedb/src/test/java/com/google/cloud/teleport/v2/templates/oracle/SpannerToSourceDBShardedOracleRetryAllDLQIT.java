@@ -169,7 +169,9 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
     LOG.info("Inserting parent rows directly into MySQL");
     // customer2 routes to ShardB (2%2==0)
     jdbcResourceManagerShardB.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
+        "INSERT INTO \""
+            + testUsernameShardB
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
 
     // 2. Insert test data into the source Spanner database. This will generate:
     // - 2 severe errors (for id=999 and id=888) due to the custom transformation throwing exception
@@ -199,17 +201,23 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
                             .setMinEvents(2)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Orders\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardB,
+                                "\"" + testUsernameShardB + "\".\"Orders\"")
                             .setMinRows(1) // id = 102
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardA,
+                                "\"" + testUsernameShardA + "\".\"AllDataTypes\"")
                             .setMinRows(1) // id = 1
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Customers\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManagerShardB,
+                                "\"" + testUsernameShardB + "\".\"Customers\"")
                             .setMinRows(1) // id = 2
                             .setMaxRows(1)
                             .build()));
@@ -224,7 +232,9 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
     // 5. Apply partial fixes to simulate user intervention correcting data before DLQ retry.
     LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
     jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer A', 2000, 'Gold')");
+        "INSERT INTO \""
+            + testUsernameShardA
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
     // 6. Launch a new Dataflow job in retryAllDLQ mode.
     LOG.info("Launching retryAllDLQ job with schema overrides to process DLQ");
@@ -277,11 +287,14 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
                     .setMaxEvents(1)
                     .build())
             .and(
-                JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"Orders\"")
+                JDBCRowsCheck.builder(
+                        jdbcResourceManagerShardA, "\"" + testUsernameShardA + "\".\"Orders\"")
                     .setMinRows(1) // id = 101
                     .build())
             .and(
-                JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"AllDataTypes\"")
+                JDBCRowsCheck.builder(
+                        jdbcResourceManagerShardA,
+                        "\"" + testUsernameShardA + "\".\"AllDataTypes\"")
                     .setMinRows(2) // id = 1 and 999
                     .build());
 
@@ -297,37 +310,43 @@ public class SpannerToSourceDBShardedOracleRetryAllDLQIT extends SpannerToSource
     LOG.info("Verifying MySQL data across logical shards");
 
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"AllDataTypes\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardA, "\"" + testUsernameShardA + "\".\"AllDataTypes\"")
             .setMinRows(2)
             .setMaxRows(2)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"AllDataTypes\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardB, "\"" + testUsernameShardB + "\".\"AllDataTypes\"")
             .setMinRows(0)
             .setMaxRows(0)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Customers\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardB, "\"" + testUsernameShardB + "\".\"Customers\"")
             .setMinRows(1)
             .setMaxRows(1)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"Customers\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardA, "\"" + testUsernameShardA + "\".\"Customers\"")
             .setMinRows(1)
             .setMaxRows(1)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "\"Orders\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardA, "\"" + testUsernameShardA + "\".\"Orders\"")
             .setMinRows(1)
             .setMaxRows(1)
             .build()
             .get());
     assertTrue(
-        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "\"Orders\"")
+        JDBCRowsCheck.builder(
+                jdbcResourceManagerShardB, "\"" + testUsernameShardB + "\".\"Orders\"")
             .setMinRows(1)
             .setMaxRows(1)
             .build()

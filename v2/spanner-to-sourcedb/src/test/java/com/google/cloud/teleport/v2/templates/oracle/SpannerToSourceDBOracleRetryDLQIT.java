@@ -164,7 +164,9 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
 
     // Insert parent rows directly into Oracle to prevent out-of-order Dataflow failures.
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
+        "INSERT INTO \""
+            + testUsername
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (2, 'Customer 2', 1500, 'Silver')");
 
     jdbcResourceManager.runSQLUpdate("COMMIT");
     insertDataInSpanner();
@@ -178,17 +180,20 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
                     .setMinEvents(2)
                     .build()
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"Orders\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"Orders\"")
                             .setMinRows(1) // id = 102
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"AllDataTypes\"")
                             .setMinRows(1) // id = 1
                             .setMaxRows(1)
                             .build())
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"Customers\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"Customers\"")
                             .setMinRows(1) // id = 2
                             .setMaxRows(1)
                             .build()));
@@ -244,7 +249,9 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
 
     LOG.info("Applying partial fixes in Oracle (inserting missing parent row for Orders)");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer', 2000, 'Gold')");
+        "INSERT INTO \""
+            + testUsername
+            + "\".\"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\", \"LegacyRegion\") VALUES (3, 'Parent Customer', 2000, 'Gold')");
 
     jdbcResourceManager.runSQLUpdate("COMMIT");
     LOG.info("Waiting for the retryDLQ job to complete automatically");
@@ -265,11 +272,12 @@ public class SpannerToSourceDBOracleRetryDLQIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                JDBCRowsCheck.builder(jdbcResourceManager, "\"Orders\"")
+                JDBCRowsCheck.builder(jdbcResourceManager, "\"" + testUsername + "\".\"Orders\"")
                     .setMinRows(2)
                     .build()
                     .and(
-                        JDBCRowsCheck.builder(jdbcResourceManager, "\"AllDataTypes\"")
+                        JDBCRowsCheck.builder(
+                                jdbcResourceManager, "\"" + testUsername + "\".\"AllDataTypes\"")
                             .setMinRows(2)
                             .build()));
     assertThatResult(finalWaitResult).meetsConditions();

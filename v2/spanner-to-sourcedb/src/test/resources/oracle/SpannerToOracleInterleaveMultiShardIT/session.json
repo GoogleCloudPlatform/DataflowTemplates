@@ -542,7 +542,7 @@
   "SrcSchema": {
    "t1": {
     "Name": "child21",
-    "Schema": "itfk",
+    "Schema": "",
     "ColIds": [
      "c6",
      "c7",
@@ -684,7 +684,7 @@
    },
    "t2": {
     "Name": "parent1",
-    "Schema": "itfk",
+    "Schema": "",
     "ColIds": [
      "c16",
      "c17",
@@ -773,7 +773,7 @@
    },
    "t3": {
     "Name": "child11",
-    "Schema": "itfk",
+    "Schema": "",
     "ColIds": [
      "c12",
      "c13",
@@ -915,7 +915,7 @@
    },
    "t4": {
     "Name": "parent2",
-    "Schema": "itfk",
+    "Schema": "",
     "ColIds": [
      "c19",
      "c20",
@@ -1004,7 +1004,7 @@
    },
    "t5": {
     "Name": "child31",
-    "Schema": "itfk",
+    "Schema": "",
     "ColIds": [
      "c27",
      "c28",

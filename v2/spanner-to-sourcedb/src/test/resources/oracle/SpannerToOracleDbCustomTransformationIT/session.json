@@ -372,7 +372,7 @@
   "SrcSchema": {
     "t113": {
       "Name": "AllDatatypeTransformation",
-      "Schema": "rr_write",
+      "Schema": "",
       "ColIds": [
         "c115",
         "c116",
@@ -786,7 +786,7 @@
     },
     "t114": {
       "Name": "Users1",
-      "Schema": "rr_write",
+      "Schema": "",
       "ColIds": [
         "c133",
         "c134",

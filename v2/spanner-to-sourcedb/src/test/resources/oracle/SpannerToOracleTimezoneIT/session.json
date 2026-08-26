@@ -55,7 +55,7 @@
   "SrcSchema": {
     "t136": {
       "Name": "Users",
-      "Schema": "eventsit",
+      "Schema": "",
       "ColIds": [
         "c142",
         "c143"
