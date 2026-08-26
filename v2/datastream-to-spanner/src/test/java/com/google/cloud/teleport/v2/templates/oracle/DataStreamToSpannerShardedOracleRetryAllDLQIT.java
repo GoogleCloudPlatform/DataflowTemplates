@@ -96,7 +96,7 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
                             .setUsername(oracleUser)
                             .setPassword(oraclePassword)
                             .setDatabaseName("XEPDB1")
-                            .setHost(System.getProperty("hostIp"))
+                            .setHost(System.getProperty("cloudOracleHost"))
                             .setPort(1521));
         try {
           jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Customers\"");
@@ -129,7 +129,7 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
                 .build();
         org.apache.beam.it.gcp.datastream.OracleSource jdbcSource =
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    System.getProperty("hostIp"), oracleUser, oraclePassword, 1521, "XEPDB1")
+                    System.getProperty("cloudOracleHost"), oracleUser, oraclePassword, 1521, "XEPDB1")
                 .setAllowedTables(
                     java.util.Map.of(
                         oracleUser, java.util.List.of("Customers", "Orders", "AllDataTypes")))

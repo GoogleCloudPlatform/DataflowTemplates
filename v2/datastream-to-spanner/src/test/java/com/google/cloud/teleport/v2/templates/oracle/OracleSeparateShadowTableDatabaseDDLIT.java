@@ -91,7 +91,7 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
       Class.forName("oracle.jdbc.OracleDriver");
       try (Connection conn =
               DriverManager.getConnection(
-                  "jdbc:oracle:thin:@//" + System.getProperty("hostIp", "localhost") + ":1521/XE",
+                  "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XE",
                   "system",
                   "TestPassword123");
           Statement stmt = conn.createStatement()) {

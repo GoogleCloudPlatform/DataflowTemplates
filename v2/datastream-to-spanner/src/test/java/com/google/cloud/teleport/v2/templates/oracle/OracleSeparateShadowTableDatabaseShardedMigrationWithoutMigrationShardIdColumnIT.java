@@ -105,7 +105,7 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
         builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
-        builder.setHost(System.getProperty("hostIp"));
+        builder.setHost(System.getProperty("cloudOracleHost"));
         builder.setPort(1521);
         builder.setSystemIdentifier("XE");
         cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
@@ -120,7 +120,7 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
                     .setUsername(oracleUser)
                     .setPassword(oraclePassword)
                     .setDatabaseName("XEPDB1")
-                    .setHost(System.getProperty("hostIp"))
+                    .setHost(System.getProperty("cloudOracleHost"))
                     .setPort(1521)
                     .build();
 
@@ -361,7 +361,7 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
 
     try (java.sql.Connection conn =
             java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("hostIp", "localhost") + ":1521/XEPDB1",
+                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XEPDB1",
                 "system",
                 "TestPassword123");
         java.sql.Statement stmt = conn.createStatement()) {

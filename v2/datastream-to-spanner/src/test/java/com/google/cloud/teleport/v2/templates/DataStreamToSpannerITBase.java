@@ -94,9 +94,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       setUpOracleResourceManager() {
     org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-    if (System.getProperty("hostIp") != null) {
+    if (System.getProperty("cloudOracleHost") != null) {
       builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
-      builder.setHost(System.getProperty("hostIp"));
+      builder.setHost(System.getProperty("cloudOracleHost"));
       builder.setPort(1521);
       builder.setUsername(System.getProperty("cloudProxyUsername", "system"));
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
@@ -648,8 +648,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       }
     }
 
-    if (!success && System.getProperty("hostIp") != null) {
-      String url = "jdbc:oracle:thin:@//" + System.getProperty("hostIp") + ":1521/XE";
+    if (!success && System.getProperty("cloudOracleHost") != null) {
+      String url = "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost") + ":1521/XE";
       String user = System.getProperty("cloudProxyUsername", "system");
       String pass = System.getProperty("cloudProxyPassword", "TestPassword123");
       try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);

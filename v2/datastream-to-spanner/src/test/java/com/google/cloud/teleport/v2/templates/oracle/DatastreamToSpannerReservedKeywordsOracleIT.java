@@ -116,7 +116,7 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     LOG.info("Flushing Oracle logs via raw JDBC...");
     try (Connection conn =
             DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("hostIp", "localhost") + ":1521/XEPDB1",
+                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XEPDB1",
                 "system",
                 "TestPassword123");
         Statement stmt = conn.createStatement()) {

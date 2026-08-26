@@ -406,9 +406,9 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         LOG.info("Setting up Oracle sys resource manager...");
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("hostIp") != null) {
+        if (System.getProperty("cloudOracleHost") != null) {
           sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
-          sysBuilder.setHost(System.getProperty("hostIp"));
+          sysBuilder.setHost(System.getProperty("cloudOracleHost"));
           sysBuilder.setPort(1521);
           sysBuilder.setUsername("sys as sysdba");
           sysBuilder.setDatabaseName("XE");
@@ -426,9 +426,9 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         // Build isolated RM
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("hostIp") != null) {
+        if (System.getProperty("cloudOracleHost") != null) {
           builder.setPassword(oraclePassword);
-          builder.setHost(System.getProperty("hostIp"));
+          builder.setHost(System.getProperty("cloudOracleHost"));
           builder.setPort(1521);
           builder.setUsername(oracleUser);
           builder.setDatabaseName("XEPDB1");

@@ -222,7 +222,7 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                         .setUsername("sys as sysdba")
                         .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
                         .setDatabaseName("XE")
-                        .setHost(System.getProperty("hostIp"))
+                        .setHost(System.getProperty("cloudOracleHost"))
                         .setPort(1521));
     String oracleUser = System.getProperty("cloudProxyUsername", "system");
     String oraclePassword = System.getProperty("cloudProxyPassword", "TestPassword123");
@@ -237,7 +237,7 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                         .setUsername(oracleUser)
                         .setPassword(oraclePassword)
                         .setDatabaseName("XEPDB1")
-                        .setHost(System.getProperty("hostIp"))
+                        .setHost(System.getProperty("cloudOracleHost"))
                         .setPort(1521));
 
     SpannerResourceManager.Builder spannerResourceManagerBuilder =

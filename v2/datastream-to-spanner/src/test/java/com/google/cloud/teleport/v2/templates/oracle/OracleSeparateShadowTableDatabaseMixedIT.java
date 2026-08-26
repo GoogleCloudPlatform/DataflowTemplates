@@ -92,7 +92,7 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
         builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
-        builder.setHost(System.getProperty("hostIp"));
+        builder.setHost(System.getProperty("cloudOracleHost"));
         builder.setPort(1521);
         builder.setSystemIdentifier("XE");
         cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
@@ -107,7 +107,7 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
                     .setUsername(oracleUser)
                     .setPassword(oraclePassword)
                     .setDatabaseName("XEPDB1")
-                    .setHost(System.getProperty("hostIp"))
+                    .setHost(System.getProperty("cloudOracleHost"))
                     .setPort(1521)
                     .build();
 

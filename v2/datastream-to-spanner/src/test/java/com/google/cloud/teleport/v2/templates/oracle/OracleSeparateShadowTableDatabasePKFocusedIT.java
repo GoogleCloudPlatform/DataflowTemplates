@@ -154,9 +154,9 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
         LOG.info("Setting up Oracle sys resource manager...");
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("hostIp") != null) {
+        if (System.getProperty("cloudOracleHost") != null) {
           sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
-          sysBuilder.setHost(System.getProperty("hostIp"));
+          sysBuilder.setHost(System.getProperty("cloudOracleHost"));
           sysBuilder.setPort(1521);
           sysBuilder.setUsername("sys as sysdba");
           sysBuilder.setDatabaseName("XE");
@@ -173,9 +173,9 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
 
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("hostIp") != null) {
+        if (System.getProperty("cloudOracleHost") != null) {
           builder.setPassword(oraclePassword);
-          builder.setHost(System.getProperty("hostIp"));
+          builder.setHost(System.getProperty("cloudOracleHost"));
           builder.setPort(1521);
           builder.setUsername(oracleUser);
           builder.setDatabaseName("XEPDB1");
@@ -256,7 +256,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
   private void flushOracleLogs() {
     try (java.sql.Connection conn =
             java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("hostIp") + ":1521/XE",
+                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost") + ":1521/XE",
                 "system",
                 System.getProperty("cloudProxyPassword", "TestPassword123"));
         java.sql.Statement stmt = conn.createStatement()) {
