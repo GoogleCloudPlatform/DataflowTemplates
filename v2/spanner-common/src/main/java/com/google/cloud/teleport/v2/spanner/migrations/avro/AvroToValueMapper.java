@@ -275,22 +275,12 @@ public class AvroToValueMapper {
     return BooleanUtils.toBoolean(val);
   }
 
-
-
   static Long avroFieldToLong(Object recordValue, Schema fieldSchema) {
     try {
       if (recordValue == null) {
         return null;
       }
       return Long.parseLong(recordValue.toString());
-    } catch (Exception e) {
-      throw new AvroTypeConvertorException(
-          "Unable to convert "
-              + fieldSchema.getType()
-              + " to Long, with value: "
-              + recordValue
-              + ", Exception: "
-              + e.getMessage());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
@@ -316,14 +306,6 @@ public class AvroToValueMapper {
               + recordValue
               + ", Exception: "
               + e.getMessage());
-    } catch (Exception e) {
-      throw new AvroTypeConvertorException(
-          "Unable to convert "
-              + fieldSchema.getType()
-              + " to float, with value: "
-              + recordValue
-              + ", Exception: "
-              + e.getMessage());
     }
   }
 
@@ -333,14 +315,6 @@ public class AvroToValueMapper {
         return null;
       }
       return Double.valueOf(recordValue.toString());
-    } catch (Exception e) {
-      throw new AvroTypeConvertorException(
-          "Unable to convert "
-              + fieldSchema.getType()
-              + " to double, with value: "
-              + recordValue
-              + ", Exception: "
-              + e.getMessage());
     } catch (Exception e) {
       throw new AvroTypeConvertorException(
           "Unable to convert "
