@@ -93,7 +93,7 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         builder.setUsername("sys as sysdba");
-        builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+        builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
         builder.setHost(System.getProperty("cloudOracleHost"));
         builder.setPort(1521);
         builder.setDatabaseName("XE");
@@ -102,8 +102,8 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
         cloudSqlResourceManager =
             (CloudOracleResourceManager)
                 CloudOracleResourceManager.builder(testName)
-                    .setUsername(System.getProperty("cloudProxyUsername", "system"))
-                    .setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"))
+                    .setUsername(System.getProperty("cloudOracleUsername", "system"))
+                    .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
                     .setDatabaseName("XE")
                     .setHost(System.getProperty("cloudOracleHost"))
                     .setPort(1521)

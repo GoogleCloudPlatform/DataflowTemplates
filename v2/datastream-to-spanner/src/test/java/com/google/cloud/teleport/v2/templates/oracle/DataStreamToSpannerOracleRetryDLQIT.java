@@ -84,8 +84,8 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     if (System.getProperty("cloudOracleHost") != null) {
       CloudOracleResourceManager.Builder shardBuilder =
           CloudOracleResourceManager.builder(testName + shardName);
-      shardBuilder.setUsername(System.getProperty("cloudProxyUsername", "system"));
-      shardBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+      shardBuilder.setUsername(System.getProperty("cloudOracleUsername", "system"));
+      shardBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
       shardBuilder.setHost(System.getProperty("cloudOracleHost"));
       shardBuilder.setPort(1521);
       shardBuilder.setDatabaseName("XEPDB1");

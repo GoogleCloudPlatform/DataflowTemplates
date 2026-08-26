@@ -138,8 +138,8 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         JDBCSource jdbcSource =
             OracleSource.builder(
                     System.getProperty("cloudOracleHost"),
-                    System.getProperty("cloudProxyUsername", "system"),
-                    System.getProperty("cloudProxyPassword", "TestPassword123"),
+                    System.getProperty("cloudOracleUsername", "system"),
+                    System.getProperty("cloudOraclePassword", "TestPassword123"),
                     1521,
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(

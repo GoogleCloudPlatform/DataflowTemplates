@@ -94,15 +94,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       setUpOracleResourceManager() {
     org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
+    builder.maybeUseStaticInstance();
     if (System.getProperty("cloudOracleHost") != null) {
-      builder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+      builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
       builder.setHost(System.getProperty("cloudOracleHost"));
       builder.setPort(1521);
-      builder.setUsername(System.getProperty("cloudProxyUsername", "system"));
+      builder.setUsername(System.getProperty("cloudOracleUsername", "system"));
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
       builder.setDatabaseName("XEPDB1");
     }
-    builder.maybeUseStaticInstance();
     return new com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager(builder);
   }
 
@@ -650,8 +650,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     if (!success && System.getProperty("cloudOracleHost") != null) {
       String url = "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost") + ":1521/XE";
-      String user = System.getProperty("cloudProxyUsername", "system");
-      String pass = System.getProperty("cloudProxyPassword", "TestPassword123");
+      String user = System.getProperty("cloudOracleUsername", "system");
+      String pass = System.getProperty("cloudOraclePassword", "TestPassword123");
       try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
           java.sql.Statement stmt = conn.createStatement()) {
         stmt.execute("ALTER SYSTEM SWITCH LOGFILE");

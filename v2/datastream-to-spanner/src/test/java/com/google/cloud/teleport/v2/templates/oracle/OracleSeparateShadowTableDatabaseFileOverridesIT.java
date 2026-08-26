@@ -153,7 +153,7 @@ public class OracleSeparateShadowTableDatabaseFileOverridesIT extends DataStream
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         if (System.getProperty("cloudOracleHost") != null) {
-          sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+          sysBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
           sysBuilder.setHost(System.getProperty("cloudOracleHost"));
           sysBuilder.setPort(1521);
           sysBuilder.setUsername("sys as sysdba");

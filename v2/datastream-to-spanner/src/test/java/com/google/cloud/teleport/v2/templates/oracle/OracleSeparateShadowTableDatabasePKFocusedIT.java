@@ -155,7 +155,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
         if (System.getProperty("cloudOracleHost") != null) {
-          sysBuilder.setPassword(System.getProperty("cloudProxyPassword", "TestPassword123"));
+          sysBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
           sysBuilder.setHost(System.getProperty("cloudOracleHost"));
           sysBuilder.setPort(1521);
           sysBuilder.setUsername("sys as sysdba");
@@ -258,7 +258,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
             java.sql.DriverManager.getConnection(
                 "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost") + ":1521/XE",
                 "system",
-                System.getProperty("cloudProxyPassword", "TestPassword123"));
+                System.getProperty("cloudOraclePassword", "TestPassword123"));
         java.sql.Statement stmt = conn.createStatement()) {
       flushOracleRedoLogs(null);
     } catch (Exception e) {

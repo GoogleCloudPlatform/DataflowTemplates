@@ -100,8 +100,8 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
 
       if (jobInfo == null) {
 
-        String oracleUser = System.getProperty("cloudProxyUsername", "system");
-        String oraclePassword = System.getProperty("cloudProxyPassword", "TestPassword123");
+        String oracleUser = System.getProperty("cloudOracleUsername", "system");
+        String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
 
         jdbcResourceManagerShardA =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)

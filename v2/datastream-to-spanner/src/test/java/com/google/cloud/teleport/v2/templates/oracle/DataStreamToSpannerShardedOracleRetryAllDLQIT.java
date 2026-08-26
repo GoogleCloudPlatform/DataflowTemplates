@@ -85,8 +85,8 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        String oracleUser = System.getProperty("cloudProxyUsername", "system");
-        String oraclePassword = System.getProperty("cloudProxyPassword", "TestPassword123");
+        String oracleUser = System.getProperty("cloudOracleUsername", "system");
+        String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
 
         jdbcResourceManagerShardA =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
