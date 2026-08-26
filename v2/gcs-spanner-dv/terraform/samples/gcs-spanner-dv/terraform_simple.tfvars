@@ -1,0 +1,7 @@
+project             = "my-gcp-project"
+region              = "us-central1"
+job_name            = "gcs-spanner-dv-sample"
+gcs_input_directory = "gs://my-bucket/validation-data/"
+instance_id         = "my-spanner-instance"
+database_id         = "my-spanner-database"
+bigquery_dataset    = "validation_report_dataset"
