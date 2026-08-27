@@ -69,7 +69,6 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   machine_type                = var.dataflow_params.runner_params.machine_type
   max_workers                 = var.dataflow_params.runner_params.max_workers
   additional_experiments      = var.dataflow_params.runner_params.additional_experiments
-  additional_pipeline_options = var.dataflow_params.runner_params.additional_pipeline_options
   launcher_machine_type       = var.dataflow_params.runner_params.launcher_machine_type
   ip_configuration            = var.dataflow_params.runner_params.ip_configuration
   num_workers                 = var.dataflow_params.runner_params.num_workers
