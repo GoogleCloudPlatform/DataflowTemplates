@@ -190,7 +190,6 @@ resource "google_dataflow_flex_template_job" "generated" {
 	subnetwork = var.subnetwork
 	temp_location = var.temp_location
     region = var.region
-    on_delete = var.on_delete
 }
 
 output "dataflow_job_url" {
