@@ -13,13 +13,13 @@ terraform {
 }
 
 provider "google" {
-  project = var.project
-  region  = var.region
+  project = var.common_params.project
+  region  = var.common_params.region
 }
 
 provider "google-beta" {
-  project = var.project
-  region  = var.region
+  project = var.common_params.project
+  region  = var.common_params.region
 }
 
 # Enable the APIs
@@ -32,6 +32,18 @@ resource "google_project_service" "enabled_apis" {
     "bigquery.googleapis.com"
   ])
   service            = each.key
-  project            = var.project
+  project            = var.common_params.project
   disable_on_destroy = false
+}
+
+# To fetch project number
+data "google_project" "project" {
+  project_id = var.common_params.project
+  depends_on = [google_project_service.enabled_apis]
+}
+
+# Fetch the default service account for Compute Engine (used by Dataflow)
+data "google_compute_default_service_account" "gce_account" {
+  project    = var.common_params.project
+  depends_on = [google_project_service.enabled_apis]
 }

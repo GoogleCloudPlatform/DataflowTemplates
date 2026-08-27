@@ -13,7 +13,7 @@ Before using these samples, ensure you have:
 
 ## List of examples
 
-1. [Launching a Data Validation Job](gcs-spanner-dv/README.md) - A basic example that configures the necessary variables and provisions the Dataflow pipeline for GCS to Spanner Data Validation.
+1. [Launching a single Data Validation Job](simple-validation-job/README.md) - A basic example that configures the necessary variables and provisions the Dataflow pipeline for GCS to Spanner Data Validation.
 
 ## How to add a new sample
 
@@ -21,6 +21,6 @@ We strongly recommend copying an existing sample and modifying it for your scena
 
 ```shell
 mkdir my-new-sample
-cp -r gcs-spanner-dv/ my-new-sample/
+cp -r simple-validation-job/ my-new-sample/
 cd my-new-sample/
 ```
