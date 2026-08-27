@@ -1,57 +1,26 @@
 # Terraform Samples for GCS to Spanner Data Validation
 
-This directory contains Terraform deployment samples to run the [GCS to Spanner Data Validation](../../README_GCS_Spanner_Data_Validator.md) Dataflow pipeline. 
+This directory provides samples for common scenarios users might have while trying to run a data validation job.
 
-The provided sample in [`gcs-spanner-dv`](./gcs-spanner-dv/) demonstrates how to easily launch the Dataflow job while automatically attaching all necessary IAM roles.
-
-## What this sample does
-
-The Terraform module will create the following Google Cloud resources:
-1. **Dataflow Flex Template Job:** Uses `google_dataflow_flex_template_job` to launch the data validation pipeline.
-2. **IAM Role Bindings:** Grants the Dataflow worker service account the required roles to run the validation:
-   * `roles/dataflow.worker`
-   * `roles/spanner.databaseAdmin`
-   * `roles/storage.objectViewer`
-   * `roles/bigquery.dataEditor` (required to write validation reports to BigQuery)
+Pick a sample that is closest to your use-case, and use it as a starting point, tailoring it to your own specific needs.
 
 ## Prerequisites
 
-Before executing the sample, ensure you meet the following requirements:
+Before using these samples, ensure you have:
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) installed.
+- Authenticated with Google Cloud (e.g., using `gcloud auth application-default login`).
+- A Google Cloud project with the necessary permissions.
 
-1. **APIs Enabled**: The following APIs must be enabled in your Google Cloud Project:
-   * Dataflow API (`dataflow.googleapis.com`)
-   * Cloud Spanner API (`spanner.googleapis.com`)
-   * Cloud Storage API (`storage-component.googleapis.com`)
-   * BigQuery API (`bigquery.googleapis.com`)
+## List of examples
 
-2. **Terraform**: Make sure Terraform is installed locally and you are authenticated using `gcloud auth application-default login`.
+1. [Launching a Data Validation Job](gcs-spanner-dv/README.md) - A basic example that configures the necessary variables and provisions the Dataflow pipeline for GCS to Spanner Data Validation.
 
-## Step-by-Step Usage Instructions
+## How to add a new sample
 
-1. **Navigate to the sample directory**
-   ```shell
-   cd gcs-spanner-dv/
-   ```
+We strongly recommend copying an existing sample and modifying it for your scenario. This ensures a consistent style across all Terraform samples.
 
-2. **Initialize Terraform**
-   Download the required providers and initialize the state.
-   ```shell
-   terraform init
-   ```
-
-3. **Configure the variables**
-   Open the `terraform_simple.tfvars` file and modify the placeholder values (such as `project`, `instance_id`, `database_id`, and `gcs_input_directory`) to match your environment.
-
-4. **Plan the deployment**
-   Review the resources that Terraform will create:
-   ```shell
-   terraform plan -var-file=terraform_simple.tfvars
-   ```
-
-5. **Apply the deployment**
-   Execute the creation of the resources:
-   ```shell
-   terraform apply -var-file=terraform_simple.tfvars
-   ```
-   
-   Once the command completes, Terraform will output the `dataflow_job_url`, which you can click to view the running job in the Google Cloud Console.
+```shell
+mkdir my-new-sample
+cp -r gcs-spanner-dv/ my-new-sample/
+cd my-new-sample/
+```
