@@ -104,12 +104,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.apis</groupId>
-            <artifactId>google-api-services-sqladmin</artifactId>
-            <version>${sqladmin-api.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-it-jdbc</artifactId>
             <scope>test</scope>
@@ -185,7 +179,7 @@
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>${mssql-jdbc.version}</version>
-            <scope>test</scope>
+            
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-common -->
         <!-- test dependencies for localCassandraIO begin -->
