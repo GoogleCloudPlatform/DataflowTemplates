@@ -1,0 +1,57 @@
+template:
+
+  name: "PubSub_To_BigQuery_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "PubSub to BigQuery (YAML)"
+  description: >
+    The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted
+    data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "PubSubToBigQuery.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Pub/Sub topic or subscription must exist.",
+    "The output BigQuery table must exist."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "pubsub_options"
+    - "bigquery_options"
+
+  parameters:
+    - pubsub_common_options
+    - pubsub_read_options
+    - bigquery_common_options
+    - bigquery_write_options
+
+pipeline:
+  transforms:
+    - type: ReadFromPubSub
+      name: ReadMessages
+      config:
+        topic: {{ topic }}
+        subscription: {{ subscription }}
+        format: {{ format | default('JSON') }}
+        schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributesMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
+    - type: WriteToBigQuery
+      name: WriteToBigQuery
+      input: ReadMessages
+      config:
+        table: {{ table }}
+        write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
+        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        num_streams: {{ numStreams | default(1) }}
+
+options:
+  streaming: true
