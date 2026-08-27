@@ -1,11 +1,27 @@
 locals {
   effective_sa_email = (var.dataflow_params.runner_params.service_account_email != null && var.dataflow_params.runner_params.service_account_email != "") ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+
+  # Network resolution (handling Shared VPC structures)
+  network_project = (var.common_params.host_project != null && var.common_params.host_project != "") ? var.common_params.host_project : var.common_params.project
+  network_uri     = (var.dataflow_params.runner_params.network != null && var.dataflow_params.runner_params.network != "") ? "projects/${local.network_project}/global/networks/${var.dataflow_params.runner_params.network}" : null
+  subnetwork_uri  = (var.dataflow_params.runner_params.subnetwork != null && var.dataflow_params.runner_params.subnetwork != "") ? "https://www.googleapis.com/compute/v1/projects/${local.network_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : null
+
+  # Spanner project resolution
+  spanner_project_id = (var.dataflow_params.template_params.spanner_project_id != null && var.dataflow_params.template_params.spanner_project_id != "") ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
 }
 
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
   count        = var.dataflow_params.template_params.local_session_file_path != null ? 1 : 0
   depends_on   = [google_project_service.enabled_apis]
+  
+  lifecycle {
+    precondition {
+      condition     = var.dataflow_params.template_params.working_directory_bucket != null
+      error_message = "You must provide a working_directory_bucket in template_params when uploading a local_session_file_path."
+    }
+  }
+
   name         = "${var.dataflow_params.template_params.working_directory_prefix}/session.json"
   source       = var.dataflow_params.template_params.local_session_file_path
   content_type = "application/json"
@@ -30,7 +46,7 @@ resource "google_project_iam_member" "dataflow_roles" {
 
 resource "google_project_iam_member" "spanner_reader_role" {
   count   = var.common_params.add_policies_to_service_account ? 1 : 0
-  project = var.dataflow_params.template_params.spanner_project_id != null && var.dataflow_params.template_params.spanner_project_id != "" ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
+  project = local.spanner_project_id
   role    = "roles/spanner.databaseReader"
   member  = "serviceAccount:${local.effective_sa_email}"
 }
@@ -46,7 +62,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   parameters = {
     for k, v in {
       gcsInputDirectory              = var.dataflow_params.template_params.gcs_input_directory
-      projectId                      = var.dataflow_params.template_params.spanner_project_id != null && var.dataflow_params.template_params.spanner_project_id != "" ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
+      projectId                      = local.spanner_project_id
       instanceId                     = var.dataflow_params.template_params.instance_id
       databaseId                     = var.dataflow_params.template_params.database_id
       bigQueryDataset                = var.dataflow_params.template_params.bigquery_dataset
@@ -64,8 +80,10 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   }
 
   service_account_email       = local.effective_sa_email
-  network                     = (var.dataflow_params.runner_params.network != null && var.dataflow_params.runner_params.network != "") ? (var.common_params.host_project != null && var.common_params.host_project != "") ? "projects/${var.common_params.host_project}/global/networks/${var.dataflow_params.runner_params.network}" : "projects/${var.common_params.project}/global/networks/${var.dataflow_params.runner_params.network}" : null
-  subnetwork                  = (var.dataflow_params.runner_params.subnetwork != null && var.dataflow_params.runner_params.subnetwork != "") ? (var.common_params.host_project != null && var.common_params.host_project != "") ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : null
+  network                     = local.network_uri
+  subnetwork                  = local.subnetwork_uri
+  kms_key_name                = var.dataflow_params.runner_params.kms_key_name != "" ? var.dataflow_params.runner_params.kms_key_name : null
+  additional_pipeline_options = var.dataflow_params.runner_params.additional_pipeline_options
   machine_type                = var.dataflow_params.runner_params.machine_type
   max_workers                 = var.dataflow_params.runner_params.max_workers
   additional_experiments      = var.dataflow_params.runner_params.additional_experiments

@@ -27,6 +27,7 @@ resource "google_project_service" "enabled_apis" {
   for_each = toset([
     "iam.googleapis.com",
     "dataflow.googleapis.com",
+    "compute.googleapis.com",
     "storage.googleapis.com",
     "spanner.googleapis.com",
     "bigquery.googleapis.com"
@@ -39,7 +40,6 @@ resource "google_project_service" "enabled_apis" {
 # To fetch project number
 data "google_project" "project" {
   project_id = var.common_params.project
-  depends_on = [google_project_service.enabled_apis]
 }
 
 # Fetch the default service account for Compute Engine (used by Dataflow)

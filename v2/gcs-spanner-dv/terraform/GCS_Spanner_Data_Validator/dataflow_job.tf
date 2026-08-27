@@ -124,13 +124,6 @@ variable "transformationCustomParameters" {
 }
 
 
-provider "google" {
-  project = var.project
-}
-
-provider "google-beta" {
-  project = var.project
-}
 
 variable "additional_experiments" {
   type        = set(string)

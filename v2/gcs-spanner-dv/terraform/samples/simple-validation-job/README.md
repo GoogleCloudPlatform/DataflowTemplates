@@ -261,7 +261,7 @@ includedPermissions:
 Then attach the role to the service account -
 
 ```shell
-gcloud iam service-accounts add-iam-policy-binding <YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com \
+gcloud projects add-iam-policy-binding <YOUR-PROJECT-ID> \
     --member="serviceAccount:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com" \
     --role="projects/<YOUR-PROJECT-ID>/roles/dv_terraform_role"
 ```
@@ -281,11 +281,12 @@ PROJECT_ID="<YOUR-PROJECT-ID>"
 
 # Array of roles to grant
 ROLES=(
-  "roles/dataflow.admin"
-  "roles/iam.securityAdmin"
-  "roles/iam.serviceAccountUser"
-  "roles/storage.admin"
-  "roles/viewer"
+  "roles/dataflow.admin"                 # Required to create and manage Dataflow jobs
+  "roles/iam.securityAdmin"              # Required to bind roles to the Dataflow worker SA
+  "roles/iam.serviceAccountUser"         # Required to impersonate the Dataflow worker SA
+  "roles/storage.admin"                  # Required to manage GCS staging objects
+  "roles/viewer"                         # Required to fetch current project states
+  "roles/serviceusage.serviceUsageAdmin" # Required to enable required APIs
 )
 
 # Loop through each role and grant it to the service account
@@ -305,13 +306,13 @@ Verify that the custom role is attached to the service account -
 gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
 --flatten="bindings[].members" \
 --format='table(bindings.role)' \
---filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+--filter="bindings.members:serviceAccount:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
 ```
 
 Verify that the role has the correct set of permissions
 
 ```shell
-gcloud iam roles describe bulk_migrations_role --project=<YOUR-PROJECT-ID> 
+gcloud iam roles describe dv_terraform_role --project=<YOUR-PROJECT-ID> 
 ```
 
 ### Impersonating the Terraform service account
