@@ -133,4 +133,42 @@ public class JdbcConnectionHelperTest {
       }
     }
   }
+
+  @Test
+  public void testInitConnectionPoolWithUrlEncodedProperties() {
+    ConnectionHelperRequest mockRequest = mock(ConnectionHelperRequest.class);
+    Shard mockShard = mock(Shard.class);
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getUserName()).thenReturn("testuser");
+    when(mockShard.getPassword()).thenReturn("testpassword");
+    // Test URL-encoded connection properties with & and a malformed parameter to cover kv.length != 2 branch
+    when(mockShard.getConnectionProperties()).thenReturn("useSSL=true&requireSSL=true&malformedParam");
+
+    List<Shard> mockShards = Collections.singletonList(mockShard);
+    when(mockRequest.getShards()).thenReturn(mockShards);
+    when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
+    when(mockRequest.getMaxConnections()).thenReturn(10);
+    when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
+    when(mockRequest.getJdbcUrlPrefix()).thenReturn("jdbc:mysql://");
+
+    try (MockedConstruction<HikariDataSource> mockedDsConstruction =
+        mockConstruction(
+            HikariDataSource.class,
+            (mock, context) -> when(mock.getConnection()).thenReturn(mock(Connection.class)))) {
+      try (MockedConstruction<HikariConfig> mockedConfigConstruction =
+          mockConstruction(HikariConfig.class)) {
+        connectionHelper.init(mockRequest);
+
+        assertTrue(connectionHelper.isConnectionPoolInitialized());
+        
+        HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
+        // Verify both properties were split properly and the malformed one was ignored
+        verify(capturedConfig).addDataSourceProperty("useSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("requireSSL", "true");
+        // Verify no other interactions (meaning malformedParam wasn't added)
+      }
+    }
+  }
 }

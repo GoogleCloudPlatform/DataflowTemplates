@@ -33,10 +33,12 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceCo
 import com.google.common.annotations.VisibleForTesting;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,6 +144,28 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     config.setUsername(shard.getUserName());
     config.setPassword(shard.getPassword());
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    
+    if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
+      String props = shard.getConnectionProperties();
+      if (props.contains("&") || props.contains(";")) {
+        String[] pairs = props.split("[&;]");
+        for (String pair : pairs) {
+          String[] kv = pair.split("=", 2);
+          if (kv.length == 2) {
+            config.addDataSourceProperty(kv[0], kv[1]);
+          }
+        }
+      } else {
+        Properties jdbcProperties = new Properties();
+        try (StringReader reader = new StringReader(props)) {
+          jdbcProperties.load(reader);
+          for (String key : jdbcProperties.stringPropertyNames()) {
+            config.addDataSourceProperty(key, jdbcProperties.getProperty(key));
+          }
+        }
+      }
+    }
+
     HikariDataSource ds = new HikariDataSource(config);
     return ds.getConnection();
   }

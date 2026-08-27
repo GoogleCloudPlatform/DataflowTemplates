@@ -71,10 +71,21 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setMinimumIdle(0); // avoid pre-filling connections
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-        try (StringReader reader = new StringReader(shard.getConnectionProperties())) {
-          jdbcProperties.load(reader);
-        } catch (IOException e) {
-          LOG.error("Error converting string to properties: {}", e.getMessage());
+        String props = shard.getConnectionProperties();
+        if (props.contains("&") || props.contains(";")) {
+          String[] pairs = props.split("[&;]");
+          for (String pair : pairs) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+              jdbcProperties.setProperty(kv[0], kv[1]);
+            }
+          }
+        } else {
+          try (StringReader reader = new StringReader(props)) {
+            jdbcProperties.load(reader);
+          } catch (IOException e) {
+            LOG.error("Error converting string to properties: {}", e.getMessage());
+          }
         }
       }
 
