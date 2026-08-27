@@ -21,6 +21,8 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,7 +79,9 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
           for (String pair : pairs) {
             String[] kv = pair.split("=", 2);
             if (kv.length == 2) {
-              jdbcProperties.setProperty(kv[0], kv[1]);
+              String decodedKey = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+              String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+              jdbcProperties.setProperty(decodedKey, decodedValue);
             }
           }
         } else {

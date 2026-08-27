@@ -143,10 +143,10 @@ public class JdbcConnectionHelperTest {
     when(mockShard.getDbName()).thenReturn("testdb");
     when(mockShard.getUserName()).thenReturn("testuser");
     when(mockShard.getPassword()).thenReturn("testpassword");
-    // Test URL-encoded connection properties with & and a malformed parameter to cover kv.length !=
-    // 2 branch
+    // Test URL-encoded connection properties with &, a malformed parameter to cover kv.length != 2
+    // branch, and URL-encoded characters
     when(mockShard.getConnectionProperties())
-        .thenReturn("useSSL=true&requireSSL=true&malformedParam");
+        .thenReturn("useSSL=true&requireSSL=true&malformedParam&encoded%26Key=encoded%3DValue");
 
     List<Shard> mockShards = Collections.singletonList(mockShard);
     when(mockRequest.getShards()).thenReturn(mockShards);
@@ -166,9 +166,11 @@ public class JdbcConnectionHelperTest {
         assertTrue(connectionHelper.isConnectionPoolInitialized());
 
         HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
-        // Verify both properties were split properly and the malformed one was ignored
+        // Verify both properties were split properly, malformed one was ignored, and encoded ones
+        // were decoded
         verify(capturedConfig).addDataSourceProperty("useSSL", "true");
         verify(capturedConfig).addDataSourceProperty("requireSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("encoded&Key", "encoded=Value");
         // Verify no other interactions (meaning malformedParam wasn't added)
       }
     }

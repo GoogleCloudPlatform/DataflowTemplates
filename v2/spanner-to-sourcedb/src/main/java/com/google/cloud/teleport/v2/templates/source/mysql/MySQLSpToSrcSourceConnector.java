@@ -34,6 +34,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.StringReader;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -152,7 +154,9 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
         for (String pair : pairs) {
           String[] kv = pair.split("=", 2);
           if (kv.length == 2) {
-            config.addDataSourceProperty(kv[0], kv[1]);
+            String decodedKey = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+            String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+            config.addDataSourceProperty(decodedKey, decodedValue);
           }
         }
       } else {
