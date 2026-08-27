@@ -92,6 +92,18 @@ public class SourceConnectorFactoryTest {
   }
 
   @Test
+  public void testGetSourceConnectorByDialect_optionsSqlServer() {
+    SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    options.setSourceDbDialect(SourceDbToSpannerOptions.SQLSERVER_SOURCE_DIALECT);
+
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+
+    assertThat(connector)
+        .isInstanceOf(
+            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
   public void testGetSourceConnectorByDialect_optionsUnsupportedDialect() {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect("unsupported_db");
@@ -146,6 +158,16 @@ public class SourceConnectorFactoryTest {
   }
 
   @Test
+  public void testGetSourceConnectorByDialect_sqlDialectSqlServer() {
+    AbstractJdbcSrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.SQLSERVER);
+
+    assertThat(connector)
+        .isInstanceOf(
+            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
   public void testGetSourceConnectorByDialect_sqlDialectNull() {
     IllegalArgumentException thrown =
         assertThrows(
@@ -183,6 +205,15 @@ public class SourceConnectorFactoryTest {
     assertThat(connector)
         .isInstanceOf(
             com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_sqlserver() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.SQLSERVER_SOURCE_TYPE);
+    assertThat(connector)
+        .isInstanceOf(
+            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
   }
 
   @Test
