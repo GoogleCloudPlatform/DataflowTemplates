@@ -288,8 +288,10 @@ public class MySQLSpToSrcSourceConnectorTest {
     when(mockShard.getDbName()).thenReturn("mydb");
     when(mockShard.getUserName()).thenReturn("user");
     when(mockShard.getPassword()).thenReturn("pass");
-    // Test URL-encoded connection properties with ; and a malformed parameter to cover kv.length != 2 branch
-    when(mockShard.getConnectionProperties()).thenReturn("useSSL=true;requireSSL=true;malformedParam");
+    // Test URL-encoded connection properties with ; and a malformed parameter to cover kv.length !=
+    // 2 branch
+    when(mockShard.getConnectionProperties())
+        .thenReturn("useSSL=true;requireSSL=true;malformedParam");
 
     try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(

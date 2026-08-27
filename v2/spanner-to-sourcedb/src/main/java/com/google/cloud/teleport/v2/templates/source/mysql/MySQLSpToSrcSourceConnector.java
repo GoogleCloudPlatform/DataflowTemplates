@@ -144,7 +144,7 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     config.setUsername(shard.getUserName());
     config.setPassword(shard.getPassword());
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
-    
+
     if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
       String props = shard.getConnectionProperties();
       if (props.contains("&") || props.contains(";")) {
