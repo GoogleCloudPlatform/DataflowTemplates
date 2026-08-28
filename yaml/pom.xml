@@ -131,7 +131,6 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-delta</artifactId>
       <version>${beam.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.github.jbellis</groupId>
