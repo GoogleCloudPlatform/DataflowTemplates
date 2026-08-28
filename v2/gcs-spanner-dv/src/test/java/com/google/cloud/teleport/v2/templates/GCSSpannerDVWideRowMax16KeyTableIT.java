@@ -55,7 +55,7 @@ public class GCSSpannerDVWideRowMax16KeyTableIT extends GCSSpannerDVITBase {
   public void test16KeyColumns() throws Exception {
     GCSSpannerDVAvroSetupHelper.TableDef tableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE),
+            GCSSpannerDVAvroSetupHelper.getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE),
             "Max16KeyTable",
             Arrays.asList(
                 "col_1", "col_2", "col_3", "col_4", "col_5", "col_6", "col_7", "col_8", "col_9",

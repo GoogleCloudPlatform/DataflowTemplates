@@ -155,7 +155,8 @@ The file should be a list of JSONs as:
        "user": "root",
        "secretManagerUri": "projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
        "port": "3306",
-       "dbName": "db1"
+       "dbName": "db1",
+       "connectionProperties": "useSSL=true&requireSSL=true"
      },
      {
        "logicalShardId": "shard2",
@@ -168,6 +169,15 @@ The file should be a list of JSONs as:
    ]
 }
 ```
+
+You can optionally specify `"connectionProperties"` to configure the JDBC connection (e.g. for SSL). The properties can be separated by `&` or `;` and the keys/values can be URL-encoded if they contain special characters.
+
+#### Referencing SSL Certificates
+To connect to a source database using a custom SSL certificate (e.g. a truststore), you must first make the certificate file available to the Dataflow workers:
+1. Upload your certificate file (e.g., `truststore.jks`) to a Google Cloud Storage bucket.
+2. When launching the Dataflow template, provide the GCS path to the `--extraFilesToStage` parameter (e.g. `--extraFilesToStage="gs://<BUCKET_NAME>/truststore.jks"`). The file will be downloaded to the `/extra_files` directory on each worker.
+3. In your shards JSON configuration, set the `"connectionProperties"` to reference this local file path. For example, for MySQL you would specify the `trustCertificateKeyStoreUrl` and password:
+   `"connectionProperties": "useSSL=true&requireSSL=true&trustCertificateKeyStoreUrl=file:/extra_files/truststore.jks&trustCertificateKeyStorePassword=my_password"`
 
 
 ### Sample source file for Cassandra

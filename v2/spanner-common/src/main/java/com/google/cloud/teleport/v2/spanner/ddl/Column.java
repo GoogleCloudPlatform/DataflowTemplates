@@ -421,10 +421,12 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.PG_INT8.getName())) {
             return t(Type.pgInt8(), null);
           }
-          if (spannerType.equals(Type.Code.PG_FLOAT8.getName())) {
+          if (spannerType.equals(Type.Code.PG_FLOAT8.getName())
+              || spannerType.equalsIgnoreCase("float8")) {
             return t(Type.pgFloat8(), null);
           }
-          if (spannerType.equals(Type.Code.PG_FLOAT4.getName())) {
+          if (spannerType.equals(Type.Code.PG_FLOAT4.getName())
+              || spannerType.equalsIgnoreCase("float4")) {
             return t(Type.pgFloat4(), null);
           }
           if (spannerType.equals(Type.Code.PG_TEXT.getName())) {

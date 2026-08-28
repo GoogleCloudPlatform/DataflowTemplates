@@ -309,7 +309,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
-            put("workerMachineType", "n2-standard-4");
             // Query Spanner server time to bypass local clock skew and set as startTimestamp
             // to ensure the DirectRunner catches all test mutations during initialization.
             put("startTimestamp", getSpannerServerTime(spannerResourceManager, dialect));
@@ -353,6 +352,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();

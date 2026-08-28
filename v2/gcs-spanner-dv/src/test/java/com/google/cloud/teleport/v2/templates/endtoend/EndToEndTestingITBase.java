@@ -13,20 +13,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVITBase;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -103,6 +107,20 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       builder.addParameter("sessionFilePath", getGcsPath("session.json", gcsResourceManager));
     }
 
+    String connectionProps = "useSSL=false&allowPublicKeyRetrieval=true";
+    String jdbcDriver = "com.mysql.cj.jdbc.Driver";
+    String dialect = "MYSQL";
+
+    if (cloudSqlResourceManager instanceof CloudPostgresResourceManager) {
+      connectionProps = null;
+      jdbcDriver = "org.postgresql.Driver";
+      dialect = "POSTGRESQL";
+    } else if (cloudSqlResourceManager instanceof CloudOracleResourceManager) {
+      connectionProps = null;
+      jdbcDriver = "oracle.jdbc.OracleDriver";
+      dialect = "ORACLE";
+    }
+
     if (!multiSharded) {
       DataShard dataShard =
           new DataShard(
@@ -113,35 +131,31 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
               String.valueOf(cloudSqlResourceManager.getPort()),
               cloudSqlResourceManager.getDatabaseName(),
               null,
-              "useSSL=false&allowPublicKeyRetrieval=true",
+              connectionProps,
               Collections.emptyList());
       createAndUploadShardConfigToGcs(Collections.singletonList(dataShard), gcsResourceManager);
     }
 
     builder.addParameter(
         "sourceConfigURL", getGcsPath("input/shard-config.json", gcsResourceManager));
-
-    if (!multiSharded) {
-      builder.addParameter("jdbcDriverClassName", "com.mysql.cj.jdbc.Driver");
-    }
+    builder.addParameter("sourceDbDialect", dialect);
+    builder.addParameter("jdbcDriverClassName", jdbcDriver);
 
     flexTemplateDataflowJobResourceManager = builder.build();
-
-    // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
 
-  protected void createMySQLDDL(CloudSqlResourceManager cloudSqlResourceManager, String ddlResource)
+  protected void executeSqlScript(JDBCResourceManager jdbcResourceManager, String ddlResource)
       throws IOException {
-    String mysqlSql =
+    String sqlString =
         Resources.toString(Resources.getResource(ddlResource), StandardCharsets.UTF_8);
     // Since the DDL file contains multiple CREATE statements, we split them by semicolon and
     // execute one single SQL statement at a time.
-    for (String stmt : mysqlSql.split("(?m);\\s*$")) {
+    for (String stmt : sqlString.split("(?m);\\s*$")) {
       if (!stmt.trim().isEmpty()) {
-        cloudSqlResourceManager.runSQLUpdate(stmt);
+        jdbcResourceManager.runSQLUpdate(stmt);
       }
     }
   }

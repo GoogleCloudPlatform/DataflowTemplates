@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.ResultSetValueMappe
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -134,5 +136,42 @@ public class MysqlJdbcValueMappingsTest {
             + TimeUnit.MINUTES.toMicros(3)
             + TimeUnit.SECONDS.toMicros(4);
     assertEquals(expectedShort, mapper.map(binaryShort, null));
+  }
+
+  @Test
+  public void testSqlDateToAvroTimestampMicros() throws Exception {
+    Field field = MysqlJdbcValueMappings.class.getDeclaredField("sqlDateToAvroTimestampMicros");
+    field.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    ResultSetValueMapper<Date> mapper = (ResultSetValueMapper<Date>) field.get(null);
+
+    // Standard date
+    long epochMicros1 = TimeUnit.DAYS.toMicros(LocalDate.parse("2012-09-17").toEpochDay());
+    Date d1 = Date.valueOf("2012-09-17");
+    assertEquals(epochMicros1, (long) mapper.map(d1, null));
+
+    // Min date (1000-01-01)
+    long epochMicros2 = TimeUnit.DAYS.toMicros(LocalDate.parse("1000-01-01").toEpochDay());
+    Date d2 = Date.valueOf("1000-01-01");
+    assertEquals(epochMicros2, (long) mapper.map(d2, null));
+
+    // Max date (9999-12-31)
+    long epochMicros3 = TimeUnit.DAYS.toMicros(LocalDate.parse("9999-12-31").toEpochDay());
+    Date d3 = Date.valueOf("9999-12-31");
+    assertEquals(epochMicros3, (long) mapper.map(d3, null));
+
+    // Leap year (2000-02-29)
+    long epochMicros4 = TimeUnit.DAYS.toMicros(LocalDate.parse("2000-02-29").toEpochDay());
+    Date d4 = Date.valueOf("2000-02-29");
+    assertEquals(epochMicros4, (long) mapper.map(d4, null));
+
+    // Leap year (2024-02-29)
+    long epochMicros5 = TimeUnit.DAYS.toMicros(LocalDate.parse("2024-02-29").toEpochDay());
+    Date d5 = Date.valueOf("2024-02-29");
+    assertEquals(epochMicros5, (long) mapper.map(d5, null));
+
+    // Epoch day zero (1970-01-01)
+    Date d6 = Date.valueOf("1970-01-01");
+    assertEquals(0L, (long) mapper.map(d6, null));
   }
 }
