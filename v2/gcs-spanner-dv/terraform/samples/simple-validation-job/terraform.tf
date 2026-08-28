@@ -42,8 +42,3 @@ data "google_project" "project" {
   project_id = var.common_params.project
 }
 
-# Fetch the default service account for Compute Engine (used by Dataflow)
-data "google_compute_default_service_account" "gce_account" {
-  project    = var.common_params.project
-  depends_on = [google_project_service.enabled_apis]
-}

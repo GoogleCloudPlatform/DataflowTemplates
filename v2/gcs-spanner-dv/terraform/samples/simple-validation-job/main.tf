@@ -1,5 +1,5 @@
 locals {
-  effective_sa_email = (var.dataflow_params.runner_params.service_account_email != null && var.dataflow_params.runner_params.service_account_email != "") ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+  effective_sa_email = (var.dataflow_params.runner_params.service_account_email != null && var.dataflow_params.runner_params.service_account_email != "") ? var.dataflow_params.runner_params.service_account_email : "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 
   # Network resolution (handling Shared VPC structures)
   network_project = (var.common_params.host_project != null && var.common_params.host_project != "") ? var.common_params.host_project : var.common_params.project
