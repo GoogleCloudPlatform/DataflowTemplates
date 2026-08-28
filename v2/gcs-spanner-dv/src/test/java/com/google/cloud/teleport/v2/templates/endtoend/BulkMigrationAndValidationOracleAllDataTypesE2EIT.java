@@ -82,7 +82,16 @@ public class BulkMigrationAndValidationOracleAllDataTypesE2EIT extends EndToEndT
   public void setUp() throws IOException {
     originalTimeZone = TimeZone.getDefault();
     TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-    oracleResourceManager = CloudOracleResourceManager.builder(testName).build();
+    String password =
+        System.getProperty(
+            "cloudOraclePassword", System.getProperty("cloudOracleSysPassword", "oracle"));
+    String username = System.getProperty("cloudOracleUsername", "system");
+    oracleResourceManager =
+        (CloudOracleResourceManager)
+            CloudOracleResourceManager.builder(testName)
+                .setUsername(username)
+                .setPassword(password)
+                .build();
     spannerResourceManager = setUpSpannerResourceManager();
     bigQueryResourceManager = setUpBigQueryResourceManager();
     bigQueryResourceManager.createDataset(REGION);
