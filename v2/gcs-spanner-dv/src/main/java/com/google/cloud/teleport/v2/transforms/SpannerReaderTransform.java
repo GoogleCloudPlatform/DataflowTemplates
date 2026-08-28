@@ -35,6 +35,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
+import java.util.Set;
 
 public class SpannerReaderTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
@@ -43,21 +44,24 @@ public class SpannerReaderTransform
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
+  private final Set<String> configuredSourceTables;
 
   public SpannerReaderTransform(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
-      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
+      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
+      Set<String> configuredSourceTables) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
+    this.configuredSourceTables = configuredSourceTables;
   }
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
-            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView)).withSideInputs(ddlView))
+            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, configuredSourceTables)).withSideInputs(ddlView))
         .apply("ReadSpannerRecords", readFromSpanner())
         .apply(
             "CalculateSpannerRecordsHash",

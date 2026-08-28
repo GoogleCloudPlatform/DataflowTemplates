@@ -16,34 +16,68 @@
 package com.google.cloud.teleport.v2.dofn;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.NoSuchElementException;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
-  private final PCollectionView<Ddl> ddlView;
+  private static final Logger LOG = LoggerFactory.getLogger(CreateSpannerReadOpsFn.class);
 
-  public CreateSpannerReadOpsFn(PCollectionView<Ddl> ddlView) {
+  private final PCollectionView<Ddl> ddlView;
+  private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
+  private final Set<String> configuredSourceTables;
+
+  public CreateSpannerReadOpsFn(
+      PCollectionView<Ddl> ddlView,
+      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
+      Set<String> configuredSourceTables) {
     this.ddlView = ddlView;
+    this.schemaMapperProvider = schemaMapperProvider;
+    this.configuredSourceTables = configuredSourceTables;
   }
 
   // TODO: @aasthabharill to check if there's a better way to generalize dialect specific changes
   @ProcessElement
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
+    ISchemaMapper schemaMapper = schemaMapperProvider.apply(ddl);
     List<String> tableNames = ddl.getTablesOrderedByReference();
-    tableNames.forEach(
-        tableName -> {
-          String quote = ddl.dialect() == com.google.cloud.spanner.Dialect.POSTGRESQL ? "\"" : "`";
-          // We encode the tableName in the query itself to push table information dynamically
-          // and avoid table level stages.
-          String query =
-              String.format(
-                  "SELECT *, '%s' as __tableName__ FROM %s%s%s",
-                  tableName, quote, tableName, quote);
-          c.output(ReadOperation.create().withQuery(query));
-        });
+
+    Set<String> targetSpannerTables = null;
+    if (configuredSourceTables != null && !configuredSourceTables.isEmpty()) {
+      targetSpannerTables = new HashSet<>();
+      for (String sourceTable : configuredSourceTables) {
+        try {
+          String spannerTable = schemaMapper.getSpannerTableName("", sourceTable);
+          targetSpannerTables.add(spannerTable);
+        } catch (NoSuchElementException e) {
+          LOG.warn("No Spanner table mapped for source table: {}", sourceTable);
+        }
+      }
+    }
+
+    for (String tableName : tableNames) {
+      if (targetSpannerTables != null && !targetSpannerTables.contains(tableName)) {
+        LOG.info("Skipping Spanner table {} as it is not in the configured validation list.", tableName);
+        continue;
+      }
+      String quote = ddl.dialect() == com.google.cloud.spanner.Dialect.POSTGRESQL ? "\"" : "`";
+      // We encode the tableName in the query itself to push table information dynamically
+      // and avoid table level stages.
+      String query =
+          String.format(
+              "SELECT *, '%s' as __tableName__ FROM %s%s%s",
+              tableName, quote, tableName, quote);
+      c.output(ReadOperation.create().withQuery(query));
+    }
   }
 }

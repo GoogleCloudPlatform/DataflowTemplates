@@ -34,6 +34,17 @@ import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.channels.Channels;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -254,6 +265,25 @@ public class GCSSpannerDV {
     String getTransformationCustomParameters();
 
     void setTransformationCustomParameters(String value);
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Comma-separated list of source tables to validate",
+        helpText = "A comma-separated list of source tables to include in the validation run.")
+    @Default.String("")
+    String getTables();
+
+    void setTables(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 17,
+        optional = true,
+        description = "GCS path to a file containing a list of source tables to validate",
+        helpText = "A GCS file path containing a list of source tables to validate, with one table name per line.")
+    @Default.String("")
+    String getTableListFilePath();
+
+    void setTableListFilePath(String value);
   }
 
   public static void main(String[] args) {
@@ -264,6 +294,8 @@ public class GCSSpannerDV {
   }
 
   public static PipelineResult run(Options options) {
+    Set<String> configuredSourceTables = parseAndValidateConfiguredTables(options);
+
     Pipeline pipeline = Pipeline.create(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
@@ -297,13 +329,14 @@ public class GCSSpannerDV {
                 options.getGcsInputDirectory(),
                 ddlView,
                 schemaMapperProvider,
-                customTransformation));
+                customTransformation,
+                configuredSourceTables));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords =
         pipeline.apply(
             "ReadSpannerRecords",
-            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider));
+            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider, configuredSourceTables));
 
     PCollectionTuple inputs =
         PCollectionTuple.of(SOURCE_TAG, sourceRecords).and(SPANNER_TAG, spannerRecords);
@@ -333,5 +366,64 @@ public class GCSSpannerDV {
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+  }
+
+  private static Set<String> parseAndValidateConfiguredTables(Options options) {
+    String tablesConfig = options.getTables();
+    String tableListFilePath = options.getTableListFilePath();
+    boolean hasTablesConfig = tablesConfig != null && !tablesConfig.trim().isEmpty();
+    boolean hasTableListFile = tableListFilePath != null && !tableListFilePath.trim().isEmpty();
+
+    if (hasTablesConfig && hasTableListFile) {
+      throw new IllegalArgumentException(
+          "Both --tables and --tableListFilePath are provided. These options are mutually exclusive.");
+    }
+
+    Set<String> configuredTables = new HashSet<>();
+
+    if (hasTablesConfig) {
+      for (String table : tablesConfig.split(",")) {
+        String trimmed = table.trim();
+        if (!trimmed.isEmpty()) {
+          configuredTables.add(trimmed);
+        }
+      }
+    } else if (hasTableListFile) {
+      try {
+        ResourceId resourceId = FileSystems.matchNewResource(tableListFilePath, false);
+        try (BufferedReader reader =
+            new BufferedReader(
+                Channels.newReader(FileSystems.open(resourceId), "UTF-8"))) {
+          String line;
+          while ((line = reader.readLine()) != null) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+              configuredTables.add(trimmed);
+            }
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to read tableListFilePath: " + tableListFilePath, e);
+      }
+    }
+
+    if (!configuredTables.isEmpty()) {
+      // Validate that the requested tables exist in the GCS input directory
+      String gcsInputDirectory = options.getGcsInputDirectory();
+      String basePath = gcsInputDirectory.endsWith("/") ? gcsInputDirectory : gcsInputDirectory + "/";
+      for (String table : configuredTables) {
+        String pattern = basePath + table + "/**.avro";
+        try {
+          org.apache.beam.sdk.io.fs.MatchResult matchResult = FileSystems.match(pattern);
+          if (matchResult.status() == org.apache.beam.sdk.io.fs.MatchResult.Status.NOT_FOUND || matchResult.metadata().isEmpty()) {
+            throw new IllegalArgumentException("Configured table '" + table + "' was not found in GCS input directory matching pattern: " + pattern);
+          }
+        } catch (IOException e) {
+          throw new RuntimeException("Error checking for existence of table '" + table + "' in GCS", e);
+        }
+      }
+    }
+
+    return configuredTables;
   }
 }

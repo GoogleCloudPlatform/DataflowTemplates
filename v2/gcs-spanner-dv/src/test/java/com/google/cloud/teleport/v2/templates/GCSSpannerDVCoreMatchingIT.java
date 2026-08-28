@@ -383,4 +383,103 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
             new MismatchedRecordDto(
                 null, null, "AccountRoles", "[role_id:100]", "MISSING_IN_DESTINATION")));
   }
+
+  @Test
+  public void validationTestWithConfiguredTables() throws Exception {
+    Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
+
+    // 1. Create Source Avro records for Users and AccountRoles
+    GenericRecord usersRecord =
+        new GCSSpannerDVAvroSetupHelper.RecordBuilder(
+                GCSSpannerDVAvroSetupHelper.TableDef.USERS, null)
+            .set("user_id", 1L)
+            .set("event_id", "E1")
+            .set("full_name", "Alice")
+            .set("age", 30)
+            .set("created_at", t1)
+            .build();
+
+    GenericRecord rolesRecord =
+        new GCSSpannerDVAvroSetupHelper.RecordBuilder(
+                GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES, null)
+            .set("role_id", 1)
+            .set("role_name", "ADMIN")
+            .build();
+
+    String gcsInputDirectory = getGcsPath("input");
+    uploadAvroFileToGcs("input/Users/users.avro", GCSSpannerDVAvroSetupHelper.TableDef.USERS.schema, Arrays.asList(usersRecord));
+    uploadAvroFileToGcs("input/AccountRoles/roles.avro", GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema, Arrays.asList(rolesRecord));
+
+    // 2. Inject Spanner Records (Destination)
+    spannerResourceManager.write(
+        Arrays.asList(
+            // Users: Mismatched record (age is 40 instead of 30)
+            Mutation.newInsertOrUpdateBuilder("Users")
+                .set("user_id")
+                .to(1L)
+                .set("event_id")
+                .to("E1")
+                .set("full_name")
+                .to("Alice")
+                .set("age")
+                .to(40L)
+                .set("created_at")
+                .to(com.google.cloud.Timestamp.parseTimestamp(t1.toString()))
+                .build(),
+            // AccountRoles: Identical record
+            Mutation.newInsertOrUpdateBuilder("AccountRoles")
+                .set("role_id")
+                .to(1L)
+                .set("role_name")
+                .to("ADMIN")
+                .build()));
+
+    // Wait for Spanner
+    Thread.sleep(20000);
+
+    // 3. Launch Pipeline configured to ONLY validate 'AccountRoles'
+    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
+
+    LaunchInfo jobInfo =
+        launchDataflowJob(
+            options,
+            testName,
+            PROJECT,
+            spannerResourceManager,
+            bigQueryResourceManager.getDatasetId(),
+            gcsInputDirectory,
+            null,
+            null,
+            null,
+            null,
+            null,
+            java.util.Map.of("tables", "AccountRoles"));
+
+    pipelineOperator().waitUntilDone(createConfig(jobInfo));
+
+    // 4. Assert BigQuery Validation Results
+    // Note: If table filtering wasn't working, the result would have been MISMATCHED 
+    // due to the discrepancy in the Users table. Since it's filtered, we expect a MATCH.
+    GCSSpannerDVTestAsserts.assertValidationSummary(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new ValidationSummaryDto(
+                "MATCH",
+                1L, // totalTablesValidated
+                1L, // totalRowsMatched
+                0L, // totalRowsMismatched
+                "")));
+
+    GCSSpannerDVTestAsserts.assertTableValidationStats(
+        bigQueryResourceManager,
+        Arrays.asList(
+            new TableValidationStatsDto(
+                null,
+                "AccountRoles",
+                "MATCH",
+                1L,
+                1L,
+                1L,
+                0L)));
+  }
 }

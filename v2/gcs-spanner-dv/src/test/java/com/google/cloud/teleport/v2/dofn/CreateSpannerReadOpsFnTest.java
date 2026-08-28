@@ -48,7 +48,7 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView);
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, null);
 
     // Execute
     doFn.processElement(context);
@@ -81,7 +81,7 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView);
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, null);
 
     // Execute
     doFn.processElement(context);

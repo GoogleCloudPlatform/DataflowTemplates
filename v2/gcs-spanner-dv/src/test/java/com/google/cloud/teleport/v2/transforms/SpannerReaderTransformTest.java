@@ -88,7 +88,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, null) {
           @Override
           protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
             return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
@@ -132,7 +132,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 2. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, null) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -197,7 +197,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, null) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -235,7 +235,7 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
 
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new);
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, null);
 
     assertNotNull(transform.readFromSpanner());
     pipeline.run();
