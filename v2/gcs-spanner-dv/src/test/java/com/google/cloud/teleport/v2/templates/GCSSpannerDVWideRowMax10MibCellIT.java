@@ -57,7 +57,9 @@ public class GCSSpannerDVWideRowMax10MibCellIT extends GCSSpannerDVITBase {
   public void test10MibCell() throws Exception {
     GCSSpannerDVAvroSetupHelper.TableDef tableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE), "Max10MibCellTable", Arrays.asList("id"));
+            GCSSpannerDVAvroSetupHelper.getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE),
+            "Max10MibCellTable",
+            Arrays.asList("id"));
 
     final int safeBlobSize = (10 * 1024 * 1024) - 1024; // 9.9MB to avoid limit issues
     byte[] matchBytes = new byte[safeBlobSize];

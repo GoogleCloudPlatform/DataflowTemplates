@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.common.io.Resources;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -29,15 +31,17 @@ import org.apache.avro.generic.GenericRecordBuilder;
  */
 public class GCSSpannerDVAvroSetupHelper {
 
-  public static Schema parseAvroSchema(String resourceName) {
-    try (java.io.InputStream is =
-        GCSSpannerDVAvroSetupHelper.class.getClassLoader().getResourceAsStream(resourceName)) {
-      if (is == null) {
-        throw new IllegalArgumentException("Resource not found: " + resourceName);
-      }
+  /**
+   * Helper function to load an Avro Schema from a resource file.
+   *
+   * @param resourceName The path to the Avro schema file relative to the resources directory
+   * @return The parsed Avro Schema
+   */
+  public static Schema getSchemaFromAvscFile(String resourceName) {
+    try (InputStream is = Resources.getResource(resourceName).openStream()) {
       return new Schema.Parser().parse(is);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to parse Avro schema from resource: " + resourceName, e);
+      throw new RuntimeException("Failed to load Avro schema from resource: " + resourceName, e);
     }
   }
 
@@ -48,12 +52,12 @@ public class GCSSpannerDVAvroSetupHelper {
   public static class TableDef {
     public static final TableDef USERS =
         new TableDef(
-            parseAvroSchema("GCSSpannerDVAvroSetupHelper/users.avsc"),
+            getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc"),
             "Users",
             Arrays.asList("user_id", "event_id"));
     public static final TableDef ACCOUNT_ROLES =
         new TableDef(
-            parseAvroSchema("GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
+            getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
             "AccountRoles",
             Arrays.asList("role_id"));
 
