@@ -27,7 +27,7 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Delta Lake to Lakehouse",
     description =
-        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table and outputs the records to an Lakehouse table.",
+        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table and outputs the records to a Lakehouse table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "DeltaLakeToLakehouse.yaml",
     filesToCopy = {
@@ -40,7 +40,7 @@ import org.apache.beam.sdk.options.Validation;
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Input Delta Lake table must exist and be accessible.",
-      "The Output Iceberg table must exist or be created, and the warehouse must be accessible."
+      "The Output Lakehouse table must exist or be created, and the warehouse must be accessible."
     },
     streaming = false,
     hidden = false)

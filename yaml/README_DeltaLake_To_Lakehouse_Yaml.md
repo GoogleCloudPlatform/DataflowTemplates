@@ -2,7 +2,7 @@
 Delta Lake to Lakehouse template
 ---
 The Delta Lake to Lakehouse template is a batch pipeline that reads data from a
-Delta Lake table and outputs the records to an Lakehouse table.
+Delta Lake table and outputs the records to a Lakehouse table.
 
 
 
