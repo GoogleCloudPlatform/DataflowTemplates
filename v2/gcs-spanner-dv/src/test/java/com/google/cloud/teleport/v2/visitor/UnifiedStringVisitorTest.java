@@ -71,6 +71,16 @@ public class UnifiedStringVisitorTest {
   }
 
   @Test
+  public void testVisitFloat32() {
+    UnifiedStringVisitor visitor = new UnifiedStringVisitor();
+    float input = 12.3f;
+
+    visitor.visitFloat32(input);
+
+    assertEquals(String.valueOf(input), visitor.getResult());
+  }
+
+  @Test
   public void testVisitBool() {
     UnifiedStringVisitor visitor = new UnifiedStringVisitor();
     boolean input = true;
