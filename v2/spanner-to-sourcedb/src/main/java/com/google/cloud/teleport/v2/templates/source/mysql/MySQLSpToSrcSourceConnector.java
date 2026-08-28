@@ -146,6 +146,8 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
     if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
       Properties parsedProps = JdbcConnectionHelper.parseProperties(shard.getConnectionProperties());
+      LOG.info(
+          "Connection properties for shard {}: {}", shard.getLogicalShardId(), shard.getConnectionProperties());
       for (String key : parsedProps.stringPropertyNames()) {
         config.addDataSourceProperty(key, parsedProps.getProperty(key));
       }

@@ -70,6 +70,8 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
         Properties parsedProps = parseProperties(shard.getConnectionProperties());
+        LOG.info(
+            "Connection properties for shard {}: {}", shard.getLogicalShardId(), shard.getConnectionProperties());
         for (String key : parsedProps.stringPropertyNames()) {
           jdbcProperties.setProperty(key, parsedProps.getProperty(key));
         }
