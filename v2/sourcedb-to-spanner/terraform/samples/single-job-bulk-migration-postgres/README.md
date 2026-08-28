@@ -409,7 +409,7 @@ Once the roles are added, run the following command to verify them -
 gcloud projects get-iam-policy <YOUR-PROJECT-ID>  \
 --flatten="bindings[].members" \
 --format='table(bindings.role)' \
---filter="bindings.members:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
+--filter="bindings.members:serviceAccount:<YOUR-SERVICE-ACCOUNT>@<YOUR-PROJECT-ID>.iam.gserviceaccount.com"
 ```
 
 Sample output -

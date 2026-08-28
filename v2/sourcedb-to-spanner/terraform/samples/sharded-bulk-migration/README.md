@@ -299,14 +299,26 @@ gcloud dataflow jobs update-options \                                           
       2024-06-17_01_21_44-12198433486526363702
 ```
 
-### Specifying schema overrides
+### Specifying schema changes
 
-By default, the bulk job performs a like-like mapping between
-source and Spanner. However, for a sharded migration, a session file is mandatory for migration.
-Any schema changes between source and Spanner can be
-specified using the `session file`.
+By default, the validation job performs a like-like schema mapping between the source AVRO records and Spanner. Any schema changes between the source and Spanner can be specified using a `session file` or `overrides` parameters.
 
-To generate a session file:
+**We highly recommend using the schema overrides parameters (`table_overrides` and `column_overrides`) instead of a session file** when dealing with schema differences.
+
+#### Using Schema Overrides (Recommended)
+
+When passing schema overrides to the job, you must strictly follow the required `[{}]` bracket-brace format. If the format is not matched exactly, Dataflow will reject the configuration with a regex error.
+
+*   **For `table_overrides`**: Use the format `[{OldTableName,NewTableName}]`.
+    *   *Example:* `[{Singers, Vocalists}]`
+*   **For `column_overrides`**: You **MUST** include the table name alongside the column names. Use the format `[{TableName.OldColumnName,TableName.NewColumnName}]`. Missing the table name will cause the pipeline to crash.
+    *   *Example:* `[{Singers.SingerId, Singers.VocalistId}]`
+
+You can pass these overrides directly to your Terraform configuration using `var.table_overrides` and `var.column_overrides`.
+
+#### Using a Session File
+
+If you prefer or need to use a session file, you can generate one using the Spanner Migration Tool (SMT):
 
 1. Setup SMT
    and [launch the UI](https://googlecloudplatform.github.io/spanner-migration-tool/ui#launching-the-web-ui-for-spanner-migration-tool).
