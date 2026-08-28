@@ -33,6 +33,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -65,6 +66,7 @@ import org.junit.runners.JUnit4;
  *   <li><b>Maximum Row:</b> Tests upper bounds, large text/blob limits, and maximum string sizes.
  * </ul>
  */
+@Ignore("Disabled until Oracle IT environment is available")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(GCSSpannerDV.class)
