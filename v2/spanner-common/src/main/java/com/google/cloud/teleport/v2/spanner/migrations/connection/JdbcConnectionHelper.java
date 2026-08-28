@@ -51,15 +51,29 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
         "Initializing connection pool with size: {}", connectionHelperRequest.getMaxConnections());
     Map<String, HikariDataSource> localMap = new HashMap<>();
     for (Shard shard : connectionHelperRequest.getShards()) {
-      String sourceConnectionUrl =
-          new StringBuilder()
-              .append(connectionHelperRequest.getJdbcUrlPrefix())
-              .append(shard.getHost())
-              .append(":")
-              .append(shard.getPort())
-              .append("/")
-              .append(shard.getDbName())
-              .toString();
+      String sourceConnectionUrl;
+      if (connectionHelperRequest.getJdbcUrlPrefix() != null
+          && connectionHelperRequest.getJdbcUrlPrefix().startsWith("jdbc:sqlserver://")) {
+        sourceConnectionUrl =
+            new StringBuilder()
+                .append(connectionHelperRequest.getJdbcUrlPrefix())
+                .append(shard.getHost())
+                .append(":")
+                .append(shard.getPort())
+                .append(";databaseName=")
+                .append(shard.getDbName())
+                .toString();
+      } else {
+        sourceConnectionUrl =
+            new StringBuilder()
+                .append(connectionHelperRequest.getJdbcUrlPrefix())
+                .append(shard.getHost())
+                .append(":")
+                .append(shard.getPort())
+                .append("/")
+                .append(shard.getDbName())
+                .toString();
+      }
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());

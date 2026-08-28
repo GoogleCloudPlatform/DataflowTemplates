@@ -303,10 +303,7 @@ public class GenericRecordTypeConvertorTest {
     col = "json_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col,
-            genericRecord.get(col),
-            genericRecord.getSchema().getField(col).schema(),
-            null);
+            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema(), null);
     assertEquals("Test json_col conversion: ", "{\"k1\":\"476F6F676C65\"}", result);
 
     col = "json_col";

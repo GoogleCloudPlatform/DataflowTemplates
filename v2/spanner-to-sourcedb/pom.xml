@@ -154,6 +154,11 @@
             <artifactId>ojdbc8</artifactId>
             <version>23.26.1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql-jdbc.version}</version>
+        </dependency>
     </dependencies>
 
     <profiles>

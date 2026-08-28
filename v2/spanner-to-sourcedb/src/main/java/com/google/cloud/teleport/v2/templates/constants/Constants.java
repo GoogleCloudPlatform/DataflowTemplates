@@ -81,6 +81,7 @@ public class Constants {
 
   public static final String SOURCE_SPANNER = "spanner";
   public static final String SOURCE_ORACLE = "oracle";
+  public static final String SOURCE_SQLSERVER = "sqlserver";
 
   // Message written to the file for filtered records
   public static final String FILTERED_TAG_MESSAGE =

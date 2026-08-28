@@ -41,6 +41,10 @@ public class SourceProcessorFactory {
     sourceMap.put(Constants.SOURCE_CASSANDRA, new CassandraSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_SPANNER, new SpannerSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_ORACLE, new OracleSpToSrcSourceConnector());
+    sourceMap.put(
+        Constants.SOURCE_SQLSERVER,
+        new com.google.cloud.teleport.v2.templates.source.sqlserver
+            .SQLServerSpToSrcSourceConnector());
   }
 
   public static void registerSource(String sourceName, ISpToSrcSourceConnector source) {
