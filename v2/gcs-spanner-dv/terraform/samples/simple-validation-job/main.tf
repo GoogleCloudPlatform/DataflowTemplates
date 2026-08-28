@@ -12,17 +12,17 @@ locals {
 
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
-  count        = var.dataflow_params.template_params.local_session_file_path != null ? 1 : 0
+  count        = (var.dataflow_params.template_params.local_session_file_path != null && var.dataflow_params.template_params.local_session_file_path != "") ? 1 : 0
   depends_on   = [google_project_service.enabled_apis]
   
   lifecycle {
     precondition {
-      condition     = var.dataflow_params.template_params.working_directory_bucket != null
+      condition     = var.dataflow_params.template_params.working_directory_bucket != null && var.dataflow_params.template_params.working_directory_bucket != ""
       error_message = "You must provide a working_directory_bucket in template_params when uploading a local_session_file_path."
     }
   }
 
-  name         = "${var.dataflow_params.template_params.working_directory_prefix}/session.json"
+  name         = (var.dataflow_params.template_params.working_directory_prefix != null && var.dataflow_params.template_params.working_directory_prefix != "") ? "${var.dataflow_params.template_params.working_directory_prefix}/session.json" : "session.json"
   source       = var.dataflow_params.template_params.local_session_file_path
   content_type = "application/json"
   bucket       = var.dataflow_params.template_params.working_directory_bucket
@@ -68,7 +68,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
       bigQueryDataset                = var.dataflow_params.template_params.bigquery_dataset
       spannerHost                    = var.dataflow_params.template_params.spanner_host
       spannerPriority                = var.dataflow_params.template_params.spanner_priority
-      sessionFilePath                = var.dataflow_params.template_params.local_session_file_path != null ? "gs://${var.dataflow_params.template_params.working_directory_bucket}/${var.dataflow_params.template_params.working_directory_prefix}/session.json" : var.dataflow_params.template_params.session_file_path
+      sessionFilePath                = (var.dataflow_params.template_params.local_session_file_path != null && var.dataflow_params.template_params.local_session_file_path != "") ? ((var.dataflow_params.template_params.working_directory_prefix != null && var.dataflow_params.template_params.working_directory_prefix != "") ? "gs://${var.dataflow_params.template_params.working_directory_bucket}/${var.dataflow_params.template_params.working_directory_prefix}/session.json" : "gs://${var.dataflow_params.template_params.working_directory_bucket}/session.json") : var.dataflow_params.template_params.session_file_path
       schemaOverridesFilePath        = var.dataflow_params.template_params.schema_overrides_file_path
       tableOverrides                 = var.dataflow_params.template_params.table_overrides
       columnOverrides                = var.dataflow_params.template_params.column_overrides
@@ -83,7 +83,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   network                     = local.network_uri
   subnetwork                  = local.subnetwork_uri
   kms_key_name                = var.dataflow_params.runner_params.kms_key_name != "" ? var.dataflow_params.runner_params.kms_key_name : null
-  additional_pipeline_options = var.dataflow_params.runner_params.additional_pipeline_options
+
   machine_type                = var.dataflow_params.runner_params.machine_type
   max_workers                 = var.dataflow_params.runner_params.max_workers
   additional_experiments      = var.dataflow_params.runner_params.additional_experiments

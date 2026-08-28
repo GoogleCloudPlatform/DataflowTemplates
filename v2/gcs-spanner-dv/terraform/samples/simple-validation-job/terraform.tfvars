@@ -38,7 +38,6 @@ dataflow_params = {
     additional_experiments      = ["<EXPERIMENT_1>"]                # Optional: Additional Dataflow experiments (list of strings)
     ip_configuration            = "WORKER_IP_PRIVATE"               # Optional: IP configuration for Dataflow workers
     launcher_machine_type       = "n1-standard-1"                   # Optional: Machine type for the Dataflow launcher VM
-    additional_pipeline_options = { "<KEY>" = "<VALUE>" }           # Optional: Additional Dataflow pipeline options (map of strings)
     labels                      = { "env" = "test" }                # Optional: Labels to apply to the Dataflow job (map of strings)
     kms_key_name                = "<YOUR_KMS_KEY_NAME>"             # Optional: Cloud KMS key name for data encryption
   }

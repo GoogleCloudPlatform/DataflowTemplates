@@ -42,7 +42,6 @@ variable "dataflow_params" {
       additional_experiments      = optional(list(string), [])
       ip_configuration            = optional(string, null)
       launcher_machine_type       = optional(string, null)
-      additional_pipeline_options = optional(map(string), {})
       labels                      = optional(map(string), {})
       kms_key_name                = optional(string, "")
     })
