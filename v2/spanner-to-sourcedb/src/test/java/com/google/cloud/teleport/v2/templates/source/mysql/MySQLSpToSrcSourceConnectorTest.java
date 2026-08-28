@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
@@ -39,6 +43,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -224,7 +229,7 @@ public class MySQLSpToSrcSourceConnectorTest {
     try (org.mockito.MockedConstruction<
             com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner>
         mocked =
-            org.mockito.Mockito.mockConstruction(
+            mockConstruction(
                 com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner.class,
                 (mock, context) -> {
                   when(mock.scan()).thenReturn(dummySchema);
@@ -274,5 +279,49 @@ public class MySQLSpToSrcSourceConnectorTest {
   @Test
   public void testShouldUpdateReadValuesToSpannerRecord() {
     assertTrue(connector.shouldUpdateReadValuesToSpannerRecord());
+  }
+
+  @Test
+  public void testCreateConnectionWithUrlEncodedProperties() throws Exception {
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("mydb");
+    when(mockShard.getUserName()).thenReturn("user");
+    when(mockShard.getPassword()).thenReturn("pass");
+    // Test URL-encoded connection properties with ; and URL-encoded characters
+    when(mockShard.getConnectionProperties())
+        .thenReturn("useSSL=true;requireSSL=true;encoded%26Key=encoded%3DValue");
+
+    try (MockedConstruction<HikariDataSource> mockedDsConstruction =
+        mockConstruction(
+            HikariDataSource.class,
+            (mock, context) -> {
+              when(mock.getConnection()).thenReturn(mock(Connection.class));
+            })) {
+      try (MockedConstruction<HikariConfig> mockedConfigConstruction =
+          mockConstruction(HikariConfig.class)) {
+
+        Connection conn = connector.createConnection(mockShard);
+        assertNotNull(conn);
+
+        HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
+        verify(capturedConfig).setJdbcUrl("jdbc:mysql://localhost:3306/mydb");
+        verify(capturedConfig).addDataSourceProperty("useSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("requireSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("encoded&Key", "encoded=Value");
+      }
+    }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateConnectionWithMalformedProperties() throws Exception {
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("mydb");
+    when(mockShard.getUserName()).thenReturn("user");
+    when(mockShard.getPassword()).thenReturn("pass");
+    when(mockShard.getConnectionProperties()).thenReturn("useSSL=true;malformedParam");
+
+    connector.createConnection(mockShard);
   }
 }

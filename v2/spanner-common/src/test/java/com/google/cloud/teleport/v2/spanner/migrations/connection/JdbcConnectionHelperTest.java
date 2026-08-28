@@ -33,6 +33,7 @@ import java.sql.Connection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -132,5 +133,91 @@ public class JdbcConnectionHelperTest {
         assertThat(createdDataSource).isNotNull();
       }
     }
+  }
+
+  @Test
+  public void testInitConnectionPoolWithUrlEncodedProperties() {
+    ConnectionHelperRequest mockRequest = mock(ConnectionHelperRequest.class);
+    Shard mockShard = mock(Shard.class);
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getUserName()).thenReturn("testuser");
+    when(mockShard.getPassword()).thenReturn("testpassword");
+    // Test URL-encoded connection properties with & and URL-encoded characters
+    when(mockShard.getConnectionProperties())
+        .thenReturn("useSSL=true&requireSSL=true&encoded%26Key=encoded%3DValue");
+
+    List<Shard> mockShards = Collections.singletonList(mockShard);
+    when(mockRequest.getShards()).thenReturn(mockShards);
+    when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
+    when(mockRequest.getMaxConnections()).thenReturn(10);
+    when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
+    when(mockRequest.getJdbcUrlPrefix()).thenReturn("jdbc:mysql://");
+
+    try (MockedConstruction<HikariDataSource> mockedDsConstruction =
+        mockConstruction(
+            HikariDataSource.class,
+            (mock, context) -> when(mock.getConnection()).thenReturn(mock(Connection.class)))) {
+      try (MockedConstruction<HikariConfig> mockedConfigConstruction =
+          mockConstruction(HikariConfig.class)) {
+        connectionHelper.init(mockRequest);
+
+        assertTrue(connectionHelper.isConnectionPoolInitialized());
+
+        HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
+        // Verify both properties were split properly and encoded ones were decoded
+        verify(capturedConfig).addDataSourceProperty("useSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("requireSSL", "true");
+        verify(capturedConfig).addDataSourceProperty("encoded&Key", "encoded=Value");
+        // Verify no other interactions
+      }
+    }
+  }
+
+  @Test
+  public void testParseProperties_nullOrEmpty() {
+    assertTrue(JdbcConnectionHelper.parseProperties(null).isEmpty());
+    assertTrue(JdbcConnectionHelper.parseProperties("").isEmpty());
+  }
+
+  @Test
+  public void testParseProperties_urlEncoded() {
+    String propsStr = "useSSL=true&requireSSL=true&encoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    assertEquals("encoded=Value", props.getProperty("encoded&Key"));
+  }
+
+  @Test
+  public void testParseProperties_semicolonSeparated() {
+    String propsStr = "useSSL=true;requireSSL=true;encoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    assertEquals("encoded=Value", props.getProperty("encoded&Key"));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testParseProperties_malformed() {
+    String propsStr = "useSSL=true&malformedParam";
+    JdbcConnectionHelper.parseProperties(propsStr);
+  }
+
+  @Test
+  public void testParseProperties_newlineSeparated() {
+    String propsStr = "useSSL=true\nrequireSSL=true\nencoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    // Newline properties aren't URL decoded by Properties.load()
+    assertEquals("encoded%3DValue", props.getProperty("encoded%26Key"));
   }
 }

@@ -21,6 +21,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,10 +72,13 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setMinimumIdle(0); // avoid pre-filling connections
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-        try (StringReader reader = new StringReader(shard.getConnectionProperties())) {
-          jdbcProperties.load(reader);
-        } catch (IOException e) {
-          LOG.error("Error converting string to properties: {}", e.getMessage());
+        LOG.info(
+            "Connection properties for shard {}: {}",
+            shard.getLogicalShardId(),
+            shard.getConnectionProperties());
+        Properties parsedProps = parseProperties(shard.getConnectionProperties());
+        for (String key : parsedProps.stringPropertyNames()) {
+          jdbcProperties.setProperty(key, parsedProps.getProperty(key));
         }
       }
 
@@ -110,5 +114,43 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
   // for unit testing
   public void setConnectionPoolMap(Map<String, HikariDataSource> inputMap) {
     connectionPoolMap = inputMap;
+  }
+
+  /**
+   * Parses connection properties from a string into a {@link Properties} object.
+   *
+   * <p>Supports both newline-delimited Java properties format and URL-encoded query parameters
+   * (separated by '&' or ';'). URL-encoded values are automatically decoded.
+   *
+   * @param connectionProperties The connection properties string.
+   * @return A Properties object containing the parsed key-value pairs.
+   */
+  public static Properties parseProperties(String connectionProperties) {
+    Properties jdbcProperties = new Properties();
+    if (connectionProperties == null || connectionProperties.isEmpty()) {
+      return jdbcProperties;
+    }
+
+    if (connectionProperties.contains("&") || connectionProperties.contains(";")) {
+      String[] pairs = connectionProperties.split("[&;]");
+      for (String pair : pairs) {
+        String[] kv = pair.split("=", 2);
+        if (kv.length == 2) {
+          String decodedKey = java.net.URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+          String decodedValue = java.net.URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+          jdbcProperties.setProperty(decodedKey, decodedValue);
+        } else {
+          throw new IllegalArgumentException(
+              "Invalid connection property format. Expected 'key=value', but got: " + pair);
+        }
+      }
+    } else {
+      try (StringReader reader = new StringReader(connectionProperties)) {
+        jdbcProperties.load(reader);
+      } catch (IOException e) {
+        LOG.error("Failed to parse connection properties", e);
+      }
+    }
+    return jdbcProperties;
   }
 }

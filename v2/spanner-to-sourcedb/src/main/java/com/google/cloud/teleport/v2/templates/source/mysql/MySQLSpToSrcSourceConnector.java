@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,6 +143,19 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     config.setUsername(shard.getUserName());
     config.setPassword(shard.getPassword());
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+    if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
+      LOG.info(
+          "Connection properties for shard {}: {}",
+          shard.getLogicalShardId(),
+          shard.getConnectionProperties());
+      Properties parsedProps =
+          JdbcConnectionHelper.parseProperties(shard.getConnectionProperties());
+      for (String key : parsedProps.stringPropertyNames()) {
+        config.addDataSourceProperty(key, parsedProps.getProperty(key));
+      }
+    }
+
     HikariDataSource ds = new HikariDataSource(config);
     return ds.getConnection();
   }
