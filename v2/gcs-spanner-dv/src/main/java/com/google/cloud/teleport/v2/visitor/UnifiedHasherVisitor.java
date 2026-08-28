@@ -67,6 +67,13 @@ public class UnifiedHasherVisitor implements IUnifiedVisitor {
   }
 
   @Override
+  public void visitFloat32(float f) {
+    // Float32 values are encoded with a sentinel byte 1 followed by the float value
+    markNonNull();
+    hasher.putFloat(f);
+  }
+
+  @Override
   public void visitBool(boolean b) {
     // Bool values are encoded with a sentinel byte 1 followed by the boolean value
     markNonNull();

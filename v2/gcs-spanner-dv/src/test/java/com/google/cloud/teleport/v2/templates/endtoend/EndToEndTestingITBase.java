@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
@@ -114,6 +115,10 @@ public abstract class EndToEndTestingITBase extends GCSSpannerDVITBase {
       connectionProps = null;
       jdbcDriver = "org.postgresql.Driver";
       dialect = "POSTGRESQL";
+    } else if (cloudSqlResourceManager instanceof CloudOracleResourceManager) {
+      connectionProps = null;
+      jdbcDriver = "oracle.jdbc.OracleDriver";
+      dialect = "ORACLE";
     }
 
     if (!multiSharded) {

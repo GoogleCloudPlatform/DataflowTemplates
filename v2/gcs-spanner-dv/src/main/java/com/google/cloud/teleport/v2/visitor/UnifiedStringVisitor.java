@@ -50,6 +50,11 @@ public class UnifiedStringVisitor implements IUnifiedVisitor {
   }
 
   @Override
+  public void visitFloat32(float f) {
+    result = String.valueOf(f);
+  }
+
+  @Override
   public void visitBool(boolean b) {
     result = String.valueOf(b);
   }

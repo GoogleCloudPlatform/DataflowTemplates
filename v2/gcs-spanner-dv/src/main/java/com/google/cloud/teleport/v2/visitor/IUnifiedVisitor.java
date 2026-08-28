@@ -37,6 +37,8 @@ public interface IUnifiedVisitor {
 
   void visitFloat64(double d);
 
+  void visitFloat32(float f);
+
   void visitBool(boolean b);
 
   void visitBytes(byte[] b);
@@ -64,12 +66,14 @@ public interface IUnifiedVisitor {
       case UUID -> visitor.visitUuid(value.getUuid());
       case INT64 -> visitor.visitInt64(value.getInt64());
       case FLOAT64 -> visitor.visitFloat64(value.getFloat64());
+      case FLOAT32 -> visitor.visitFloat32(value.getFloat32());
       case BOOL -> visitor.visitBool(value.getBool());
       case BYTES -> visitor.visitBytes(value.getBytes().toByteArray());
       case DATE -> visitor.visitDate(value.getDate());
       case NUMERIC, PG_NUMERIC -> visitor.visitNumeric(value.getNumeric());
       case TIMESTAMP -> visitor.visitTimestamp(value.getTimestamp());
-      case JSON, PG_JSONB -> visitor.visitJson(value.getJson());
+      case JSON -> visitor.visitJson(value.getJson());
+      case PG_JSONB -> visitor.visitJson(value.getPgJsonb());
       default -> visitor.visitDefault(value);
     }
   }

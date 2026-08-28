@@ -104,6 +104,21 @@ public class UnifiedHasherVisitorTest {
   }
 
   @Test
+  public void testVisitFloat32() {
+    Hasher hasher = Hashing.murmur3_128().newHasher();
+    UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);
+    float input = 123.456f;
+
+    visitor.visitFloat32(input);
+    HashCode actualHash = hasher.hash();
+
+    HashCode expectedHash =
+        Hashing.murmur3_128().newHasher().putByte((byte) 1).putFloat(input).hash();
+
+    assertEquals(expectedHash, actualHash);
+  }
+
+  @Test
   public void testVisitBool() {
     Hasher hasher = Hashing.murmur3_128().newHasher();
     UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);
