@@ -33,6 +33,7 @@ import java.sql.Connection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -174,5 +175,45 @@ public class JdbcConnectionHelperTest {
         // Verify no other interactions (meaning malformedParam wasn't added)
       }
     }
+  }
+
+  @Test
+  public void testParseProperties_nullOrEmpty() {
+    assertTrue(JdbcConnectionHelper.parseProperties(null).isEmpty());
+    assertTrue(JdbcConnectionHelper.parseProperties("").isEmpty());
+  }
+
+  @Test
+  public void testParseProperties_urlEncoded() {
+    String propsStr = "useSSL=true&requireSSL=true&malformedParam&encoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    assertEquals("encoded=Value", props.getProperty("encoded&Key"));
+  }
+
+  @Test
+  public void testParseProperties_semicolonSeparated() {
+    String propsStr = "useSSL=true;requireSSL=true;malformedParam;encoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    assertEquals("encoded=Value", props.getProperty("encoded&Key"));
+  }
+
+  @Test
+  public void testParseProperties_newlineSeparated() {
+    String propsStr = "useSSL=true\nrequireSSL=true\nencoded%26Key=encoded%3DValue";
+    Properties props = JdbcConnectionHelper.parseProperties(propsStr);
+
+    assertEquals(3, props.size());
+    assertEquals("true", props.getProperty("useSSL"));
+    assertEquals("true", props.getProperty("requireSSL"));
+    // Newline properties aren't URL decoded by Properties.load()
+    assertEquals("encoded%3DValue", props.getProperty("encoded%26Key"));
   }
 }

@@ -19,10 +19,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionExce
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import java.io.IOException;
-import java.io.StringReader;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
@@ -73,23 +69,9 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setMinimumIdle(0); // avoid pre-filling connections
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-        String props = shard.getConnectionProperties();
-        if (props.contains("&") || props.contains(";")) {
-          String[] pairs = props.split("[&;]");
-          for (String pair : pairs) {
-            String[] kv = pair.split("=", 2);
-            if (kv.length == 2) {
-              String decodedKey = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
-              String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-              jdbcProperties.setProperty(decodedKey, decodedValue);
-            }
-          }
-        } else {
-          try (StringReader reader = new StringReader(props)) {
-            jdbcProperties.load(reader);
-          } catch (IOException e) {
-            LOG.error("Error converting string to properties: {}", e.getMessage());
-          }
+        Properties parsedProps = parseProperties(shard.getConnectionProperties());
+        for (String key : parsedProps.stringPropertyNames()) {
+          jdbcProperties.setProperty(key, parsedProps.getProperty(key));
         }
       }
 
@@ -125,5 +107,44 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
   // for unit testing
   public void setConnectionPoolMap(Map<String, HikariDataSource> inputMap) {
     connectionPoolMap = inputMap;
+  }
+
+  /**
+   * Parses connection properties from a string into a {@link Properties} object.
+   *
+   * <p>Supports both newline-delimited Java properties format and URL-encoded query parameters
+   * (separated by '&' or ';'). URL-encoded values are automatically decoded.
+   *
+   * @param connectionProperties The connection properties string.
+   * @return A Properties object containing the parsed key-value pairs.
+   */
+  public static Properties parseProperties(String connectionProperties) {
+    Properties jdbcProperties = new Properties();
+    if (connectionProperties == null || connectionProperties.isEmpty()) {
+      return jdbcProperties;
+    }
+
+    if (connectionProperties.contains("&") || connectionProperties.contains(";")) {
+      String[] pairs = connectionProperties.split("[&;]");
+      for (String pair : pairs) {
+        String[] kv = pair.split("=", 2);
+        if (kv.length == 2) {
+          try {
+            String decodedKey = java.net.URLDecoder.decode(kv[0], java.nio.charset.StandardCharsets.UTF_8.name());
+            String decodedValue = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8.name());
+            jdbcProperties.setProperty(decodedKey, decodedValue);
+          } catch (java.io.UnsupportedEncodingException e) {
+            LOG.error("UTF-8 encoding not supported", e);
+          }
+        }
+      }
+    } else {
+      try (java.io.StringReader reader = new java.io.StringReader(connectionProperties)) {
+        jdbcProperties.load(reader);
+      } catch (java.io.IOException e) {
+        LOG.error("Failed to parse connection properties", e);
+      }
+    }
+    return jdbcProperties;
   }
 }

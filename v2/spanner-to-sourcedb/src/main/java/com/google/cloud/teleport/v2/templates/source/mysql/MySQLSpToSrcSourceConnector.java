@@ -33,9 +33,6 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceCo
 import com.google.common.annotations.VisibleForTesting;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import java.io.StringReader;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -148,25 +145,9 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
     if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-      String props = shard.getConnectionProperties();
-      if (props.contains("&") || props.contains(";")) {
-        String[] pairs = props.split("[&;]");
-        for (String pair : pairs) {
-          String[] kv = pair.split("=", 2);
-          if (kv.length == 2) {
-            String decodedKey = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
-            String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-            config.addDataSourceProperty(decodedKey, decodedValue);
-          }
-        }
-      } else {
-        Properties jdbcProperties = new Properties();
-        try (StringReader reader = new StringReader(props)) {
-          jdbcProperties.load(reader);
-          for (String key : jdbcProperties.stringPropertyNames()) {
-            config.addDataSourceProperty(key, jdbcProperties.getProperty(key));
-          }
-        }
+      Properties parsedProps = JdbcConnectionHelper.parseProperties(shard.getConnectionProperties());
+      for (String key : parsedProps.stringPropertyNames()) {
+        config.addDataSourceProperty(key, parsedProps.getProperty(key));
       }
     }
 
