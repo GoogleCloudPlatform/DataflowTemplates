@@ -288,10 +288,9 @@ public class MySQLSpToSrcSourceConnectorTest {
     when(mockShard.getDbName()).thenReturn("mydb");
     when(mockShard.getUserName()).thenReturn("user");
     when(mockShard.getPassword()).thenReturn("pass");
-    // Test URL-encoded connection properties with ; and a malformed parameter to cover kv.length !=
-    // 2 branch, and URL-encoded characters
+    // Test URL-encoded connection properties with ; and URL-encoded characters
     when(mockShard.getConnectionProperties())
-        .thenReturn("useSSL=true;requireSSL=true;malformedParam;encoded%26Key=encoded%3DValue");
+        .thenReturn("useSSL=true;requireSSL=true;encoded%26Key=encoded%3DValue");
 
     try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(
@@ -312,5 +311,17 @@ public class MySQLSpToSrcSourceConnectorTest {
         verify(capturedConfig).addDataSourceProperty("encoded&Key", "encoded=Value");
       }
     }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateConnectionWithMalformedProperties() throws Exception {
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("mydb");
+    when(mockShard.getUserName()).thenReturn("user");
+    when(mockShard.getPassword()).thenReturn("pass");
+    when(mockShard.getConnectionProperties()).thenReturn("useSSL=true;malformedParam");
+
+    connector.createConnection(mockShard);
   }
 }

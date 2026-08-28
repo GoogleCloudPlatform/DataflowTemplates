@@ -19,6 +19,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionExce
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,9 +72,11 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setMinimumIdle(0); // avoid pre-filling connections
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-        Properties parsedProps = parseProperties(shard.getConnectionProperties());
         LOG.info(
-            "Connection properties for shard {}: {}", shard.getLogicalShardId(), shard.getConnectionProperties());
+            "Connection properties for shard {}: {}",
+            shard.getLogicalShardId(),
+            shard.getConnectionProperties());
+        Properties parsedProps = parseProperties(shard.getConnectionProperties());
         for (String key : parsedProps.stringPropertyNames()) {
           jdbcProperties.setProperty(key, parsedProps.getProperty(key));
         }
@@ -131,19 +136,18 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       for (String pair : pairs) {
         String[] kv = pair.split("=", 2);
         if (kv.length == 2) {
-          try {
-            String decodedKey = java.net.URLDecoder.decode(kv[0], java.nio.charset.StandardCharsets.UTF_8.name());
-            String decodedValue = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8.name());
-            jdbcProperties.setProperty(decodedKey, decodedValue);
-          } catch (java.io.UnsupportedEncodingException e) {
-            LOG.error("UTF-8 encoding not supported", e);
-          }
+          String decodedKey = java.net.URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+          String decodedValue = java.net.URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+          jdbcProperties.setProperty(decodedKey, decodedValue);
+        } else {
+          throw new IllegalArgumentException(
+              "Invalid connection property format. Expected 'key=value', but got: " + pair);
         }
       }
     } else {
-      try (java.io.StringReader reader = new java.io.StringReader(connectionProperties)) {
+      try (StringReader reader = new StringReader(connectionProperties)) {
         jdbcProperties.load(reader);
-      } catch (java.io.IOException e) {
+      } catch (IOException e) {
         LOG.error("Failed to parse connection properties", e);
       }
     }

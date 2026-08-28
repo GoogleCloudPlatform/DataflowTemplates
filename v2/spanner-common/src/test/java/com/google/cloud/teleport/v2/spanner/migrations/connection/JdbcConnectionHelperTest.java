@@ -144,10 +144,9 @@ public class JdbcConnectionHelperTest {
     when(mockShard.getDbName()).thenReturn("testdb");
     when(mockShard.getUserName()).thenReturn("testuser");
     when(mockShard.getPassword()).thenReturn("testpassword");
-    // Test URL-encoded connection properties with &, a malformed parameter to cover kv.length != 2
-    // branch, and URL-encoded characters
+    // Test URL-encoded connection properties with & and URL-encoded characters
     when(mockShard.getConnectionProperties())
-        .thenReturn("useSSL=true&requireSSL=true&malformedParam&encoded%26Key=encoded%3DValue");
+        .thenReturn("useSSL=true&requireSSL=true&encoded%26Key=encoded%3DValue");
 
     List<Shard> mockShards = Collections.singletonList(mockShard);
     when(mockRequest.getShards()).thenReturn(mockShards);
@@ -167,12 +166,11 @@ public class JdbcConnectionHelperTest {
         assertTrue(connectionHelper.isConnectionPoolInitialized());
 
         HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
-        // Verify both properties were split properly, malformed one was ignored, and encoded ones
-        // were decoded
+        // Verify both properties were split properly and encoded ones were decoded
         verify(capturedConfig).addDataSourceProperty("useSSL", "true");
         verify(capturedConfig).addDataSourceProperty("requireSSL", "true");
         verify(capturedConfig).addDataSourceProperty("encoded&Key", "encoded=Value");
-        // Verify no other interactions (meaning malformedParam wasn't added)
+        // Verify no other interactions
       }
     }
   }
@@ -185,7 +183,7 @@ public class JdbcConnectionHelperTest {
 
   @Test
   public void testParseProperties_urlEncoded() {
-    String propsStr = "useSSL=true&requireSSL=true&malformedParam&encoded%26Key=encoded%3DValue";
+    String propsStr = "useSSL=true&requireSSL=true&encoded%26Key=encoded%3DValue";
     Properties props = JdbcConnectionHelper.parseProperties(propsStr);
 
     assertEquals(3, props.size());
@@ -196,13 +194,19 @@ public class JdbcConnectionHelperTest {
 
   @Test
   public void testParseProperties_semicolonSeparated() {
-    String propsStr = "useSSL=true;requireSSL=true;malformedParam;encoded%26Key=encoded%3DValue";
+    String propsStr = "useSSL=true;requireSSL=true;encoded%26Key=encoded%3DValue";
     Properties props = JdbcConnectionHelper.parseProperties(propsStr);
 
     assertEquals(3, props.size());
     assertEquals("true", props.getProperty("useSSL"));
     assertEquals("true", props.getProperty("requireSSL"));
     assertEquals("encoded=Value", props.getProperty("encoded&Key"));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testParseProperties_malformed() {
+    String propsStr = "useSSL=true&malformedParam";
+    JdbcConnectionHelper.parseProperties(propsStr);
   }
 
   @Test
