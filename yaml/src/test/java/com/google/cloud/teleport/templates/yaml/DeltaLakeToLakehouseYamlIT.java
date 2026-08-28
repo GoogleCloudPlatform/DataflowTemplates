@@ -113,7 +113,8 @@ public class DeltaLakeToLakehouseYamlIT extends TemplateTestBase {
             .add("price", DoubleType.DOUBLE);
 
     TransactionBuilder txnBuilder =
-        table.createTransactionBuilder(engine, "DeltaLakeToLakehouseYamlIT", Operation.CREATE_TABLE);
+        table.createTransactionBuilder(
+            engine, "DeltaLakeToLakehouseYamlIT", Operation.CREATE_TABLE);
     txnBuilder = txnBuilder.withSchema(engine, deltaSchema);
     Transaction txn = txnBuilder.build(engine);
     io.delta.kernel.data.Row txnState = txn.getTransactionState(engine);
