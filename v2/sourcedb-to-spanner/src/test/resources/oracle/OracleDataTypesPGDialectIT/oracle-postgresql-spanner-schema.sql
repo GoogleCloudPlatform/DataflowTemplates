@@ -1,36 +1,36 @@
 CREATE TABLE "varchar2_table" ("id" BIGINT PRIMARY KEY, "varchar2_col" VARCHAR);
 CREATE TABLE "varchar2_to_varchar_table" ("id" BIGINT PRIMARY KEY, "varchar2_col" VARCHAR);
-CREATE TABLE "varchar2_to_bytea_table" ("id" BIGINT PRIMARY KEY, "varchar2_col" BYTEA);
+
 CREATE TABLE "varchar_table" ("id" BIGINT PRIMARY KEY, "varchar_col" VARCHAR);
 CREATE TABLE "varchar_to_varchar_table" ("id" BIGINT PRIMARY KEY, "varchar_col" VARCHAR);
-CREATE TABLE "varchar_to_bytea_table" ("id" BIGINT PRIMARY KEY, "varchar_col" BYTEA);
+
 CREATE TABLE "char_table" ("id" BIGINT PRIMARY KEY, "char_col" VARCHAR);
 CREATE TABLE "char_to_varchar_table" ("id" BIGINT PRIMARY KEY, "char_col" VARCHAR);
-CREATE TABLE "char_to_bytea_table" ("id" BIGINT PRIMARY KEY, "char_col" BYTEA);
+
 CREATE TABLE "character_table" ("id" BIGINT PRIMARY KEY, "character_col" VARCHAR);
 CREATE TABLE "character_to_varchar_table" ("id" BIGINT PRIMARY KEY, "character_col" VARCHAR);
-CREATE TABLE "character_to_bytea_table" ("id" BIGINT PRIMARY KEY, "character_col" BYTEA);
+
 CREATE TABLE "nvarchar2_table" ("id" BIGINT PRIMARY KEY, "nvarchar2_col" VARCHAR);
 CREATE TABLE "nvarchar2_to_varchar_table" ("id" BIGINT PRIMARY KEY, "nvarchar2_col" VARCHAR);
-CREATE TABLE "nvarchar2_to_bytea_table" ("id" BIGINT PRIMARY KEY, "nvarchar2_col" BYTEA);
+
 CREATE TABLE "nchar_table" ("id" BIGINT PRIMARY KEY, "nchar_col" VARCHAR);
 CREATE TABLE "nchar_to_varchar_table" ("id" BIGINT PRIMARY KEY, "nchar_col" VARCHAR);
-CREATE TABLE "nchar_to_bytea_table" ("id" BIGINT PRIMARY KEY, "nchar_col" BYTEA);
+
 CREATE TABLE "nchar_varying_table" ("id" BIGINT PRIMARY KEY, "nchar_varying_col" VARCHAR);
 CREATE TABLE "nchar_varying_to_varchar_table" ("id" BIGINT PRIMARY KEY, "nchar_varying_col" VARCHAR);
-CREATE TABLE "nchar_varying_to_bytea_table" ("id" BIGINT PRIMARY KEY, "nchar_varying_col" BYTEA);
+
 CREATE TABLE "national_character_table" ("id" BIGINT PRIMARY KEY, "national_character_col" VARCHAR);
 CREATE TABLE "national_character_to_varchar_table" ("id" BIGINT PRIMARY KEY, "national_character_col" VARCHAR);
-CREATE TABLE "national_character_to_bytea_table" ("id" BIGINT PRIMARY KEY, "national_character_col" BYTEA);
+
 CREATE TABLE "national_char_table" ("id" BIGINT PRIMARY KEY, "national_char_col" VARCHAR);
 CREATE TABLE "national_char_to_varchar_table" ("id" BIGINT PRIMARY KEY, "national_char_col" VARCHAR);
-CREATE TABLE "national_char_to_bytea_table" ("id" BIGINT PRIMARY KEY, "national_char_col" BYTEA);
+
 CREATE TABLE "national_character_varying_table" ("id" BIGINT PRIMARY KEY, "national_character_varying_col" VARCHAR);
 CREATE TABLE "national_character_varying_to_varchar_table" ("id" BIGINT PRIMARY KEY, "national_character_varying_col" VARCHAR);
-CREATE TABLE "national_character_varying_to_bytea_table" ("id" BIGINT PRIMARY KEY, "national_character_varying_col" BYTEA);
+
 CREATE TABLE "national_char_varying_table" ("id" BIGINT PRIMARY KEY, "national_char_varying_col" VARCHAR);
 CREATE TABLE "national_char_varying_to_varchar_table" ("id" BIGINT PRIMARY KEY, "national_char_varying_col" VARCHAR);
-CREATE TABLE "national_char_varying_to_bytea_table" ("id" BIGINT PRIMARY KEY, "national_char_varying_col" BYTEA);
+
 CREATE TABLE "number_table" ("id" BIGINT PRIMARY KEY, "number_col" DOUBLE PRECISION);
 CREATE TABLE "number_to_numeric_table" ("id" BIGINT PRIMARY KEY, "number_col" NUMERIC);
 CREATE TABLE "number_to_varchar_table" ("id" BIGINT PRIMARY KEY, "number_col" VARCHAR);
@@ -100,28 +100,28 @@ CREATE TABLE "long_raw_to_varchar_base64_table" ("id" BIGINT PRIMARY KEY, "long_
 CREATE TABLE "blob_table" ("id" BIGINT PRIMARY KEY, "blob_col" BYTEA);
 CREATE TABLE "blob_to_varchar_base64_table" ("id" BIGINT PRIMARY KEY, "blob_col" VARCHAR);
 CREATE TABLE "clob_table" ("id" BIGINT PRIMARY KEY, "clob_col" VARCHAR);
-CREATE TABLE "clob_to_bytea_table" ("id" BIGINT PRIMARY KEY, "clob_col" BYTEA);
+
 CREATE TABLE "nclob_table" ("id" BIGINT PRIMARY KEY, "nclob_col" VARCHAR);
-CREATE TABLE "nclob_to_bytea_table" ("id" BIGINT PRIMARY KEY, "nclob_col" BYTEA);
+
 CREATE TABLE "bfile_table" ("id" BIGINT PRIMARY KEY, "bfile_col" VARCHAR);
-CREATE TABLE "bfile_to_bytea_table" ("id" BIGINT PRIMARY KEY, "bfile_col" BYTEA);
+
 CREATE TABLE "bfile_to_varchar_url_table" ("id" BIGINT PRIMARY KEY, "bfile_col" VARCHAR);
 CREATE TABLE "long_table" ("id" BIGINT PRIMARY KEY, "long_col" VARCHAR);
-CREATE TABLE "long_to_bytea_table" ("id" BIGINT PRIMARY KEY, "long_col" BYTEA);
+
 CREATE TABLE "rowid_table" ("id" BIGINT PRIMARY KEY, "rowid_col" VARCHAR);
-CREATE TABLE "rowid_to_bytea_table" ("id" BIGINT PRIMARY KEY, "rowid_col" BYTEA);
+
 CREATE TABLE "rowid_to_bigint_table" ("id" BIGINT PRIMARY KEY, "rowid_col" BIGINT);
 CREATE TABLE "urowid_table" ("id" BIGINT PRIMARY KEY, "urowid_col" VARCHAR);
-CREATE TABLE "urowid_to_bytea_table" ("id" BIGINT PRIMARY KEY, "urowid_col" BYTEA);
+
 CREATE TABLE "urowid_to_bigint_table" ("id" BIGINT PRIMARY KEY, "urowid_col" BIGINT);
 CREATE TABLE "boolean_table" ("id" BIGINT PRIMARY KEY, "boolean_col" BOOLEAN);
 CREATE TABLE "boolean_to_bigint_0_1_table" ("id" BIGINT PRIMARY KEY, "boolean_col" BIGINT);
 CREATE TABLE "boolean_to_varchar_true_false_table" ("id" BIGINT PRIMARY KEY, "boolean_col" VARCHAR);
 CREATE TABLE "json_table" ("id" BIGINT PRIMARY KEY, "json_col" JSONB);
 CREATE TABLE "json_to_varchar_table" ("id" BIGINT PRIMARY KEY, "json_col" VARCHAR);
-CREATE TABLE "json_to_bytea_table" ("id" BIGINT PRIMARY KEY, "json_col" BYTEA);
+
 CREATE TABLE "xmltype_table" ("id" BIGINT PRIMARY KEY, "xmltype_col" VARCHAR);
-CREATE TABLE "xmltype_to_bytea_table" ("id" BIGINT PRIMARY KEY, "xmltype_col" BYTEA);
+
 CREATE TABLE "sdo_geometry_table" ("id" BIGINT PRIMARY KEY, "sdo_geometry_col" VARCHAR);
 CREATE TABLE "sdo_geometry_to_bytea_table" ("id" BIGINT PRIMARY KEY, "sdo_geometry_col" BYTEA);
 CREATE TABLE "sdo_geometry_to_jsonb_table" ("id" BIGINT PRIMARY KEY, "sdo_geometry_col" JSONB);

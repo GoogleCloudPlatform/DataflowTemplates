@@ -398,14 +398,7 @@ public class AvroToValueMapper {
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }
-        try {
-          return ByteArray.copyFrom(Hex.decodeHex(s));
-        } catch (org.apache.commons.codec.DecoderException e) {
-          // If the string is not a valid hex string (e.g., JSON string or char mapped to BYTES),
-          // fallback to standard UTF-8 bytes to prevent pipeline drops.
-          return ByteArray.copyFrom(
-              recordValue.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        }
+        return ByteArray.copyFrom(Hex.decodeHex(s));
       }
       return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {

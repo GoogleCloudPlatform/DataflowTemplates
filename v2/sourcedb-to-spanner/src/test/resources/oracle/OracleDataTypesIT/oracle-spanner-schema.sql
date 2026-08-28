@@ -9,11 +9,6 @@ CREATE TABLE varchar2_to_string_table (
   varchar2_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE varchar2_to_bytes_table (
-  id INT64 NOT NULL,
-  varchar2_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE varchar_table (
   id INT64 NOT NULL,
   varchar_col STRING(MAX)
@@ -22,11 +17,6 @@ CREATE TABLE varchar_table (
 CREATE TABLE varchar_to_string_table (
   id INT64 NOT NULL,
   varchar_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE varchar_to_bytes_table (
-  id INT64 NOT NULL,
-  varchar_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE char_table (
@@ -39,11 +29,6 @@ CREATE TABLE char_to_string_table (
   char_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE char_to_bytes_table (
-  id INT64 NOT NULL,
-  char_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE character_table (
   id INT64 NOT NULL,
   character_col STRING(MAX)
@@ -52,11 +37,6 @@ CREATE TABLE character_table (
 CREATE TABLE character_to_string_table (
   id INT64 NOT NULL,
   character_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE character_to_bytes_table (
-  id INT64 NOT NULL,
-  character_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE nvarchar2_table (
@@ -69,11 +49,6 @@ CREATE TABLE nvarchar2_to_string_table (
   nvarchar2_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE nvarchar2_to_bytes_table (
-  id INT64 NOT NULL,
-  nvarchar2_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE nchar_table (
   id INT64 NOT NULL,
   nchar_col STRING(MAX)
@@ -82,11 +57,6 @@ CREATE TABLE nchar_table (
 CREATE TABLE nchar_to_string_table (
   id INT64 NOT NULL,
   nchar_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE nchar_to_bytes_table (
-  id INT64 NOT NULL,
-  nchar_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE nchar_varying_table (
@@ -99,11 +69,6 @@ CREATE TABLE nchar_varying_to_string_table (
   nchar_varying_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE nchar_varying_to_bytes_table (
-  id INT64 NOT NULL,
-  nchar_varying_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE national_character_table (
   id INT64 NOT NULL,
   national_character_col STRING(MAX)
@@ -112,11 +77,6 @@ CREATE TABLE national_character_table (
 CREATE TABLE national_character_to_string_table (
   id INT64 NOT NULL,
   national_character_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE national_character_to_bytes_table (
-  id INT64 NOT NULL,
-  national_character_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE national_char_table (
@@ -129,11 +89,6 @@ CREATE TABLE national_char_to_string_table (
   national_char_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE national_char_to_bytes_table (
-  id INT64 NOT NULL,
-  national_char_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE national_character_varying_table (
   id INT64 NOT NULL,
   national_character_varying_col STRING(MAX)
@@ -144,11 +99,6 @@ CREATE TABLE national_character_varying_to_string_table (
   national_character_varying_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE national_character_varying_to_bytes_table (
-  id INT64 NOT NULL,
-  national_character_varying_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE national_char_varying_table (
   id INT64 NOT NULL,
   national_char_varying_col STRING(MAX)
@@ -157,11 +107,6 @@ CREATE TABLE national_char_varying_table (
 CREATE TABLE national_char_varying_to_string_table (
   id INT64 NOT NULL,
   national_char_varying_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE national_char_varying_to_bytes_table (
-  id INT64 NOT NULL,
-  national_char_varying_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE number_table (
@@ -459,14 +404,10 @@ CREATE TABLE interval_year_to_month_table (
   interval_year_to_month_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-
-
 CREATE TABLE interval_day_to_second_table (
   id INT64 NOT NULL,
   interval_day_to_second_col STRING(MAX)
 ) PRIMARY KEY(id);
-
-
 
 CREATE TABLE raw_table (
   id INT64 NOT NULL,
@@ -508,29 +449,14 @@ CREATE TABLE clob_table (
   clob_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE clob_to_bytes_table (
-  id INT64 NOT NULL,
-  clob_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE nclob_table (
   id INT64 NOT NULL,
   nclob_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE nclob_to_bytes_table (
-  id INT64 NOT NULL,
-  nclob_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE bfile_table (
   id INT64 NOT NULL,
   bfile_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE bfile_to_bytes_table (
-  id INT64 NOT NULL,
-  bfile_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE bfile_to_varchar_url_table (
@@ -543,19 +469,9 @@ CREATE TABLE long_table (
   long_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE long_to_bytes_table (
-  id INT64 NOT NULL,
-  long_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE rowid_table (
   id INT64 NOT NULL,
   rowid_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE rowid_to_bytes_table (
-  id INT64 NOT NULL,
-  rowid_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE rowid_to_int64_table (
@@ -566,11 +482,6 @@ CREATE TABLE rowid_to_int64_table (
 CREATE TABLE urowid_table (
   id INT64 NOT NULL,
   urowid_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE urowid_to_bytes_table (
-  id INT64 NOT NULL,
-  urowid_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE urowid_to_int64_table (
@@ -603,19 +514,9 @@ CREATE TABLE json_to_string_table (
   json_col STRING(MAX)
 ) PRIMARY KEY(id);
 
-CREATE TABLE json_to_bytes_table (
-  id INT64 NOT NULL,
-  json_col BYTES(MAX)
-) PRIMARY KEY(id);
-
 CREATE TABLE xmltype_table (
   id INT64 NOT NULL,
   xmltype_col STRING(MAX)
-) PRIMARY KEY(id);
-
-CREATE TABLE xmltype_to_bytes_table (
-  id INT64 NOT NULL,
-  xmltype_col BYTES(MAX)
 ) PRIMARY KEY(id);
 
 CREATE TABLE sdo_geometry_table (

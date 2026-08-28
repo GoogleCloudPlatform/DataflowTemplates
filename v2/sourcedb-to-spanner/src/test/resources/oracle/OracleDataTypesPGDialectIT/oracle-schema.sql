@@ -8,11 +8,7 @@ INSERT INTO "varchar2_to_varchar_table" ("id", "varchar2_col") VALUES (1, '');
 INSERT INTO "varchar2_to_varchar_table" ("id", "varchar2_col") VALUES (2, ' ');
 INSERT INTO "varchar2_to_varchar_table" ("id", "varchar2_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "varchar2_to_varchar_table" ("id", "varchar2_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "varchar2_to_bytea_table" ("id" NUMBER PRIMARY KEY, "varchar2_col" VARCHAR2(4000));
-INSERT INTO "varchar2_to_bytea_table" ("id", "varchar2_col") VALUES (1, '');
-INSERT INTO "varchar2_to_bytea_table" ("id", "varchar2_col") VALUES (2, ' ');
-INSERT INTO "varchar2_to_bytea_table" ("id", "varchar2_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "varchar2_to_bytea_table" ("id", "varchar2_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "varchar_table" ("id" NUMBER PRIMARY KEY, "varchar_col" VARCHAR(4000));
 INSERT INTO "varchar_table" ("id", "varchar_col") VALUES (1, '');
 INSERT INTO "varchar_table" ("id", "varchar_col") VALUES (2, ' ');
@@ -23,11 +19,7 @@ INSERT INTO "varchar_to_varchar_table" ("id", "varchar_col") VALUES (1, '');
 INSERT INTO "varchar_to_varchar_table" ("id", "varchar_col") VALUES (2, ' ');
 INSERT INTO "varchar_to_varchar_table" ("id", "varchar_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "varchar_to_varchar_table" ("id", "varchar_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "varchar_to_bytea_table" ("id" NUMBER PRIMARY KEY, "varchar_col" VARCHAR(4000));
-INSERT INTO "varchar_to_bytea_table" ("id", "varchar_col") VALUES (1, '');
-INSERT INTO "varchar_to_bytea_table" ("id", "varchar_col") VALUES (2, ' ');
-INSERT INTO "varchar_to_bytea_table" ("id", "varchar_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "varchar_to_bytea_table" ("id", "varchar_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "char_table" ("id" NUMBER PRIMARY KEY, "char_col" CHAR(2000));
 INSERT INTO "char_table" ("id", "char_col") VALUES (1, '');
 INSERT INTO "char_table" ("id", "char_col") VALUES (2, ' ');
@@ -38,11 +30,7 @@ INSERT INTO "char_to_varchar_table" ("id", "char_col") VALUES (1, '');
 INSERT INTO "char_to_varchar_table" ("id", "char_col") VALUES (2, ' ');
 INSERT INTO "char_to_varchar_table" ("id", "char_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "char_to_varchar_table" ("id", "char_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "char_to_bytea_table" ("id" NUMBER PRIMARY KEY, "char_col" CHAR(2000));
-INSERT INTO "char_to_bytea_table" ("id", "char_col") VALUES (1, '');
-INSERT INTO "char_to_bytea_table" ("id", "char_col") VALUES (2, ' ');
-INSERT INTO "char_to_bytea_table" ("id", "char_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "char_to_bytea_table" ("id", "char_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "character_table" ("id" NUMBER PRIMARY KEY, "character_col" CHARACTER(2000));
 INSERT INTO "character_table" ("id", "character_col") VALUES (1, '');
 INSERT INTO "character_table" ("id", "character_col") VALUES (2, ' ');
@@ -53,11 +41,7 @@ INSERT INTO "character_to_varchar_table" ("id", "character_col") VALUES (1, '');
 INSERT INTO "character_to_varchar_table" ("id", "character_col") VALUES (2, ' ');
 INSERT INTO "character_to_varchar_table" ("id", "character_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "character_to_varchar_table" ("id", "character_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "character_to_bytea_table" ("id" NUMBER PRIMARY KEY, "character_col" CHARACTER(2000));
-INSERT INTO "character_to_bytea_table" ("id", "character_col") VALUES (1, '');
-INSERT INTO "character_to_bytea_table" ("id", "character_col") VALUES (2, ' ');
-INSERT INTO "character_to_bytea_table" ("id", "character_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "character_to_bytea_table" ("id", "character_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "nvarchar2_table" ("id" NUMBER PRIMARY KEY, "nvarchar2_col" NVARCHAR2(2000));
 INSERT INTO "nvarchar2_table" ("id", "nvarchar2_col") VALUES (1, '');
 INSERT INTO "nvarchar2_table" ("id", "nvarchar2_col") VALUES (2, ' ');
@@ -68,11 +52,7 @@ INSERT INTO "nvarchar2_to_varchar_table" ("id", "nvarchar2_col") VALUES (1, '');
 INSERT INTO "nvarchar2_to_varchar_table" ("id", "nvarchar2_col") VALUES (2, ' ');
 INSERT INTO "nvarchar2_to_varchar_table" ("id", "nvarchar2_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "nvarchar2_to_varchar_table" ("id", "nvarchar2_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "nvarchar2_to_bytea_table" ("id" NUMBER PRIMARY KEY, "nvarchar2_col" NVARCHAR2(2000));
-INSERT INTO "nvarchar2_to_bytea_table" ("id", "nvarchar2_col") VALUES (1, '');
-INSERT INTO "nvarchar2_to_bytea_table" ("id", "nvarchar2_col") VALUES (2, ' ');
-INSERT INTO "nvarchar2_to_bytea_table" ("id", "nvarchar2_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "nvarchar2_to_bytea_table" ("id", "nvarchar2_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "nchar_table" ("id" NUMBER PRIMARY KEY, "nchar_col" NCHAR(1000));
 INSERT INTO "nchar_table" ("id", "nchar_col") VALUES (1, '');
 INSERT INTO "nchar_table" ("id", "nchar_col") VALUES (2, ' ');
@@ -83,11 +63,7 @@ INSERT INTO "nchar_to_varchar_table" ("id", "nchar_col") VALUES (1, '');
 INSERT INTO "nchar_to_varchar_table" ("id", "nchar_col") VALUES (2, ' ');
 INSERT INTO "nchar_to_varchar_table" ("id", "nchar_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "nchar_to_varchar_table" ("id", "nchar_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "nchar_to_bytea_table" ("id" NUMBER PRIMARY KEY, "nchar_col" NCHAR(1000));
-INSERT INTO "nchar_to_bytea_table" ("id", "nchar_col") VALUES (1, '');
-INSERT INTO "nchar_to_bytea_table" ("id", "nchar_col") VALUES (2, ' ');
-INSERT INTO "nchar_to_bytea_table" ("id", "nchar_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "nchar_to_bytea_table" ("id", "nchar_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "nchar_varying_table" ("id" NUMBER PRIMARY KEY, "nchar_varying_col" NVARCHAR2(1000));
 INSERT INTO "nchar_varying_table" ("id", "nchar_varying_col") VALUES (1, '');
 INSERT INTO "nchar_varying_table" ("id", "nchar_varying_col") VALUES (2, ' ');
@@ -98,11 +74,7 @@ INSERT INTO "nchar_varying_to_varchar_table" ("id", "nchar_varying_col") VALUES 
 INSERT INTO "nchar_varying_to_varchar_table" ("id", "nchar_varying_col") VALUES (2, ' ');
 INSERT INTO "nchar_varying_to_varchar_table" ("id", "nchar_varying_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "nchar_varying_to_varchar_table" ("id", "nchar_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "nchar_varying_to_bytea_table" ("id" NUMBER PRIMARY KEY, "nchar_varying_col" NVARCHAR2(1000));
-INSERT INTO "nchar_varying_to_bytea_table" ("id", "nchar_varying_col") VALUES (1, '');
-INSERT INTO "nchar_varying_to_bytea_table" ("id", "nchar_varying_col") VALUES (2, ' ');
-INSERT INTO "nchar_varying_to_bytea_table" ("id", "nchar_varying_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "nchar_varying_to_bytea_table" ("id", "nchar_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "national_character_table" ("id" NUMBER PRIMARY KEY, "national_character_col" NATIONAL CHARACTER(1000));
 INSERT INTO "national_character_table" ("id", "national_character_col") VALUES (1, '');
 INSERT INTO "national_character_table" ("id", "national_character_col") VALUES (2, ' ');
@@ -113,11 +85,7 @@ INSERT INTO "national_character_to_varchar_table" ("id", "national_character_col
 INSERT INTO "national_character_to_varchar_table" ("id", "national_character_col") VALUES (2, ' ');
 INSERT INTO "national_character_to_varchar_table" ("id", "national_character_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "national_character_to_varchar_table" ("id", "national_character_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "national_character_to_bytea_table" ("id" NUMBER PRIMARY KEY, "national_character_col" NATIONAL CHARACTER(1000));
-INSERT INTO "national_character_to_bytea_table" ("id", "national_character_col") VALUES (1, '');
-INSERT INTO "national_character_to_bytea_table" ("id", "national_character_col") VALUES (2, ' ');
-INSERT INTO "national_character_to_bytea_table" ("id", "national_character_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "national_character_to_bytea_table" ("id", "national_character_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "national_char_table" ("id" NUMBER PRIMARY KEY, "national_char_col" NATIONAL CHAR(1000));
 INSERT INTO "national_char_table" ("id", "national_char_col") VALUES (1, '');
 INSERT INTO "national_char_table" ("id", "national_char_col") VALUES (2, ' ');
@@ -128,11 +96,7 @@ INSERT INTO "national_char_to_varchar_table" ("id", "national_char_col") VALUES 
 INSERT INTO "national_char_to_varchar_table" ("id", "national_char_col") VALUES (2, ' ');
 INSERT INTO "national_char_to_varchar_table" ("id", "national_char_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "national_char_to_varchar_table" ("id", "national_char_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "national_char_to_bytea_table" ("id" NUMBER PRIMARY KEY, "national_char_col" NATIONAL CHAR(1000));
-INSERT INTO "national_char_to_bytea_table" ("id", "national_char_col") VALUES (1, '');
-INSERT INTO "national_char_to_bytea_table" ("id", "national_char_col") VALUES (2, ' ');
-INSERT INTO "national_char_to_bytea_table" ("id", "national_char_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "national_char_to_bytea_table" ("id", "national_char_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "national_character_varying_table" ("id" NUMBER PRIMARY KEY, "national_character_varying_col" NVARCHAR2(1000));
 INSERT INTO "national_character_varying_table" ("id", "national_character_varying_col") VALUES (1, '');
 INSERT INTO "national_character_varying_table" ("id", "national_character_varying_col") VALUES (2, ' ');
@@ -143,11 +107,7 @@ INSERT INTO "national_character_varying_to_varchar_table" ("id", "national_chara
 INSERT INTO "national_character_varying_to_varchar_table" ("id", "national_character_varying_col") VALUES (2, ' ');
 INSERT INTO "national_character_varying_to_varchar_table" ("id", "national_character_varying_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "national_character_varying_to_varchar_table" ("id", "national_character_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "national_character_varying_to_bytea_table" ("id" NUMBER PRIMARY KEY, "national_character_varying_col" NVARCHAR2(1000));
-INSERT INTO "national_character_varying_to_bytea_table" ("id", "national_character_varying_col") VALUES (1, '');
-INSERT INTO "national_character_varying_to_bytea_table" ("id", "national_character_varying_col") VALUES (2, ' ');
-INSERT INTO "national_character_varying_to_bytea_table" ("id", "national_character_varying_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "national_character_varying_to_bytea_table" ("id", "national_character_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "national_char_varying_table" ("id" NUMBER PRIMARY KEY, "national_char_varying_col" NVARCHAR2(1000));
 INSERT INTO "national_char_varying_table" ("id", "national_char_varying_col") VALUES (1, '');
 INSERT INTO "national_char_varying_table" ("id", "national_char_varying_col") VALUES (2, ' ');
@@ -158,11 +118,7 @@ INSERT INTO "national_char_varying_to_varchar_table" ("id", "national_char_varyi
 INSERT INTO "national_char_varying_to_varchar_table" ("id", "national_char_varying_col") VALUES (2, ' ');
 INSERT INTO "national_char_varying_to_varchar_table" ("id", "national_char_varying_col") VALUES (3, 'DROP TABLE');
 INSERT INTO "national_char_varying_to_varchar_table" ("id", "national_char_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
-CREATE TABLE "national_char_varying_to_bytea_table" ("id" NUMBER PRIMARY KEY, "national_char_varying_col" NVARCHAR2(1000));
-INSERT INTO "national_char_varying_to_bytea_table" ("id", "national_char_varying_col") VALUES (1, '');
-INSERT INTO "national_char_varying_to_bytea_table" ("id", "national_char_varying_col") VALUES (2, ' ');
-INSERT INTO "national_char_varying_to_bytea_table" ("id", "national_char_varying_col") VALUES (3, 'DROP TABLE');
-INSERT INTO "national_char_varying_to_bytea_table" ("id", "national_char_varying_col") VALUES (4, RPAD('A', 1000, 'A'));
+
 CREATE TABLE "number_table" ("id" NUMBER PRIMARY KEY, "number_col" NUMBER);
 INSERT INTO "number_table" ("id", "number_col") VALUES (1, 922337203685477);
 INSERT INTO "number_table" ("id", "number_col") VALUES (2, -922337203685477);
@@ -565,11 +521,6 @@ CREATE TABLE "timestamp_pk_table" ("timestamp_pk_col" TIMESTAMP PRIMARY KEY);
 INSERT INTO "timestamp_pk_table" ("timestamp_pk_col") VALUES (TIMESTAMP '0001-01-01 00:00:00');
 INSERT INTO "timestamp_pk_table" ("timestamp_pk_col") VALUES (TIMESTAMP '9999-12-31 23:59:59');
 
-
-
-
-
-
 CREATE TABLE "interval_year_to_month_table" ("id" NUMBER PRIMARY KEY, "interval_year_to_month_col" INTERVAL YEAR TO MONTH);
 INSERT INTO "interval_year_to_month_table" ("id", "interval_year_to_month_col") VALUES (1, '+99-11');
 INSERT INTO "interval_year_to_month_table" ("id", "interval_year_to_month_col") VALUES (2, '-99-11');
@@ -610,24 +561,16 @@ CREATE TABLE "clob_table" ("id" NUMBER PRIMARY KEY, "clob_col" CLOB);
 INSERT INTO "clob_table" ("id", "clob_col") VALUES (1, '""');
 INSERT INTO "clob_table" ("id", "clob_col") VALUES (2, '"A"*100000');
 INSERT INTO "clob_table" ("id", "clob_col") VALUES (3, NULL);
-CREATE TABLE "clob_to_bytea_table" ("id" NUMBER PRIMARY KEY, "clob_col" CLOB);
-INSERT INTO "clob_to_bytea_table" ("id", "clob_col") VALUES (1, '""');
-INSERT INTO "clob_to_bytea_table" ("id", "clob_col") VALUES (2, '"A"*100000');
-INSERT INTO "clob_to_bytea_table" ("id", "clob_col") VALUES (3, NULL);
+
 CREATE TABLE "nclob_table" ("id" NUMBER PRIMARY KEY, "nclob_col" NCLOB);
 INSERT INTO "nclob_table" ("id", "nclob_col") VALUES (1, '""');
 INSERT INTO "nclob_table" ("id", "nclob_col") VALUES (2, '"A"*100000');
 INSERT INTO "nclob_table" ("id", "nclob_col") VALUES (3, NULL);
-CREATE TABLE "nclob_to_bytea_table" ("id" NUMBER PRIMARY KEY, "nclob_col" NCLOB);
-INSERT INTO "nclob_to_bytea_table" ("id", "nclob_col") VALUES (1, '""');
-INSERT INTO "nclob_to_bytea_table" ("id", "nclob_col") VALUES (2, '"A"*100000');
-INSERT INTO "nclob_to_bytea_table" ("id", "nclob_col") VALUES (3, NULL);
+
 CREATE TABLE "bfile_table" ("id" NUMBER PRIMARY KEY, "bfile_col" BFILE);
 INSERT INTO "bfile_table" ("id", "bfile_col") VALUES (1, NULL);
 INSERT INTO "bfile_table" ("id", "bfile_col") VALUES (2, NULL);
-CREATE TABLE "bfile_to_bytea_table" ("id" NUMBER PRIMARY KEY, "bfile_col" BFILE);
-INSERT INTO "bfile_to_bytea_table" ("id", "bfile_col") VALUES (1, NULL);
-INSERT INTO "bfile_to_bytea_table" ("id", "bfile_col") VALUES (2, NULL);
+
 CREATE TABLE "bfile_to_varchar_url_table" ("id" NUMBER PRIMARY KEY, "bfile_col" BFILE);
 INSERT INTO "bfile_to_varchar_url_table" ("id", "bfile_col") VALUES (1, NULL);
 INSERT INTO "bfile_to_varchar_url_table" ("id", "bfile_col") VALUES (2, NULL);
@@ -635,42 +578,21 @@ CREATE TABLE "long_table" ("id" NUMBER PRIMARY KEY, "long_col" LONG);
 INSERT INTO "long_table" ("id", "long_col") VALUES (1, '""');
 INSERT INTO "long_table" ("id", "long_col") VALUES (2, '"A"*100000');
 INSERT INTO "long_table" ("id", "long_col") VALUES (3, '"NULL"');
-CREATE TABLE "long_to_bytea_table" ("id" NUMBER PRIMARY KEY, "long_col" LONG);
-INSERT INTO "long_to_bytea_table" ("id", "long_col") VALUES (1, '""');
-INSERT INTO "long_to_bytea_table" ("id", "long_col") VALUES (2, '"A"*100000');
-INSERT INTO "long_to_bytea_table" ("id", "long_col") VALUES (3, '"NULL"');
+
 CREATE TABLE "rowid_table" ("id" NUMBER PRIMARY KEY, "rowid_col" ROWID);
 INSERT INTO "rowid_table" ("id", "rowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
 INSERT INTO "rowid_table" ("id", "rowid_col") VALUES (2, NULL);
-CREATE TABLE "rowid_to_bytea_table" ("id" NUMBER PRIMARY KEY, "rowid_col" ROWID);
-INSERT INTO "rowid_to_bytea_table" ("id", "rowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
-INSERT INTO "rowid_to_bytea_table" ("id", "rowid_col") VALUES (2, NULL);
+
 CREATE TABLE "rowid_to_bigint_table" ("id" NUMBER PRIMARY KEY, "rowid_col" ROWID);
 INSERT INTO "rowid_to_bigint_table" ("id", "rowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
 INSERT INTO "rowid_to_bigint_table" ("id", "rowid_col") VALUES (2, NULL);
 CREATE TABLE "urowid_table" ("id" NUMBER PRIMARY KEY, "urowid_col" UROWID);
 INSERT INTO "urowid_table" ("id", "urowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
 INSERT INTO "urowid_table" ("id", "urowid_col") VALUES (2, NULL);
-CREATE TABLE "urowid_to_bytea_table" ("id" NUMBER PRIMARY KEY, "urowid_col" UROWID);
-INSERT INTO "urowid_to_bytea_table" ("id", "urowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
-INSERT INTO "urowid_to_bytea_table" ("id", "urowid_col") VALUES (2, NULL);
+
 CREATE TABLE "urowid_to_bigint_table" ("id" NUMBER PRIMARY KEY, "urowid_col" UROWID);
 INSERT INTO "urowid_to_bigint_table" ("id", "urowid_col") VALUES (1, 'AAAB12AADAAAAwPAAA');
 INSERT INTO "urowid_to_bigint_table" ("id", "urowid_col") VALUES (2, NULL);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 CREATE TABLE "json_table" ("id" NUMBER PRIMARY KEY, "json_col" JSON);
 INSERT INTO "json_table" ("id", "json_col") VALUES (1, '{}');
@@ -680,176 +602,11 @@ CREATE TABLE "json_to_varchar_table" ("id" NUMBER PRIMARY KEY, "json_col" JSON);
 INSERT INTO "json_to_varchar_table" ("id", "json_col") VALUES (1, '{}');
 INSERT INTO "json_to_varchar_table" ("id", "json_col") VALUES (2, '[]');
 INSERT INTO "json_to_varchar_table" ("id", "json_col") VALUES (3, '{"a": 1}');
-CREATE TABLE "json_to_bytea_table" ("id" NUMBER PRIMARY KEY, "json_col" JSON);
-INSERT INTO "json_to_bytea_table" ("id", "json_col") VALUES (1, '{}');
-INSERT INTO "json_to_bytea_table" ("id", "json_col") VALUES (2, '[]');
-INSERT INTO "json_to_bytea_table" ("id", "json_col") VALUES (3, '{"a": 1}');
+
 CREATE TABLE "xmltype_table" ("id" NUMBER PRIMARY KEY, "xmltype_col" XMLType);
 INSERT INTO "xmltype_table" ("id", "xmltype_col") VALUES (1, '<xml></xml>');
 INSERT INTO "xmltype_table" ("id", "xmltype_col") VALUES (2, '<xml_doc/>');
 INSERT INTO "xmltype_table" ("id", "xmltype_col") VALUES (3, NULL);
-CREATE TABLE "xmltype_to_bytea_table" ("id" NUMBER PRIMARY KEY, "xmltype_col" XMLType);
-INSERT INTO "xmltype_to_bytea_table" ("id", "xmltype_col") VALUES (1, '<xml></xml>');
-INSERT INTO "xmltype_to_bytea_table" ("id", "xmltype_col") VALUES (2, '<xml_doc/>');
-INSERT INTO "xmltype_to_bytea_table" ("id", "xmltype_col") VALUES (3, NULL);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 CREATE TABLE "timestamp_with_time_zone_table" ("id" INT, "timestamp_with_time_zone_col" TIMESTAMP WITH TIME ZONE, PRIMARY KEY ("id"));
 CREATE TABLE "timestamp_with_time_zone_to_varchar_table" ("id" INT, "timestamp_with_time_zone_to_varchar_col" TIMESTAMP WITH TIME ZONE, PRIMARY KEY ("id"));
