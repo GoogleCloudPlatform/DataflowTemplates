@@ -72,7 +72,8 @@ public interface IUnifiedVisitor {
       case DATE -> visitor.visitDate(value.getDate());
       case NUMERIC, PG_NUMERIC -> visitor.visitNumeric(value.getNumeric());
       case TIMESTAMP -> visitor.visitTimestamp(value.getTimestamp());
-      case JSON, PG_JSONB -> visitor.visitJson(value.getJson());
+      case JSON -> visitor.visitJson(value.getJson());
+      case PG_JSONB -> visitor.visitJson(value.getPgJsonb());
       default -> visitor.visitDefault(value);
     }
   }

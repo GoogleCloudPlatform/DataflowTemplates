@@ -113,12 +113,13 @@ public class GCSSpannerDVAvroSetupHelper {
    * Converts standard Java types into the primitive formats required by Avro logical types.
    *
    * <p>Because this helper uses a generic {@code Map<String, Object>} to dynamically build records,
-   * standard Java objects (like {@link Instant}) must be manually translated into Avro's expected
-   * underlying primitives (like {@code Long} for timestamp-micros) before serialization.
+   * standard Java objects (like {@link Instant}, {@link java.math.BigDecimal}, {@code byte[]}) must
+   * be manually translated into Avro's expected underlying primitives (like {@code Long} for
+   * timestamp-micros, {@link java.nio.ByteBuffer} for decimals with scale 9 or raw bytes) before
+   * serialization.
    *
-   * <p><b>IMPORTANT:</b> This method currently only supports {@link Instant}. If new test tables
-   * are introduced that use other complex Avro mappings (e.g., Dates, Decimals, UUIDs, or custom
-   * Datastream composites like Datetime), this method MUST be updated to coerce those types.
+   * <p><b>NOTE:</b> {@link java.math.BigDecimal} is currently normalized to scale 9 for Avro
+   * decimal serialization.
    *
    * @param value The standard Java object provided in the test map.
    * @return The Avro-compatible primitive value ready for serialization.

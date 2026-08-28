@@ -644,12 +644,8 @@ public class ComparisonRecordMapperOracleAllDataTypesTest {
 
     GCSSpannerDVAvroSetupHelper.TableDef tableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            new Schema.Parser()
-                .parse(
-                    ComparisonRecordMapperOracleAllDataTypesTest.class
-                        .getClassLoader()
-                        .getResourceAsStream(
-                            "GCSSpannerDVOracleSmokeIT/oracle_all_datatypes.avsc")),
+            GCSSpannerDVAvroSetupHelper.parseAvroSchema(
+                "GCSSpannerDVOracleSmokeIT/oracle_all_datatypes.avsc"),
             "OracleAllDatatypes",
             Arrays.asList("id"));
 
@@ -800,7 +796,6 @@ public class ComparisonRecordMapperOracleAllDataTypesTest {
           h1.hash().toString());
     }
 
-    System.out.println("UNIT TEST COMPUTED HASH: " + avroResult.getHash());
     assertEquals(spannerResult.getHash(), avroResult.getHash());
   }
 }

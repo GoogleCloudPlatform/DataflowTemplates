@@ -204,14 +204,6 @@ public class GCSSpannerDVOracleSmokeIT extends GCSSpannerDVITBase {
 
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
-    List<java.util.Map<String, Object>> mismatches =
-        org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.tableResultToRecords(
-            bigQueryResourceManager.readTable("MismatchedRecords"));
-    System.out.println("DEBUG MISMATCHED RECORDS COUNT: " + mismatches.size());
-    for (java.util.Map<String, Object> m : mismatches) {
-      System.out.println("DEBUG MISMATCH: " + m);
-    }
-
     // 4. Assert Validation Results in BigQuery
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
