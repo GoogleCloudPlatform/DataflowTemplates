@@ -14,7 +14,6 @@ dataflow_params = {
     bigquery_dataset                 = "<YOUR_BIGQUERY_DATASET>"         # The BigQuery dataset to store validation reports (e.g., validation_report_dataset)
     spanner_host                     = "<YOUR_SPANNER_HOST>"             # Optional: Custom Spanner host endpoint
     spanner_priority                 = "HIGH"                            # Optional: Priority for Spanner RPC invocations (HIGH, MEDIUM, LOW)
-    local_session_file_path          = "<YOUR_LOCAL_SESSION_FILE_PATH>"  # Optional: Local path to the session file (will be uploaded to working directory)
     session_file_path                = "<YOUR_SESSION_FILE_PATH>"        # Optional: Existing GCS path to the session file
     schema_overrides_file_path       = "<YOUR_SCHEMA_OVERRIDES_FILE_PATH>" # Optional: GCS path to your overrides file
     table_overrides                  = "<YOUR_TABLE_OVERRIDES>"          # Optional: Table name overrides (e.g., "[{OldTableName,NewTableName}]")
@@ -22,8 +21,6 @@ dataflow_params = {
     transformation_jar_path          = "<YOUR_TRANSFORMATION_JAR_PATH>"  # Optional: GCS path to the transformation JAR file
     transformation_class_name        = "<YOUR_TRANSFORMATION_CLASS_NAME>" # Optional: Fully qualified transformation class name
     transformation_custom_parameters = "<YOUR_TRANSFORMATION_CUSTOM_PARAMS>" # Optional: Custom parameters for the transformation
-    working_directory_bucket         = "<YOUR_WORKING_DIRECTORY_BUCKET>" # Optional: Bucket for uploading session file and creating output directory
-    working_directory_prefix         = "<YOUR_WORKING_DIRECTORY_PREFIX>" # Optional: Prefix within the GCS bucket for working directory
     run_id                           = "<YOUR_RUN_ID>"                   # Optional: Custom run identifier
   }
 

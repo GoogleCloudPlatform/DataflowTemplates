@@ -6,8 +6,7 @@ This sample demonstrates how to easily launch the Dataflow job while automatical
 
 The Terraform module will create the following Google Cloud resources:
 1. **Dataflow Flex Template Job:** Uses `google_dataflow_flex_template_job` to launch the data validation pipeline.
-2. **GCS Session File:** The GCS object created by uploading the local session file (if specified).
-3. **IAM Role Bindings:** Grants the Dataflow worker service account the required roles to run the validation:
+2. **IAM Role Bindings:** Grants the Dataflow worker service account the required roles to run the validation:
    * `roles/dataflow.worker` (required to execute Dataflow jobs)
    * `roles/spanner.databaseReader` (required to read records from Spanner)
    * `roles/storage.objectAdmin` (required to read/write objects in Cloud Storage)
@@ -230,11 +229,8 @@ If you prefer or need to use a session file, you can generate one using the Span
 
 To provide this session file to Terraform:
 
-1. Copy the SMT generated `session file` to the Terraform working directory and name it `session.json`.
-2. Set the `var.local_session_file_path` variable to `"session.json"` (or the relative/absolute path to your file).
-3. Ensure `var.working_directory_bucket` and `var.working_directory_prefix` are configured so Terraform knows where to upload the file in GCS.
-
-This will automatically upload the local file to GCS and configure it in the Dataflow job.
+1. Upload the SMT generated `session file` to a Cloud Storage bucket.
+2. Set the `var.session_file_path` variable to the GCS path of your uploaded file (e.g. `gs://my-bucket/path/to/session.json`).
 
 ### Adding access to Terraform service account
 

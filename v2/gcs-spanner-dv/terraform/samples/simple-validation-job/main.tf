@@ -3,30 +3,13 @@ locals {
 
   # Network resolution (handling Shared VPC structures)
   network_project = (var.common_params.host_project != null && var.common_params.host_project != "") ? var.common_params.host_project : var.common_params.project
-  network_uri     = (var.dataflow_params.runner_params.network != null && var.dataflow_params.runner_params.network != "") ? "projects/${local.network_project}/global/networks/${var.dataflow_params.runner_params.network}" : null
-  subnetwork_uri  = (var.dataflow_params.runner_params.subnetwork != null && var.dataflow_params.runner_params.subnetwork != "") ? "https://www.googleapis.com/compute/v1/projects/${local.network_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}" : null
+  network_uri     = (var.dataflow_params.runner_params.network != null && var.dataflow_params.runner_params.network != "") ? (can(regex("/", var.dataflow_params.runner_params.network)) ? var.dataflow_params.runner_params.network : "projects/${local.network_project}/global/networks/${var.dataflow_params.runner_params.network}") : null
+  subnetwork_uri  = (var.dataflow_params.runner_params.subnetwork != null && var.dataflow_params.runner_params.subnetwork != "") ? (can(regex("/", var.dataflow_params.runner_params.subnetwork)) ? var.dataflow_params.runner_params.subnetwork : "https://www.googleapis.com/compute/v1/projects/${local.network_project}/regions/${var.common_params.region}/subnetworks/${var.dataflow_params.runner_params.subnetwork}") : null
 
   # Spanner project resolution
   spanner_project_id = (var.dataflow_params.template_params.spanner_project_id != null && var.dataflow_params.template_params.spanner_project_id != "") ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
 }
 
-# upload local session file to the working GCS bucket
-resource "google_storage_bucket_object" "session_file_object" {
-  count        = (var.dataflow_params.template_params.local_session_file_path != null && var.dataflow_params.template_params.local_session_file_path != "") ? 1 : 0
-  depends_on   = [google_project_service.enabled_apis]
-  
-  lifecycle {
-    precondition {
-      condition     = var.dataflow_params.template_params.working_directory_bucket != null && var.dataflow_params.template_params.working_directory_bucket != ""
-      error_message = "You must provide a working_directory_bucket in template_params when uploading a local_session_file_path."
-    }
-  }
-
-  name         = (var.dataflow_params.template_params.working_directory_prefix != null && var.dataflow_params.template_params.working_directory_prefix != "") ? "${var.dataflow_params.template_params.working_directory_prefix}/session.json" : "session.json"
-  source       = var.dataflow_params.template_params.local_session_file_path
-  content_type = "application/json"
-  bucket       = var.dataflow_params.template_params.working_directory_bucket
-}
 
 # Add roles to the service account that will run Dataflow for data validation
 resource "google_project_iam_member" "dataflow_roles" {
@@ -68,7 +51,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
       bigQueryDataset                = var.dataflow_params.template_params.bigquery_dataset
       spannerHost                    = var.dataflow_params.template_params.spanner_host
       spannerPriority                = var.dataflow_params.template_params.spanner_priority
-      sessionFilePath                = (var.dataflow_params.template_params.local_session_file_path != null && var.dataflow_params.template_params.local_session_file_path != "") ? ((var.dataflow_params.template_params.working_directory_prefix != null && var.dataflow_params.template_params.working_directory_prefix != "") ? "gs://${var.dataflow_params.template_params.working_directory_bucket}/${var.dataflow_params.template_params.working_directory_prefix}/session.json" : "gs://${var.dataflow_params.template_params.working_directory_bucket}/session.json") : var.dataflow_params.template_params.session_file_path
+      sessionFilePath                = var.dataflow_params.template_params.session_file_path
       schemaOverridesFilePath        = var.dataflow_params.template_params.schema_overrides_file_path
       tableOverrides                 = var.dataflow_params.template_params.table_overrides
       columnOverrides                = var.dataflow_params.template_params.column_overrides
@@ -82,7 +65,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   service_account_email       = local.effective_sa_email
   network                     = local.network_uri
   subnetwork                  = local.subnetwork_uri
-  kms_key_name                = var.dataflow_params.runner_params.kms_key_name != "" ? var.dataflow_params.runner_params.kms_key_name : null
+  kms_key_name                = (var.dataflow_params.runner_params.kms_key_name != null && var.dataflow_params.runner_params.kms_key_name != "") ? var.dataflow_params.runner_params.kms_key_name : null
 
   machine_type                = var.dataflow_params.runner_params.machine_type
   max_workers                 = var.dataflow_params.runner_params.max_workers
@@ -96,7 +79,6 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
 
   depends_on = [
     google_project_iam_member.dataflow_roles,
-    google_project_iam_member.spanner_reader_role,
-    google_storage_bucket_object.session_file_object
+    google_project_iam_member.spanner_reader_role
   ]
 }
