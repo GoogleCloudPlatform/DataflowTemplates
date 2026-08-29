@@ -67,7 +67,7 @@ providers:
   - type: pythonPackage
     config:
       packages:
-        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/job_builder_util_transforms-0.2.0.tar.gz
+        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-28/job_builder_util_transforms-0.3.0.tar.gz
     transforms:
       ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
       WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
