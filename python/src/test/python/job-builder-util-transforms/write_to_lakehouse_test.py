@@ -19,10 +19,10 @@ from write_to_lakehouse import WriteToLakehouse
 
 class WriteToLakehouseTest(unittest.TestCase):
 
-  @patch("write_to_lakehouse.write_to_iceberg")
-  def test_write_to_lakehouse(self, mock_write_to_iceberg):
+  @patch("write_to_lakehouse.managed.Write")
+  def test_write_to_lakehouse(self, mock_managed_write):
     mock_transform = MagicMock()
-    mock_write_to_iceberg.return_value = mock_transform
+    mock_managed_write.return_value = mock_transform
 
     table = "lakehouse_catalog.dataset.table"
     catalog_name = "lakehouse_catalog"
@@ -53,22 +53,30 @@ class WriteToLakehouseTest(unittest.TestCase):
     )
 
     pcoll = MagicMock()
+    pcoll.pipeline.options.view_as.return_value.beam_services = {}
     transform.expand(pcoll)
 
-    mock_write_to_iceberg.assert_called_once_with(
-        table=table,
-        catalog_name=catalog_name,
-        catalog_properties=catalog_properties,
-        config_properties=config_properties,
-        partition_fields=partition_fields,
-        table_properties=table_properties,
-        triggering_frequency_seconds=triggering_frequency_seconds,
-        keep=keep,
-        drop=drop,
-        only=only,
-        distribution_mode=distribution_mode,
-        autosharding=autosharding,
+    mock_managed_write.assert_called_once()
+    args, kwargs = mock_managed_write.call_args
+    self.assertEqual(args[0], "iceberg")
+    self.assertEqual(
+        kwargs["config"],
+        {
+            "table": table,
+            "catalog_name": catalog_name,
+            "catalog_properties": catalog_properties,
+            "config_properties": config_properties,
+            "partition_fields": partition_fields,
+            "table_properties": table_properties,
+            "triggering_frequency_seconds": triggering_frequency_seconds,
+            "keep": keep,
+            "drop": drop,
+            "only": only,
+            "distribution_mode": distribution_mode,
+            "autosharding": autosharding,
+        },
     )
+    self.assertIsNotNone(kwargs["expansion_service"])
 
 
 if __name__ == "__main__":
