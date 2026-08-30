@@ -13,14 +13,18 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock, patch
-from write_to_lakehouse import WriteToLakehouse
+from unittest.mock import ANY, MagicMock, patch
+from apache_beam.transforms import managed
+from write_to_lakehouse import ICEBERG_WRITE_URN, WriteToLakehouse
 
 
 class WriteToLakehouseTest(unittest.TestCase):
 
+  @patch("write_to_lakehouse.SchemaAwareExternalTransform")
+  @patch.object(managed, "ICEBERG", "iceberg", create=True)
   @patch("write_to_lakehouse.managed.Write")
-  def test_write_to_lakehouse(self, mock_managed_write):
+  def test_write_to_lakehouse_managed_write(self, mock_managed_write, mock_saet):
+    mock_managed_write._WRITE_TRANSFORMS = {"iceberg": ICEBERG_WRITE_URN}
     mock_transform = MagicMock()
     mock_managed_write.return_value = mock_transform
 
@@ -53,15 +57,11 @@ class WriteToLakehouseTest(unittest.TestCase):
     )
 
     pcoll = MagicMock()
-    pcoll.pipeline.options.view_as.return_value.beam_services = {}
     transform.expand(pcoll)
 
-    mock_managed_write.assert_called_once()
-    args, kwargs = mock_managed_write.call_args
-    self.assertEqual(args[0], "iceberg")
-    self.assertEqual(
-        kwargs["config"],
-        {
+    mock_managed_write.assert_called_once_with(
+        "iceberg",
+        config={
             "table": table,
             "catalog_name": catalog_name,
             "catalog_properties": catalog_properties,
@@ -76,7 +76,33 @@ class WriteToLakehouseTest(unittest.TestCase):
             "autosharding": autosharding,
         },
     )
-    self.assertIsNotNone(kwargs["expansion_service"])
+
+  @patch("write_to_lakehouse.SchemaAwareExternalTransform")
+  @patch("write_to_lakehouse.managed.Write")
+  def test_write_to_lakehouse_fallback(self, mock_managed_write, mock_saet):
+    mock_managed_write._WRITE_TRANSFORMS = {}
+    mock_transform = MagicMock()
+    mock_saet.return_value = mock_transform
+
+    table = "lakehouse_catalog.dataset.table"
+    catalog_properties = {"type": "hadoop", "warehouse": "gs://bucket/warehouse"}
+
+    transform = WriteToLakehouse(
+        table=table,
+        catalog_properties=catalog_properties,
+    )
+
+    pcoll = MagicMock()
+    pcoll.pipeline.options.view_as.return_value.beam_services = {}
+    transform.expand(pcoll)
+
+    mock_saet.assert_called_once_with(
+        identifier=ICEBERG_WRITE_URN,
+        expansion_service=ANY,
+        rearrange_based_on_discovery=True,
+        table=table,
+        catalog_properties=catalog_properties,
+    )
 
 
 if __name__ == "__main__":
