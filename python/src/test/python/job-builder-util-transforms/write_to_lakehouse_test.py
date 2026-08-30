@@ -21,12 +21,9 @@ from write_to_lakehouse import ICEBERG_WRITE_URN, WriteToLakehouse
 class WriteToLakehouseTest(unittest.TestCase):
 
   @patch("write_to_lakehouse.SchemaAwareExternalTransform")
-  @patch.object(managed, "ICEBERG", "iceberg", create=True)
-  @patch("write_to_lakehouse.managed.Write")
-  def test_write_to_lakehouse_managed_write(self, mock_managed_write, mock_saet):
-    mock_managed_write._WRITE_TRANSFORMS = {"iceberg": ICEBERG_WRITE_URN}
+  def test_write_to_lakehouse(self, mock_schema_aware_transform):
     mock_transform = MagicMock()
-    mock_managed_write.return_value = mock_transform
+    mock_schema_aware_transform.return_value = mock_transform
 
     table = "lakehouse_catalog.dataset.table"
     catalog_name = "lakehouse_catalog"
@@ -57,52 +54,26 @@ class WriteToLakehouseTest(unittest.TestCase):
     )
 
     pcoll = MagicMock()
-    transform.expand(pcoll)
-
-    mock_managed_write.assert_called_once_with(
-        "iceberg",
-        config={
-            "table": table,
-            "catalog_name": catalog_name,
-            "catalog_properties": catalog_properties,
-            "config_properties": config_properties,
-            "partition_fields": partition_fields,
-            "table_properties": table_properties,
-            "triggering_frequency_seconds": triggering_frequency_seconds,
-            "keep": keep,
-            "drop": drop,
-            "only": only,
-            "distribution_mode": distribution_mode,
-            "autosharding": autosharding,
-        },
-    )
-
-  @patch("write_to_lakehouse.SchemaAwareExternalTransform")
-  @patch("write_to_lakehouse.managed.Write")
-  def test_write_to_lakehouse_fallback(self, mock_managed_write, mock_saet):
-    mock_managed_write._WRITE_TRANSFORMS = {}
-    mock_transform = MagicMock()
-    mock_saet.return_value = mock_transform
-
-    table = "lakehouse_catalog.dataset.table"
-    catalog_properties = {"type": "hadoop", "warehouse": "gs://bucket/warehouse"}
-
-    transform = WriteToLakehouse(
-        table=table,
-        catalog_properties=catalog_properties,
-    )
-
-    pcoll = MagicMock()
     pcoll.pipeline.options.view_as.return_value.beam_services = {}
     transform.expand(pcoll)
 
-    mock_saet.assert_called_once_with(
-        identifier=ICEBERG_WRITE_URN,
-        expansion_service=ANY,
-        rearrange_based_on_discovery=True,
-        table=table,
-        catalog_properties=catalog_properties,
-    )
+    mock_schema_aware_transform.assert_called_once()
+    _, kwargs = mock_schema_aware_transform.call_args
+    self.assertEqual(kwargs["identifier"], "beam:schematransform:org.apache.beam:iceberg_write:v1")
+    self.assertEqual(kwargs["table"], table)
+    self.assertEqual(kwargs["catalog_name"], catalog_name)
+    self.assertEqual(kwargs["catalog_properties"], catalog_properties)
+    self.assertEqual(kwargs["config_properties"], config_properties)
+    self.assertEqual(kwargs["partition_fields"], partition_fields)
+    self.assertEqual(kwargs["table_properties"], table_properties)
+    self.assertEqual(kwargs["triggering_frequency_seconds"], triggering_frequency_seconds)
+    self.assertEqual(kwargs["keep"], keep)
+    self.assertEqual(kwargs["drop"], drop)
+    self.assertEqual(kwargs["only"], only)
+    self.assertEqual(kwargs["distribution_mode"], distribution_mode)
+    self.assertEqual(kwargs["autosharding"], autosharding)
+    self.assertTrue(kwargs["rearrange_based_on_discovery"])
+    self.assertIsNotNone(kwargs["expansion_service"])
 
 
 if __name__ == "__main__":

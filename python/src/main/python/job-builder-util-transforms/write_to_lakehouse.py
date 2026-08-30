@@ -88,26 +88,20 @@ class WriteToLakehouse(PTransform):
     if self.autosharding is not None:
       config['autosharding'] = self.autosharding
 
-    iceberg_sink = getattr(managed, 'ICEBERG', 'iceberg')
-    if hasattr(managed, 'Write') and iceberg_sink in getattr(
-        managed.Write, '_WRITE_TRANSFORMS', {}
-    ):
-      return pcoll | managed.Write(iceberg_sink, config=config)
-    else:
-      options = pcoll.pipeline.options
-      beam_services = options.view_as(CrossLanguageOptions).beam_services or {}
-      if 'sdks:java:io:expansion-service:shadowJar' in beam_services:
-        expansion_service = BeamJarExpansionService(
-            'sdks:java:io:expansion-service:shadowJar'
-        )
-      else:
-        expansion_service = JavaJarExpansionService(
-            'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-29/expansion-service-custom-0.3.1.jar'
-        )
-
-      return pcoll | SchemaAwareExternalTransform(
-          identifier=ICEBERG_WRITE_URN,
-          expansion_service=expansion_service,
-          rearrange_based_on_discovery=True,
-          **config,
+    options = pcoll.pipeline.options
+    beam_services = options.view_as(CrossLanguageOptions).beam_services or {}
+    if 'sdks:java:io:expansion-service:shadowJar' in beam_services:
+      expansion_service = BeamJarExpansionService(
+          'sdks:java:io:expansion-service:shadowJar'
       )
+    else:
+      expansion_service = JavaJarExpansionService(
+          'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-29/expansion-service-custom-0.3.1.jar'
+      )
+
+    return pcoll | SchemaAwareExternalTransform(
+        identifier=ICEBERG_WRITE_URN,
+        expansion_service=expansion_service,
+        rearrange_based_on_discovery=True,
+        **config,
+    )
