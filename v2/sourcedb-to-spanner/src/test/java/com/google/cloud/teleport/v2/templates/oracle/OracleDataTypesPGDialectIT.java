@@ -2348,14 +2348,14 @@ public class OracleDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             new java.util.HashMap<String, Object>() {
               {
                 /* Rationale: Source value 922337203685477 strictly maps to the 32-bit floating bound 9.2233718E14 under native Java stringification. */
-                put("binary_float_col", "9.223372E14");
+                put("binary_float_col", "9.2233718E14");
                 put("id", "1");
               }
             },
             new java.util.HashMap<String, Object>() {
               {
                 /* Rationale: Source value -922337203685477 strictly maps to the 32-bit floating bound -9.2233718E14 under native Java stringification. */
-                put("binary_float_col", "-9.223372E14");
+                put("binary_float_col", "-9.2233718E14");
                 put("id", "2");
               }
             },
