@@ -195,6 +195,7 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
     try (CatalogServiceClient client = CatalogServiceClient.create()) {
       Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
       if (entry == null) {
+        LOG.warn("Pub/Sub entry not found for topic {}", pubsubTopic);
         return null;
       }
       for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
@@ -208,6 +209,7 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
           }
         }
       }
+      LOG.warn("Schema aspect not found for topic {}", pubsubTopic);
       return null;
     } catch (IOException e) {
       LOG.error("Unable to create a CatalogServiceClient", e);
