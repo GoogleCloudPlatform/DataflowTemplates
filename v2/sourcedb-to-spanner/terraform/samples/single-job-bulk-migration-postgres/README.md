@@ -267,24 +267,6 @@ of the GCE instance hosting PostgreSQL.
 Ensure the firewall rules are configured so that other addresses can connect
 to the source.
 
-### Updating workers of a Dataflow job
-
-Currently, the Terraform `google_dataflow_flex_template_job` resource does not
-support updating the workers of a Dataflow job.
-If the worker counts are changed in `tfvars` and a Terraform apply is run,
-Terraform will attempt to cancel the existing Dataflow job and replace it
-with a new one.
-**This is not recommended**. Instead, use the `gcloud` CLI to update the worker
-counts of a launched Dataflow job.
-
-```shell
-gcloud dataflow jobs update-options \
-        --region=us-central1 \
-        --min-num-workers=5 \
-        --max-num-workers=20 \
-      2024-06-17_01_21_44-12198433486526363702
-```
-
 ### Specifying schema overrides
 
 By default, the bulk job performs a like-like mapping between

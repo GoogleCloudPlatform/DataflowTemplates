@@ -145,6 +145,38 @@ terraform destroy
 
 To monitor the data validation job, you can view the Dataflow job in the Google Cloud Console. The resulting metrics from the validation job such as matched records, mismatched records, and missing records are available in the BigQuery dataset specified in `var.bigquery_dataset`.
 
+### Example BigQuery Queries
+
+You can run the following SQL queries in the BigQuery console to inspect the validation results:
+
+**1. Check overall validation summary per table:**
+
+```sql
+SELECT 
+  table_name, 
+  status, 
+  matched_row_count,
+  mismatch_row_count
+FROM 
+  `<YOUR_PROJECT_ID>.<YOUR_BIGQUERY_DATASET>.TableValidationStats`
+ORDER BY 
+  table_name;
+```
+
+**2. Inspect specific mismatched records:**
+
+```sql
+SELECT 
+  table_name, 
+  mismatch_type, 
+  record_key, 
+  source, 
+  hash 
+FROM 
+  `<YOUR_PROJECT_ID>.<YOUR_BIGQUERY_DATASET>.MismatchedRecords` 
+LIMIT 100;
+```
+
 ## FAQ
 
 ### Dataflow job is failing with "Timeout in polling result file"
@@ -188,20 +220,6 @@ There can be multiple reasons for this:
 If you are facing issue with VPC connectivity, check the following Dataflow
 [guide](https://cloud.google.com/dataflow/docs/guides/troubleshoot-networking)
 to debug common networking issues.
-
-### Updating workers of a Dataflow job
-
-Currently, the Terraform `google_dataflow_flex_template_job` resource does not support updating the workers of a Dataflow job.
-If the worker counts are changed in `tfvars` and a Terraform apply is run, Terraform will attempt to cancel the existing Dataflow job and replace it with a new one.
-**This is not recommended**. Instead, use the `gcloud` CLI to update the worker counts of a launched Dataflow job:
-
-```shell
-gcloud dataflow jobs update-options \
-        --region=us-central1 \
-        --min-num-workers=5 \
-        --max-num-workers=20 \
-      <YOUR-JOB-ID>
-```
 
 ### Specifying schema changes
 

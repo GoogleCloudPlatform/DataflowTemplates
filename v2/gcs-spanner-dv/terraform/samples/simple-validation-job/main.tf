@@ -43,23 +43,21 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/GCS_Spanner_Data_Validator"
 
   parameters = {
-    for k, v in {
-      gcsInputDirectory              = var.dataflow_params.template_params.gcs_input_directory
-      projectId                      = local.spanner_project_id
-      instanceId                     = var.dataflow_params.template_params.instance_id
-      databaseId                     = var.dataflow_params.template_params.database_id
-      bigQueryDataset                = var.dataflow_params.template_params.bigquery_dataset
-      spannerHost                    = var.dataflow_params.template_params.spanner_host
-      spannerPriority                = var.dataflow_params.template_params.spanner_priority
-      sessionFilePath                = var.dataflow_params.template_params.session_file_path
-      schemaOverridesFilePath        = var.dataflow_params.template_params.schema_overrides_file_path
-      tableOverrides                 = var.dataflow_params.template_params.table_overrides
-      columnOverrides                = var.dataflow_params.template_params.column_overrides
-      runId                          = var.dataflow_params.template_params.run_id
-      transformationJarPath          = var.dataflow_params.template_params.transformation_jar_path
-      transformationClassName        = var.dataflow_params.template_params.transformation_class_name
-      transformationCustomParameters = var.dataflow_params.template_params.transformation_custom_parameters
-    } : k => v if v != null && v != ""
+    gcsInputDirectory              = var.dataflow_params.template_params.gcs_input_directory
+    projectId                      = local.spanner_project_id
+    instanceId                     = var.dataflow_params.template_params.instance_id
+    databaseId                     = var.dataflow_params.template_params.database_id
+    bigQueryDataset                = var.dataflow_params.template_params.bigquery_dataset
+    spannerHost                    = var.dataflow_params.template_params.spanner_host
+    spannerPriority                = var.dataflow_params.template_params.spanner_priority
+    sessionFilePath                = var.dataflow_params.template_params.session_file_path
+    schemaOverridesFilePath        = var.dataflow_params.template_params.schema_overrides_file_path
+    tableOverrides                 = var.dataflow_params.template_params.table_overrides
+    columnOverrides                = var.dataflow_params.template_params.column_overrides
+    runId                          = var.dataflow_params.template_params.run_id
+    transformationJarPath          = var.dataflow_params.template_params.transformation_jar_path
+    transformationClassName        = var.dataflow_params.template_params.transformation_class_name
+    transformationCustomParameters = var.dataflow_params.template_params.transformation_custom_parameters
   }
 
   service_account_email       = local.effective_sa_email

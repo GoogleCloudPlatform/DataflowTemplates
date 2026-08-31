@@ -267,24 +267,6 @@ of the GCE instance hosting MySQL.
 Ensure the firewall rules are configured so that other addresses can connect
 to the source.
 
-### Updating workers of a Dataflow job
-
-Currently, the Terraform `google_dataflow_flex_template_job` resource does not
-support updating the workers of a Dataflow job.
-If the worker counts are changed in `tfvars` and a Terraform apply is run,
-Terraform will attempt to cancel the existing Dataflow job and replace it
-with a new one.
-**This is not recommended**. Instead, use the `gcloud` CLI to update the worker
-counts of a launched Dataflow job.
-
-```shell
-gcloud dataflow jobs update-options \                                                                                                                                                                                                                                                                                                                      (base) 
-        --region=us-central1 \
-        --min-num-workers=5 \
-        --max-num-workers=20 \
-      2024-06-17_01_21_44-12198433486526363702
-```
-
 ### Specifying schema changes
 
 By default, the validation job performs a like-like schema mapping between the source AVRO records and Spanner. Any schema changes between the source and Spanner can be specified using a `session file` or `overrides` parameters.
