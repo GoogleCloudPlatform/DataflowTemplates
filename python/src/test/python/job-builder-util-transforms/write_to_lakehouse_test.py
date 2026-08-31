@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import ANY, MagicMock, patch
-from apache_beam.transforms import managed
-from write_to_lakehouse import ICEBERG_WRITE_URN, WriteToLakehouse
+from unittest.mock import MagicMock, patch
+from write_to_lakehouse import WriteToLakehouse
 
 
 class WriteToLakehouseTest(unittest.TestCase):
 
-  @patch("write_to_lakehouse.SchemaAwareExternalTransform")
-  def test_write_to_lakehouse(self, mock_schema_aware_transform):
+  @patch("write_to_lakehouse.write_to_iceberg")
+  def test_write_to_lakehouse(self, mock_write_to_iceberg):
     mock_transform = MagicMock()
-    mock_schema_aware_transform.return_value = mock_transform
+    mock_write_to_iceberg.return_value = mock_transform
 
     table = "lakehouse_catalog.dataset.table"
     catalog_name = "lakehouse_catalog"
@@ -54,26 +53,22 @@ class WriteToLakehouseTest(unittest.TestCase):
     )
 
     pcoll = MagicMock()
-    pcoll.pipeline.options.view_as.return_value.beam_services = {}
     transform.expand(pcoll)
 
-    mock_schema_aware_transform.assert_called_once()
-    _, kwargs = mock_schema_aware_transform.call_args
-    self.assertEqual(kwargs["identifier"], "beam:schematransform:org.apache.beam:iceberg_write:v1")
-    self.assertEqual(kwargs["table"], table)
-    self.assertEqual(kwargs["catalog_name"], catalog_name)
-    self.assertEqual(kwargs["catalog_properties"], catalog_properties)
-    self.assertEqual(kwargs["config_properties"], config_properties)
-    self.assertEqual(kwargs["partition_fields"], partition_fields)
-    self.assertEqual(kwargs["table_properties"], table_properties)
-    self.assertEqual(kwargs["triggering_frequency_seconds"], triggering_frequency_seconds)
-    self.assertEqual(kwargs["keep"], keep)
-    self.assertEqual(kwargs["drop"], drop)
-    self.assertEqual(kwargs["only"], only)
-    self.assertEqual(kwargs["distribution_mode"], distribution_mode)
-    self.assertEqual(kwargs["autosharding"], autosharding)
-    self.assertTrue(kwargs["rearrange_based_on_discovery"])
-    self.assertIsNotNone(kwargs["expansion_service"])
+    mock_write_to_iceberg.assert_called_once_with(
+        table=table,
+        catalog_name=catalog_name,
+        catalog_properties=catalog_properties,
+        config_properties=config_properties,
+        partition_fields=partition_fields,
+        table_properties=table_properties,
+        triggering_frequency_seconds=triggering_frequency_seconds,
+        keep=keep,
+        drop=drop,
+        only=only,
+        distribution_mode=distribution_mode,
+        autosharding=autosharding,
+    )
 
 
 if __name__ == "__main__":
