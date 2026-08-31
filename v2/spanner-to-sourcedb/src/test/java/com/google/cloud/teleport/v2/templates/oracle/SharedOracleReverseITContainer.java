@@ -18,29 +18,53 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SharedOracleReverseITContainer {
   private static final Logger LOG = LoggerFactory.getLogger(SharedOracleReverseITContainer.class);
-
-  private static OracleResourceManager instance;
+  private static final int POOL_SIZE = 4;
+  private static final OracleResourceManager[] instances = new OracleResourceManager[POOL_SIZE];
+  private static final AtomicInteger nextIdx = new AtomicInteger(0);
+  private static final ConcurrentHashMap<String, OracleResourceManager> classToInstance =
+      new ConcurrentHashMap<>();
 
   public static synchronized OracleResourceManager getInstance() {
-    if (instance == null) {
-      instance = OracleResourceManager.builder("oracle-rev-bulk-db").build();
-      try {
-        try (Connection systemConn =
-                DriverManager.getConnection(instance.getUri(), "SYSTEM", instance.getPassword());
-            Statement stmt = systemConn.createStatement()) {
-          stmt.execute("GRANT DBA TO " + instance.getUsername());
-          LOG.info("Successfully granted DBA to Testcontainers Oracle app user!");
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to grant DBA using SYSTEM. CREATE USER might fail.", e);
+    String callerClass = "unknown";
+    for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+      if (!e.getClassName().contains("SharedOracleReverseITContainer")
+          && !e.getClassName().contains("java.lang.Thread")) {
+        callerClass = e.getClassName();
+        break;
       }
     }
-    return instance;
+
+    return classToInstance.computeIfAbsent(
+        callerClass,
+        k -> {
+          int idx = Math.abs(nextIdx.getAndIncrement() % POOL_SIZE);
+          if (instances[idx] == null) {
+            LOG.info("Spinning up Shared Oracle Container #{}", idx);
+            OracleResourceManager newInstance =
+                OracleResourceManager.builder("oracle-rev-bulk-db-" + idx).build();
+            try {
+              try (Connection systemConn =
+                      DriverManager.getConnection(
+                          newInstance.getUri(), "SYSTEM", newInstance.getPassword());
+                  Statement stmt = systemConn.createStatement()) {
+                stmt.execute("GRANT DBA TO " + newInstance.getUsername());
+                LOG.info("Successfully granted DBA to test user in Container #{}", idx);
+              }
+            } catch (Exception e) {
+              LOG.warn("Failed to grant DBA using SYSTEM in Container #{}", idx, e);
+            }
+            instances[idx] = newInstance;
+          }
+          LOG.info("Assigning Oracle Container #{} to test class: {}", idx, k);
+          return instances[idx];
+        });
   }
 }
