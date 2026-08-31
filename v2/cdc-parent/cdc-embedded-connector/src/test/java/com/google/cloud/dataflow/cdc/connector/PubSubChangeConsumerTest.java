@@ -16,7 +16,7 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
 import com.google.cloud.dataplex.v1.Entry;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
@@ -38,7 +38,7 @@ public class PubSubChangeConsumerTest {
 
   @Test
   public void testBasicRecordAndFilteredRecordInput() throws InterruptedException {
-    DataCatalogSchemaManager dataCatalogMock = Mockito.mock(DataCatalogSchemaManager.class);
+    KnowledgeCatalogSchemaUtils dataCatalogMock = Mockito.mock(KnowledgeCatalogSchemaUtils.class);
     Publisher pubsubMock = Mockito.mock(Publisher.class);
     Mockito.when(
             dataCatalogMock.updateSchemaForTable(

@@ -39,12 +39,48 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Class with utilities to communicate with Google Cloud Dataplex Catalog. */
-public class DataCatalogSchemaUtils {
+/** Class with utilities to communicate with Knowledge Catalog. */
+public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
 
   public static final String DEFAULT_LOCATION = "global";
 
-  private static final Logger LOG = LoggerFactory.getLogger(DataCatalogSchemaUtils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KnowledgeCatalogSchemaUtils.class);
+
+  final String gcpProject;
+  final String location;
+  CatalogServiceClient client;
+
+  KnowledgeCatalogSchemaUtils(String gcpProject, String location) {
+    this.gcpProject = gcpProject;
+    this.location = location;
+  }
+
+  public abstract String getPubSubTopicForTable(String tableName);
+
+  public abstract Entry updateSchemaForTable(String tableName, Schema beamSchema);
+
+  public String getGcpProject() {
+    return gcpProject;
+  }
+
+  void setupDataCatalogClient() {
+    if (client != null) {
+      return;
+    }
+
+    try {
+      client = CatalogServiceClient.create();
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
+    }
+  }
+
+  @Override
+  public void close() {
+    if (client != null) {
+      client.close();
+    }
+  }
 
   /**
    * Builds an {@link EntryGroup} name for a particular pubsubTopic.
@@ -81,12 +117,12 @@ public class DataCatalogSchemaUtils {
     return entryGroupName;
   }
 
-  public static DataCatalogSchemaManager getSchemaManager(
+  public static KnowledgeCatalogSchemaUtils getSchemaManager(
       String gcpProject, String pubsubTopicPrefix, Boolean singleTopic) {
     return getSchemaManager(gcpProject, pubsubTopicPrefix, DEFAULT_LOCATION, singleTopic);
   }
 
-  public static DataCatalogSchemaManager getSchemaManager(
+  public static KnowledgeCatalogSchemaUtils getSchemaManager(
       String gcpProject, String pubsubTopicPrefix, String location, Boolean singleTopic) {
     if (singleTopic) {
       return new SingleTopicSchemaManager(gcpProject, location, pubsubTopicPrefix);
@@ -143,47 +179,41 @@ public class DataCatalogSchemaUtils {
     return null;
   }
 
-  public abstract static class DataCatalogSchemaManager implements AutoCloseable {
-    final String gcpProject;
-    final String location;
-    CatalogServiceClient client;
-    private final java.util.Set<String> createdEntryGroups = new java.util.HashSet<>();
+  static Entry lookupPubSubEntry(
+      CatalogServiceClient client, String pubsubTopic, String gcpProject) {
+    String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
+    String query = String.format("name:%s", pubsubTopic);
 
-    @Override
-    public void close() {
-      if (client != null) {
-        client.close();
-        client = null;
+    SearchEntriesRequest request =
+        SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();
+
+    try {
+      CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
+      for (SearchEntriesResult result : response.iterateAll()) {
+        String entryName = result.getDataplexEntry().getName();
+        LOG.info("Knowledge Catalog entry found {}", entryName);
+        return client.getEntry(
+            GetEntryRequest.newBuilder().setName(entryName).setView(EntryView.ALL).build());
       }
+    } catch (ApiException e) {
+      LOG.error("ApiException thrown by Knowledge Catalog API:", e);
+    }
+    LOG.warn("PubSub entry not found");
+    return null;
+  }
+
+  static class SingleTopicSchemaManager extends KnowledgeCatalogSchemaUtils {
+    private final String pubsubTopic;
+    private Boolean entryGroupCreated = false;
+
+    SingleTopicSchemaManager(String gcpProject, String location, String pubsubTopic) {
+      super(gcpProject, location);
+      this.pubsubTopic = pubsubTopic;
+      createEntryGroup();
     }
 
-    public abstract String getEntryGroupId(String tableName);
-
-    public abstract String getPubSubTopicForTable(String tableName);
-
-    public String getGcpProject() {
-      return gcpProject;
-    }
-
-    DataCatalogSchemaManager(String gcpProject, String location) {
-      this.gcpProject = gcpProject;
-      this.location = location;
-    }
-
-    void setupDataCatalogClient() {
-      if (client != null) {
-        return;
-      }
-
-      try {
-        client = CatalogServiceClient.create();
-      } catch (IOException e) {
-        throw new RuntimeException("Unable to create a CatalogServiceClient", e);
-      }
-    }
-
-    private void createEntryGroup(String entryGroupId) {
-      if (this.createdEntryGroups.contains(entryGroupId)) {
+    private void createEntryGroup() {
+      if (this.entryGroupCreated) {
         return;
       }
       setupDataCatalogClient();
@@ -279,7 +309,7 @@ public class DataCatalogSchemaUtils {
               .build();
 
       try {
-        LOG.info("Dataplex updating schema {}", createEntryRequest);
+        LOG.info("Knowledge Catalog updating schema {}", createEntryRequest);
         return client.createEntry(createEntryRequest);
       } catch (AlreadyExistsException e) {
         // If it exists, update it
@@ -298,14 +328,13 @@ public class DataCatalogSchemaUtils {
                         .addPaths("entry_source.description")
                         .build())
                 .build();
-        LOG.info("Dataplex updating schema {}", updateRequest);
+        LOG.info("Knowledge Catalog updating schema {}", updateRequest);
         return client.updateEntry(updateRequest);
       }
     }
   }
 
-  static class SingleTopicSchemaManager extends DataCatalogSchemaManager {
-    private final String pubsubTopic;
+  static class MultiTopicSchemaManager extends KnowledgeCatalogSchemaUtils {
 
     SingleTopicSchemaManager(String gcpProject, String location, String pubsubTopic) {
       super(gcpProject, location);
@@ -339,6 +368,66 @@ public class DataCatalogSchemaUtils {
     @Override
     public String getPubSubTopicForTable(String tableName) {
       return String.format("%s%s", pubsubTopicPrefix, tableName);
+    }
+
+    @Override
+    public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
+      setupDataCatalogClient();
+      if (client == null) {
+        LOG.warn("Knowledge Catalog client missing");
+        return null;
+      }
+
+      String pubsubTopic = getPubSubTopicForTable(tableName);
+      Entry beforeChangeEntry = lookupPubSubEntry(client, pubsubTopic, this.gcpProject);
+
+      if (beforeChangeEntry == null) {
+        LOG.warn("No entry for PubSub topic {}", pubsubTopic);
+        return null;
+      }
+
+      Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
+      Struct genericData = null;
+      try {
+        genericData =
+            Struct.newBuilder()
+                .putFields(
+                    "system",
+                    com.google.protobuf.Value.newBuilder()
+                        .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
+                        .build())
+                .putFields(
+                    "type",
+                    com.google.protobuf.Value.newBuilder()
+                        .setStringValue(JsonFormat.printer().print(schemaData))
+                        .build())
+                .build();
+      } catch (InvalidProtocolBufferException e) {
+        throw new RuntimeException(e);
+      }
+
+      Entry updatedEntry =
+          beforeChangeEntry.toBuilder()
+              .putAspects(
+                  "dataplex-types.global.generic",
+                  Aspect.newBuilder()
+                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/generic")
+                      .setData(genericData)
+                      .build())
+              .build();
+
+      UpdateEntryRequest updateEntryRequest =
+          UpdateEntryRequest.newBuilder()
+              .setEntry(updatedEntry)
+              .addAllAspectKeys(
+                  List.of(
+                      "dataplex-types.global.generic"
+                      // ,"dataplex-types.global.schema"
+                      ))
+              .setUpdateMask(FieldMask.newBuilder().addPaths("aspects").build())
+              .build();
+      LOG.info("Knowledge Catalog updating schema {}", updateEntryRequest);
+      return client.updateEntry(updateEntryRequest);
     }
   }
 }

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.pubsub.v1.ProjectSubscriptionName;
 import com.google.pubsub.v1.ProjectTopicName;
@@ -30,10 +31,14 @@ public class PubsubUtils {
 
   private static SubscriptionAdminClient subscriptionAdminClient;
 
-  private static void setupSubscriptionClient() throws IOException {
+  private static synchronized void setupSubscriptionClient() throws IOException {
     if (subscriptionAdminClient == null) {
       subscriptionAdminClient = SubscriptionAdminClient.create();
     }
+  }
+
+  public static Schema getBeamSchemaForTopic(String gcpProject, String pubsubTopic) {
+    return KnowledgeCatalogSchemaUtils.getSchemaFromPubSubTopic(gcpProject, pubsubTopic);
   }
 
   public static ProjectTopicName getPubSubTopicFromSubscription(
@@ -47,6 +52,83 @@ public class PubsubUtils {
 
     ProjectTopicName result = ProjectTopicName.parse(subscriptionEntity.getTopic());
     LOG.info("ProjectTopicName is {} with topic {}", result, result.getTopic());
+    return result;
+  }
+
+  /**
+   * Data class to hold triplets of a topic, a subscription to that topic, and the Beam schema for
+   * data published in that topic.
+   */
+  public static class TopicSubscriptionSchema {
+    final String topic;
+    final String subscription;
+    final Schema schema;
+
+    TopicSubscriptionSchema(String topic, String subscription, Schema schema) {
+      this.topic = topic;
+      this.subscription = subscription;
+      this.schema = schema;
+    }
+  }
+
+  static List<TopicSubscriptionSchema> buildTopicSubscriptionSchemas(
+      final String gcpProject, String topics, String subscriptions) {
+    List<String> topicList;
+    List<String> subscriptionList;
+    List<Schema> schemaList;
+    if (subscriptions != null && !subscriptions.trim().isEmpty()) {
+      subscriptionList =
+          Arrays.stream(subscriptions.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .collect(Collectors.toList());
+      topicList =
+          subscriptionList.stream()
+              .map(
+                  s -> {
+                    try {
+                      return PubsubUtils.getPubSubTopicFromSubscription(gcpProject, s).getTopic();
+                    } catch (IOException e) {
+                      throw new RuntimeException(e);
+                    }
+                  })
+              .collect(Collectors.toList());
+    } else if (topics != null && !topics.trim().isEmpty()) {
+      topicList =
+          Arrays.stream(topics.split(","))
+              .map(String::trim)
+              .filter(t -> !t.isEmpty())
+              .collect(Collectors.toList());
+      subscriptionList = topicList.stream().map(t -> (String) null).collect(Collectors.toList());
+    } else {
+      throw new IllegalArgumentException(
+          "Must provide an inputSubscriptions or inputTopics parameter.");
+    }
+
+    LOG.info("Topic list is: {}", topicList);
+    LOG.info("Subscription list is: {}", subscriptionList);
+
+    schemaList =
+        topicList.stream()
+            .map(topic -> PubsubUtils.getBeamSchemaForTopic(gcpProject, topic))
+            .map(
+                schema -> {
+                  if (schema == null || schema.getFields().size() == 0) {
+                    throw new RuntimeException("Received a null or empty schema. Can not continue");
+                  } else {
+                    return schema;
+                  }
+                })
+            .collect(Collectors.toList());
+
+    LOG.info("Schema list is: {}", schemaList);
+
+    List<TopicSubscriptionSchema> result = new ArrayList<>();
+    for (int i = 0; i < topicList.size(); i++) {
+      result.add(
+          new TopicSubscriptionSchema(
+              topicList.get(i), subscriptionList.get(i), schemaList.get(i)));
+    }
     return result;
   }
 }

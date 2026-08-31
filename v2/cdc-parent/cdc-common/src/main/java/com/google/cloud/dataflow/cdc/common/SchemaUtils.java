@@ -29,7 +29,7 @@ import org.apache.beam.sdk.schemas.logicaltypes.SqlTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Set of utilities to convert Beam Schemas to Dataplex schema aspects. */
+/** Set of utilities to convert Beam Schemas to Knowledge Catalog schema aspects. */
 public class SchemaUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
@@ -146,7 +146,7 @@ public class SchemaUtils {
     throw new UnsupportedOperationException(errorMessage);
   }
 
-  static Struct fromBeamSchema(Schema beamSchema) {
+  public static Struct fromBeamSchema(Schema beamSchema) {
     List<Value> catalogColumns =
         beamSchema.getFields().stream()
             .map(SchemaUtils::fromBeamField)

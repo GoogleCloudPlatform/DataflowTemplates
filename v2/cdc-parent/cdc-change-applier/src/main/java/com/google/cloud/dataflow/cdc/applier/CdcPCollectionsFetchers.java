@@ -15,7 +15,10 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import static com.google.cloud.dataflow.cdc.applier.PubsubUtils.buildTopicSubscriptionSchemas;
+
+import com.google.cloud.dataflow.cdc.applier.PubsubUtils.TopicSubscriptionSchema;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
 import com.google.common.base.Preconditions;
 import com.google.pubsub.v1.ProjectTopicName;
 import java.io.IOException;
@@ -180,10 +183,11 @@ class CdcPCollectionsFetchers {
 
       // This should be a single topic
       ProjectTopicName pubsubTopic = getPubSubTopic();
-      String entryGroupName = DataCatalogSchemaUtils.entryGroupNameForTopic(pubsubTopic.getTopic());
+      String entryGroupName =
+          KnowledgeCatalogSchemaUtils.entryGroupNameForTopic(pubsubTopic.getTopic());
 
       Map<String, Schema> tableToSchema =
-          DataCatalogSchemaUtils.getSchemasForEntryGroup(
+          KnowledgeCatalogSchemaUtils.getSchemasForEntryGroup(
               options.as(GcpOptions.class).getProject(), entryGroupName);
 
       if (tableToSchema == null) {

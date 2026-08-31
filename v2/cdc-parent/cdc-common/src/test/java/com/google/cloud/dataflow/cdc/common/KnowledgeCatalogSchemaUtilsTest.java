@@ -16,4 +16,4 @@
 package com.google.cloud.dataflow.cdc.common;
 
 /** Tests for DataCatalogSchemaUtils class. */
-public class DataCatalogSchemaUtilsTest {}
+public class KnowledgeCatalogSchemaUtilsTest {}
