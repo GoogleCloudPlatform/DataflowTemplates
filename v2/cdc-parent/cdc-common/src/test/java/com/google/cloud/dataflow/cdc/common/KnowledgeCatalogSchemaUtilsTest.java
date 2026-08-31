@@ -15,5 +15,38 @@
  */
 package com.google.cloud.dataflow.cdc.common;
 
-/** Tests for DataCatalogSchemaUtils class. */
-public class KnowledgeCatalogSchemaUtilsTest {}
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.startsWith;
+
+import org.junit.Test;
+
+/** Tests for KnowledgeCatalogSchemaUtils class. */
+public class KnowledgeCatalogSchemaUtilsTest {
+
+  @Test
+  public void testEntryGroupNameForTopic() {
+    assertThat(
+        KnowledgeCatalogSchemaUtils.entryGroupNameForTopic("my_topic"), equalTo("cdc-my-topic"));
+    assertThat(
+        KnowledgeCatalogSchemaUtils.entryGroupNameForTopic("cdc-already-prefixed"),
+        equalTo("cdc-already-prefixed"));
+    assertThat(
+        KnowledgeCatalogSchemaUtils.entryGroupNameForTopic("prefix_with_dots.and_more"),
+        equalTo("cdc-prefix-with-dots-and-more"));
+    assertThat(
+        KnowledgeCatalogSchemaUtils.entryGroupNameForTopic("trailing_dash_"),
+        equalTo("cdc-trailing-dash"));
+  }
+
+  @Test
+  public void testEntryGroupNameForLongTopic() {
+    String longTopic =
+        "very_long_topic_name_that_exceeds_sixty_three_characters_limit_in_dataplex_entry_group";
+    String entryGroup = KnowledgeCatalogSchemaUtils.entryGroupNameForTopic(longTopic);
+
+    assertThat(entryGroup.length(), lessThanOrEqualTo(63));
+    assertThat(entryGroup, startsWith("cdc-"));
+  }
+}

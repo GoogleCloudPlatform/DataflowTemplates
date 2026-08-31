@@ -16,6 +16,7 @@
 package com.google.cloud.dataflow.cdc.common;
 
 import com.google.api.gax.rpc.AlreadyExistsException;
+import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.dataplex.v1.Aspect;
 import com.google.cloud.dataplex.v1.CatalogServiceClient;
 import com.google.cloud.dataplex.v1.CreateEntryGroupRequest;
@@ -26,11 +27,16 @@ import com.google.cloud.dataplex.v1.EntryGroupName;
 import com.google.cloud.dataplex.v1.EntrySource;
 import com.google.cloud.dataplex.v1.EntryView;
 import com.google.cloud.dataplex.v1.GetEntryRequest;
+import com.google.cloud.dataplex.v1.SearchEntriesRequest;
+import com.google.cloud.dataplex.v1.SearchEntriesResult;
 import com.google.cloud.dataplex.v1.UpdateEntryRequest;
 import com.google.protobuf.FieldMask;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
+import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -179,6 +185,39 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
     return null;
   }
 
+  /**
+   * Retrieve the {@link Schema} associated to a Pub/Sub topic.
+   *
+   * <p>This method is to be used in multi-topic mode, where a single {@link Schema} is associated
+   * to a single Pub/Sub topic.
+   */
+  public static Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
+    try (CatalogServiceClient client = CatalogServiceClient.create()) {
+      Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
+      if (entry == null) {
+        return null;
+      }
+      for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
+        if (aspectEntry.getKey().endsWith(".global.generic")) {
+          Struct genericData = aspectEntry.getValue().getData();
+          if (genericData.containsFields("type")) {
+            String schemaJson = genericData.getFieldsOrThrow("type").getStringValue();
+            Struct.Builder schemaStructBuilder = Struct.newBuilder();
+            JsonFormat.parser().merge(schemaJson, schemaStructBuilder);
+            return SchemaUtils.toBeamSchema(schemaStructBuilder.build());
+          }
+        }
+      }
+      return null;
+    } catch (IOException e) {
+      LOG.error("Unable to create a CatalogServiceClient", e);
+      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve schema for topic " + pubsubTopic, e);
+      throw new RuntimeException("Failed to retrieve schema for topic " + pubsubTopic, e);
+    }
+  }
+
   static Entry lookupPubSubEntry(
       CatalogServiceClient client, String pubsubTopic, String gcpProject) {
     String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
@@ -217,6 +256,7 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
         return;
       }
       setupDataCatalogClient();
+      String entryGroupId = entryGroupNameForTopic(pubsubTopic);
       EntryGroup entryGroup =
           EntryGroup.newBuilder()
               .setDisplayName(String.format("CDC_Debezium_on_Dataflow_%s", entryGroupId))
@@ -237,17 +277,17 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
         client.createEntryGroupAsync(entryGroupRequest).get(1, TimeUnit.MINUTES);
         LOG.info("Created EntryGroup: {}", entryGroupId);
 
-        this.createdEntryGroups.add(entryGroupId);
+        this.entryGroupCreated = true;
       } catch (AlreadyExistsException e) {
         // EntryGroup already exists.
-        this.createdEntryGroups.add(entryGroupId);
+        this.entryGroupCreated = true;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOG.error("Interrupted while creating EntryGroup", e);
         throw new RuntimeException("Interrupted while creating EntryGroup " + entryGroupId, e);
       } catch (ExecutionException e) {
         if (e.getCause() instanceof AlreadyExistsException) {
-          this.createdEntryGroups.add(entryGroupId);
+          this.entryGroupCreated = true;
         } else {
           LOG.error("Failed to create EntryGroup", e);
           throw new RuntimeException("Failed to create EntryGroup " + entryGroupId, e.getCause());
@@ -258,6 +298,11 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
       }
     }
 
+    @Override
+    public String getPubSubTopicForTable(String tableName) {
+      return pubsubTopic;
+    }
+
     private static String sanitizeEntryName(String tableName) {
       String unsanitizedEntry = tableName;
       if (tableName.contains(".")) {
@@ -266,9 +311,10 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
       return unsanitizedEntry.replace('_', '-').replace('.', '-').toLowerCase();
     }
 
+    @Override
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
-      String entryGroupId = getEntryGroupId(tableName);
-      createEntryGroup(entryGroupId);
+      String entryGroupId = entryGroupNameForTopic(pubsubTopic);
+      createEntryGroup();
 
       Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
       Struct genericData =
@@ -335,24 +381,6 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
   }
 
   static class MultiTopicSchemaManager extends KnowledgeCatalogSchemaUtils {
-
-    SingleTopicSchemaManager(String gcpProject, String location, String pubsubTopic) {
-      super(gcpProject, location);
-      this.pubsubTopic = pubsubTopic;
-    }
-
-    @Override
-    public String getEntryGroupId(String tableName) {
-      return entryGroupNameForTopic(pubsubTopic);
-    }
-
-    @Override
-    public String getPubSubTopicForTable(String tableName) {
-      return pubsubTopic;
-    }
-  }
-
-  static class MultiTopicSchemaManager extends DataCatalogSchemaManager {
     private final String pubsubTopicPrefix;
 
     MultiTopicSchemaManager(String gcpProject, String location, String pubsubTopicPrefix) {
@@ -360,7 +388,6 @@ public abstract class KnowledgeCatalogSchemaUtils implements AutoCloseable {
       this.pubsubTopicPrefix = pubsubTopicPrefix;
     }
 
-    @Override
     public String getEntryGroupId(String tableName) {
       return entryGroupNameForTopic(getPubSubTopicForTable(tableName));
     }

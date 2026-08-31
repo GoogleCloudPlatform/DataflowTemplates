@@ -31,15 +31,14 @@ import com.google.cloud.dataplex.v1.GetEntryRequest;
 import com.google.cloud.dataplex.v1.SearchEntriesRequest;
 import com.google.cloud.dataplex.v1.SearchEntriesResult;
 import com.google.cloud.dataplex.v1.UpdateEntryRequest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.protobuf.FieldMask;
 import com.google.protobuf.Struct;
-import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.sdk.schemas.Schema;
@@ -147,7 +146,7 @@ public class TopicDataplexSchemaIT {
     String expectedTopic = prefix + tableName;
 
     KnowledgeCatalogSchemaUtils schemaManager =
-        KnowledgeCatalogSchemaUtils.getSchemaManager(project, "", false);
+        KnowledgeCatalogSchemaUtils.getSchemaManager(project, prefix, false);
 
     Schema testSchema = Schema.builder().addStringField("id").addInt32Field("age").build();
 
@@ -159,7 +158,7 @@ public class TopicDataplexSchemaIT {
 
     LOG.info("Looking up schema from Dataplex...");
     Schema retrievedSchema =
-        KnowledgeCatalogSchemaUtils.getSchemaFromPubSubTopic(project, topicNameStr);
+        KnowledgeCatalogSchemaUtils.getSchemaFromPubSubTopic(project, expectedTopic);
     assertNotNull("Retrieved schema should not be null", retrievedSchema);
     assertTrue(retrievedSchema.hasField("id"));
     assertTrue(retrievedSchema.hasField("age"));
@@ -194,8 +193,8 @@ public class TopicDataplexSchemaIT {
     String tableName = "my_table";
     String expectedTopic = longPrefix + tableName;
 
-    DataCatalogSchemaManager schemaManager =
-        DataCatalogSchemaUtils.getSchemaManager(project, longPrefix, false);
+    KnowledgeCatalogSchemaUtils schemaManager =
+        KnowledgeCatalogSchemaUtils.getSchemaManager(project, longPrefix, false);
 
     Schema testSchema = Schema.builder().addStringField("id").addInt32Field("age").build();
 
@@ -204,9 +203,9 @@ public class TopicDataplexSchemaIT {
     assertNotNull("Updated entry should not be null", updatedEntry);
 
     LOG.info("Looking up schema from Dataplex...");
-    String entryGroupName = DataCatalogSchemaUtils.entryGroupNameForTopic(expectedTopic);
+    String entryGroupName = KnowledgeCatalogSchemaUtils.entryGroupNameForTopic(expectedTopic);
     Map<String, Schema> tableToSchema =
-        DataCatalogSchemaUtils.getSchemasForEntryGroup(project, entryGroupName);
+        KnowledgeCatalogSchemaUtils.getSchemasForEntryGroup(project, entryGroupName);
     assertNotNull("Retrieved schema should not be null", tableToSchema);
   }
 }
