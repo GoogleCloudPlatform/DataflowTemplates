@@ -270,3 +270,5 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_data_validator" {
   }
 }
 ```
+
+For more advanced end-to-end deployment examples using Terraform, please refer to the [Terraform samples directory](terraform/samples/).
