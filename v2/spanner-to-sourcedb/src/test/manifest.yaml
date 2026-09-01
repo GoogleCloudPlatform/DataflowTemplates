@@ -100,3 +100,21 @@ scenarios:
     template: v2/spanner-to-sourcedb
     context: com.google.cloud.teleport.v2.templates.SpannerToSourceDBShardedMySQLRetryAllDLQIT
     description: "Verifies retry-all DLQ recovery and redelivery behavior under sharded reverse replication configuration."
+
+  - id: reverse-sqlserver-it
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSQLServerSourceDbIT
+    description: "Main functional integration test for reverse replication from Spanner to target SQL Server databases."
+
+  - id: reverse-sqlserver-datatypes
+    type: datatypes
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSQLServerDataTypesIT
+    description: "Validates reverse data type mappings, conversion formats, and value checks from Spanner to SQL Server."
+
+  - id: reverse-sqlserver-datatypes-pg
+    type: datatypes
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSQLServerDataTypesPGDialectIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates reverse data type mappings targeting a PostgreSQL-dialect Spanner database to SQL Server."

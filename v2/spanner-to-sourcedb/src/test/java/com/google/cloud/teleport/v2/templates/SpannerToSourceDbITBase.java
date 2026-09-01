@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
@@ -174,6 +173,12 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
+      shard.setConnectionProperties("encrypt=false\ntrustServerCertificate=true");
     } else {
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
@@ -295,11 +300,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put(
                 "sourceShardsFilePath",
                 getGcsPath(
-                    (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                            && !Objects.equals(
-                                sourceType,
-                                com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                    Objects.equals(
+                            sourceType,
+                            com.google.cloud.teleport.v2.templates.constants.Constants
+                                .SOURCE_CASSANDRA)
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
