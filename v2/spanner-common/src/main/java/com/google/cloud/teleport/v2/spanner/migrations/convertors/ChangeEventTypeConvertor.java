@@ -27,7 +27,10 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -261,8 +264,18 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      String timeString = changeEvent.get(key).asText();
-      if (timeString.equalsIgnoreCase("NULL")) {
+      JsonNode node = changeEvent.get(key);
+      if (node.isObject() && node.has("date") && node.has("time")) {
+        long epochDays = node.get("date").asLong();
+        long timeMicros = node.get("time").asLong();
+        LocalDate localDate = LocalDate.ofEpochDay(epochDays);
+        LocalTime localTime = LocalTime.ofNanoOfDay(timeMicros * 1000L);
+        LocalDateTime localDateTime = LocalDateTime.of(localDate, localTime);
+        Instant instant = localDateTime.toInstant(ZoneOffset.UTC);
+        return Timestamp.ofTimeSecondsAndNanos(instant.getEpochSecond(), instant.getNano());
+      }
+      String timeString = node.asText();
+      if (timeString.isEmpty() || timeString.equalsIgnoreCase("NULL")) {
         return null;
       }
       Instant instant = parseTimestamp(timeString);
@@ -280,8 +293,15 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      String dateString = changeEvent.get(key).asText();
-      if (dateString.equalsIgnoreCase("NULL")) {
+      JsonNode node = changeEvent.get(key);
+      if (node.isObject() && node.has("date")) {
+        long epochDays = node.get("date").asLong();
+        LocalDate localDate = LocalDate.ofEpochDay(epochDays);
+        return Date.fromYearMonthDay(
+            localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+      }
+      String dateString = node.asText();
+      if (dateString.isEmpty() || dateString.equalsIgnoreCase("NULL")) {
         return null;
       }
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
