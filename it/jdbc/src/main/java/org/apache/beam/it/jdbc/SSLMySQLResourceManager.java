@@ -116,11 +116,7 @@ public class SSLMySQLResourceManager extends AbstractJDBCResourceManager<MySQLCo
             "-storepass",
             password,
             "-noprompt");
-    Process trustProcess = pbTrust.start();
-    trustProcess.waitFor();
-    if (trustProcess.exitValue() != 0) {
-      throw new RuntimeException("Failed to generate truststore.jks");
-    }
+    runProcess(pbTrust, "Failed to generate truststore.jks");
 
     // Convert PKCS12 to Keystore JKS
     Path keystore = tempDir.resolve("keystore.jks");
@@ -142,16 +138,33 @@ public class SSLMySQLResourceManager extends AbstractJDBCResourceManager<MySQLCo
             "-deststorepass",
             password,
             "-noprompt");
-    Process keyProcess = pbKey.start();
-    keyProcess.waitFor();
-    if (keyProcess.exitValue() != 0) {
-      throw new RuntimeException("Failed to generate keystore.jks");
-    }
+    runProcess(pbKey, "Failed to generate keystore.jks");
 
     this.keystorePath = keystore.toAbsolutePath().toString();
     this.truststorePath = truststore.toAbsolutePath().toString();
     LOG.info(
         "Successfully generated Keystore: {} and Truststore: {}", keystorePath, truststorePath);
+  }
+
+  private void runProcess(ProcessBuilder pb, String errorMessage)
+      throws IOException, InterruptedException {
+    pb.redirectErrorStream(true);
+    Process process = null;
+    try {
+      process = pb.start();
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        String output =
+            new String(
+                process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        throw new RuntimeException(
+            errorMessage + ". Exit code: " + exitCode + ", Output: " + output);
+      }
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
   }
 
   public String getKeystorePath() {
