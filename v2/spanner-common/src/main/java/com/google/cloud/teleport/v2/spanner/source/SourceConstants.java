@@ -42,4 +42,7 @@ public class SourceConstants {
 
   /* The value for Postgres databases in the source type key */
   public static final String POSTGRES_SOURCE_TYPE = "postgresql";
+
+  /* The value for SqlServer databases in the source type key */
+  public static final String SQLSERVER_SOURCE_TYPE = "sqlserver";
 }

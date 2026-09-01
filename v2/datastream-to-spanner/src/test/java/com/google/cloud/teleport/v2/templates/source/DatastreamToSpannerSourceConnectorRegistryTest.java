@@ -24,9 +24,11 @@ import com.google.api.services.datastream.v1.model.MysqlSourceConfig;
 import com.google.api.services.datastream.v1.model.OracleSourceConfig;
 import com.google.api.services.datastream.v1.model.PostgresqlSourceConfig;
 import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.SqlServerSourceConfig;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgresql.PostgresqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.sqlserver.SqlServerDsToSpSourceConnector;
 import java.util.Set;
 import org.junit.Test;
 
@@ -37,10 +39,11 @@ public class DatastreamToSpannerSourceConnectorRegistryTest {
   public void testGetSupportedSourceTypes() {
     Set<String> supportedTypes =
         DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes();
-    assertEquals(3, supportedTypes.size());
+    assertEquals(4, supportedTypes.size());
     assertTrue(supportedTypes.contains("mysql"));
     assertTrue(supportedTypes.contains("postgresql"));
     assertTrue(supportedTypes.contains("oracle"));
+    assertTrue(supportedTypes.contains("sqlserver"));
   }
 
   @Test
@@ -57,6 +60,9 @@ public class DatastreamToSpannerSourceConnectorRegistryTest {
     assertThat(
         DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("oracle"),
         instanceOf(OracleDsToSpSourceConnector.class));
+    assertThat(
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("sqlserver"),
+        instanceOf(SqlServerDsToSpSourceConnector.class));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -89,6 +95,13 @@ public class DatastreamToSpannerSourceConnectorRegistryTest {
     SourceConfig config = new SourceConfig().setOracleSourceConfig(new OracleSourceConfig());
     assertEquals(
         "oracle", DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config));
+  }
+
+  @Test
+  public void testGetSourceTypeFromConfigSqlServer() {
+    SourceConfig config = new SourceConfig().setSqlServerSourceConfig(new SqlServerSourceConfig());
+    assertEquals(
+        "sqlserver", DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config));
   }
 
   @Test(expected = IllegalArgumentException.class)
