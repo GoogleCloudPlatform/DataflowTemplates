@@ -1,0 +1,68 @@
+name: Codelab Parameter Watchdog
+
+on:
+  pull_request:
+    paths:
+      - '**/SourceDbToSpannerOptions.java'
+      - '**/DatastreamToSpanner.java'
+      - '**/SpannerToSourceDb.java'
+
+jobs:
+  analyze-and-comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR Diff
+        id: fetch-diff
+        run: |
+          # Fetch the raw diff of the PR
+          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})
+          # Escape for JSON payload
+          ESCAPED_DIFF=$(echo "$DIFF" | jq -aRs .)
+          echo "diff=$ESCAPED_DIFF" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Call Gemini API
+        id: gemini
+        run: |
+          PROMPT="Analyze this Java diff and return ONLY a bullet list of pipeline parameter changes (added, removed, edited) that a technical writer would need to update in a tutorial. Keep it extremely concise. Diff: ${{ steps.fetch-diff.outputs.diff }}"
+          
+          # Call the Gemini API
+          RESPONSE=$(curl -s -H 'Content-Type: application/json' \
+            -d "{\"contents\": [{\"parts\":[{\"text\": $(echo "$PROMPT" | jq -aRs .)}]}]}" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{ secrets.GEMINI_API_KEY }}")
+          
+          # Extract the text
+          TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
+          
+          # Write out to environment securely
+          echo "response<<EOF" >> $GITHUB_OUTPUT
+          echo "$TEXT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post PR Comment
+        run: |
+          COMMENT=$(cat << 'EOF'
+          🚨 **Codelab Update Reminder** 🚨
+          This PR modifies pipeline parameters documented in the Spanner Migration Codelabs.
+
+          **Changes Detected by AI:**
+          ${{ steps.gemini.outputs.response }}
+
+          **Action Required (Internal Google Maintainers):**
+          Please ensure these parameter changes are reflected in the corresponding DevSite Codelabs before triggering the DevSite extension scripts.
+          - [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)
+          - [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)
+          EOF
+          )
+          
+          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT" --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
