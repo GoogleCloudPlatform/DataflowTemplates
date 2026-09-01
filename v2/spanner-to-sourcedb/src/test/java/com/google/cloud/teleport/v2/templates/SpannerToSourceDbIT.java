@@ -36,6 +36,7 @@ import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -113,22 +114,17 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        String truststoreGcsUrl =
-            "gs://"
-                + gcsResourceManager.getBucket()
-                + "/"
-                + gcsResourceManager
-                    .uploadArtifact(
-                        "input/truststore_Shard1.jks", jdbcResourceManager.getTruststorePath())
-                    .name();
+        gcsResourceManager.uploadArtifact(
+            "input/truststore_Shard1.jks", jdbcResourceManager.getTruststorePath());
+        String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks", gcsResourceManager);
 
         String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
 
         String props =
             String.format(
                 "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s",
-                URLEncoder.encode(truststoreLocalUrl, "UTF-8"),
-                URLEncoder.encode(jdbcResourceManager.getPassword(), "UTF-8"));
+                URLEncoder.encode(truststoreLocalUrl, StandardCharsets.UTF_8),
+                URLEncoder.encode(jdbcResourceManager.getPassword(), StandardCharsets.UTF_8));
 
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard1");

@@ -17,10 +17,13 @@
  */
 package org.apache.beam.it.jdbc;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container.ExecResult;
@@ -42,6 +45,7 @@ public class SSLMySQLResourceManager extends AbstractJDBCResourceManager<MySQLCo
 
   private String keystorePath;
   private String truststorePath;
+  private Path tempDir;
 
   private SSLMySQLResourceManager(MySQLContainer<?> container, Builder builder) {
     super(container, builder);
@@ -65,6 +69,22 @@ public class SSLMySQLResourceManager extends AbstractJDBCResourceManager<MySQLCo
   @Override
   public String getJDBCPrefix() {
     return "mysql";
+  }
+
+  @Override
+  public void cleanupAll() {
+    try {
+      super.cleanupAll();
+    } finally {
+      if (tempDir != null && Files.exists(tempDir)) {
+        try (Stream<Path> walk = Files.walk(tempDir)) {
+          walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+          LOG.info("Cleaned up temporary directory: {}", tempDir);
+        } catch (IOException e) {
+          LOG.warn("Failed to clean up temporary directory: {}", tempDir, e);
+        }
+      }
+    }
   }
 
   private void generateAndExtractJKS() throws IOException, InterruptedException {
@@ -91,7 +111,7 @@ public class SSLMySQLResourceManager extends AbstractJDBCResourceManager<MySQLCo
           "Failed to generate pkcs12 inside container: " + result.getStderr());
     }
 
-    Path tempDir = Files.createTempDirectory("mysql-ssl-");
+    this.tempDir = Files.createTempDirectory("mysql-ssl-");
 
     LOG.info("Copying certificates out of container to {}", tempDir);
     container.copyFileFromContainer("/var/lib/mysql/ca.pem", tempDir.resolve("ca.pem").toString());
