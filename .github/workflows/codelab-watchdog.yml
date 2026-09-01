@@ -14,55 +14,64 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        # Pinned to the same hash used by your other github workflows to satisfy the policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Fetch PR Diff
         id: fetch-diff
-        run: |
-          # Fetch the raw diff of the PR
-          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})
-          # Escape for JSON payload
-          ESCAPED_DIFF=$(echo "$DIFF" | jq -aRs .)
-          echo "diff=$ESCAPED_DIFF" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Use env vars instead of github scope variables to prevent command injection
+          DIFF=$(gh pr diff "$PR_NUMBER" --repo "$REPO")
+          # Save diff to a file instead of manipulating it directly in bash scripts
+          echo "$DIFF" > pr-diff.txt
 
       - name: Call Gemini API
         id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          PROMPT="Analyze this Java diff and return ONLY a bullet list of pipeline parameter changes (added, removed, edited) that a technical writer would need to update in a tutorial. Keep it extremely concise. Diff: ${{ steps.fetch-diff.outputs.diff }}"
+          # Construct payload cleanly using jq string properties to avoid bash evaluation vulnerabilities 
+          jq -n --arg prefix "Analyze this Java diff and return ONLY a bullet list of pipeline parameter changes (added, removed, edited) that a technical writer would need to update in a tutorial. Keep it extremely concise. Diff: " \
+             --rawfile diffStr pr-diff.txt \
+             '{ "contents": [ { "parts": [ { "text": ($prefix + "\n" + $diffStr) } ] } ] }' > payload.json
           
           # Call the Gemini API
-          RESPONSE=$(curl -s -H 'Content-Type: application/json' \
-            -d "{\"contents\": [{\"parts\":[{\"text\": $(echo "$PROMPT" | jq -aRs .)}]}]}" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{ secrets.GEMINI_API_KEY }}")
+          curl -s -H 'Content-Type: application/json' \
+            -d @payload.json \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" > response.json
           
           # Extract the text
-          TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
+          TEXT=$(jq -r '.candidates[0].content.parts[0].text' response.json)
           
-          # Write out to environment securely
-          echo "response<<EOF" >> $GITHUB_OUTPUT
-          echo "$TEXT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Write out to environment securely using random EOF markers
+          EOF_MARKER=$(openssl rand -hex 8)
+          echo "response<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
+          echo "$TEXT" >> "$GITHUB_OUTPUT"
+          echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
 
       - name: Post PR Comment
-        run: |
-          COMMENT=$(cat << 'EOF'
-          🚨 **Codelab Update Reminder** 🚨
-          This PR modifies pipeline parameters documented in the Spanner Migration Codelabs.
-
-          **Changes Detected by AI:**
-          ${{ steps.gemini.outputs.response }}
-
-          **Action Required (Internal Google Maintainers):**
-          Please ensure these parameter changes are reflected in the corresponding DevSite Codelabs before triggering the DevSite extension scripts.
-          - [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)
-          - [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)
-          EOF
-          )
-          
-          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT" --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          AI_COMMENT: ${{ steps.gemini.outputs.response }}
+        run: |
+          # Securely write the comment body into a file to avoid bash escaping issues
+          echo "🚨 **Codelab Update Reminder** 🚨" > comment.md
+          echo "This PR modifies pipeline parameters documented in the Spanner Migration Codelabs." >> comment.md
+          echo "" >> comment.md
+          echo "**Changes Detected by AI:**" >> comment.md
+          echo "$AI_COMMENT" >> comment.md
+          echo "" >> comment.md
+          echo "**Action Required (Internal Google Maintainers):**" >> comment.md
+          echo "Please ensure these parameter changes are reflected in the corresponding DevSite Codelabs before triggering the DevSite extension scripts." >> comment.md
+          echo "- [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)" >> comment.md
+          echo "- [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)" >> comment.md
+          
+          gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
