@@ -331,7 +331,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                     gcsResourceManager));
             put("changeStreamName", "allstream");
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
+            put("maxShardConnections", "oracle".equalsIgnoreCase(sourceType) ? "2" : "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
