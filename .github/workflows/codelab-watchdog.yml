@@ -1,0 +1,81 @@
+name: Codelab Parameter Watchdog
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - '**/SourceDbToSpannerOptions.java'
+      - '**/DatastreamToSpanner.java'
+      - '**/SpannerToSourceDb.java'
+
+jobs:
+  enforce-codelab-bug:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Parameter Changes and PR Description
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          echo "Checking PR diff for template parameter changes..."
+          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr_diff.txt
+          
+          # Check if the diff modifies lines containing common parameter annotations or getters
+          HAS_PARAM_CHANGES=false
+          if grep -E -iq 'TemplateParameter|description|helpText|Validation\.Required' pr_diff.txt; then
+            HAS_PARAM_CHANGES=true
+          fi
+          
+          if [ "$HAS_PARAM_CHANGES" = false ]; then
+            echo "✅ No template parameter definitions were modified. Skipping codelab bug requirement."
+            exit 0
+          fi
+          
+          echo "⚠️ Template parameter changes detected."
+          MARKER="<!-- codelab-watchdog-comment -->"
+          COMMENT_URL=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" -q ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .url" | head -n 1)
+          
+          if echo "$PR_BODY" | grep -E -q 'CODELAB_BUG=b/[0-9]+'; then
+            echo "✅ Found CODELAB_BUG tag in PR description. Workflow unblocked."
+          
+            # If we previously left a warning comment, gracefully update it to green.
+            if [ -n "$COMMENT_URL" ]; then
+              echo "$MARKER" > comment.md
+              echo "✅ **Codelab Update Reminder Assured**" >> comment.md
+              echo "A \`CODELAB_BUG\` reference was found. Thank you for tracking the DevSite Codelab documentation updates!" >> comment.md
+              echo "" >> comment.md
+              echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
+              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
+            fi
+            exit 0
+          fi
+          
+          # If CODELAB_BUG is missing, post the warning and fail
+          echo "❌ Missing CODELAB_BUG=b/XXXX in PR description."
+          echo "$MARKER" > comment.md
+          echo "🚨 **Codelab Update Required** 🚨" >> comment.md
+          echo "This PR modifies pipeline parameters documented in the Spanner Migration Codelabs." >> comment.md
+          echo "" >> comment.md
+          echo "**Action Required:**" >> comment.md
+          echo "To unblock this PR, please add a bug tracker reference to the PR description (e.g., \`CODELAB_BUG=b/12345678\`) confirming there is a ticket to update the codelabs." >> comment.md
+          echo "" >> comment.md
+          echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
+          
+          # If the COMMENT_URL variable is not empty, it means we found an existing comment created by this bot.
+          # We PATCH (update) the existing comment to avoid spamming the PR with duplicate comments.
+          # If it is empty, we use 'gh pr comment' to create a brand new comment.
+          if [ -n "$COMMENT_URL" ]; then
+            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
+          else
+            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
+          fi
+          
+          echo "::error::Missing CODELAB_BUG=b/XXXX in PR description."
+          exit 1
