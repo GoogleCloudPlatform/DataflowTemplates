@@ -50,6 +50,8 @@ jobs:
               echo "$MARKER" > comment.md
               echo "✅ **Codelab Update Reminder Assured**" >> comment.md
               echo "A \`CODELAB_BUG\` reference was found. Thank you for tracking the DevSite Codelab documentation updates!" >> comment.md
+              echo "" >> comment.md
+              echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
               gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
             fi
             exit 0
@@ -64,9 +66,11 @@ jobs:
           echo "**Action Required:**" >> comment.md
           echo "To unblock this PR, please add a bug tracker reference to the PR description (e.g., \`CODELAB_BUG=b/12345678\`) confirming there is a ticket to update the codelabs." >> comment.md
           echo "" >> comment.md
-          echo "- [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)" >> comment.md
-          echo "- [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)" >> comment.md
+          echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
           
+          # If the COMMENT_URL variable is not empty, it means we found an existing comment created by this bot.
+          # We PATCH (update) the existing comment to avoid spamming the PR with duplicate comments.
+          # If it is empty, we use 'gh pr comment' to create a brand new comment.
           if [ -n "$COMMENT_URL" ]; then
             gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
           else
