@@ -37,15 +37,14 @@ jobs:
              --rawfile diffStr pr-diff.txt \
              '{ "contents": [ { "parts": [ { "text": ($prefix + "\n" + $diffStr) } ] } ] }' > payload.json
           
+          # Using gemini-3.5-flash as explicitly supported by the current API key environment
           curl -s -H 'Content-Type: application/json' \
             -d @payload.json \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=$GEMINI_API_KEY" > response.json
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$GEMINI_API_KEY" > response.json
           
           ERROR_MSG=$(jq -r '.error.message // empty' response.json)
           if [ -n "$ERROR_MSG" ]; then
-            # The model threw an error, let's proactively list what models this key CAN access
-            AVAILABLE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | jq -r '.models[]?.name' | tr '\n' ',' || echo "None or blocked")
-            TEXT="⚠️ **API Error:** $ERROR_MSG \n\n**Allowed Models for this key:** $AVAILABLE"
+            TEXT="⚠️ **API Error:** $ERROR_MSG (Verify your API key and quota)."
           else
             TEXT=$(jq -r '.candidates[0].content.parts[0].text // "⚠️ Model response was empty or blocked." ' response.json)
           fi
