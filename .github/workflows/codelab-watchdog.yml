@@ -25,7 +25,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           echo "Checking PR diff for template parameter changes..."
-          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr_diff.txt
+          gh api -H "Accept: application/vnd.github.v3.diff" "/repos/$REPO/pulls/$PR_NUMBER" > pr_diff.txt
           
           # Check if added (+) or removed (-) lines contain the parameter annotations
           HAS_PARAM_CHANGES=false
