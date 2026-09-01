@@ -15,7 +15,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout Code
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate Parameter Changes and PR Description
         env:
@@ -52,7 +52,7 @@ jobs:
               echo "A \`CODELAB_BUG\` reference was found. Thank you for tracking the DevSite Codelab documentation updates!" >> comment.md
               echo "" >> comment.md
               echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
-              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md  || true
+              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md || true
             fi
             exit 0
           fi
@@ -72,9 +72,9 @@ jobs:
           # We PATCH (update) the existing comment to avoid spamming the PR with duplicate comments.
           # If it is empty, we use 'gh pr comment' to create a brand new comment.
           if [ -n "$COMMENT_URL" ]; then
-            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md  || true
+            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md || true
           else
-            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"  || true
+            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO" || true
           fi
           
           echo "::error title=Codelab Update Required::This PR modifies pipeline parameters. To unblock this PR, add a bug tracker reference to the PR description (e.g., CODELAB_BUG=b/123456). Follow instructions in go/update-migrations-codelabs to update the documentation."
