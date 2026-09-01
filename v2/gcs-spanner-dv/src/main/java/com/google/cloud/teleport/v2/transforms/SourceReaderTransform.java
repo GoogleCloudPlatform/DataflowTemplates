@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.config.ValidationTableConfig;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
@@ -32,7 +33,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
-import java.util.Set;
+
 import java.util.List;
 import java.util.ArrayList;
 
@@ -43,19 +44,19 @@ public class SourceReaderTransform
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
   private final CustomTransformation customTransformation;
-  private final Set<String> configuredSourceTables;
+  private final ValidationTableConfig tableConfig;
 
   public SourceReaderTransform(
       String gcsInputDirectory,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
       CustomTransformation customTransformation,
-      Set<String> configuredSourceTables) {
+      ValidationTableConfig tableConfig) {
     this.gcsInputDirectory = gcsInputDirectory;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
     this.customTransformation = customTransformation;
-    this.configuredSourceTables = configuredSourceTables;
+    this.tableConfig = tableConfig;
   }
 
   @Override
@@ -66,10 +67,10 @@ public class SourceReaderTransform
             ? gcsInputDirectory.substring(0, gcsInputDirectory.length() - 1)
             : gcsInputDirectory;
 
-    if (configuredSourceTables == null || configuredSourceTables.isEmpty()) {
+    if (tableConfig == null || !tableConfig.hasFilters()) {
       filePatterns.add(cleanPath + "/**.avro");
     } else {
-      for (String table : configuredSourceTables) {
+      for (String table : tableConfig.getSourceTables()) {
         filePatterns.add(cleanPath + "/" + table + "/**.avro");
       }
     }

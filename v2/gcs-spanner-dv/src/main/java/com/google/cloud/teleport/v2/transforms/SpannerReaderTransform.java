@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.config.ValidationTableConfig;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
@@ -35,7 +36,6 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
-import java.util.Set;
 
 public class SpannerReaderTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
@@ -44,24 +44,24 @@ public class SpannerReaderTransform
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final Set<String> configuredSourceTables;
+  private final ValidationTableConfig tableConfig;
 
   public SpannerReaderTransform(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      Set<String> configuredSourceTables) {
+      ValidationTableConfig tableConfig) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
-    this.configuredSourceTables = configuredSourceTables;
+    this.tableConfig = tableConfig;
   }
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
-            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, configuredSourceTables)).withSideInputs(ddlView))
+            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, tableConfig)).withSideInputs(ddlView))
         .apply("ReadSpannerRecords", readFromSpanner())
         .apply(
             "CalculateSpannerRecordsHash",

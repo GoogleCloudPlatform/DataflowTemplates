@@ -80,7 +80,7 @@ public class SourceReaderTransformTest implements Serializable {
     // FileIO in beam support a variety of paths dynamically, such as GCS, S3 and TempFolder
     // This allows us to pass a tempFolder into the same transform that accepts a GCS path
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, null);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -123,14 +123,14 @@ public class SourceReaderTransformTest implements Serializable {
     // 2. Run Pipeline with input path that has no avro files
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, null);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
 
-    pipeline.apply(transform);
-
+    PCollection<ComparisonRecord> output = pipeline.apply(transform);
     // AvroIO throws a RuntimeException when no files are found matching the pattern
-    // if withHintMatchesManyFiles is used (which uses match() internally).
-    RuntimeException e = assertThrows(RuntimeException.class, () -> pipeline.run());
-    assertTrue(e.getMessage().contains("No files matched spec"));
+    // AvroIO.parseAllGenericRecords does not throw when it matches 0 files, it emits 0 elements.
+    org.apache.beam.sdk.testing.PAssert.that(output).empty();
+    
+    pipeline.run();
   }
 
   @Test
@@ -162,7 +162,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, null);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
 
     pipeline.apply(transform);
 
@@ -204,7 +204,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, null);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 

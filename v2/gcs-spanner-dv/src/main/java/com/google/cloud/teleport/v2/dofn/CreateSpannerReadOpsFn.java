@@ -34,15 +34,15 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final Set<String> configuredSourceTables;
+  private final com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig;
 
   public CreateSpannerReadOpsFn(
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      Set<String> configuredSourceTables) {
+      com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig) {
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
-    this.configuredSourceTables = configuredSourceTables;
+    this.tableConfig = tableConfig;
   }
 
   // TODO: @aasthabharill to check if there's a better way to generalize dialect specific changes
@@ -52,21 +52,8 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     ISchemaMapper schemaMapper = schemaMapperProvider.apply(ddl);
     List<String> tableNames = ddl.getTablesOrderedByReference();
 
-    Set<String> targetSpannerTables = null;
-    if (configuredSourceTables != null && !configuredSourceTables.isEmpty()) {
-      targetSpannerTables = new HashSet<>();
-      for (String sourceTable : configuredSourceTables) {
-        try {
-          String spannerTable = schemaMapper.getSpannerTableName("", sourceTable);
-          targetSpannerTables.add(spannerTable);
-        } catch (NoSuchElementException e) {
-          LOG.warn("No Spanner table mapped for source table: {}", sourceTable);
-        }
-      }
-    }
-
     for (String tableName : tableNames) {
-      if (targetSpannerTables != null && !targetSpannerTables.contains(tableName)) {
+      if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
         LOG.info("Skipping Spanner table {} as it is not in the configured validation list.", tableName);
         continue;
       }
