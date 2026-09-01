@@ -29,7 +29,7 @@ jobs:
           
           # Check if the diff modifies lines containing common parameter annotations or getters
           HAS_PARAM_CHANGES=false
-          if grep -E -iq 'TemplateParameter|getDescription|getHelpText|Validation\.Required' pr_diff.txt; then
+          if grep -E -iq 'TemplateParameter|description|helpText|Validation\.Required' pr_diff.txt; then
             HAS_PARAM_CHANGES=true
           fi
           
