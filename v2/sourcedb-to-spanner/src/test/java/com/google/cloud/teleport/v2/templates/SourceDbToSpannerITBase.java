@@ -49,6 +49,7 @@ import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
@@ -73,6 +74,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
     return PostgresResourceManager.builder(testName).build();
+  }
+
+  public MSSQLResourceManager setUpSQLServerResourceManager() {
+    return MSSQLResourceManager.builder(testName).build();
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
@@ -321,6 +326,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setHost(oracleRm.getHost());
       shard.setPort(String.valueOf(oracleRm.getPort()));
       shard.setDbName(oracleRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException(
           "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());
@@ -457,6 +467,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (resourceManager instanceof PostgresResourceManager) {
       return SQLDialect.POSTGRESQL.name();
     }
+    if (resourceManager instanceof MSSQLResourceManager) {
+      return SQLDialect.SQLSERVER.name();
+    }
     return SQLDialect.MYSQL.name();
   }
 
@@ -464,6 +477,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     try {
       if (jdbcResourceManager instanceof PostgresResourceManager) {
         return Class.forName("org.postgresql.Driver").getCanonicalName();
+      }
+      if (jdbcResourceManager instanceof MSSQLResourceManager) {
+        return Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").getCanonicalName();
       }
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {

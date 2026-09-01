@@ -125,3 +125,19 @@ scenarios:
     context: com.google.cloud.teleport.v2.templates.MySQLSourceDBToSpannerWideRowInterleaveDepthIT
     description: "Validates wide rows across deep parent-child interleaved table hierarchies in Spanner."
 
+  # ==================================================================
+  # SQL Server Bulk Migration (v2/sourcedb-to-spanner)
+  # ==================================================================
+  - id: bulk-sqlserver-datatypes
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDataTypesIT
+    description: "Validates SQL Server data type mappings to Google Standard SQL dialect Spanner (exact numerics, approximate numerics, date/time, strings, binary, uniqueidentifier, xml)."
+
+  - id: bulk-sqlserver-datatypes-pg
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDataTypesPGDialectIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates SQL Server data type mappings specifically targeting a PostgreSQL-dialect Spanner database."
+
