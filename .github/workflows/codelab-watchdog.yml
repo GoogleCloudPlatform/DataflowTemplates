@@ -52,7 +52,7 @@ jobs:
               echo "A \`CODELAB_BUG\` reference was found. Thank you for tracking the DevSite Codelab documentation updates!" >> comment.md
               echo "" >> comment.md
               echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
-              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md || true
+              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
             fi
             exit 0
           fi
@@ -72,9 +72,9 @@ jobs:
           # We PATCH (update) the existing comment to avoid spamming the PR with duplicate comments.
           # If it is empty, we use 'gh pr comment' to create a brand new comment.
           if [ -n "$COMMENT_URL" ]; then
-            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md || true
+            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
           else
-            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO" || true
+            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
           fi
           
           echo "::error title=Codelab Update Required::This PR modifies pipeline parameters. To unblock this PR, add a bug tracker reference to the PR description (e.g., CODELAB_BUG=b/123456). Follow instructions in go/update-migrations-codelabs to update the documentation."
