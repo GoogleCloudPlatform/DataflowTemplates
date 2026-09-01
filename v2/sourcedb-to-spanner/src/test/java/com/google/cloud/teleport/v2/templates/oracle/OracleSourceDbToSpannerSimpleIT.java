@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -53,7 +52,6 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @RunWith(JUnit4.class)
 public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(OracleSourceDbToSpannerSimpleIT.class);
-  private static HashSet<OracleSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
   private PipelineLauncher.LaunchInfo jobInfo;
 
   private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;

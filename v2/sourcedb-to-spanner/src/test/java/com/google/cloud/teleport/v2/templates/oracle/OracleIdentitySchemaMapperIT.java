@@ -21,7 +21,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -47,7 +46,6 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class OracleIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(OracleIdentitySchemaMapperIT.class);
-  private static final HashSet<OracleIdentitySchemaMapperIT> testInstances = new HashSet<>();
   private PipelineLauncher.LaunchInfo jobInfo;
 
   private org.apache.beam.it.jdbc.JDBCResourceManager oracleResourceManager;
