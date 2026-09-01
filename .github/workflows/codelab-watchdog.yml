@@ -14,7 +14,6 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout Code
-        # Pinned to the same hash used by your other github workflows to satisfy the policy
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -46,8 +45,17 @@ jobs:
             -d @payload.json \
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" > response.json
           
-          # Extract the text
-          TEXT=$(jq -r '.candidates[0].content.parts[0].text' response.json)
+          # Debug: print response to action logs for easy debugging
+          echo "Raw API Response:"
+          cat response.json
+          
+          # Extract the text or the error
+          ERROR_MSG=$(jq -r '.error.message // empty' response.json)
+          if [ -n "$ERROR_MSG" ]; then
+            TEXT="⚠️ **API Error:** $ERROR_MSG (Verify your API key and quota)."
+          else
+            TEXT=$(jq -r '.candidates[0].content.parts[0].text // "⚠️ Model response was empty or blocked." ' response.json)
+          fi
           
           # Write out to environment securely using random EOF markers
           EOF_MARKER=$(openssl rand -hex 8)
