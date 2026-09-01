@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened, edited]
     paths:
       - '**/SourceDbToSpannerOptions.java'
-      - '**/DatastreamToSpanner.java'
+      - '**/DataStreamToSpanner.java'
       - '**/SpannerToSourceDb.java'
 
 jobs:
@@ -27,9 +27,9 @@ jobs:
           echo "Checking PR diff for template parameter changes..."
           gh pr diff "$PR_NUMBER" --repo "$REPO" > pr_diff.txt
           
-          # Check if the diff modifies lines containing common parameter annotations or getters
+          # Check if added (+) or removed (-) lines contain the parameter annotations
           HAS_PARAM_CHANGES=false
-          if grep -E -iq 'TemplateParameter|description|helpText|Validation\.Required' pr_diff.txt; then
+          if grep -E '^[+-].*(TemplateParameter|description|helpText|Validation\.Required)' pr_diff.txt | grep -v '^[+-]\{3\}' > /dev/null; then
             HAS_PARAM_CHANGES=true
           fi
           
@@ -42,7 +42,7 @@ jobs:
           MARKER="<!-- codelab-watchdog-comment -->"
           COMMENT_URL=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" -q ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .url" | head -n 1)
           
-          if echo "$PR_BODY" | grep -E -q 'CODELAB_BUG=b/[0-9]+'; then
+          if printf "%s\n" "$PR_BODY" | grep -E -q 'CODELAB_BUG=b/[0-9]+'; then
             echo "✅ Found CODELAB_BUG tag in PR description. Workflow unblocked."
           
             # If we previously left a warning comment, gracefully update it to green.
@@ -52,7 +52,7 @@ jobs:
               echo "A \`CODELAB_BUG\` reference was found. Thank you for tracking the DevSite Codelab documentation updates!" >> comment.md
               echo "" >> comment.md
               echo "Please follow the step-by-step instructions in [go/update-migrations-codelabs](http://go/update-migrations-codelabs) to update the codelabs with your changes." >> comment.md
-              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
+              gh api -X PATCH "$COMMENT_URL" -F body=@comment.md || true
             fi
             exit 0
           fi
@@ -72,10 +72,10 @@ jobs:
           # We PATCH (update) the existing comment to avoid spamming the PR with duplicate comments.
           # If it is empty, we use 'gh pr comment' to create a brand new comment.
           if [ -n "$COMMENT_URL" ]; then
-            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
+            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md  || true
           else
-            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
+            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO" || true
           fi
           
-          echo "::error::Missing CODELAB_BUG=b/XXXX in PR description."
+          echo "::error title=Codelab Update Required::This PR modifies pipeline parameters. To unblock this PR, add a bug tracker reference to the PR description (e.g., CODELAB_BUG=b/123456). Follow instructions in go/update-migrations-codelabs to update the documentation."
           exit 1
