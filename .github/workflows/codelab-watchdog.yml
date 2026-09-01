@@ -25,9 +25,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          # Use env vars instead of github scope variables to prevent command injection
           DIFF=$(gh pr diff "$PR_NUMBER" --repo "$REPO")
-          # Save diff to a file instead of manipulating it directly in bash scripts
           echo "$DIFF" > pr-diff.txt
 
       - name: Call Gemini API
@@ -35,21 +33,18 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # Construct payload cleanly using jq string properties to avoid bash evaluation vulnerabilities 
           jq -n --arg prefix "Analyze this Java diff and return ONLY a bullet list of pipeline parameter changes (added, removed, edited) that a technical writer would need to update in a tutorial. Keep it extremely concise. Diff: " \
              --rawfile diffStr pr-diff.txt \
              '{ "contents": [ { "parts": [ { "text": ($prefix + "\n" + $diffStr) } ] } ] }' > payload.json
           
-          # Call the Gemini API
+          # Changed to gemini-1.5-flash-latest to resolve the model not found error
           curl -s -H 'Content-Type: application/json' \
             -d @payload.json \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" > response.json
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" > response.json
           
-          # Debug: print response to action logs for easy debugging
           echo "Raw API Response:"
           cat response.json
           
-          # Extract the text or the error
           ERROR_MSG=$(jq -r '.error.message // empty' response.json)
           if [ -n "$ERROR_MSG" ]; then
             TEXT="⚠️ **API Error:** $ERROR_MSG (Verify your API key and quota)."
@@ -57,21 +52,21 @@ jobs:
             TEXT=$(jq -r '.candidates[0].content.parts[0].text // "⚠️ Model response was empty or blocked." ' response.json)
           fi
           
-          # Write out to environment securely using random EOF markers
           EOF_MARKER=$(openssl rand -hex 8)
           echo "response<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
           echo "$TEXT" >> "$GITHUB_OUTPUT"
           echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
 
-      - name: Post PR Comment
+      - name: Post or Update PR Comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           AI_COMMENT: ${{ steps.gemini.outputs.response }}
         run: |
-          # Securely write the comment body into a file to avoid bash escaping issues
-          echo "🚨 **Codelab Update Reminder** 🚨" > comment.md
+          MARKER="<!-- codelab-watchdog-comment -->"
+          echo "$MARKER" > comment.md
+          echo "🚨 **Codelab Update Reminder** 🚨" >> comment.md
           echo "This PR modifies pipeline parameters documented in the Spanner Migration Codelabs." >> comment.md
           echo "" >> comment.md
           echo "**Changes Detected by AI:**" >> comment.md
@@ -82,4 +77,13 @@ jobs:
           echo "- [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)" >> comment.md
           echo "- [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)" >> comment.md
           
-          gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
+          # Find existing comment by this bot containing the marker
+          COMMENT_URL=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" -q ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .url" | head -n 1)
+          
+          if [ -n "$COMMENT_URL" ]; then
+            # Update existing comment
+            gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
+          else
+            # Create new comment
+            gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
+          fi
