@@ -3,7 +3,7 @@ template:
   name: "PubSub_To_BigTable_Yaml"
   category: "STREAMING"
   type: "YAML"
-  display_name: "PubSub to BigTable (YAML)"
+  display_name: "Pub/Sub to BigTable (YAML)"
   description: >
     The PubSub to BigTable template is a streaming pipeline which ingests
     data from a PubSub topic, executes a user-defined mapping, and

@@ -22,23 +22,22 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PubSub_To_BigTable_Yaml",
+    name = "PubSub_To_Iceberg_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Pub/Sub to BigTable (YAML)",
-    description = "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+    displayName = "Pub/Sub to Iceberg (YAML)",
+    description = "The Pub/Sub to Iceberg template is a streaming pipeline that ingests data from a Pub/Sub topic or subscription and writes the records to an Apache Iceberg table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubSubToBigTable.yaml",
-    filesToCopy = {"main.py", "requirements.txt"},
-    documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
+    yamlTemplateFile = "PubSubToIceberg.yaml",
+    filesToCopy = {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/iceberg_options.yaml"},
+    documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The input Pub/Sub topic must exist.",
-      "The mapToField Pub/Sub error topic must exist.",
-      "The output BigTable table must exist."
+    requirements = {"The input Pub/Sub topic or subscription must exist.",
+      "The target Iceberg table must exist and be accessible through the provided catalog."
     },
     streaming = true,
     hidden = false)
-public interface PubSubToBigTableYaml {
+public interface PubSubToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -135,77 +134,137 @@ public interface PubSubToBigTableYaml {
 
   @TemplateParameter.Text(
       order = 10,
-      name = "language",
+      name = "table",
       optional = false,
-      description = "Language used to define the expressions.",
-      helpText = "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
-      example = ""
+      description = "A fully-qualified table identifier.",
+      helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
+      example = "my_dataset.my_table"
     )
   @Validation.Required
-  String getLanguage();
+  String getTable();
 
   @TemplateParameter.Text(
       order = 11,
-      name = "fields",
+      name = "catalogName",
       optional = false,
-      description = "Field mapping configuration",
-      helpText = "The output fields to compute, each mapping to the expression or callable that creates them.",
-      example = ""
+      description = "Name of the catalog containing the table.",
+      helpText = "The name of the Iceberg catalog that contains the table.",
+      example = "my_hadoop_catalog"
     )
   @Validation.Required
-  String getFields();
+  String getCatalogName();
 
   @TemplateParameter.Text(
       order = 12,
-      name = "projectId",
+      name = "catalogProperties",
       optional = false,
-      description = "BigTable project ID",
-      helpText = "The Google Cloud project ID of the BigTable instance.",
-      example = ""
+      description = "Properties used to set up the Iceberg catalog.",
+      helpText = "A map of properties for setting up the Iceberg catalog.",
+      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
     )
   @Validation.Required
-  String getProjectId();
+  String getCatalogProperties();
 
   @TemplateParameter.Text(
       order = 13,
-      name = "instanceId",
-      optional = false,
-      description = "BigTable instance ID",
-      helpText = "The BigTable instance ID.",
-      example = ""
+      name = "configProperties",
+      optional = true,
+      description = "Properties passed to the Hadoop Configuration.",
+      helpText = "A map of properties to pass to the Hadoop Configuration.",
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
     )
-  @Validation.Required
-  String getInstanceId();
+  String getConfigProperties();
 
   @TemplateParameter.Text(
       order = 14,
-      name = "tableId",
-      optional = false,
-      description = "BigTable output table",
-      helpText = "BigTable table ID to write the output to.",
-      example = ""
+      name = "drop",
+      optional = true,
+      description = "A list of field names to drop from the input record before writing.",
+      helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]"
     )
-  @Validation.Required
-  String getTableId();
+  String getDrop();
 
   @TemplateParameter.Text(
       order = 15,
-      name = "windowing",
+      name = "filter",
       optional = true,
-      description = "Windowing options",
-      helpText = "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
-      example = ""
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18"
     )
-  String getWindowing();
+  String getFilter();
 
   @TemplateParameter.Text(
       order = 16,
-      name = "outputDeadLetterPubSubTopic",
+      name = "keep",
+      optional = true,
+      description = "A list of field names to keep in the input record.",
+      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]"
+    )
+  String getKeep();
+
+  @TemplateParameter.Text(
+      order = 17,
+      name = "only",
+      optional = true,
+      description = "The name of a single record field that should be written.",
+      helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
+      example = "my_record_field"
+    )
+  String getOnly();
+
+  @TemplateParameter.Text(
+      order = 18,
+      name = "partitionFields",
+      optional = true,
+      description = "Fields used to create a partition spec for new tables.",
+      helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
+      example = "[\"day(ts)\", \"bucket(id, 4)\"]"
+    )
+  String getPartitionFields();
+
+  @TemplateParameter.Text(
+      order = 19,
+      name = "tableProperties",
+      optional = true,
+      description = "Iceberg table properties to be set on table creation.",
+      helpText = "A map of Iceberg table properties to set when the table is created.",
+      example = "{\"commit.retry.num-retries\": \"2\"}"
+    )
+  String getTableProperties();
+
+  @TemplateParameter.Integer(
+      order = 20,
+      name = "triggeringFrequencySeconds",
       optional = false,
-      description = "Pub/Sub transformation error topic",
-      helpText = "Pub/Sub error topic for failed transformation messages.",
-      example = "projects/your-project-id/topics/your-error-topic-name"
+      description = "For a streaming pipeline, the frequency at which snapshots are produced.",
+      helpText = "The frequency in seconds for producing snapshots in a streaming pipeline.",
+      example = "60"
     )
   @Validation.Required
-  String getOutputDeadLetterPubSubTopic();
+  Integer getTriggeringFrequencySeconds();
+
+  @TemplateParameter.Text(
+      order = 21,
+      name = "sdfCheckpointAfterDuration",
+      optional = true,
+      description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
+      helpText = "Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options",
+      example = "30s"
+    )
+  @Default.String("30s")
+  String getSdfCheckpointAfterDuration();
+
+  @TemplateParameter.Integer(
+      order = 22,
+      name = "sdfCheckpointAfterOutputBytes",
+      optional = true,
+      description = "Dataflow Pipeline Option: Output bytes after which to checkpoint stateful DoFns.",
+      helpText = "Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options",
+      example = "536870912"
+    )
+  @Default.Integer(536870912)
+  Integer getSdfCheckpointAfterOutputBytes();
 }

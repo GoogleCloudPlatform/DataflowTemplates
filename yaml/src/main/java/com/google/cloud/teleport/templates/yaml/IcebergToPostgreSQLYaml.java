@@ -26,20 +26,13 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Iceberg to PostgreSQL (YAML)",
-    description =
-        "The Iceberg to PostgreSQL template is a batch pipeline that reads data from an Iceberg table and outputs the records to a PostgreSQL database table.",
+    description = "The Iceberg to PostgreSQL template is a batch pipeline that reads data from an Iceberg table and outputs the records to a PostgreSQL database table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "IcebergToPostgreSQL.yaml",
-    filesToCopy = {
-      "main.py",
-      "requirements.txt",
-      "options/iceberg_options.yaml",
-      "options/postgres_options.yaml"
-    },
+    filesToCopy = {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/postgres_options.yaml"},
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The Input Iceberg table must exist and be accessible through the provided catalog.",
+    requirements = {"The Input Iceberg table must exist and be accessible through the provided catalog.",
       "The Output PostgreSQL instance must exist and the target table must exist or be created."
     },
     streaming = false,
@@ -52,7 +45,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = false,
       description = "A fully-qualified table identifier.",
       helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
-      example = "my_dataset.my_table")
+      example = "my_dataset.my_table"
+    )
   @Validation.Required
   String getTable();
 
@@ -62,7 +56,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = false,
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
-      example = "my_hadoop_catalog")
+      example = "my_hadoop_catalog"
+    )
   @Validation.Required
   String getCatalogName();
 
@@ -72,7 +67,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
-      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
+      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
+    )
   @Validation.Required
   String getCatalogProperties();
 
@@ -82,7 +78,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
       helpText = "A map of properties to pass to the Hadoop Configuration.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
+    )
   String getConfigProperties();
 
   @TemplateParameter.Text(
@@ -91,7 +88,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
       helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
-      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]"
+    )
   String getDrop();
 
   @TemplateParameter.Text(
@@ -100,7 +98,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
+      example = "age > 18"
+    )
   String getFilter();
 
   @TemplateParameter.Text(
@@ -109,7 +108,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]"
+    )
   String getKeep();
 
   @TemplateParameter.Text(
@@ -118,7 +118,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:postgresql://your-host:5432/your-db"
+    )
   @Validation.Required
   String getJdbcUrl();
 
@@ -128,7 +129,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "Username for the JDBC connection.",
       helpText = "The database username.",
-      example = "my_user")
+      example = "my_user"
+    )
   String getUsername();
 
   @TemplateParameter.Password(
@@ -137,7 +139,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "Password for the JDBC connection.",
       helpText = "The database password.",
-      example = "my_secret_password")
+      example = "my_secret_password"
+    )
   String getPassword();
 
   @TemplateParameter.Text(
@@ -146,7 +149,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "JDBC connection properties.",
       helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2")
+      example = "key1=value1;key2=value2"
+    )
   String getConnectionProperties();
 
   @TemplateParameter.Text(
@@ -155,7 +159,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "The name of the Postgres table.",
       helpText = "The name of the database table.",
-      example = "public.my_table")
+      example = "public.my_table"
+    )
   String getPostgresTable();
 
   @TemplateParameter.Text(
@@ -164,7 +169,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "The SQL query/statement to execute.",
       helpText = "The SQL query/statement to execute on the source/sink.",
-      example = "SELECT * FROM my_table WHERE status = 'active'")
+      example = "SELECT * FROM my_table WHERE status = 'active'"
+    )
   String getQuery();
 
   @TemplateParameter.Integer(
@@ -173,7 +179,8 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "The number of records to group for each write operation.",
       helpText = "The number of records to group together for each write.",
-      example = "1000")
+      example = "1000"
+    )
   @Default.Integer(1000)
   Integer getBatchSize();
 
@@ -183,6 +190,7 @@ public interface IcebergToPostgreSQLYaml {
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "False")
+      example = "False"
+    )
   Boolean getAutoSharding();
 }

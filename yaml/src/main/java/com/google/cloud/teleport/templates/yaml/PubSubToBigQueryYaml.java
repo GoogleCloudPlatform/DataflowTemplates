@@ -25,17 +25,14 @@ import org.apache.beam.sdk.options.Validation;
     name = "PubSub_To_BigQuery_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "PubSub to BigQuery (YAML)",
-    description =
-        "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
+    displayName = "Pub/Sub to BigQuery (YAML)",
+    description = "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToBigQuery.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery",
+    documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The input Pub/Sub topic or subscription must exist.",
+    requirements = {"The input Pub/Sub topic or subscription must exist.",
       "The output BigQuery table must exist."
     },
     streaming = true,
@@ -48,7 +45,8 @@ public interface PubSubToBigQueryYaml {
       optional = false,
       description = "Pub/Sub input topic",
       helpText = "Pub/Sub topic to read the input from.",
-      example = "projects/your-project-id/topics/your-topic-name")
+      example = "projects/your-project-id/topics/your-topic-name"
+    )
   @Validation.Required
   String getTopic();
 
@@ -58,7 +56,8 @@ public interface PubSubToBigQueryYaml {
       optional = false,
       description = "The message format.",
       helpText = "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.",
-      example = "")
+      example = ""
+    )
   @Validation.Required
   String getFormat();
 
@@ -67,9 +66,9 @@ public interface PubSubToBigQueryYaml {
       name = "schema",
       optional = false,
       description = "Data schema.",
-      helpText =
-          "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
-      example = "")
+      helpText = "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
+      example = ""
+    )
   @Validation.Required
   String getSchema();
 
@@ -78,9 +77,9 @@ public interface PubSubToBigQueryYaml {
       name = "attributes",
       optional = true,
       description = "List of attribute keys.",
-      helpText =
-          "List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
-      example = "")
+      helpText = "List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
+      example = ""
+    )
   String getAttributes();
 
   @TemplateParameter.Text(
@@ -88,20 +87,19 @@ public interface PubSubToBigQueryYaml {
       name = "attributesMap",
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
-      helpText =
-          "Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
-      example = "")
+      helpText = "Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
+      example = ""
+    )
   String getAttributesMap();
 
   @TemplateParameter.Text(
       order = 6,
       name = "idAttribute",
       optional = true,
-      description =
-          "The attribute on incoming Pub/Sub messages to use as a unique record identifier.",
-      helpText =
-          "The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.",
-      example = "")
+      description = "The attribute on incoming Pub/Sub messages to use as a unique record identifier.",
+      helpText = "The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.",
+      example = ""
+    )
   String getIdAttribute();
 
   @TemplateParameter.Text(
@@ -109,9 +107,9 @@ public interface PubSubToBigQueryYaml {
       name = "timestampAttribute",
       optional = true,
       description = "Message value to use as element timestamp.",
-      helpText =
-          "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
-      example = "")
+      helpText = "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
+      example = ""
+    )
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
@@ -120,7 +118,8 @@ public interface PubSubToBigQueryYaml {
       optional = true,
       description = "Error handling configuration",
       helpText = "This option specifies whether and where to output error rows.",
-      example = "")
+      example = ""
+    )
   String getErrorHandling();
 
   @TemplateParameter.Text(
@@ -129,7 +128,8 @@ public interface PubSubToBigQueryYaml {
       optional = true,
       description = "Pub/Sub subscription",
       helpText = "Pub/Sub subscription to read the input from.",
-      example = "projects/your-project-id/subscriptions/your-subscription-name")
+      example = "projects/your-project-id/subscriptions/your-subscription-name"
+    )
   String getSubscription();
 
   @TemplateParameter.Text(
@@ -137,9 +137,9 @@ public interface PubSubToBigQueryYaml {
       name = "table",
       optional = false,
       description = "BigQuery table",
-      helpText =
-          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
-      example = "")
+      helpText = "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
+      example = ""
+    )
   @Validation.Required
   String getTable();
 
@@ -148,9 +148,9 @@ public interface PubSubToBigQueryYaml {
       name = "createDisposition",
       optional = true,
       description = "How to create",
-      helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
-      example = "")
+      helpText = "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+      example = ""
+    )
   @Default.String("CREATE_IF_NEEDED")
   String getCreateDisposition();
 
@@ -159,9 +159,9 @@ public interface PubSubToBigQueryYaml {
       name = "writeDisposition",
       optional = true,
       description = "How to write",
-      helpText =
-          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
-      example = "")
+      helpText = "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
+      example = ""
+    )
   @Default.String("WRITE_APPEND")
   String getWriteDisposition();
 
@@ -170,9 +170,9 @@ public interface PubSubToBigQueryYaml {
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
-      helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = "")
+      helpText = "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
+      example = ""
+    )
   @Default.Integer(1)
   Integer getNumStreams();
 }

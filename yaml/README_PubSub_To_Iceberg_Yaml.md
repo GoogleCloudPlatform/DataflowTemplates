@@ -1,15 +1,10 @@
 
-Pub/Sub to BigTable (YAML) template
+Pub/Sub to Iceberg (YAML) template
 ---
-The PubSub to BigTable template is a streaming pipeline which ingests data from a
-PubSub topic, executes a user-defined mapping, and writes the resulting records
-to BigTable. Any errors which occur in the transformation of the data are written
-to a separate Pub/Sub topic.
+The Pub/Sub to Iceberg template is a streaming pipeline that ingests data from a
+Pub/Sub topic or subscription and writes the records to an Apache Iceberg table.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_To_BigTable_Yaml).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
@@ -22,12 +17,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **projectId**: The Google Cloud project ID of the BigTable instance.
-* **instanceId**: The BigTable instance ID.
-* **tableId**: BigTable table ID to write the output to.
-* **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
+* **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
+* **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
+* **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
+* **triggeringFrequencySeconds**: The frequency in seconds for producing snapshots in a streaming pipeline. For example, `60`.
 
 ### Optional parameters
 
@@ -37,7 +30,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
 * **errorHandling**: This option specifies whether and where to output error rows.
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
-* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
+* **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
+* **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
+* **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
+* **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
+* **tableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **sdfCheckpointAfterDuration**: Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options For example, `30s`. Defaults to: 30s.
+* **sdfCheckpointAfterOutputBytes**: Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options For example, `536870912`. Defaults to: 536870912.
 
 
 
@@ -54,7 +55,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToBigTableYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToIcebergYaml.java)
 
 ### Templates Plugin
 
@@ -96,7 +97,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="PubSub_To_BigTable_Yaml" \
+-DtemplateName="PubSub_To_Iceberg_Yaml" \
 -f yaml
 ```
 
@@ -107,7 +108,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_BigTable_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_Iceberg_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -127,18 +128,16 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_BigTable_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_Iceberg_Yaml"
 
 ### Required
 export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
-export LANGUAGE=<language>
-export FIELDS=<fields>
-export PROJECT_ID=<projectId>
-export INSTANCE_ID=<instanceId>
-export TABLE_ID=<tableId>
-export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
+export TABLE=<table>
+export CATALOG_NAME=<catalogName>
+export CATALOG_PROPERTIES=<catalogProperties>
+export TRIGGERING_FREQUENCY_SECONDS=<triggeringFrequencySeconds>
 
 ### Optional
 export ATTRIBUTES=<attributes>
@@ -147,9 +146,17 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export WINDOWING=<windowing>
+export CONFIG_PROPERTIES=<configProperties>
+export DROP=<drop>
+export FILTER=<filter>
+export KEEP=<keep>
+export ONLY=<only>
+export PARTITION_FIELDS=<partitionFields>
+export TABLE_PROPERTIES=<tableProperties>
+export SDF_CHECKPOINT_AFTER_DURATION=30s
+export SDF_CHECKPOINT_AFTER_OUTPUT_BYTES=536870912
 
-gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
+gcloud dataflow flex-template run "pubsub-to-iceberg-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -162,13 +169,19 @@ gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
   --parameters "errorHandling=$ERROR_HANDLING" \
   --parameters "subscription=$SUBSCRIPTION" \
-  --parameters "language=$LANGUAGE" \
-  --parameters "fields=$FIELDS" \
-  --parameters "projectId=$PROJECT_ID" \
-  --parameters "instanceId=$INSTANCE_ID" \
-  --parameters "tableId=$TABLE_ID" \
-  --parameters "windowing=$WINDOWING" \
-  --parameters "outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC"
+  --parameters "table=$TABLE" \
+  --parameters "catalogName=$CATALOG_NAME" \
+  --parameters "catalogProperties=$CATALOG_PROPERTIES" \
+  --parameters "configProperties=$CONFIG_PROPERTIES" \
+  --parameters "drop=$DROP" \
+  --parameters "filter=$FILTER" \
+  --parameters "keep=$KEEP" \
+  --parameters "only=$ONLY" \
+  --parameters "partitionFields=$PARTITION_FIELDS" \
+  --parameters "tableProperties=$TABLE_PROPERTIES" \
+  --parameters "triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS" \
+  --parameters "sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION" \
+  --parameters "sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES"
 ```
 
 For more information about the command, please check:
@@ -190,12 +203,10 @@ export REGION=us-central1
 export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
-export LANGUAGE=<language>
-export FIELDS=<fields>
-export PROJECT_ID=<projectId>
-export INSTANCE_ID=<instanceId>
-export TABLE_ID=<tableId>
-export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
+export TABLE=<table>
+export CATALOG_NAME=<catalogName>
+export CATALOG_PROPERTIES=<catalogProperties>
+export TRIGGERING_FREQUENCY_SECONDS=<triggeringFrequencySeconds>
 
 ### Optional
 export ATTRIBUTES=<attributes>
@@ -204,16 +215,24 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export WINDOWING=<windowing>
+export CONFIG_PROPERTIES=<configProperties>
+export DROP=<drop>
+export FILTER=<filter>
+export KEEP=<keep>
+export ONLY=<only>
+export PARTITION_FIELDS=<partitionFields>
+export TABLE_PROPERTIES=<tableProperties>
+export SDF_CHECKPOINT_AFTER_DURATION=30s
+export SDF_CHECKPOINT_AFTER_OUTPUT_BYTES=536870912
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="pubsub-to-bigtable-yaml-job" \
--DtemplateName="PubSub_To_BigTable_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,language=$LANGUAGE,fields=$FIELDS,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,tableId=$TABLE_ID,windowing=$WINDOWING,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-DjobName="pubsub-to-iceberg-yaml-job" \
+-DtemplateName="PubSub_To_Iceberg_Yaml" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
 -f yaml
 ```
 
@@ -231,7 +250,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/PubSub_To_BigTable_Yaml
+cd yaml/terraform/PubSub_To_Iceberg_Yaml
 terraform init
 terraform apply
 ```
@@ -251,29 +270,35 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
+resource "google_dataflow_flex_template_job" "pubsub_to_iceberg_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_BigTable_Yaml"
-  name              = "pubsub-to-bigtable-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_Iceberg_Yaml"
+  name              = "pubsub-to-iceberg-yaml"
   region            = var.region
   parameters        = {
     topic = "<topic>"
     format = "<format>"
     schema = "<schema>"
-    language = "<language>"
-    fields = "<fields>"
-    projectId = "<projectId>"
-    instanceId = "<instanceId>"
-    tableId = "<tableId>"
-    outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
+    table = "<table>"
+    catalogName = "<catalogName>"
+    catalogProperties = "<catalogProperties>"
+    triggeringFrequencySeconds = "<triggeringFrequencySeconds>"
     # attributes = "<attributes>"
     # attributesMap = "<attributesMap>"
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
     # errorHandling = "<errorHandling>"
     # subscription = "<subscription>"
-    # windowing = "<windowing>"
+    # configProperties = "<configProperties>"
+    # drop = "<drop>"
+    # filter = "<filter>"
+    # keep = "<keep>"
+    # only = "<only>"
+    # partitionFields = "<partitionFields>"
+    # tableProperties = "<tableProperties>"
+    # sdfCheckpointAfterDuration = "30s"
+    # sdfCheckpointAfterOutputBytes = "536870912"
   }
 }
 ```

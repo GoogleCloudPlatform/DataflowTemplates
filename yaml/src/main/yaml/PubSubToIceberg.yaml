@@ -1,5 +1,5 @@
 template:
-  name: "Pubsub_To_Iceberg_Yaml"
+  name: "PubSub_To_Iceberg_Yaml"
   category: "STREAMING"
   type: "YAML"
   display_name: "Pub/Sub to Iceberg (YAML)"

@@ -1,5 +1,5 @@
 
-PubSub to BigQuery (YAML) template
+Pub/Sub to BigQuery (YAML) template
 ---
 The Pub/Sub to BigQuery template is a streaming pipeline that reads
 JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting
@@ -21,7 +21,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
-* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.
+* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.
 
 ### Optional parameters
 

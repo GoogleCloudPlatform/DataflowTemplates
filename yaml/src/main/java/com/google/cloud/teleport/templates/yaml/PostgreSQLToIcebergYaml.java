@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -25,20 +26,13 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "PostgreSQL to Iceberg (YAML)",
-    description =
-        "The PostgreSQL to Iceberg template is a batch pipeline executes the user provided SQL query to read data from PostgreSQL table and outputs the records to Iceberg table.",
+    description = "The PostgreSQL to Iceberg template is a batch pipeline executes the user provided SQL query to read data from PostgreSQL table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PostgreSQLToIceberg.yaml",
-    filesToCopy = {
-      "main.py",
-      "requirements.txt",
-      "options/postgres_options.yaml",
-      "options/iceberg_options.yaml"
-    },
+    filesToCopy = {"main.py", "requirements.txt", "options/postgres_options.yaml", "options/iceberg_options.yaml"},
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The Input PostgreSQL instance and table must exist.",
+    requirements = {"The Input PostgreSQL instance and table must exist.",
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
@@ -51,7 +45,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:postgresql://your-host:5432/your-db"
+    )
   @Validation.Required
   String getJdbcUrl();
 
@@ -61,7 +56,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Username for the JDBC connection.",
       helpText = "The database username.",
-      example = "my_user")
+      example = "my_user"
+    )
   String getUsername();
 
   @TemplateParameter.Password(
@@ -70,7 +66,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Password for the JDBC connection.",
       helpText = "The database password.",
-      example = "my_secret_password")
+      example = "my_secret_password"
+    )
   String getPassword();
 
   @TemplateParameter.Text(
@@ -79,7 +76,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "JDBC connection properties.",
       helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2")
+      example = "key1=value1;key2=value2"
+    )
   String getConnectionProperties();
 
   @TemplateParameter.Text(
@@ -88,7 +86,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "The name of the Postgres table.",
       helpText = "The name of the database table.",
-      example = "public.my_table")
+      example = "public.my_table"
+    )
   String getPostgresTable();
 
   @TemplateParameter.Text(
@@ -97,7 +96,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "The SQL query/statement to execute.",
       helpText = "The SQL query/statement to execute on the source/sink.",
-      example = "SELECT * FROM my_table WHERE status = 'active'")
+      example = "SELECT * FROM my_table WHERE status = 'active'"
+    )
   String getQuery();
 
   @TemplateParameter.Text(
@@ -106,7 +106,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
       helpText = "The name of a numeric column that will be used for partitioning the data.",
-      example = "id")
+      example = "id"
+    )
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
@@ -115,7 +116,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "The number of partitions to divide the data into.",
       helpText = "The number of partitions to create for parallel reading.",
-      example = "10")
+      example = "10"
+    )
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
@@ -123,9 +125,9 @@ public interface PostgreSQLToIcebergYaml {
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
-      helpText =
-          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
-      example = "50000")
+      helpText = "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
+      example = "50000"
+    )
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
@@ -133,9 +135,9 @@ public interface PostgreSQLToIcebergYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText =
-          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
-      example = "True")
+      helpText = "Whether to disable auto-commit on read. Required for some databases like Postgres.",
+      example = "True"
+    )
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
@@ -144,7 +146,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
       helpText = "If true, the resulting PCollection will be reshuffled.",
-      example = "True")
+      example = "True"
+    )
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
@@ -153,7 +156,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = false,
       description = "A fully-qualified table identifier.",
       helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
-      example = "my_dataset.my_table")
+      example = "my_dataset.my_table"
+    )
   @Validation.Required
   String getTable();
 
@@ -163,7 +167,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = false,
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
-      example = "my_hadoop_catalog")
+      example = "my_hadoop_catalog"
+    )
   @Validation.Required
   String getCatalogName();
 
@@ -173,7 +178,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
-      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
+      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
+    )
   @Validation.Required
   String getCatalogProperties();
 
@@ -183,7 +189,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
       helpText = "A map of properties to pass to the Hadoop Configuration.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
+    )
   String getConfigProperties();
 
   @TemplateParameter.Text(
@@ -192,7 +199,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
       helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
-      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]"
+    )
   String getDrop();
 
   @TemplateParameter.Text(
@@ -201,7 +209,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
+      example = "age > 18"
+    )
   String getFilter();
 
   @TemplateParameter.Text(
@@ -210,7 +219,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]"
+    )
   String getKeep();
 
   @TemplateParameter.Text(
@@ -219,7 +229,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "The name of a single record field that should be written.",
       helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
-      example = "my_record_field")
+      example = "my_record_field"
+    )
   String getOnly();
 
   @TemplateParameter.Text(
@@ -228,7 +239,8 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
       helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
-      example = "[\"day(ts)\", \"bucket(id, 4)\"]")
+      example = "[\"day(ts)\", \"bucket(id, 4)\"]"
+    )
   String getPartitionFields();
 
   @TemplateParameter.Text(
@@ -237,6 +249,7 @@ public interface PostgreSQLToIcebergYaml {
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
       helpText = "A map of Iceberg table properties to set when the table is created.",
-      example = "{\"commit.retry.num-retries\": \"2\"}")
+      example = "{\"commit.retry.num-retries\": \"2\"}"
+    )
   String getTableProperties();
 }
