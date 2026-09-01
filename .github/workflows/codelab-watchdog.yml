@@ -37,17 +37,15 @@ jobs:
              --rawfile diffStr pr-diff.txt \
              '{ "contents": [ { "parts": [ { "text": ($prefix + "\n" + $diffStr) } ] } ] }' > payload.json
           
-          # Changed to gemini-1.5-flash-latest to resolve the model not found error
           curl -s -H 'Content-Type: application/json' \
             -d @payload.json \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" > response.json
-          
-          echo "Raw API Response:"
-          cat response.json
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=$GEMINI_API_KEY" > response.json
           
           ERROR_MSG=$(jq -r '.error.message // empty' response.json)
           if [ -n "$ERROR_MSG" ]; then
-            TEXT="⚠️ **API Error:** $ERROR_MSG (Verify your API key and quota)."
+            # The model threw an error, let's proactively list what models this key CAN access
+            AVAILABLE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | jq -r '.models[]?.name' | tr '\n' ',' || echo "None or blocked")
+            TEXT="⚠️ **API Error:** $ERROR_MSG \n\n**Allowed Models for this key:** $AVAILABLE"
           else
             TEXT=$(jq -r '.candidates[0].content.parts[0].text // "⚠️ Model response was empty or blocked." ' response.json)
           fi
@@ -77,13 +75,10 @@ jobs:
           echo "- [Non-sharded CloudSQL Codelab Doc](https://docs.google.com/document/d/1w4hv5HcbGhoL1UKecoxW4NcvTheoIIdbcr8Z8mQ5Z8M/edit)" >> comment.md
           echo "- [Sharded MySQL Codelab Doc](https://docs.google.com/document/d/1jIZeyoM185ymz_z1Nm-po54RL6C6V4HnzD_i6klLXYk/edit)" >> comment.md
           
-          # Find existing comment by this bot containing the marker
           COMMENT_URL=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" -q ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .url" | head -n 1)
           
           if [ -n "$COMMENT_URL" ]; then
-            # Update existing comment
             gh api -X PATCH "$COMMENT_URL" -F body=@comment.md
           else
-            # Create new comment
             gh pr comment "$PR_NUMBER" --body-file comment.md --repo "$REPO"
           fi
