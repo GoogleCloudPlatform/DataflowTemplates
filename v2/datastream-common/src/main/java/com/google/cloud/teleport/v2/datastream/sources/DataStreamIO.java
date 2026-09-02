@@ -17,16 +17,20 @@ package com.google.cloud.teleport.v2.datastream.sources;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects.firstNonNull;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.datastream.transforms.FormatDatastreamJsonToJson;
 import com.google.cloud.teleport.v2.datastream.transforms.FormatDatastreamRecordToJson;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,7 +64,10 @@ import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.transforms.Watch.Growth.PollFn;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TimestampedValue;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Lists;
 import org.joda.time.Duration;
@@ -104,6 +111,11 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
 
+  public static final TupleTag<Metadata> GCS_FILE_METADATA_MAIN_TAG =
+      new TupleTag<Metadata>("gcsFileMetadataMain") {};
+  public static final TupleTag<String> GCS_PUBSUB_DLQ_TAG =
+      new TupleTag<String>("gcsPubsubDlq") {};
+
   private String streamName;
   private String inputFilePattern;
   private String fileType;
@@ -116,6 +128,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
   private String datastreamSourceType;
+  private String dlqDirectory;
+  private PCollection<String> pubsubDlqRecords = null;
 
   private Boolean applyReshuffle = true;
 
@@ -192,6 +206,19 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   public DataStreamIO withDatastreamSourceType(String datastreamSourceType) {
     this.datastreamSourceType = datastreamSourceType;
     return this;
+  }
+
+  public DataStreamIO withDlqDirectory(String dlqDirectory) {
+    this.dlqDirectory = dlqDirectory;
+    return this;
+  }
+
+  public String getDlqDirectory() {
+    return dlqDirectory;
+  }
+
+  public PCollection<String> getPubsubDlqRecords() {
+    return pubsubDlqRecords;
   }
 
   @Override
@@ -288,12 +315,35 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     }
 
     public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {
-      return input
-          .apply(
-              "ReadGcsPubSubSubscription",
-              PubsubIO.readMessagesWithAttributes().fromSubscription(gcsNotificationSubscription))
-          .apply("ExtractGcsFilePath", ParDo.of(new ExtractGcsFile()))
-          .apply("ReadFiles", FileIO.readMatches());
+      PCollectionTuple gcsFiles =
+          input
+              .apply(
+                  "ReadGcsPubSubSubscription",
+                  PubsubIO.readMessagesWithAttributes().fromSubscription(gcsNotificationSubscription))
+              .apply(
+                  "ExtractGcsFilePath",
+                  ParDo.of(new ExtractGcsFile(GCS_PUBSUB_DLQ_TAG))
+                      .withOutputTags(
+                          GCS_FILE_METADATA_MAIN_TAG, TupleTagList.of(GCS_PUBSUB_DLQ_TAG)));
+
+      pubsubDlqRecords = gcsFiles.get(GCS_PUBSUB_DLQ_TAG);
+
+      if (!Strings.isNullOrEmpty(dlqDirectory)) {
+        String tmpDir =
+            dlqDirectory.endsWith("/") ? dlqDirectory + "tmp/" : dlqDirectory + "/tmp/";
+        pubsubDlqRecords
+            .setCoder(StringUtf8Coder.of())
+            .apply(
+                "WriteGcsPubSubDlq",
+                DLQWriteTransform.WriteDLQ.newBuilder()
+                    .withDlqDirectory(dlqDirectory)
+                    .withTmpDirectory(tmpDir)
+                    .setFileNamePrefix("datastreamio-pubsub-error")
+                    .setIncludePaneInfo(true)
+                    .build());
+      }
+
+      return gcsFiles.get(GCS_FILE_METADATA_MAIN_TAG).apply("ReadFiles", FileIO.readMatches());
     }
 
     public PCollection<ReadableFile> expandPollingPipeline(PBegin input) {
@@ -326,15 +376,60 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   }
 
   static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private final TupleTag<String> dlqTag;
+
+    public ExtractGcsFile() {
+      this.dlqTag = null;
+    }
+
+    public ExtractGcsFile(TupleTag<String> dlqTag) {
+      this.dlqTag = dlqTag;
+    }
+
     @ProcessElement
     public void process(ProcessContext context) throws IOException {
       PubsubMessage message = context.element();
+      if (message == null) {
+        return;
+      }
 
-      String eventType = message.getAttribute("eventType");
-      String bucketId = message.getAttribute("bucketId");
-      String objectId = message.getAttribute("objectId");
+      try {
+        String eventType = message.getAttribute("eventType");
+        String bucketId = message.getAttribute("bucketId");
+        String objectId = message.getAttribute("objectId");
 
-      if (eventType.equals("OBJECT_FINALIZE") && !objectId.endsWith("/")) {
+        if (eventType == null) {
+          outputDlq(context, message, "Missing required attribute 'eventType'");
+          return;
+        }
+
+        if (!"OBJECT_FINALIZE".equals(eventType)) {
+          if ("OBJECT_DELETE".equals(eventType)
+              || "OBJECT_METADATA_UPDATE".equals(eventType)
+              || "OBJECT_ARCHIVE".equals(eventType)) {
+            LOG.debug("Ignoring non-finalize GCS event type: {}", eventType);
+          } else {
+            outputDlq(context, message, "Unrecognized GCS eventType: " + eventType);
+          }
+          return;
+        }
+
+        if (Strings.isNullOrEmpty(bucketId)) {
+          outputDlq(context, message, "Missing required attribute 'bucketId' for OBJECT_FINALIZE");
+          return;
+        }
+
+        if (objectId == null) {
+          outputDlq(context, message, "Missing required attribute 'objectId' for OBJECT_FINALIZE");
+          return;
+        }
+
+        if (objectId.endsWith("/")) {
+          LOG.debug("Ignoring directory notification for object: {}", objectId);
+          return;
+        }
+
         String fileName = "gs://" + bucketId + "/" + objectId;
         try {
           Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
@@ -344,7 +439,57 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
         } catch (IOException e) {
           LOG.error("GCS Failure retrieving {}", fileName, e);
           throw e;
+        } catch (Exception e) {
+          LOG.error("Error matching file spec {}", fileName, e);
+          outputDlq(
+              context, message, "Error matching file spec " + fileName + ": " + e.getMessage());
         }
+      } catch (IOException e) {
+        throw e;
+      } catch (Exception e) {
+        LOG.error("Unexpected error processing Pub/Sub notification", e);
+        outputDlq(context, message, "Unexpected error: " + e.getMessage());
+      }
+    }
+
+    private void outputDlq(ProcessContext context, PubsubMessage message, String errorMessage) {
+      LOG.error("Malformed Pub/Sub message for GCS notification: {}", errorMessage);
+      if (dlqTag != null) {
+        try {
+          context.output(dlqTag, formatDlqRecord(message, errorMessage));
+        } catch (Exception e) {
+          LOG.error("Failed to output message to DLQ tag", e);
+        }
+      }
+    }
+
+    private String formatDlqRecord(PubsubMessage message, String errorMessage) {
+      ObjectNode root = MAPPER.createObjectNode();
+      String payload =
+          message.getPayload() != null
+              ? new String(message.getPayload(), StandardCharsets.UTF_8)
+              : "";
+      try {
+        root.set("message", MAPPER.readTree(payload));
+      } catch (Exception e) {
+        root.put("message", payload);
+      }
+      root.put("error_message", errorMessage);
+      root.put("timestamp", Instant.now().toString());
+      if (message.getAttributeMap() != null) {
+        ObjectNode attrs = MAPPER.createObjectNode();
+        message.getAttributeMap().forEach(attrs::put);
+        root.set("attributes", attrs);
+      }
+      if (message.getMessageId() != null) {
+        root.put("message_id", message.getMessageId());
+      }
+      try {
+        return MAPPER.writeValueAsString(root);
+      } catch (Exception e) {
+        LOG.error("Failed to serialize DLQ record to JSON", e);
+        return String.format(
+            "{\"message\":\"%s\",\"error_message\":\"%s\"}", payload, errorMessage);
       }
     }
   }
