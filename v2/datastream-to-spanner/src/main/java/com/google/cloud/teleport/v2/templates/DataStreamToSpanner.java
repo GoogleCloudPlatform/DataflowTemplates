@@ -14,7 +14,6 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.templates;
-
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.metadata.Template;

@@ -14,7 +14,6 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.templates;
-
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 

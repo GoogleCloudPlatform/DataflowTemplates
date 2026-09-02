@@ -14,7 +14,6 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.templates;
-
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SOURCE_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANNER_TAG;
 
