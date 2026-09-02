@@ -14,6 +14,7 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.options;
+
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
