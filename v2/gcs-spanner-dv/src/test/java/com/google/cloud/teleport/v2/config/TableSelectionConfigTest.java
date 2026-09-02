@@ -168,4 +168,13 @@ public class TableSelectionConfigTest {
 
     assertFalse(config.isSpannerTableAllowed("unknown_table", mockSchemaMapper));
   }
+
+  @Test
+  public void testParseFromOptionsThrowsWhenTableListFileFailsToRead() {
+    options.setTableListFilePath(tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.txt");
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> TableSelectionConfig.parseFromOptions(options));
+    assertTrue(thrown.getMessage().contains("Failed to read tableListFilePath"));
+  }
 }

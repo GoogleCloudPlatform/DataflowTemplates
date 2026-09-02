@@ -94,7 +94,9 @@ public class TableSelectionConfig implements Serializable {
       }
     }
 
-    return new TableSelectionConfig(configuredTables);
+    TableSelectionConfig config = new TableSelectionConfig(configuredTables);
+
+    return config;
   }
 
   public boolean hasFilters() {
