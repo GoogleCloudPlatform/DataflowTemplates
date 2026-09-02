@@ -256,31 +256,16 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
     options.setOutputFilenamePrefix(FILENAME_PREFIX);
     options.setNumShards(NUM_SHARDS);
     options.setTempLocation(fakeTempLocation);
+    options.setSpannerProjectId(TEST_PROJECT);
+    options.setSpannerInstanceId(TEST_INSTANCE);
+    options.setSpannerDatabase(TEST_TABLE);
+    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+    options.setSpannerMetadataDatabase(TEST_TABLE);
+    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+    options.setSpannerDirectedReadOptions(
+        "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}");
 
-    Pipeline p = Pipeline.create(options);
-
-    Timestamp startTimestamp = Timestamp.now();
-    Timestamp endTimestamp = Timestamp.now();
-    SpannerConfig spannerConfig = getFakeSpannerConfig();
-
-    p.apply(
-            SpannerIO.readChangeStream()
-                .withSpannerConfig(spannerConfig)
-                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
-                .withChangeStreamName("changestream")
-                .withInclusiveStartAt(startTimestamp)
-                .withInclusiveEndAt(endTimestamp)
-                .withRpcPriority(RpcPriority.HIGH)
-                .withDirectedReadOptions(
-                    "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}"))
-        .apply(
-            "Creating " + options.getWindowDuration() + " Window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-        .apply(
-            "Write To GCS",
-            FileFormatFactorySpannerChangeStreams.newBuilder().setOptions(options).build());
-
-    p.run();
+    run(options);
   }
 
   @Test
