@@ -630,7 +630,7 @@ public class JdbcSourceRowMapperTest {
                 .derbyColumnType("VARCHAR(100)")
                 .sourceColumnType("ENUM")
                 .inputValue("ENUM VALUE")
-                .mappedValue(null) // Unsupported
+                .mappedValue("ENUM VALUE")
                 .build())
         .add(
             Column.builder()
