@@ -51,11 +51,17 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.BackOff;
+import org.apache.beam.sdk.util.BackOffUtils;
+import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -581,29 +587,57 @@ public class DataStreamToSQL {
    * <p>This DoFn connects to a database and executes DML statements. On failure, it outputs a
    * FailsafeElement containing the original record and error information.
    */
-  private static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
+  static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
     private static final Logger LOG = LoggerFactory.getLogger(ExecuteDmlFn.class);
 
+    private static final FluentBackoff RETRY_BACKOFF =
+        FluentBackoff.DEFAULT
+            .withMaxRetries(5)
+            .withInitialBackoff(Duration.millis(500))
+            .withMaxBackoff(Duration.standardSeconds(10));
+
     private final CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
+    private final CdcJdbcIO.RetryStrategy retryStrategy;
     private transient javax.sql.DataSource dataSource;
     private transient java.sql.Connection connection;
+    private transient Sleeper sleeper;
 
-    public static final org.apache.beam.sdk.values.TupleTag<KV<String, DmlInfo>> SUCCESS_TAG =
-        new org.apache.beam.sdk.values.TupleTag<KV<String, DmlInfo>>() {};
-    public static final org.apache.beam.sdk.values.TupleTag<
-            FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>
+    public static final TupleTag<KV<String, DmlInfo>> SUCCESS_TAG =
+        new TupleTag<KV<String, DmlInfo>>() {};
+    public static final TupleTag<FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>
         FAILURE_TAG =
-            new org.apache.beam.sdk.values.TupleTag<
-                FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
+            new TupleTag<FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
 
     public ExecuteDmlFn(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
+      this(dataSourceConfiguration, new CdcJdbcIO.DefaultRetryStrategy());
+    }
+
+    public ExecuteDmlFn(
+        CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration,
+        CdcJdbcIO.RetryStrategy retryStrategy) {
       this.dataSourceConfiguration = dataSourceConfiguration;
+      this.retryStrategy = retryStrategy;
+    }
+
+    void setDataSource(javax.sql.DataSource dataSource) {
+      this.dataSource = dataSource;
+    }
+
+    void setConnection(java.sql.Connection connection) {
+      this.connection = connection;
+    }
+
+    void setSleeper(Sleeper sleeper) {
+      this.sleeper = sleeper;
     }
 
     @Setup
     public void setup() throws SQLException {
-      dataSource = dataSourceConfiguration.buildDatasource();
-      connection = dataSource.getConnection();
+      if (dataSourceConfiguration != null) {
+        dataSource = dataSourceConfiguration.buildDatasource();
+        connection = dataSource.getConnection();
+      }
+      sleeper = Sleeper.DEFAULT;
     }
 
     @Teardown
@@ -613,20 +647,75 @@ public class DataStreamToSQL {
       }
     }
 
+    private void ensureConnection() throws SQLException {
+      if (connection == null || connection.isClosed()) {
+        if (dataSource == null && dataSourceConfiguration != null) {
+          dataSource = dataSourceConfiguration.buildDatasource();
+        }
+        if (dataSource != null) {
+          connection = dataSource.getConnection();
+        }
+      }
+    }
+
+    private void closeConnectionQuietly() {
+      if (connection != null) {
+        try {
+          connection.close();
+        } catch (SQLException ignored) {
+        } finally {
+          connection = null;
+        }
+      }
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) {
       KV<String, DmlInfo> dmlInfo = c.element();
-      try (java.sql.Statement statement = connection.createStatement()) {
-        LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
-        statement.execute(dmlInfo.getValue().getDmlSql());
-        c.output(SUCCESS_TAG, dmlInfo);
-      } catch (SQLException e) {
-        LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
-        c.output(
-            FAILURE_TAG,
-            FailsafeElement.of(dmlInfo, dmlInfo)
-                .setErrorMessage(e.getMessage())
-                .setStacktrace(getStackTraceAsString(e)));
+      String sql = dmlInfo.getValue().getDmlSql();
+      BackOff backOff = RETRY_BACKOFF.backoff();
+      Sleeper sleeperToUse = sleeper != null ? sleeper : Sleeper.DEFAULT;
+
+      while (true) {
+        try {
+          ensureConnection();
+          try (java.sql.Statement statement = connection.createStatement()) {
+            LOG.debug("Executing SQL: {}", sql);
+            statement.execute(sql);
+            c.output(SUCCESS_TAG, dmlInfo);
+            return;
+          }
+        } catch (SQLException e) {
+          boolean retryable = retryStrategy != null && retryStrategy.apply(e);
+          boolean canRetry = false;
+          if (retryable) {
+            try {
+              canRetry = BackOffUtils.next(sleeperToUse, backOff);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+              LOG.warn("Backoff interrupted while retrying statement execution: {}", sql, ex);
+              canRetry = false;
+            }
+          }
+
+          if (canRetry) {
+            LOG.warn(
+                "Retryable SQLException occurred while executing statement: {}. Retrying with backoff. Error: {}",
+                sql,
+                e.getMessage());
+            if (e.getSQLState() != null && e.getSQLState().startsWith("08")) {
+              closeConnectionQuietly();
+            }
+          } else {
+            LOG.error("Failed to execute DML: " + sql, e);
+            c.output(
+                FAILURE_TAG,
+                FailsafeElement.of(dmlInfo, dmlInfo)
+                    .setErrorMessage(e.getMessage())
+                    .setStacktrace(getStackTraceAsString(e)));
+            return;
+          }
+        }
       }
     }
 

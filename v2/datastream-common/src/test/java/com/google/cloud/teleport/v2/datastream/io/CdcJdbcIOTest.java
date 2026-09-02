@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.datastream.io;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -237,9 +238,64 @@ public final class CdcJdbcIOTest {
     CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
 
     SQLException deadlockException = new SQLException("Deadlock found", "40001");
+    SQLException postgresDeadlock = new SQLException("Postgres deadlock", "40P01");
     SQLException otherException = new SQLException("Syntax error", "42601");
 
     assertTrue("Should retry on 40001", strategy.apply(deadlockException));
-    assertTrue("Should not retry on other states", !strategy.apply(otherException));
+    assertTrue("Should retry on 40P01", strategy.apply(postgresDeadlock));
+    assertFalse("Should not retry on other states", strategy.apply(otherException));
+  }
+
+  @Test
+  public void testRetryStrategy_defaultDetectsConnectionExceptions() {
+    CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
+
+    SQLException connException08001 = new SQLException("Connection refused", "08001");
+    SQLException connException08006 = new SQLException("Connection failure", "08006");
+    SQLException connException08S01 = new SQLException("Communication link failure", "08S01");
+
+    assertTrue("Should retry on 08001", strategy.apply(connException08001));
+    assertTrue("Should retry on 08006", strategy.apply(connException08006));
+    assertTrue("Should retry on 08S01", strategy.apply(connException08S01));
+  }
+
+  @Test
+  public void testRetryStrategy_defaultDetectsVendorDeadlockCodes() {
+    CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
+
+    SQLException mysqlDeadlock = new SQLException("Deadlock found", "HY000", 1213);
+    SQLException mysqlLockWait = new SQLException("Lock wait timeout exceeded", "HY000", 1205);
+    SQLException oracleDeadlock = new SQLException("ORA-00060: deadlock detected", "60000", 60);
+    SQLException oraclePinDeadlock =
+        new SQLException("ORA-04020: deadlock on lock/pin", "60000", 4020);
+
+    assertTrue("Should retry on MySQL 1213", strategy.apply(mysqlDeadlock));
+    assertTrue("Should retry on MySQL 1205", strategy.apply(mysqlLockWait));
+    assertTrue("Should retry on Oracle 60", strategy.apply(oracleDeadlock));
+    assertTrue("Should retry on Oracle 4020", strategy.apply(oraclePinDeadlock));
+  }
+
+  @Test
+  public void testRetryStrategy_defaultDetectsChainedExceptions() {
+    CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
+
+    SQLException rootException = new SQLException("Batch update failed", "HY000");
+    SQLException chainedDeadlock = new SQLException("Deadlock found", "40001");
+    rootException.setNextException(chainedDeadlock);
+
+    assertTrue("Should retry when chained exception is retryable", strategy.apply(rootException));
+  }
+
+  @Test
+  public void testRetryStrategy_rejectsNonRetryableExceptions() {
+    CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
+
+    SQLException syntaxError = new SQLException("Syntax error", "42601");
+    SQLException uniqueViolation = new SQLException("Duplicate key", "23505");
+    SQLException nonRetryableVendor = new SQLException("Table not found", "42S02", 1146);
+
+    assertFalse("Should not retry syntax error", strategy.apply(syntaxError));
+    assertFalse("Should not retry unique constraint violation", strategy.apply(uniqueViolation));
+    assertFalse("Should not retry table not found", strategy.apply(nonRetryableVendor));
   }
 }

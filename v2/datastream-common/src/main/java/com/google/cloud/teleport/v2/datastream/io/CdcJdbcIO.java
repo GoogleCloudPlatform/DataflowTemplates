@@ -34,7 +34,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.Pipeline;
@@ -167,16 +166,52 @@ public class CdcJdbcIO {
   }
 
   /**
-   * This is the default {@link Predicate} we use to detect DeadLock. It basically tests if the
-   * {@link SQLException#getSQLState()} equals 40001. 40001 is the SQL State used by most databases
-   * to identify a deadlock.
+   * This is the default {@link RetryStrategy} we use to detect transient errors (deadlocks, lock
+   * wait timeouts, and connection errors).
    */
   public static class DefaultRetryStrategy implements RetryStrategy {
     private static final long serialVersionUID = 1L;
 
     @Override
     public boolean apply(SQLException e) {
-      return "40001".equals(e.getSQLState());
+      SQLException current = e;
+      while (current != null) {
+        if (isRetryableException(current)) {
+          return true;
+        }
+        current = current.getNextException();
+      }
+      return false;
+    }
+
+    private boolean isRetryableException(SQLException exception) {
+      String sqlState = exception.getSQLState();
+      int errorCode = exception.getErrorCode();
+
+      // Deadlock / serialization failure SQL states:
+      // "40001" (serialization failure / deadlock across standard SQL, MySQL, Postgres, Oracle)
+      // "40P01" (PostgreSQL deadlock detected)
+      if ("40001".equals(sqlState) || "40P01".equals(sqlState)) {
+        return true;
+      }
+
+      // Connection exceptions (Class 08, e.g. 08000, 08001, 08003, 08004, 08006, 08007)
+      if (sqlState != null && sqlState.startsWith("08")) {
+        return true;
+      }
+
+      // Database vendor specific error codes:
+      // MySQL: 1213 (ER_LOCK_DEADLOCK), 1205 (ER_LOCK_WAIT_TIMEOUT)
+      if (errorCode == 1213 || errorCode == 1205) {
+        return true;
+      }
+
+      // Oracle: 60 (ORA-00060 deadlock), 4020 (ORA-04020 deadlock on lock/pin)
+      if (errorCode == 60 || errorCode == 4020) {
+        return true;
+      }
+
+      return false;
     }
   }
 
@@ -734,23 +769,56 @@ public class CdcJdbcIO {
         while (true) {
           try {
             if (singleStatementMode) {
+              if (connection == null || connection.isClosed()) {
+                connection = dataSource.getConnection();
+                connection.setAutoCommit(false);
+              }
               statement = connection.createStatement();
               Iterator<BufferedRecord<T>> iterator = records.iterator();
               while (iterator.hasNext()) {
                 BufferedRecord<T> bufferedRecord = iterator.next();
                 String formattedStatement =
                     spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-                try {
-                  statement.executeUpdate(formattedStatement);
-                  connection.commit();
-                  iterator.remove();
-                } catch (SQLException exception) {
-                  LOG.error(
-                      "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
-                      exception.toString(),
-                      formattedStatement);
-                  connection.rollback();
-                  failedRecords.add(bufferedRecord);
+                boolean statementSuccess = false;
+                BackOff statementBackoff =
+                    FluentBackoff.DEFAULT
+                        .withMaxRetries(3)
+                        .withInitialBackoff(Duration.millis(200))
+                        .backoff();
+                while (!statementSuccess) {
+                  try {
+                    statement.executeUpdate(formattedStatement);
+                    connection.commit();
+                    iterator.remove();
+                    statementSuccess = true;
+                  } catch (SQLException exception) {
+                    try {
+                      connection.rollback();
+                    } catch (SQLException rbEx) {
+                      LOG.warn("Failed to rollback transaction", rbEx);
+                    }
+                    boolean retryable =
+                        spec.getRetryStrategy() != null
+                            && spec.getRetryStrategy().apply(exception);
+                    if (retryable && BackOffUtils.next(sleeper, statementBackoff)) {
+                      LOG.warn(
+                          "Retryable SQLException in single-statement mode, retrying: {}",
+                          exception.getMessage());
+                      if (connection == null || connection.isClosed()) {
+                        connection = dataSource.getConnection();
+                        connection.setAutoCommit(false);
+                        statement = connection.createStatement();
+                      }
+                    } else {
+                      LOG.error(
+                          "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
+                          exception.toString(),
+                          formattedStatement);
+                      failedRecords.add(bufferedRecord);
+                      iterator.remove();
+                      break;
+                    }
+                  }
                 }
               }
             } else {
@@ -774,14 +842,22 @@ public class CdcJdbcIO {
               break; // Exit retry loop
             }
 
-            connection.rollback();
-            if (!BackOffUtils.next(sleeper, backoff)) {
+            try {
+              connection.rollback();
+            } catch (SQLException rbEx) {
+              LOG.warn("Failed to rollback batch transaction", rbEx);
+            }
+            boolean isRetryable =
+                spec.getRetryStrategy() == null || spec.getRetryStrategy().apply(exception);
+            if (!isRetryable || !BackOffUtils.next(sleeper, backoff)) {
               LOG.warn(
-                  "Batch write failed: {}. Retrying in single-statement mode.",
+                  "Batch write failed (retryable={}): {}. Retrying in single-statement mode.",
+                  isRetryable,
                   exception.getMessage());
               singleStatementMode = true;
+            } else {
+              LOG.warn("Retryable SQLException Occurred, retrying: {}", exception.toString());
             }
-            LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
           }
         }
         return failedRecords;
