@@ -917,4 +917,132 @@ public class AvroToValueMapperTest {
     // Null
     assertThat(getPgMap().get(Type.pgFloat4()).apply(null, schema)).isEqualTo(Value.float32(null));
   }
+
+  @Test
+  public void testAvroFieldToLong_BooleanAndByteBuffer() {
+    Schema schema = SchemaBuilder.builder().longType();
+
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong(Boolean.TRUE, schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong(Boolean.FALSE, schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("true", schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("TRUE", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("false", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("FALSE", schema));
+
+    ByteBuffer buf8 = ByteBuffer.allocate(8);
+    buf8.putLong(123456789L);
+    buf8.flip();
+    assertEquals(Long.valueOf(123456789L), AvroToValueMapper.avroFieldToLong(buf8, schema));
+
+    ByteBuffer buf4 = ByteBuffer.wrap(new byte[] {0, 0, 1, 0});
+    assertEquals(Long.valueOf(256L), AvroToValueMapper.avroFieldToLong(buf4, schema));
+  }
+
+  @Test
+  public void testAvroFieldToString_ByteBuffer() {
+    Schema schema = SchemaBuilder.builder().stringType();
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0x01, 0x0A, (byte) 0xFF});
+    assertEquals("010aff", AvroToValueMapper.avroFieldToString(buf, schema));
+  }
+
+  @Test
+  public void testAvroFieldToByteArray_StringHexAndFallback() {
+    Schema stringSchema = SchemaBuilder.builder().stringType();
+
+    // Hex string with dashes and odd length
+    ByteArray oddHexWithDash = AvroToValueMapper.avroFieldToByteArray("1-2-3", stringSchema);
+    assertEquals(ByteArray.copyFrom(new byte[] {0x01, 0x23}), oddHexWithDash);
+
+    // Non-hex string falling back to UTF-8 bytes
+    ByteArray nonHex = AvroToValueMapper.avroFieldToByteArray("hello world", stringSchema);
+    assertEquals(
+        ByteArray.copyFrom("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+        nonHex);
+  }
+
+  @Test
+  public void testAvroArrayFieldToSpannerArray_CollectionInput() {
+    Schema schema = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    List<String> inputList = Arrays.asList("one", "two", "three");
+    Iterable<String> result =
+        avroArrayFieldToSpannerArray(inputList, schema, AvroToValueMapper::avroFieldToString);
+    assertThat(result).containsExactly("one", "two", "three").inOrder();
+  }
+
+  @Test
+  public void testPgArrayMappings() {
+    Schema boolArraySchema = SchemaBuilder.array().items(SchemaBuilder.builder().booleanType());
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgBool()))
+                .apply(Arrays.asList(true, false), boolArraySchema))
+        .isEqualTo(Value.boolArray(Arrays.asList(true, false)));
+
+    Schema intArraySchema = SchemaBuilder.array().items(SchemaBuilder.builder().longType());
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgInt8()))
+                .apply(Arrays.asList(10L, 20L), intArraySchema))
+        .isEqualTo(Value.int64Array(Arrays.asList(10L, 20L)));
+
+    Schema float4ArraySchema = SchemaBuilder.array().items(SchemaBuilder.builder().floatType());
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgFloat4()))
+                .apply(Arrays.asList(1.5f, 2.5f), float4ArraySchema))
+        .isEqualTo(Value.float32Array(Arrays.asList(1.5f, 2.5f)));
+
+    Schema float8ArraySchema = SchemaBuilder.array().items(SchemaBuilder.builder().doubleType());
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgFloat8()))
+                .apply(Arrays.asList(1.5d, 2.5d), float8ArraySchema))
+        .isEqualTo(Value.float64Array(Arrays.asList(1.5d, 2.5d)));
+
+    Schema stringArraySchema = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgVarchar()))
+                .apply(Arrays.asList("a", "b"), stringArraySchema))
+        .isEqualTo(Value.stringArray(Arrays.asList("a", "b")));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgText()))
+                .apply(Arrays.asList("a", "b"), stringArraySchema))
+        .isEqualTo(Value.stringArray(Arrays.asList("a", "b")));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgJsonb()))
+                .apply(Arrays.asList("{\"k\":1}"), stringArraySchema))
+        .isEqualTo(Value.pgJsonbArray(Arrays.asList("{\"k\":1}")));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgNumeric()))
+                .apply(Arrays.asList("12.34"), stringArraySchema))
+        .isEqualTo(
+            Value.numericArray(
+                Arrays.asList(new BigDecimal("12.34").setScale(9, RoundingMode.HALF_UP))));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgBytea()))
+                .apply(Arrays.asList("0102"), stringArraySchema))
+        .isEqualTo(Value.bytesArray(Arrays.asList(ByteArray.copyFrom(new byte[] {1, 2}))));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgTimestamptz()))
+                .apply(Arrays.asList("2023-01-01T00:00:00Z"), stringArraySchema))
+        .isEqualTo(
+            Value.timestampArray(Arrays.asList(Timestamp.parseTimestamp("2023-01-01T00:00:00Z"))));
+
+    assertThat(
+            getPgMap()
+                .get(Type.pgArray(Type.pgDate()))
+                .apply(Arrays.asList("2023-01-01"), stringArraySchema))
+        .isEqualTo(Value.dateArray(Arrays.asList(Date.parseDate("2023-01-01"))));
+  }
 }
