@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
@@ -98,9 +99,7 @@ public class SourceConnectorFactoryTest {
 
     ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
-    assertThat(connector)
-        .isInstanceOf(
-            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
   }
 
   @Test
@@ -162,9 +161,7 @@ public class SourceConnectorFactoryTest {
     AbstractJdbcSrcToSpSourceConnector connector =
         SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.SQLSERVER);
 
-    assertThat(connector)
-        .isInstanceOf(
-            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
   }
 
   @Test
@@ -211,9 +208,7 @@ public class SourceConnectorFactoryTest {
   public void testGetSourceConnectorBySourceType_sqlserver() {
     ISrcToSpSourceConnector connector =
         SourceConnectorFactory.getSourceConnectorBySourceType(Constants.SQLSERVER_SOURCE_TYPE);
-    assertThat(connector)
-        .isInstanceOf(
-            com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector.class);
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
   }
 
   @Test
