@@ -14,6 +14,11 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.dofn;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -48,7 +53,7 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, ValidationTableConfig.empty());
 
     // Execute
     doFn.processElement(context);
@@ -81,7 +86,7 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, com.google.cloud.teleport.v2.config.ValidationTableConfig.empty());
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, ValidationTableConfig.empty());
 
     // Execute
     doFn.processElement(context);
@@ -112,11 +117,11 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA", "TableB", "TableC"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options options = org.apache.beam.sdk.options.PipelineOptionsFactory.as(com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options.class);
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableA,TableC");
-    com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig = com.google.cloud.teleport.v2.config.ValidationTableConfig.parseFromOptions(options);
+    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
@@ -139,11 +144,11 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA", "TableB"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options options = org.apache.beam.sdk.options.PipelineOptionsFactory.as(com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options.class);
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableA,TableC");
-    com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig = com.google.cloud.teleport.v2.config.ValidationTableConfig.parseFromOptions(options);
+    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
@@ -165,11 +170,11 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options options = org.apache.beam.sdk.options.PipelineOptionsFactory.as(com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options.class);
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableB");
-    com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig = com.google.cloud.teleport.v2.config.ValidationTableConfig.parseFromOptions(options);
+    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
@@ -189,11 +194,11 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("spanner_table"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options options = org.apache.beam.sdk.options.PipelineOptionsFactory.as(com.google.cloud.teleport.v2.templates.GCSSpannerDV.Options.class);
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("source_table");
-    com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig = com.google.cloud.teleport.v2.config.ValidationTableConfig.parseFromOptions(options);
+    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
 
-    com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper mockMapper = mock(com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper.class);
+    ISchemaMapper mockMapper = mock(ISchemaMapper.class);
     when(mockMapper.getSourceTableName(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("spanner_table")))
         .thenReturn("source_table");
 

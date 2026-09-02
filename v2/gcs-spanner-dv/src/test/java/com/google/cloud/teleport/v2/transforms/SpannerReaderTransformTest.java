@@ -14,6 +14,11 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -22,12 +27,8 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.Serializable;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -329,8 +330,8 @@ public class SpannerReaderTransformTest implements Serializable {
     ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
 
     // 3. Create a Serializable SchemaMapper stub to translate spanner_mapped_table -> source_mapped_table
-    com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper stubMapper = 
-        new com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper(ddl) {
+    IdentityMapper stubMapper = 
+        new IdentityMapper(ddl) {
           @Override
           public String getSourceTableName(String namespace, String spannerTableName) {
             if ("spanner_mapped_table".equals(spannerTableName)) return "source_mapped_table";
