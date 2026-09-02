@@ -105,13 +105,64 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
               sourceTableName));
     }
 
+    Map<String, String> realPkColumnValues = new java.util.LinkedHashMap<>();
+    for (String pkColName : sourceTable.primaryKeyColumns()) {
+      SourceColumn pkColDef = sourceTable.column(pkColName);
+      if (pkColDef == null) {
+        continue;
+      }
+      if (pkColDef.isGenerated()) {
+        String spannerColName = "";
+        try {
+          spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), pkColName);
+        } catch (NoSuchElementException e) {
+          continue;
+        }
+        if (spannerColName != null) {
+          Column spannerColDef = spannerTable.column(spannerColName);
+          if (spannerColDef != null) {
+            JSONObject keyValuesJson = dmlGeneratorRequest.getKeyValuesJson();
+            JSONObject newValuesJson = dmlGeneratorRequest.getNewValuesJson();
+            if (keyValuesJson != null
+                && keyValuesJson.has(spannerColName)
+                && !keyValuesJson.isNull(spannerColName)) {
+              realPkColumnValues.put(
+                  pkColName,
+                  getMappedColumnValue(
+                      spannerColDef,
+                      pkColDef,
+                      keyValuesJson,
+                      dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                      new ArrayList<>()));
+            } else if (newValuesJson != null
+                && newValuesJson.has(spannerColName)
+                && !newValuesJson.isNull(spannerColName)) {
+              realPkColumnValues.put(
+                  pkColName,
+                  getMappedColumnValue(
+                      spannerColDef,
+                      pkColDef,
+                      newValuesJson,
+                      dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                      new ArrayList<>()));
+            }
+          }
+        }
+      } else if (pkcolumnNameValues.containsKey(pkColName)) {
+        realPkColumnValues.put(pkColName, pkcolumnNameValues.get(pkColName));
+      }
+    }
+    if (realPkColumnValues.isEmpty()) {
+      realPkColumnValues = pkcolumnNameValues;
+    }
+
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
+          spannerTable, sourceTable, dmlGeneratorRequest, realPkColumnValues, pkcolumnNameValues);
 
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-      return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
+      return getDeleteStatement(sourceTable.name(), realPkColumnValues);
     } else {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -121,6 +172,7 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
+      SourceTable sourceTable,
       String tableName,
       Map<String, String> allColumnNameValues,
       Map<String, String> pkColumnNameValues) {
@@ -139,13 +191,16 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       pkIndex++;
     }
 
-    int index = 0;
     for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
+      SourceColumn sourceCol = (sourceTable != null) ? sourceTable.column(colName) : null;
+      if (sourceCol != null && sourceCol.isGenerated()) {
+        continue;
+      }
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
 
-      if (index > 0) {
+      if (!insertColumns.isEmpty()) {
         insertColumns += ", ";
         insertValues += ", ";
       }
@@ -158,7 +213,6 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
         }
         updateValues += "target.[" + colName + "] = " + sqlValue;
       }
-      index++;
     }
 
     String returnVal =
@@ -173,8 +227,12 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
     if (updateValues.length() > 0) {
       returnVal += "WHEN MATCHED THEN UPDATE SET " + updateValues + " ";
     }
-    returnVal +=
-        "WHEN NOT MATCHED THEN INSERT (" + insertColumns + ") VALUES (" + insertValues + ");";
+    if (!insertColumns.isEmpty()) {
+      returnVal +=
+          "WHEN NOT MATCHED THEN INSERT (" + insertColumns + ") VALUES (" + insertValues + ");";
+    } else {
+      returnVal += "WHEN NOT MATCHED THEN INSERT DEFAULT VALUES;";
+    }
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -203,6 +261,7 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       Table spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
+      Map<String, String> realPkColumnValues,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
         DMLGeneratorUtils.getColumnValues(
@@ -215,8 +274,12 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getCustomTransformationResponse(),
             SQLServerDMLGenerator::getMappedColumnValue,
             new ArrayList<>());
-    columnNameValues.putAll(pkcolumnNameValues);
-    return getUpsertStatement(sourceTable.name(), columnNameValues, pkcolumnNameValues);
+    Map<String, String> allColumnNameValues = new java.util.LinkedHashMap<>();
+    allColumnNameValues.putAll(pkcolumnNameValues);
+    allColumnNameValues.putAll(columnNameValues);
+    allColumnNameValues.putAll(realPkColumnValues);
+    return getUpsertStatement(
+        sourceTable, sourceTable.name(), allColumnNameValues, realPkColumnValues);
   }
 
   @VisibleForTesting
@@ -274,20 +337,72 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       case "nchar":
       case "ntext":
       case "sysname":
-      case "uniqueidentifier":
       case "xml":
       case "date":
       case "time":
-      case "datetime2":
+        response = getQuotedEscapedString(colValue, spannerColType);
+        break;
       case "datetimeoffset":
+        if (sourceDbTimezoneOffset != null
+            && !sourceDbTimezoneOffset.isEmpty()
+            && ("TIMESTAMP".equals(spannerColType) || "PG_TIMESTAMPTZ".equals(spannerColType))) {
+          if (colValue == null || "null".equalsIgnoreCase(colValue)) {
+            response = "NULL";
+          } else {
+            response =
+                "SWITCHOFFSET("
+                    + getQuotedEscapedString(colValue, spannerColType)
+                    + ", '"
+                    + sourceDbTimezoneOffset
+                    + "')";
+          }
+        } else {
+          response = getQuotedEscapedString(colValue, spannerColType);
+        }
+        break;
+      case "datetime2":
       case "datetime":
       case "smalldatetime":
-        response = getQuotedEscapedString(colValue, spannerColType);
+        if (sourceDbTimezoneOffset != null
+            && !sourceDbTimezoneOffset.isEmpty()
+            && ("TIMESTAMP".equals(spannerColType) || "PG_TIMESTAMPTZ".equals(spannerColType))) {
+          if (colValue == null || "null".equalsIgnoreCase(colValue)) {
+            response = "NULL";
+          } else {
+            response =
+                "CAST(SWITCHOFFSET("
+                    + getQuotedEscapedString(colValue, spannerColType)
+                    + ", '"
+                    + sourceDbTimezoneOffset
+                    + "') AS "
+                    + columnType.toUpperCase()
+                    + ")";
+          }
+        } else {
+          response = getQuotedEscapedString(colValue, spannerColType);
+        }
+        break;
+      case "uniqueidentifier":
+        if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
+          if (colValue == null || "null".equalsIgnoreCase(colValue)) {
+            response = "NULL";
+          } else {
+            response = "CAST(" + colValue + " AS UNIQUEIDENTIFIER)";
+          }
+        } else {
+          response = getQuotedEscapedString(colValue, spannerColType);
+        }
         break;
       case "binary":
       case "varbinary":
       case "image":
-        response = colValue; // Already formatted as 0x...
+        if (colValue == null || "null".equalsIgnoreCase(colValue)) {
+          response = "NULL";
+        } else if (!colValue.startsWith("0x") && !colValue.startsWith("0X")) {
+          response = "0x" + colValue;
+        } else {
+          response = colValue;
+        }
         break;
       case "bit":
         response = colValue.equals("true") || colValue.equals("1") ? "1" : "0";
@@ -306,7 +421,10 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
 
   private static String getQuotedEscapedString(String input, String spannerColType) {
     if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
-      return input;
+      if (input == null || "null".equalsIgnoreCase(input)) {
+        return "NULL";
+      }
+      return "CAST(" + input + " AS VARCHAR(MAX))";
     }
     String cleanedString = escapeString(input);
     String response = "\'" + cleanedString + "\'";
