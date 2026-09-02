@@ -1281,4 +1281,153 @@ public class DatastreamToDMLTest {
     String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
     assertEquals(expectedJsonb, actualJsonb);
   }
+
+  /**
+   * Test that {@link DatastreamToMySQLDML#cleanDataTypeValueSql} properly converts empty strings,
+   * literal "null", and nulls to SQL NULL for numeric, datetime, boolean, and json types, while
+   * preserving empty string for text/string types. (b/503316273)
+   */
+  @Test
+  public void testMySql_cleanDataTypeValueSql_handlesNumericAndDateNulls() {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("int_col", "INT");
+    tableSchema.put("bigint_col", "BIGINT UNSIGNED");
+    tableSchema.put("decimal_col", "DECIMAL(10,2)");
+    tableSchema.put("datetime_col", "DATETIME");
+    tableSchema.put("date_col", "DATE");
+    tableSchema.put("varchar_col", "VARCHAR(255)");
+    tableSchema.put("json_col", "JSON");
+    tableSchema.put("bool_col", "BOOLEAN");
+
+    // Numeric columns convert empty strings and nulls to NULL
+    assertThat(dml.cleanDataTypeValueSql("''", "int_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("", "int_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("NULL", "int_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("'NULL'", "int_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("''", "bigint_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("''", "decimal_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("123", "int_col", tableSchema)).isEqualTo("123");
+    assertThat(dml.cleanDataTypeValueSql("'456'", "int_col", tableSchema)).isEqualTo("456");
+
+    // Datetime and Date columns convert empty strings and nulls to NULL
+    assertThat(dml.cleanDataTypeValueSql("''", "datetime_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("", "datetime_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("''", "date_col", tableSchema)).isEqualTo("NULL");
+
+    // String columns preserve empty string ''
+    assertThat(dml.cleanDataTypeValueSql("''", "varchar_col", tableSchema)).isEqualTo("''");
+    assertThat(dml.cleanDataTypeValueSql("'hello'", "varchar_col", tableSchema))
+        .isEqualTo("'hello'");
+
+    // JSON columns convert empty strings to NULL
+    assertThat(dml.cleanDataTypeValueSql("''", "json_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("'null'", "json_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("{\"k\":\"v\"}", "json_col", tableSchema))
+        .isEqualTo("'{\"k\":\"v\"}'");
+
+    // Boolean columns convert boolean strings
+    assertThat(dml.cleanDataTypeValueSql("''", "bool_col", tableSchema)).isEqualTo("NULL");
+    assertThat(dml.cleanDataTypeValueSql("true", "bool_col", tableSchema)).isEqualTo("1");
+    assertThat(dml.cleanDataTypeValueSql("false", "bool_col", tableSchema)).isEqualTo("0");
+  }
+
+  /**
+   * Test that {@link DatastreamToMySQLDML#cleanDataTypeValueSql} cleans ISO-8601 timestamps by
+   * removing Zulu timezone 'Z', replacing 'T' with space, and extracting date/time parts.
+   * (b/503316273)
+   */
+  @Test
+  public void testMySql_cleanDateTimeValue_convertsZuluAndIso8601() {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("datetime_col", "DATETIME");
+    tableSchema.put("date_col", "DATE");
+    tableSchema.put("time_col", "TIME");
+
+    // DATETIME with Zulu format
+    assertThat(
+            dml.cleanDataTypeValueSql(
+                "'2023-10-31T04:59:27.000000Z'", "datetime_col", tableSchema))
+        .isEqualTo("'2023-10-31 04:59:27.000000'");
+    assertThat(dml.cleanDataTypeValueSql("'2023-10-31T04:59:27Z'", "datetime_col", tableSchema))
+        .isEqualTo("'2023-10-31 04:59:27'");
+    assertThat(dml.cleanDataTypeValueSql("'2023-10-31 04:59:27'", "datetime_col", tableSchema))
+        .isEqualTo("'2023-10-31 04:59:27'");
+    // Fractional seconds truncated to 6 digits
+    assertThat(
+            dml.cleanDataTypeValueSql(
+                "'2023-10-31T04:59:27.123456789Z'", "datetime_col", tableSchema))
+        .isEqualTo("'2023-10-31 04:59:27.123456'");
+
+    // DATE extracts YYYY-MM-DD
+    assertThat(dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.000000Z'", "date_col", tableSchema))
+        .isEqualTo("'2023-10-31'");
+    assertThat(dml.cleanDataTypeValueSql("'2023-10-31'", "date_col", tableSchema))
+        .isEqualTo("'2023-10-31'");
+
+    // TIME extracts HH:MM:SS
+    assertThat(dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.000000Z'", "time_col", tableSchema))
+        .isEqualTo("'04:59:27.000000'");
+    assertThat(dml.cleanDataTypeValueSql("'04:59:27'", "time_col", tableSchema))
+        .isEqualTo("'04:59:27'");
+  }
+
+  /**
+   * Replicates Mambu bug scenario (b/503316273): source row has uppercase columns, template casing
+   * is LOWERCASE, and target schema in MySQL has uppercase column names. Verifies columns, values,
+   * ON DUPLICATE KEY UPDATE, and primary key clauses match correctly.
+   */
+  @Test
+  public void testMySql_columnCasingMismatch_extractsColumnsAndPk() {
+    // Arrange
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    dml.withColumnCasing("LOWERCASE");
+
+    String json =
+        "{"
+            + "\"ENCODEDKEY\":\"8a85871b8b80b7e2018b87bdcaec7c0d\","
+            + "\"MCC\":\"\","
+            + "\"NAME\":\"SHOP TEST\","
+            + "\"CREATIONDATE\":\"2023-10-31T04:59:27.000000Z\","
+            + "\"_metadata_schema\":\"bankjago\","
+            + "\"_metadata_table\":\"cardacceptor\","
+            + "\"_metadata_source_type\":\"oracle\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_primary_keys\":[\"ENCODEDKEY\"]"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("ENCODEDKEY", "VARCHAR(255)");
+    tableSchema.put("MCC", "INT");
+    tableSchema.put("NAME", "VARCHAR(255)");
+    tableSchema.put("CREATIONDATE", "DATETIME");
+
+    // Act
+    String columnsList = dml.getColumnsListSql(rowObj, tableSchema);
+    String columnsValues = dml.getColumnsValuesSql(rowObj, tableSchema);
+    String updateSql = dml.getColumnsUpdateSql(rowObj, tableSchema);
+    String pkFilterSql =
+        dml.getPrimaryKeyToValueFilterSql(rowObj, Arrays.asList("ENCODEDKEY"), tableSchema);
+
+    // Assert: Columns list contains destination columns
+    assertThat(columnsList).contains("`ENCODEDKEY`");
+    assertThat(columnsList).contains("`MCC`");
+    assertThat(columnsList).contains("`NAME`");
+    assertThat(columnsList).contains("`CREATIONDATE`");
+
+    // Assert: Empty string for MCC is converted to NULL, CREATIONDATE Zulu ISO is converted
+    assertThat(columnsValues).contains("'8a85871b8b80b7e2018b87bdcaec7c0d'");
+    assertThat(columnsValues).contains("NULL");
+    assertThat(columnsValues).contains("'SHOP TEST'");
+    assertThat(columnsValues).contains("'2023-10-31 04:59:27.000000'");
+
+    // Assert: Update clause sets MCC=NULL and cleaned datetime
+    assertThat(updateSql).contains("`MCC`=NULL");
+    assertThat(updateSql).contains("`CREATIONDATE`='2023-10-31 04:59:27.000000'");
+
+    // Assert: Primary key filter matches ENCODEDKEY
+    assertThat(pkFilterSql).isEqualTo("`ENCODEDKEY`='8a85871b8b80b7e2018b87bdcaec7c0d'");
+  }
 }

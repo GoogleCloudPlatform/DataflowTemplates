@@ -80,7 +80,23 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   @Override
   public String cleanDataTypeValueSql(
       String columnValue, String columnName, Map<String, String> tableSchema) {
-    String dataType = tableSchema.get(columnName);
+    if (columnValue == null
+        || columnValue.isEmpty()
+        || columnValue.equalsIgnoreCase("null")) {
+      return getNullValueSql();
+    }
+
+    String matchedColumn = getMatchingTableColumn(columnName, tableSchema);
+    String dataType =
+        matchedColumn != null ? tableSchema.get(matchedColumn) : tableSchema.get(columnName);
+    if (dataType == null && tableSchema != null) {
+      for (Map.Entry<String, String> entry : tableSchema.entrySet()) {
+        if (entry.getKey().equalsIgnoreCase(columnName)) {
+          dataType = entry.getValue();
+          break;
+        }
+      }
+    }
     if (dataType == null) {
       return columnValue;
     }
@@ -142,13 +158,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       return convertJsonToPostgresArray(columnValue, dataType.toUpperCase(), columnName);
     }
     return columnValue;
-  }
-
-  private String unquote(String value) {
-    if (value != null && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
-      return value.substring(1, value.length() - 1).replace("''", "'");
-    }
-    return value;
   }
 
   public String convertJsonToHstoreLiteral(String jsonValue) {
