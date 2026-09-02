@@ -187,6 +187,114 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
+  public void testSpannerChangeStreamsToPubsubWithDirectedReads() throws IOException {
+    // Arrange
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE `%s` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
+                + "  Float32Col FLOAT32,\n"
+                + "  Float64Col FLOAT64,\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+
+    String createChangeStreamStatement =
+        String.format("CREATE CHANGE STREAM %s_stream FOR %s", testName, testName);
+    spannerResourceManager.executeDdlStatement(createChangeStreamStatement);
+
+    TopicName outputTopic = pubsubResourceManager.createTopic(String.format("%s-topic", testName));
+    SubscriptionName outputSubscription =
+        pubsubResourceManager.createSubscription(
+            outputTopic, String.format("%s-subscription", testName));
+
+    // Act
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+            .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+            .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerChangeStreamName", testName + "_stream")
+            .addParameter("pubsubTopic", outputTopic.getTopic())
+            .addParameter("outputDataFormat", "JSON")
+            .addParameter("rpcPriority", "HIGH")
+            .addParameter("includeSpannerSource", "true")
+            .addParameter("outputMessageMetadata", "us-central1")
+            .addParameter(
+                "spannerDirectedReadOptions",
+                String.format(
+                    "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"%s\"}]}}",
+                    REGION));
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    List<Mutation> expectedData = generateTableRows(testName);
+    spannerResourceManager.write(expectedData);
+
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            // Expecting only 1 message, but that message has all of spanner table's data
+            .setMinMessages(1)
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    List<Map<String, Object>> records = new ArrayList<>();
+    pubsubCheck
+        .getReceivedMessageList()
+        .forEach(
+            receivedMessage -> {
+              JsonObject o =
+                  new JsonParser()
+                      .parse(receivedMessage.getMessage().getData().toStringUtf8())
+                      .getAsJsonObject();
+              assertEquals(
+                  o.get("spannerDatabaseId").getAsString(), spannerResourceManager.getDatabaseId());
+              assertEquals(
+                  o.get("spannerInstanceId").getAsString(), spannerResourceManager.getInstanceId());
+              assertEquals(o.get("outputMessageMetadata").getAsString(), "us-central1");
+              o.remove("spannerDatabaseId");
+              o.remove("spannerInstanceId");
+              o.remove("outputMessageMetadata");
+              DataChangeRecord s = new Gson().fromJson(o, DataChangeRecord.class);
+              for (Mod mod : s.getMods()) {
+                Map<String, Object> record = new HashMap<>();
+                try {
+                  record.putAll(JsonTestUtil.readRecord(mod.getKeysJson()));
+                } catch (Exception e) {
+                  throw new RuntimeException("Error reading " + mod.getKeysJson() + " as JSON.", e);
+                }
+                try {
+                  record.putAll(JsonTestUtil.readRecord(mod.getNewValuesJson()));
+                } catch (Exception e) {
+                  throw new RuntimeException(
+                      "Error reading " + mod.getNewValuesJson() + " as JSON.", e);
+                }
+                records.add(record);
+              }
+            });
+
+    List<Map<String, Object>> expectedRecords = new ArrayList<>();
+    expectedData.forEach(
+        mutation -> {
+          Map<String, Object> expectedRecord =
+              mutation.asMap().entrySet().stream()
+                  .collect(Collectors.toMap(e -> e.getKey(), e -> valueToString(e.getValue())));
+          expectedRecords.add(expectedRecord);
+        });
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  @Test
   public void testSpannerChangeStreamsToPubsubAvro() throws IOException {
     // Arrange
     String createTableStatement =
