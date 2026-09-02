@@ -144,49 +144,5 @@
                 </dependency>
             </dependencies>
         </profile>
-        <profile>
-            <id>templatesIntegrationTests</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <executions>
-                            <!-- Throttle Oracle Tests sequentially! -->
-                            <execution>
-                                <id>default-test</id>
-                                <configuration>
-                                    <excludes combine.self="override">
-                                        <exclude>**/*Oracle*IT.java</exclude>
-                                        <exclude>**/KafkaToKafkaIT.java</exclude>
-                                        <exclude>**/BigQueryAnomalyDetectionIT.java</exclude>
-                                    </excludes>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>oracle-integration-tests</id>
-                                <goals>
-                                    <goal>test</goal>
-                                </goals>
-                                <phase>test</phase>
-                                <configuration>
-                                    <includes combine.self="override">
-                                        <include>**/*Oracle*IT.java</include>
-                                    </includes>
-                                    <excludes combine.self="override" />
-                                    <parallel>none</parallel>
-                                    <threadCount>1</threadCount>
-                                    <perCoreThreadCount>false</perCoreThreadCount>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
     </profiles>
 </project>
-
