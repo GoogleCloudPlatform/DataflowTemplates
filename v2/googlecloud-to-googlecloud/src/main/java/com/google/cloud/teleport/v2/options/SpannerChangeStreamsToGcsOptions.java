@@ -198,4 +198,17 @@ public interface SpannerChangeStreamsToGcsOptions
   String getSpannerChangeStreamTvfNameList();
 
   void setSpannerChangeStreamTvfNameList(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      groupName = "Source",
+      description = "Cloud Spanner directed read options",
+      helpText =
+          "Directed read options for Cloud Spanner reads. The value must be a JSON string format of"
+              + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}).")
+  @Default.String("")
+  String getSpannerDirectedReadOptions();
+
+  void setSpannerDirectedReadOptions(String value);
 }

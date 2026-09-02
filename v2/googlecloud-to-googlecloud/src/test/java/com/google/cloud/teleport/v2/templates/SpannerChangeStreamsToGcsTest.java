@@ -245,6 +245,45 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   }
 
   @Test
+  public void testSpannerDirectedReadOptions() {
+    mockGetDialect();
+
+    exception.expect(SpannerException.class);
+    SpannerChangeStreamsToGcsOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
+    options.setOutputFileFormat(FileFormat.AVRO);
+    options.setGcsOutputDirectory(fakeDir);
+    options.setOutputFilenamePrefix(FILENAME_PREFIX);
+    options.setNumShards(NUM_SHARDS);
+    options.setTempLocation(fakeTempLocation);
+
+    Pipeline p = Pipeline.create(options);
+
+    Timestamp startTimestamp = Timestamp.now();
+    Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
+
+    p.apply(
+            SpannerIO.readChangeStream()
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
+                .withChangeStreamName("changestream")
+                .withInclusiveStartAt(startTimestamp)
+                .withInclusiveEndAt(endTimestamp)
+                .withRpcPriority(RpcPriority.HIGH)
+                .withDirectedReadOptions(
+                    "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}"))
+        .apply(
+            "Creating " + options.getWindowDuration() + " Window",
+            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+        .apply(
+            "Write To GCS",
+            FileFormatFactorySpannerChangeStreams.newBuilder().setOptions(options).build());
+
+    p.run();
+  }
+
+  @Test
   @Category(IntegrationTest.class)
   // This test can only be run locally with the following command:
   // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToGcsTest test

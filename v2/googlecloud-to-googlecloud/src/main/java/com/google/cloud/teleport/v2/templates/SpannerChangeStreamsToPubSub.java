@@ -188,18 +188,25 @@ public class SpannerChangeStreamsToPubSub {
           spannerConfig.withDatabaseRole(
               ValueProvider.StaticValueProvider.of(options.getSpannerDatabaseRole()));
     }
+    SpannerIO.ReadChangeStream readChangeStream =
+        SpannerIO.readChangeStream()
+            .withSpannerConfig(spannerConfig)
+            .withMetadataInstance(metadataInstanceId)
+            .withMetadataDatabase(metadataDatabaseId)
+            .withChangeStreamName(changeStreamName)
+            .withInclusiveStartAt(startTimestamp)
+            .withInclusiveEndAt(endTimestamp)
+            .withRpcPriority(rpcPriority)
+            .withMetadataTable(metadataTableName)
+            .withTvfNameList(tvfNameList);
+
+    String directedReadOptions = options.getSpannerDirectedReadOptions();
+    if (directedReadOptions != null && !directedReadOptions.isEmpty()) {
+      readChangeStream = readChangeStream.withDirectedReadOptions(directedReadOptions);
+    }
+
     pipeline
-        .apply(
-            SpannerIO.readChangeStream()
-                .withSpannerConfig(spannerConfig)
-                .withMetadataInstance(metadataInstanceId)
-                .withMetadataDatabase(metadataDatabaseId)
-                .withChangeStreamName(changeStreamName)
-                .withInclusiveStartAt(startTimestamp)
-                .withInclusiveEndAt(endTimestamp)
-                .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName)
-                .withTvfNameList(tvfNameList))
+        .apply(readChangeStream)
         .apply(
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()
