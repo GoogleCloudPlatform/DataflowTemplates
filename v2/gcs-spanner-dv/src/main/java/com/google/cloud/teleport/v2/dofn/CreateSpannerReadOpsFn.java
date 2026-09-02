@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.dofn;
 
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
@@ -30,12 +30,12 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final ValidationTableConfig tableConfig;
+  private final TableSelectionConfig tableConfig;
 
   public CreateSpannerReadOpsFn(
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      ValidationTableConfig tableConfig) {
+      TableSelectionConfig tableConfig) {
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
     this.tableConfig = tableConfig;

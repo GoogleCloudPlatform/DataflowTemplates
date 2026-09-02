@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
@@ -93,7 +93,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, ValidationTableConfig.empty()) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
             return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
@@ -137,7 +137,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 2. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, ValidationTableConfig.empty()) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -202,7 +202,7 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, ValidationTableConfig.empty()) {
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -240,7 +240,7 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
 
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, ValidationTableConfig.empty());
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty());
 
     assertNotNull(transform.readFromSpanner());
     pipeline.run();
@@ -264,10 +264,10 @@ public class SpannerReaderTransformTest implements Serializable {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
-    // 2. Setup ValidationTableConfig with only one table
+    // 2. Setup TableSelectionConfig with only one table
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("AllowedTable");
-    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
+    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
     // 3. Create Transform with overridden readFromSpanner to intercept and assert ReadOperations
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
@@ -324,10 +324,10 @@ public class SpannerReaderTransformTest implements Serializable {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
-    // 2. Setup ValidationTableConfig with the Source name
+    // 2. Setup TableSelectionConfig with the Source name
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("source_mapped_table");
-    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
+    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
     // 3. Create a Serializable SchemaMapper stub to translate spanner_mapped_table -> source_mapped_table
     IdentityMapper stubMapper = 

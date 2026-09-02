@@ -34,7 +34,7 @@ import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -269,7 +269,7 @@ public class GCSSpannerDV {
         order = 17,
         optional = true,
         description = "GCS path to a file containing a list of source tables to validate",
-        helpText = "A GCS file path containing a list of source tables to validate, with one table name per line.")
+        helpText = "A GCS file path containing a list of source tables to validate. This must be a plain text file with one table name per line (empty lines and trailing spaces are ignored).")
     @Default.String("")
     String getTableListFilePath();
 
@@ -286,8 +286,8 @@ public class GCSSpannerDV {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
-    ValidationTableConfig tableConfig = 
-        ValidationTableConfig.parseFromOptions(options);
+    TableSelectionConfig tableConfig = 
+        TableSelectionConfig.parseFromOptions(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 

@@ -22,7 +22,7 @@ import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
@@ -44,13 +44,13 @@ public class SpannerReaderTransform
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final ValidationTableConfig tableConfig;
+  private final TableSelectionConfig tableConfig;
 
   public SpannerReaderTransform(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      ValidationTableConfig tableConfig) {
+      TableSelectionConfig tableConfig) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;

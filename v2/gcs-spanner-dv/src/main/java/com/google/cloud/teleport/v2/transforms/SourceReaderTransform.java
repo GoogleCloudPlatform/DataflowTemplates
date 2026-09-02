@@ -22,7 +22,7 @@ import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
@@ -44,14 +44,14 @@ public class SourceReaderTransform
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
   private final CustomTransformation customTransformation;
-  private final ValidationTableConfig tableConfig;
+  private final TableSelectionConfig tableConfig;
 
   public SourceReaderTransform(
       String gcsInputDirectory,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
       CustomTransformation customTransformation,
-      ValidationTableConfig tableConfig) {
+      TableSelectionConfig tableConfig) {
     this.gcsInputDirectory = gcsInputDirectory;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
@@ -61,6 +61,21 @@ public class SourceReaderTransform
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin input) {
+    return input
+        .apply("CreateFilePatterns", Create.of(getFilePatterns(gcsInputDirectory, tableConfig)))
+        .apply(
+            "ReadSourceAvroRecords",
+            AvroIO.parseAllGenericRecords(new IdentityGenericRecordFn())
+                .withCoder(GenericRecordCoder.of()))
+        .apply(
+            "CalculateSourceRecordsHash",
+            ParDo.of(new SourceHashFn(ddlView, schemaMapperProvider, customTransformation))
+                .withSideInputs(ddlView));
+  }
+
+  // VisibleForTesting
+  static List<String> getFilePatterns(
+      String gcsInputDirectory, TableSelectionConfig tableConfig) {
     List<String> filePatterns = new ArrayList<>();
     String cleanPath =
         gcsInputDirectory.endsWith("/")
@@ -74,17 +89,6 @@ public class SourceReaderTransform
         filePatterns.add(cleanPath + "/" + table + "/**.avro");
       }
     }
-
-    return input
-        .apply("CreateFilePatterns", Create.of(filePatterns))
-        .apply(
-            "ReadSourceAvroRecords",
-            AvroIO.parseAllGenericRecords(new IdentityGenericRecordFn())
-                .withCoder(GenericRecordCoder.of()))
-        .apply(
-            "CalculateSourceRecordsHash",
-            ParDo.of(new SourceHashFn(ddlView, schemaMapperProvider, customTransformation))
-                .withSideInputs(ddlView));
+    return filePatterns;
   }
-
 }

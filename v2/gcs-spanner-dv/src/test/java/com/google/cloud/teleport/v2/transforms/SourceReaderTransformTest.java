@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.config.ValidationTableConfig;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import java.io.File;
@@ -83,7 +83,7 @@ public class SourceReaderTransformTest implements Serializable {
     // FileIO in beam support a variety of paths dynamically, such as GCS, S3 and TempFolder
     // This allows us to pass a tempFolder into the same transform that accepts a GCS path
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, ValidationTableConfig.empty());
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -126,7 +126,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 2. Run Pipeline with input path that has no avro files
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, ValidationTableConfig.empty());
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
     // AvroIO throws a RuntimeException when no files are found matching the pattern
@@ -165,7 +165,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, ValidationTableConfig.empty());
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
 
     pipeline.apply(transform);
 
@@ -207,7 +207,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, ValidationTableConfig.empty());
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -257,10 +257,10 @@ public class SourceReaderTransformTest implements Serializable {
     File skippedDir = tempFolder.newFolder("SkippedTable");
     createAvroFile(new File(skippedDir, "data.avro"), "SkippedTable", "2");
 
-    // 3. Configure ValidationTableConfig to only allow "AllowedTable"
+    // 3. Configure TableSelectionConfig to only allow "AllowedTable"
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("AllowedTable");
-    ValidationTableConfig tableConfig = ValidationTableConfig.parseFromOptions(options);
+    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
     // 4. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
@@ -322,5 +322,32 @@ public class SourceReaderTransformTest implements Serializable {
 
       dataFileWriter.append(record);
     }
+  }
+
+  @Test
+  public void testGetFilePatternsNullConfig() {
+    java.util.List<String> patterns = SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", null);
+    org.junit.Assert.assertEquals(1, patterns.size());
+    org.junit.Assert.assertEquals("gs://my-bucket/dir/**.avro", patterns.get(0));
+  }
+
+  @Test
+  public void testGetFilePatternsEmptyConfig() {
+    java.util.List<String> patterns = SourceReaderTransform.getFilePatterns("gs://my-bucket/dir/", TableSelectionConfig.empty());
+    org.junit.Assert.assertEquals(1, patterns.size());
+    // Also tests that trailing slash is handled correctly
+    org.junit.Assert.assertEquals("gs://my-bucket/dir/**.avro", patterns.get(0));
+  }
+
+  @Test
+  public void testGetFilePatternsWithTables() {
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    options.setTables("Table1,Table2");
+    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+
+    java.util.List<String> patterns = SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);
+    org.junit.Assert.assertEquals(2, patterns.size());
+    org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table1/**.avro"));
+    org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table2/**.avro"));
   }
 }
