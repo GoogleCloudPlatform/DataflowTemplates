@@ -1059,6 +1059,87 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when
+   * primaryKeys is empty but the record contains a rowid.
+   */
+  @Test
+  public void testDmlTemplate_supportsDeleteWithRowIdFallbackWhenNoPK() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"rowid\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+
+    String template = dml.getDmlTemplate(rowObj, primaryKeys);
+    assertEquals(dml.getDeleteDmlStatement(), template);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when
+   * primaryKeys is empty but the record contains _metadata_row_id.
+   */
+  @Test
+  public void testDmlTemplate_supportsDeleteWithMetadataRowIdFallbackWhenNoPK() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+
+    String template = dml.getDmlTemplate(rowObj, primaryKeys);
+    assertEquals(dml.getDeleteDmlStatement(), template);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates the correct
+   * WHERE filter using rowid when primaryKeys contains rowid.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_usesRowIdWhenInPrimaryKeys() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"rowid\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = Arrays.asList("rowid");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("rowid", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"rowid\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} falls back to _metadata_row_id
+   * when primaryKeys has rowid and rowObj has _metadata_row_id.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_resolvesMetadataRowId() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = Arrays.asList("rowid");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("rowid", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"rowid\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a rowid filter
+   * even when destination primaryKeys list is empty (table without PK).
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_usesRowIdFallbackWhenNoPK() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"rowid\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("rowid", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"rowid\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
    * Tests basic numeric type cleansing in Postgres, specifically ensuring empty strings become
    * NULL.
    */
