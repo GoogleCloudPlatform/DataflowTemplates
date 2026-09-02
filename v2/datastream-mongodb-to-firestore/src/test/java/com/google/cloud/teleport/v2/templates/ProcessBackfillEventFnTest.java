@@ -69,11 +69,12 @@ public class ProcessBackfillEventFnTest {
 
     when(mockClient.getDatabase(DATABASE_NAME)).thenReturn(mockDatabase);
     when(mockDatabase.getCollection(COLLECTION_NAME)).thenReturn(mockCollection);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag))
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.SUCCESSFUL_WRITE_TAG))
         .thenReturn(mockSuccessReceiver);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.failedWriteTag))
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.FAILED_WRITE_TAG))
         .thenReturn(mockFailureReceiver);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.severeFailedWriteTag))
+    when(mockReceiver.get(
+            DataStreamMongoDBToFirestore.ProcessBackfillEventFn.SEVERE_FAILED_WRITE_TAG))
         .thenReturn(mockSevereFailureReceiver);
 
     fn =
@@ -239,7 +240,7 @@ public class ProcessBackfillEventFnTest {
     // Verify output in finishBundle
     verify(mockFinishBundleContext, times(1))
         .output(
-            eq(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag),
+            eq(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.SUCCESSFUL_WRITE_TAG),
             eq(event1),
             any(org.joda.time.Instant.class),
             any(org.apache.beam.sdk.transforms.windowing.GlobalWindow.class));
