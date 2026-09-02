@@ -23,15 +23,21 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 
 public class SqlServerDialectAdapter implements DialectAdapter {
+
+  private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
   @Override
   public ImmutableList<String> discoverTables(
@@ -156,15 +162,37 @@ public class SqlServerDialectAdapter implements DialectAdapter {
         while (rs.next()) {
           String tableName = rs.getString("table_name");
           String typeName = rs.getString("type_name");
-          // Just map string to STRING and everything else to NUMERIC to simplify.
           SourceColumnIndexInfo.IndexType indexType = SourceColumnIndexInfo.IndexType.OTHER;
-          if (typeName.toUpperCase().contains("CHAR")) {
+          String upperType = typeName.toUpperCase();
+          if (upperType.contains("CHAR")
+              || upperType.contains("TEXT")
+              || upperType.equals("UNIQUEIDENTIFIER")
+              || upperType.equals("XML")
+              || upperType.equals("SYSNAME")
+              || upperType.equals("TIME")) {
             indexType = SourceColumnIndexInfo.IndexType.STRING;
-          } else if (typeName.toUpperCase().contains("INT")) {
+          } else if (upperType.contains("INT") || upperType.equals("BIT")) {
             indexType = SourceColumnIndexInfo.IndexType.NUMERIC;
+          } else if (upperType.contains("DECIMAL")
+              || upperType.contains("NUMERIC")
+              || upperType.contains("MONEY")) {
+            indexType = SourceColumnIndexInfo.IndexType.DECIMAL;
+          } else if (upperType.equals("FLOAT")) {
+            indexType = SourceColumnIndexInfo.IndexType.DOUBLE;
+          } else if (upperType.equals("REAL")) {
+            indexType = SourceColumnIndexInfo.IndexType.FLOAT;
+          } else if (upperType.equals("DATE")) {
+            indexType = SourceColumnIndexInfo.IndexType.DATE;
+          } else if (upperType.contains("DATE") || upperType.contains("DATETIME")) {
+            indexType = SourceColumnIndexInfo.IndexType.TIME_STAMP;
+          } else if (upperType.contains("BINARY")
+              || upperType.equals("IMAGE")
+              || upperType.equals("ROWVERSION")
+              || upperType.equals("TIMESTAMP")) {
+            indexType = SourceColumnIndexInfo.IndexType.BINARY;
           }
 
-          SourceColumnIndexInfo info =
+          SourceColumnIndexInfo.Builder infoBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(rs.getString("column_name"))
                   .setIndexName(rs.getString("index_name"))
@@ -173,11 +201,31 @@ public class SqlServerDialectAdapter implements DialectAdapter {
                   .setOrdinalPosition(rs.getLong("ordinal_position"))
                   .setCardinality(100L) // stub
                   .setColumnTypeName(typeName)
-                  .setIndexType(indexType)
-                  .build();
+                  .setIndexType(indexType);
+
+          if (indexType == SourceColumnIndexInfo.IndexType.STRING) {
+            com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
+                    .CollationReference
+                collation =
+                    com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
+                        .CollationReference.builder()
+                        .setDbCharacterSet("UTF8")
+                        .setDbCollation("Latin1_General_BIN")
+                        .setPadSpace(false)
+                        .build();
+            infoBuilder.setCollationReference(collation);
+            infoBuilder.setStringMaxLength(255);
+          } else if (indexType == SourceColumnIndexInfo.IndexType.DECIMAL) {
+            infoBuilder.setNumericScale(4);
+          }
+
+          if (upperType.equals("BIT")) {
+            customBoundaryQueryColumnKeys.add(
+                new ColumnKey(tableName, rs.getString("column_name")));
+          }
 
           if (builders.containsKey(tableName)) {
-            builders.get(tableName).add(info);
+            builders.get(tableName).add(infoBuilder.build());
           }
         }
       }
@@ -233,9 +281,13 @@ public class SqlServerDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    String colExpr =
+        customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))
+            ? String.format("CAST(%s AS BIGINT)", colName)
+            : colName;
     StringBuilder queryBuilder =
         new StringBuilder(
-            String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, tableName));
+            String.format("SELECT MIN(%s), MAX(%s) FROM %s", colExpr, colExpr, tableName));
     if (!partitionColumns.isEmpty()) {
       queryBuilder.append(" WHERE ");
       queryBuilder.append(
@@ -259,8 +311,59 @@ public class SqlServerDialectAdapter implements DialectAdapter {
 
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
-    // Basic implementation to satisfy the interface.
-    // Real implementation would need to return the ordered characters based on collation.
-    return "SELECT 'a' AS char_col";
+    return "WITH Nums AS ("
+        + " SELECT TOP 256 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n"
+        + " FROM sys.all_objects a CROSS JOIN sys.all_objects b"
+        + ") "
+        + "SELECT "
+        + "  NCHAR(n) AS charset_char,"
+        + "  NCHAR(n) AS equivalent_charset_char,"
+        + "  CAST(n AS BIGINT) AS codepoint_rank,"
+        + "  CAST(0 AS BIT) AS is_empty,"
+        + "  CAST(CASE WHEN n = 32 THEN 1 ELSE 0 END AS BIT) AS is_space,"
+        + "  NCHAR(n) AS equivalent_charset_char_pad_space,"
+        + "  CAST(CASE WHEN n < 32 THEN n WHEN n = 32 THEN 0 ELSE n - 1 END AS BIGINT) AS codepoint_rank_pad_space "
+        + "FROM Nums "
+        + "ORDER BY n";
+  }
+
+  private static final class ColumnKey implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private final String tableName;
+    private final String columnName;
+
+    public ColumnKey(String tableName, String columnName) {
+      this.tableName = clean(tableName);
+      this.columnName = clean(columnName);
+    }
+
+    private static String clean(String identifier) {
+      if (identifier == null) {
+        return "";
+      }
+      return identifier
+          .replace("`", "")
+          .replace("\"", "")
+          .replace("[", "")
+          .replace("]", "")
+          .toLowerCase();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ColumnKey)) {
+        return false;
+      }
+      ColumnKey that = (ColumnKey) o;
+      return tableName.equals(that.tableName) && columnName.equals(that.columnName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tableName, columnName);
+    }
   }
 }

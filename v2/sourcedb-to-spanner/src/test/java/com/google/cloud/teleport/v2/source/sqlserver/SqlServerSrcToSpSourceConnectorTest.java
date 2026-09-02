@@ -26,6 +26,8 @@ public class SqlServerSrcToSpSourceConnectorTest {
   public void testGetTypeMapping() {
     SqlServerSrcToSpSourceConnector connector = new SqlServerSrcToSpSourceConnector();
     assertTrue(connector.getTypeMapping().containsKey("INT"));
+    assertTrue(connector.getTypeMapping().containsKey("JSON"));
+    assertTrue(connector.getTypeMapping().containsKey("VECTOR"));
   }
 
   @Test
