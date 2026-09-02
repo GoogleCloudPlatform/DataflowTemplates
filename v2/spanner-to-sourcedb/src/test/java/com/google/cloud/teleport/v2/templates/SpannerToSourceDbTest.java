@@ -126,5 +126,4 @@ public class SpannerToSourceDbTest {
   public void testCalculateConnectionPoolSizePerWorker_Failure() {
     SpannerToSourceDb.calculateConnectionPoolSizePerWorker(2L, 10);
   }
-
 }
