@@ -95,7 +95,53 @@ public class ValidationTableConfig implements Serializable {
       }
     }
 
-    return new ValidationTableConfig(configuredTables);
+    ValidationTableConfig config = new ValidationTableConfig(configuredTables);
+    
+    // Fail-Fast: dynamically verify that every explicitly requested table has matching files in GCS
+    if (config.hasFilters()) {
+      verifyTablesExistInGcs(configuredTables, options.getGcsInputDirectory());
+    }
+
+    return config;
+  }
+
+  /**
+   * Helper function to fail fast if configured tables don't exist in GCS.
+   * We use FileSystems.match(List<String>) to batch the requests efficiently.
+   */
+  private static void verifyTablesExistInGcs(Set<String> configuredTables, String gcsInputDirectory) {
+    if (gcsInputDirectory == null || gcsInputDirectory.trim().isEmpty()) {
+      return;
+    }
+
+    String cleanPath = gcsInputDirectory.endsWith("/") ? gcsInputDirectory : gcsInputDirectory + "/";
+    java.util.List<String> tableList = new java.util.ArrayList<>(configuredTables);
+    java.util.List<String> filePatterns = new java.util.ArrayList<>();
+    
+    for (String table : tableList) {
+      filePatterns.add(cleanPath + table + "/**.avro");
+    }
+
+    try {
+      java.util.List<org.apache.beam.sdk.io.fs.MatchResult> matchResults = FileSystems.match(filePatterns);
+      java.util.List<String> missingTables = new java.util.ArrayList<>();
+
+      for (int i = 0; i < matchResults.size(); i++) {
+        org.apache.beam.sdk.io.fs.MatchResult result = matchResults.get(i);
+        // A wildcard match that finds no files returns Status.OK but empty metadata
+        if (result.status() != org.apache.beam.sdk.io.fs.MatchResult.Status.OK || result.metadata().isEmpty()) {
+          missingTables.add(tableList.get(i));
+        }
+      }
+
+      if (!missingTables.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Fail-Fast GCS Verification: The following configured tables do not have matching .avro files in the source directory: " 
+            + missingTables);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to verify table folders in GCS during initialization.", e);
+    }
   }
 
   public boolean hasFilters() {

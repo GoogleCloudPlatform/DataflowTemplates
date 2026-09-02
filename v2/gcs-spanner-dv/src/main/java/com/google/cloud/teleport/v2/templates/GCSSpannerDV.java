@@ -284,7 +284,6 @@ public class GCSSpannerDV {
   }
 
   public static PipelineResult run(Options options) {
-    // Create the pipeline first to ensure FileSystems (e.g., gs://) are registered
     Pipeline pipeline = Pipeline.create(options);
 
     ValidationTableConfig tableConfig = 

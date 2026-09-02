@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.dofn;
 
+import com.google.cloud.teleport.v2.config.ValidationTableConfig;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
@@ -25,21 +26,16 @@ import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(CreateSpannerReadOpsFn.class);
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig;
+  private final ValidationTableConfig tableConfig;
 
   public CreateSpannerReadOpsFn(
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      com.google.cloud.teleport.v2.config.ValidationTableConfig tableConfig) {
+      ValidationTableConfig tableConfig) {
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
     this.tableConfig = tableConfig;
@@ -54,7 +50,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
     for (String tableName : tableNames) {
       if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
-        LOG.info("Skipping Spanner table {} as it is not in the configured validation list.", tableName);
         continue;
       }
       String quote = ddl.dialect() == com.google.cloud.spanner.Dialect.POSTGRESQL ? "\"" : "`";
