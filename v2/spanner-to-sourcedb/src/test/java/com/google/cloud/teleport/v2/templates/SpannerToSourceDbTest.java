@@ -126,4 +126,14 @@ public class SpannerToSourceDbTest {
   public void testCalculateConnectionPoolSizePerWorker_Failure() {
     SpannerToSourceDb.calculateConnectionPoolSizePerWorker(2L, 10);
   }
+
+  @Test
+  public void testGetSourceSchema_Exception() {
+    try {
+      SpannerToSourceDb.getSourceSchema(options, Collections.singletonList(new Shard()));
+      Assert.fail("Expected RuntimeException or SQLException");
+    } catch (Exception e) {
+      Assert.assertNotNull(e);
+    }
+  }
 }

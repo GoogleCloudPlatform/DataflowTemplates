@@ -96,6 +96,13 @@ public class DataStreamToSpannerTest {
   }
 
   @Test
+  public void testGetShardingContext_Empty() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    when(options.getSourceConfigURL()).thenReturn("");
+    assertNotNull(DataStreamToSpanner.getShardingContext(options));
+  }
+
+  @Test
   public void testConfigureSchemaOverrides_fileBased() {
     DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getSchemaOverridesFilePath())
