@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -1280,5 +1282,83 @@ public class DatastreamToDMLTest {
     String expectedJsonb = "'{\"c\":true,\"d\":[1,2]}'";
     String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
     assertEquals(expectedJsonb, actualJsonb);
+  }
+
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_mssqlReplicationIndex() {
+    String json =
+        "{"
+            + "\"ID\": 100,"
+            + "\"NAME\": \"Alice\","
+            + "\"_metadata_schema\": \"dbo\","
+            + "\"_metadata_table\": \"Users\","
+            + "\"_metadata_deleted\": true,"
+            + "\"source_metadata\": {"
+            + "  \"replication_index\": [\"ID\"]"
+            + "}"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("id", "INTEGER");
+    tableSchema.put("name", "VARCHAR");
+
+    List<String> primaryKeys = Arrays.asList("id");
+    String pkFilter = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+
+    assertEquals("\"id\"=100", pkFilter);
+  }
+
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_fallbackToDestinationPrimaryKeys() {
+    String json =
+        "{"
+            + "\"id\": 200,"
+            + "\"name\": \"Bob\","
+            + "\"_metadata_schema\": \"dbo\","
+            + "\"_metadata_table\": \"Users\","
+            + "\"_metadata_deleted\": true"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("id", "INTEGER");
+
+    List<String> primaryKeys = Arrays.asList("id");
+    String pkFilter = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+
+    assertEquals("\"id\"=200", pkFilter);
+  }
+
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_throwsWhenDeleteHasNoPkValues() {
+    String json =
+        "{"
+            + "\"name\": \"Charlie\","
+            + "\"_metadata_schema\": \"dbo\","
+            + "\"_metadata_table\": \"Users\","
+            + "\"_metadata_deleted\": true"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("id", "INTEGER");
+
+    List<String> primaryKeys = Arrays.asList("id");
+    assertThrows(
+        DatastreamToDML.DeletedWithoutPrimaryKey.class,
+        () -> dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
+  }
+
+  @Test
+  public void testIsDelete_variousMetadataFormats() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    assertTrue(dml.isDelete(getRowObj("{\"_metadata_deleted\": true}")));
+    assertFalse(dml.isDelete(getRowObj("{\"_metadata_deleted\": false}")));
+    assertTrue(dml.isDelete(getRowObj("{\"_metadata_change_type\": \"DELETE\"}")));
+    assertFalse(dml.isDelete(getRowObj("{\"_metadata_change_type\": \"INSERT\"}")));
+    assertTrue(dml.isDelete(getRowObj("{\"source_metadata\": {\"is_deleted\": true}}")));
+    assertTrue(dml.isDelete(getRowObj("{\"source_metadata\": {\"change_type\": \"DELETE\"}}")));
   }
 }

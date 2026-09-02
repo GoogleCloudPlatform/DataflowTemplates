@@ -90,9 +90,12 @@ public class DatastreamRow {
 
   public String getStringValue(String field) {
     if (this.jsonRow != null) {
-      return jsonRow.get(field).textValue();
+      JsonNode node = jsonRow.get(field);
+      return (node != null && !node.isNull()) ? node.textValue() : null;
     } else {
-      return (String) tableRow.get(field);
+      return (tableRow != null && tableRow.get(field) != null)
+          ? (String) tableRow.get(field)
+          : null;
     }
   }
 
@@ -100,7 +103,7 @@ public class DatastreamRow {
     if (this.jsonRow != null) {
       return jsonRow.get(field);
     } else {
-      return tableRow.get(field);
+      return tableRow != null ? tableRow.get(field) : null;
     }
   }
 
@@ -108,10 +111,37 @@ public class DatastreamRow {
   public List<String> getPrimaryKeys() {
     List<String> primaryKeys = new ArrayList<>();
     if (this.jsonRow != null) {
-      for (JsonNode node : jsonRow.get("_metadata_primary_keys")) {
-        primaryKeys.add(node.asText());
+      JsonNode pkNode = jsonRow.get("_metadata_primary_keys");
+      if (pkNode != null && !pkNode.isNull() && pkNode.isArray()) {
+        for (JsonNode node : pkNode) {
+          primaryKeys.add(node.asText());
+        }
       }
-    } else {
+      if (primaryKeys.isEmpty()) {
+        // Fallback to source metadata (e.g. for SQL Server CDC where primary_keys may be in
+        // replication_index)
+        JsonNode sourceMetadata = jsonRow.get("_metadata_source");
+        if (sourceMetadata == null || sourceMetadata.isNull()) {
+          sourceMetadata = jsonRow.get("source_metadata");
+        }
+        if (sourceMetadata != null && !sourceMetadata.isNull()) {
+          JsonNode srcPks = sourceMetadata.get("primary_keys");
+          if (srcPks != null && !srcPks.isNull() && srcPks.isArray()) {
+            for (JsonNode node : srcPks) {
+              primaryKeys.add(node.asText());
+            }
+          }
+          if (primaryKeys.isEmpty()) {
+            JsonNode replIndex = sourceMetadata.get("replication_index");
+            if (replIndex != null && !replIndex.isNull() && replIndex.isArray()) {
+              for (JsonNode node : replIndex) {
+                primaryKeys.add(node.asText());
+              }
+            }
+          }
+        }
+      }
+    } else if (this.tableRow != null) {
       if (tableRow.get("_metadata_primary_keys") != null) {
         Object primaryKeysObj = tableRow.get("_metadata_primary_keys");
         if (primaryKeysObj instanceof List) {
@@ -123,21 +153,44 @@ public class DatastreamRow {
           // steps.
           LOG.info("primaryKeysObj is String type {}", primaryKeysObj);
           String primaryKeysStr = (String) primaryKeysObj;
-          String[] elements = primaryKeysStr.substring(1, primaryKeysStr.length() - 1).split(",");
-          primaryKeys =
-              new ArrayList<>(
-                  Arrays.asList(elements).stream()
-                      .map(s -> StringUtils.unwrap(s.trim(), "\""))
-                      .collect(Collectors.toList()));
-
+          if (primaryKeysStr.startsWith("[") && primaryKeysStr.endsWith("]")) {
+            String[] elements = primaryKeysStr.substring(1, primaryKeysStr.length() - 1).split(",");
+            primaryKeys =
+                new ArrayList<>(
+                    Arrays.asList(elements).stream()
+                        .map(s -> StringUtils.unwrap(s.trim(), "\""))
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList()));
+          }
         } else {
           throw new RuntimeException(
               "_metadata_primary_keys has unsupported type: " + primaryKeysObj.getClass());
         }
       }
+      if (primaryKeys.isEmpty() && tableRow.get("replication_index") != null) {
+        Object replObj = tableRow.get("replication_index");
+        if (replObj instanceof List) {
+          primaryKeys = (List<String>) replObj;
+        }
+      }
+      if (primaryKeys.isEmpty() && tableRow.get("_metadata_source") instanceof Map) {
+        Map<String, Object> srcMeta = (Map<String, Object>) tableRow.get("_metadata_source");
+        if (srcMeta.get("replication_index") instanceof List) {
+          primaryKeys = (List<String>) srcMeta.get("replication_index");
+        } else if (srcMeta.get("primary_keys") instanceof List) {
+          primaryKeys = (List<String>) srcMeta.get("primary_keys");
+        }
+      } else if (primaryKeys.isEmpty() && tableRow.get("source_metadata") instanceof Map) {
+        Map<String, Object> srcMeta = (Map<String, Object>) tableRow.get("source_metadata");
+        if (srcMeta.get("replication_index") instanceof List) {
+          primaryKeys = (List<String>) srcMeta.get("replication_index");
+        } else if (srcMeta.get("primary_keys") instanceof List) {
+          primaryKeys = (List<String>) srcMeta.get("primary_keys");
+        }
+      }
     }
 
-    if (this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
+    if ("oracle".equals(this.getSourceType()) && primaryKeys.isEmpty()) {
       primaryKeys.add(DEFAULT_ORACLE_PRIMARY_KEY);
     }
 
@@ -184,8 +237,63 @@ public class DatastreamRow {
     }
   }
 
+  public boolean isDeleted() {
+    if (this.jsonRow != null) {
+      JsonNode deletedNode = jsonRow.get("_metadata_deleted");
+      if (deletedNode != null && !deletedNode.isNull()) {
+        return deletedNode.asBoolean();
+      }
+      JsonNode changeTypeNode = jsonRow.get("_metadata_change_type");
+      if (changeTypeNode != null && !changeTypeNode.isNull()) {
+        return "DELETE".equalsIgnoreCase(changeTypeNode.asText());
+      }
+      JsonNode sourceMetadata = jsonRow.get("_metadata_source");
+      if (sourceMetadata == null || sourceMetadata.isNull()) {
+        sourceMetadata = jsonRow.get("source_metadata");
+      }
+      if (sourceMetadata != null && !sourceMetadata.isNull()) {
+        JsonNode srcDeleted = sourceMetadata.get("is_deleted");
+        if (srcDeleted != null && !srcDeleted.isNull()) {
+          return srcDeleted.asBoolean();
+        }
+        JsonNode srcChangeType = sourceMetadata.get("change_type");
+        if (srcChangeType != null && !srcChangeType.isNull()) {
+          return "DELETE".equalsIgnoreCase(srcChangeType.asText());
+        }
+      }
+      return false;
+    } else if (this.tableRow != null) {
+      Object deleted = tableRow.get("_metadata_deleted");
+      if (deleted instanceof Boolean) {
+        return (Boolean) deleted;
+      } else if (deleted instanceof String) {
+        return Boolean.parseBoolean((String) deleted);
+      }
+      Object changeType = tableRow.get("_metadata_change_type");
+      if (changeType instanceof String) {
+        return "DELETE".equalsIgnoreCase((String) changeType);
+      }
+      Map<String, Object> srcMeta = null;
+      if (tableRow.get("_metadata_source") instanceof Map) {
+        srcMeta = (Map<String, Object>) tableRow.get("_metadata_source");
+      } else if (tableRow.get("source_metadata") instanceof Map) {
+        srcMeta = (Map<String, Object>) tableRow.get("source_metadata");
+      }
+      if (srcMeta != null) {
+        if (srcMeta.get("is_deleted") instanceof Boolean) {
+          return (Boolean) srcMeta.get("is_deleted");
+        }
+        if (srcMeta.get("change_type") instanceof String) {
+          return "DELETE".equalsIgnoreCase((String) srcMeta.get("change_type"));
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
   public List<String> getSortFields(Boolean addIsDeleted) {
-    List<String> sortFields = getSortFields();
+    List<String> sortFields = new ArrayList<>(getSortFields());
     if (addIsDeleted) {
       sortFields.add("_metadata_deleted");
     }
@@ -193,11 +301,13 @@ public class DatastreamRow {
   }
 
   public List<String> getSortFields() {
-    if (this.getSourceType().equals("mysql")) {
+    String sourceType = this.getSourceType();
+    if ("mysql".equalsIgnoreCase(sourceType)) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
-    } else if (this.getSourceType().equals("postgresql")) {
+    } else if ("postgresql".equalsIgnoreCase(sourceType)
+        || "postgres".equalsIgnoreCase(sourceType)) {
       return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
-    } else if (this.getSourceType().equals("sqlserver")) {
+    } else if ("sqlserver".equalsIgnoreCase(sourceType)) {
       return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
     } else {
       // Current default is oracle.

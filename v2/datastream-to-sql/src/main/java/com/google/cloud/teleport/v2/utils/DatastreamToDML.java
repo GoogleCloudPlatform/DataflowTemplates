@@ -81,7 +81,7 @@ public abstract class DatastreamToDML
   public abstract String getTargetSchemaName(DatastreamRow row);
 
   /* An exception for delete DML without a primary key */
-  private class DeletedWithoutPrimaryKey extends RuntimeException {
+  public static class DeletedWithoutPrimaryKey extends RuntimeException {
     public DeletedWithoutPrimaryKey(String errorMessage) {
       super(errorMessage);
     }
@@ -298,6 +298,15 @@ public abstract class DatastreamToDML
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
     List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+    if (sourcePrimaryKeys.isEmpty() && primaryKeys != null && !primaryKeys.isEmpty()) {
+      sourcePrimaryKeys = new ArrayList<>();
+      for (String destPk : primaryKeys) {
+        String matchingSourceField = findMatchingFieldName(rowObj, destPk);
+        if (matchingSourceField != null) {
+          sourcePrimaryKeys.add(matchingSourceField);
+        }
+      }
+    }
     List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
     List<String> orderByValues =
         getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
@@ -320,9 +329,27 @@ public abstract class DatastreamToDML
         failsafeValue);
   }
 
+  public boolean isDelete(JsonNode rowObj) {
+    return DatastreamRow.of(rowObj).isDeleted();
+  }
+
+  private String findMatchingFieldName(JsonNode rowObj, String targetName) {
+    if (rowObj.has(targetName)) {
+      return targetName;
+    }
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String field = it.next();
+      if (applyCasingLogic(field, this.columnCasing).equalsIgnoreCase(targetName)
+          || field.equalsIgnoreCase(targetName)) {
+        return field;
+      }
+    }
+    return null;
+  }
+
   public String getDmlTemplate(JsonNode rowObj, List<String> primaryKeys) {
-    Boolean isDelete = rowObj.get("_metadata_deleted").asBoolean();
-    Boolean hasPrimaryKeys = primaryKeys.size() != 0;
+    boolean isDelete = isDelete(rowObj);
+    boolean hasPrimaryKeys = primaryKeys != null && !primaryKeys.isEmpty();
     if (isDelete && !hasPrimaryKeys) {
       throw new DeletedWithoutPrimaryKey("Delete DML without primary keys cannot be applied");
     } else if (isDelete) {
@@ -364,6 +391,12 @@ public abstract class DatastreamToDML
   public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
     JsonNode columnObj = rowObj.get(columnName);
+    if (columnObj == null) {
+      String matchingName = findMatchingFieldName(rowObj, columnName);
+      if (matchingName != null) {
+        columnObj = rowObj.get(matchingName);
+      }
+    }
     if (columnObj == null) {
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
       return "";
@@ -491,17 +524,42 @@ public abstract class DatastreamToDML
     for (String sourcePkName : sourcePrimaryKeys) {
       String destinationPkName = applyCasingLogic(sourcePkName, this.columnCasing);
 
-      if (primaryKeys.contains(destinationPkName)) {
+      if (primaryKeys != null && primaryKeys.contains(destinationPkName)) {
         String columnValue = getValueSql(rowObj, sourcePkName, tableSchema);
-        String quotedDestinationPkName = quote(destinationPkName);
+        if (!columnValue.isEmpty()) {
+          String quotedDestinationPkName = quote(destinationPkName);
 
-        if (pkToValueSql.isEmpty()) {
-          pkToValueSql = quotedDestinationPkName + "=" + columnValue;
-        } else {
-          pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+          if (pkToValueSql.isEmpty()) {
+            pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+          } else {
+            pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+          }
         }
       }
     }
+
+    if (pkToValueSql.isEmpty() && primaryKeys != null) {
+      for (String destPkName : primaryKeys) {
+        String matchingSourceField = findMatchingFieldName(rowObj, destPkName);
+        if (matchingSourceField != null) {
+          String columnValue = getValueSql(rowObj, matchingSourceField, tableSchema);
+          if (!columnValue.isEmpty()) {
+            String quotedDestinationPkName = quote(destPkName);
+            if (pkToValueSql.isEmpty()) {
+              pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+            } else {
+              pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+            }
+          }
+        }
+      }
+    }
+
+    if (pkToValueSql.isEmpty() && isDelete(rowObj)) {
+      throw new DeletedWithoutPrimaryKey(
+          "Delete DML without primary keys cannot be applied: " + rowObj);
+    }
+
     return pkToValueSql;
   }
 
