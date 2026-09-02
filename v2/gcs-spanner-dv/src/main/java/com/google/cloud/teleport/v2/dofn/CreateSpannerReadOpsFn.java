@@ -19,13 +19,11 @@ import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
+
 public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
   private final PCollectionView<Ddl> ddlView;
@@ -57,8 +55,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       // and avoid table level stages.
       String query =
           String.format(
-              "SELECT *, '%s' as __tableName__ FROM %s%s%s",
-              tableName, quote, tableName, quote);
+              "SELECT *, '%s' as __tableName__ FROM %s%s%s", tableName, quote, tableName, quote);
       c.output(ReadOperation.create().withQuery(query));
     }
   }

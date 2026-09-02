@@ -14,7 +14,6 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
-import com.google.cloud.teleport.v2.dto.Column;
 
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MATCHED_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SOURCE_TAG;
@@ -306,7 +305,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                 .withoutDefaults());
   }
 
-  private String formatRecordKey(List<Column> columns) {
+  private String formatRecordKey(List<com.google.cloud.teleport.v2.dto.Column> columns) {
     if (columns == null) {
       return "";
     }

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.config;
 
 import static org.junit.Assert.assertEquals;
@@ -45,7 +60,7 @@ public class TableSelectionConfigTest {
   @Test
   public void testParseFromOptionsWithTables() throws IOException {
     options.setTables("table1, table2,table3 ");
-    
+
     File inputDir = tempFolder.newFolder("input");
     options.setGcsInputDirectory(inputDir.getAbsolutePath());
     new File(inputDir, "table1").mkdirs();
@@ -102,14 +117,15 @@ public class TableSelectionConfigTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class, () -> TableSelectionConfig.parseFromOptions(options));
-    assertTrue(thrown.getMessage().contains("Please configure only one of these parameters at a time."));
+    assertTrue(
+        thrown.getMessage().contains("Please configure only one of these parameters at a time."));
   }
 
   @Test
   public void testParseFromOptionsNoGcsInputDirectory() {
     options.setTables("table1,table2");
     options.setGcsInputDirectory(null);
-    
+
     TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
     assertTrue(config.hasFilters());
     assertEquals(2, config.getSourceTables().size());
@@ -153,4 +169,3 @@ public class TableSelectionConfigTest {
     assertFalse(config.isSpannerTableAllowed("unknown_table", mockSchemaMapper));
   }
 }
-

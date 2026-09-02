@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Configuration classes for Data Validation pipeline.
- */
+/** Configuration classes for Data Validation pipeline. */
 package com.google.cloud.teleport.v2.config;

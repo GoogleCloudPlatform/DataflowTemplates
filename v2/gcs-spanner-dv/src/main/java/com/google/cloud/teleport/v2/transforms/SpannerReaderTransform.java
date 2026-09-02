@@ -17,12 +17,12 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.dofn.CreateSpannerReadOpsFn;
 import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
@@ -61,7 +61,9 @@ public class SpannerReaderTransform
   public @NotNull PCollection<ComparisonRecord> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
-            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, tableConfig)).withSideInputs(ddlView))
+            "CreateReadOps",
+            ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, tableConfig))
+                .withSideInputs(ddlView))
         .apply("ReadSpannerRecords", readFromSpanner())
         .apply(
             "CalculateSpannerRecordsHash",

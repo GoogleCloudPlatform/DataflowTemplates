@@ -14,20 +14,20 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.dofn;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
@@ -53,7 +53,8 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
 
     // Execute
     doFn.processElement(context);
@@ -86,7 +87,8 @@ public class CreateSpannerReadOpsFnTest {
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     // Create DoFn
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
 
     // Execute
     doFn.processElement(context);
@@ -114,14 +116,16 @@ public class CreateSpannerReadOpsFnTest {
     Ddl ddl = mock(Ddl.class);
 
     when(ddl.dialect()).thenReturn(com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
-    when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA", "TableB", "TableC"));
+    when(ddl.getTablesOrderedByReference())
+        .thenReturn(ImmutableList.of("TableA", "TableB", "TableC"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableA,TableC");
     TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
@@ -129,13 +133,18 @@ public class CreateSpannerReadOpsFnTest {
     verify(context, times(2)).output(argument.capture());
 
     // Only TableA and TableC ReadOperations are generated. TableB is skipped.
-    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'TableA' as __tableName__ FROM `TableA`"));
-    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'TableC' as __tableName__ FROM `TableC`"));
+    verify(context)
+        .output(
+            ReadOperation.create().withQuery("SELECT *, 'TableA' as __tableName__ FROM `TableA`"));
+    verify(context)
+        .output(
+            ReadOperation.create().withQuery("SELECT *, 'TableC' as __tableName__ FROM `TableC`"));
   }
 
   @Test
   public void testProcessElementWithMissingSpannerTable() {
-    // Configured Table Missing in Spanner: DDL contains TableA, TableB. Config specifies TableA, TableC.
+    // Configured Table Missing in Spanner: DDL contains TableA, TableB. Config specifies TableA,
+    // TableC.
     PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
     DoFn<Void, ReadOperation>.ProcessContext context = mock(DoFn.ProcessContext.class);
     Ddl ddl = mock(Ddl.class);
@@ -148,15 +157,18 @@ public class CreateSpannerReadOpsFnTest {
     options.setTables("TableA,TableC");
     TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
     ArgumentCaptor<ReadOperation> argument = ArgumentCaptor.forClass(ReadOperation.class);
     verify(context, times(1)).output(argument.capture());
 
-    //Only TableA is queried. TableC is naturally skipped because it's not in the DDL.
-    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'TableA' as __tableName__ FROM `TableA`"));
+    // Only TableA is queried. TableC is naturally skipped because it's not in the DDL.
+    verify(context)
+        .output(
+            ReadOperation.create().withQuery("SELECT *, 'TableA' as __tableName__ FROM `TableA`"));
   }
 
   @Test
@@ -174,7 +186,8 @@ public class CreateSpannerReadOpsFnTest {
     options.setTables("TableB");
     TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
 
     doFn.processElement(context);
 
@@ -184,7 +197,7 @@ public class CreateSpannerReadOpsFnTest {
 
   @Test
   public void testProcessElementWithSchemaMapper() {
-    // Table Config specifies source_table which was renamed to spanner_table in Spanner. 
+    // Table Config specifies source_table which was renamed to spanner_table in Spanner.
     // SchemaMapper should successfully map spanner_table to source_table.
     PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
     DoFn<Void, ReadOperation>.ProcessContext context = mock(DoFn.ProcessContext.class);
@@ -199,16 +212,22 @@ public class CreateSpannerReadOpsFnTest {
     TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
     ISchemaMapper mockMapper = mock(ISchemaMapper.class);
-    when(mockMapper.getSourceTableName(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("spanner_table")))
+    when(mockMapper.getSourceTableName(
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.eq("spanner_table")))
         .thenReturn("source_table");
 
-    CreateSpannerReadOpsFn doFn = new CreateSpannerReadOpsFn(ddlView, (d) -> mockMapper, tableConfig);
+    CreateSpannerReadOpsFn doFn =
+        new CreateSpannerReadOpsFn(ddlView, (d) -> mockMapper, tableConfig);
 
     doFn.processElement(context);
 
     ArgumentCaptor<ReadOperation> argument = ArgumentCaptor.forClass(ReadOperation.class);
     verify(context, times(1)).output(argument.capture());
 
-    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'spanner_table' as __tableName__ FROM `spanner_table`"));
+    verify(context)
+        .output(
+            ReadOperation.create()
+                .withQuery("SELECT *, 'spanner_table' as __tableName__ FROM `spanner_table`"));
   }
 }

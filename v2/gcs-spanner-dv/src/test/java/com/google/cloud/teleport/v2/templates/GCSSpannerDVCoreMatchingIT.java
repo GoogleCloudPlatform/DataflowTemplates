@@ -396,8 +396,7 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
 
     // 1. Create Source Avro records for Users and AccountRoles
     GenericRecord usersRecord =
-        new GCSSpannerDVAvroSetupHelper.RecordBuilder(
-                usersTableDef, null)
+        new GCSSpannerDVAvroSetupHelper.RecordBuilder(usersTableDef, null)
             .set("user_id", 1L)
             .set("event_id", "E1")
             .set("full_name", "Alice")
@@ -413,8 +412,14 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
             .build();
 
     String gcsInputDirectory = getGcsPath("input");
-    uploadAvroFileToGcs("input/Users_ConfiguredTables/users.avro", usersTableDef.schema, Arrays.asList(usersRecord));
-    uploadAvroFileToGcs("input/AccountRoles/roles.avro", GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema, Arrays.asList(rolesRecord));
+    uploadAvroFileToGcs(
+        "input/Users_ConfiguredTables/users.avro",
+        usersTableDef.schema,
+        Arrays.asList(usersRecord));
+    uploadAvroFileToGcs(
+        "input/AccountRoles/roles.avro",
+        GCSSpannerDVAvroSetupHelper.TableDef.ACCOUNT_ROLES.schema,
+        Arrays.asList(rolesRecord));
 
     // 2. Inject Spanner Records (Destination)
     spannerResourceManager.write(
@@ -463,7 +468,7 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     // 4. Assert BigQuery Validation Results
-    // Note: If table filtering wasn't working, the result would have been MISMATCHED 
+    // Note: If table filtering wasn't working, the result would have been MISMATCHED
     // due to the discrepancy in the AccountRoles table. Since it's filtered, we expect a MATCH.
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,

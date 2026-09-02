@@ -14,22 +14,21 @@
  * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.Serializable;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -93,7 +92,8 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+        new SpannerReaderTransform(
+            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
             return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
@@ -137,7 +137,8 @@ public class SpannerReaderTransformTest implements Serializable {
     // 2. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+        new SpannerReaderTransform(
+            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -202,7 +203,8 @@ public class SpannerReaderTransformTest implements Serializable {
     // 3. Create Transform
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+        new SpannerReaderTransform(
+            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -240,7 +242,8 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
 
     SpannerReaderTransform transform =
-        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+        new SpannerReaderTransform(
+            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty());
 
     assertNotNull(transform.readFromSpanner());
     pipeline.run();
@@ -252,12 +255,22 @@ public class SpannerReaderTransformTest implements Serializable {
     Ddl ddl =
         Ddl.builder()
             .createTable("AllowedTable")
-            .column("id").int64().notNull().endColumn()
-            .primaryKey().asc("id").end()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
             .endTable()
             .createTable("SkippedTable")
-            .column("id").int64().notNull().endColumn()
-            .primaryKey().asc("id").end()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
             .endTable()
             .build();
 
@@ -281,21 +294,27 @@ public class SpannerReaderTransformTest implements Serializable {
               public @NotNull PCollection<Struct> expand(
                   @NotNull PCollection<ReadOperation> input) {
                 // Assert that the pipeline only generated a ReadOperation for "AllowedTable"
-                PAssert.that(input).satisfies(
-                    ops -> {
-                      int count = 0;
-                      for (ReadOperation op : ops) {
-                        count++;
-                        assertTrue(
-                            "Expected ReadOperation for AllowedTable but got: " + op.getQuery().getSql(),
-                            op.getQuery().getSql().contains("AllowedTable"));
-                      }
-                      assertEquals(1, count);
-                      return null;
-                    });
+                PAssert.that(input)
+                    .satisfies(
+                        ops -> {
+                          int count = 0;
+                          for (ReadOperation op : ops) {
+                            count++;
+                            assertTrue(
+                                "Expected ReadOperation for AllowedTable but got: "
+                                    + op.getQuery().getSql(),
+                                op.getQuery().getSql().contains("AllowedTable"));
+                          }
+                          assertEquals(1, count);
+                          return null;
+                        });
 
                 // Return an empty PCollection of Structs to safely complete the pipeline
-                return input.getPipeline().apply("MockEmptyRead", Create.empty(org.apache.beam.sdk.values.TypeDescriptor.of(Struct.class)));
+                return input
+                    .getPipeline()
+                    .apply(
+                        "MockEmptyRead",
+                        Create.empty(org.apache.beam.sdk.values.TypeDescriptor.of(Struct.class)));
               }
             };
           }
@@ -312,12 +331,22 @@ public class SpannerReaderTransformTest implements Serializable {
     Ddl ddl =
         Ddl.builder()
             .createTable("spanner_mapped_table")
-            .column("id").int64().notNull().endColumn()
-            .primaryKey().asc("id").end()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
             .endTable()
             .createTable("skipped_table")
-            .column("id").int64().notNull().endColumn()
-            .primaryKey().asc("id").end()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
             .endTable()
             .build();
 
@@ -329,15 +358,18 @@ public class SpannerReaderTransformTest implements Serializable {
     options.setTables("source_mapped_table");
     TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
-    // 3. Create a Serializable SchemaMapper stub to translate spanner_mapped_table -> source_mapped_table
-    IdentityMapper stubMapper = 
+    // 3. Create a Serializable SchemaMapper stub to translate spanner_mapped_table ->
+    // source_mapped_table
+    IdentityMapper stubMapper =
         new IdentityMapper(ddl) {
           @Override
           public String getSourceTableName(String namespace, String spannerTableName) {
-            if ("spanner_mapped_table".equals(spannerTableName)) return "source_mapped_table";
+            if ("spanner_mapped_table".equals(spannerTableName)) {
+              return "source_mapped_table";
+            }
             return super.getSourceTableName(namespace, spannerTableName);
           }
-    };
+        };
 
     // 4. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
@@ -350,22 +382,29 @@ public class SpannerReaderTransformTest implements Serializable {
               @Override
               public @NotNull PCollection<Struct> expand(
                   @NotNull PCollection<ReadOperation> input) {
-                // Assert that the pipeline correctly translated the spanner name and generated one ReadOperation
-                PAssert.that(input).satisfies(
-                    ops -> {
-                      int count = 0;
-                      for (ReadOperation op : ops) {
-                        count++;
-                        assertTrue(
-                            "Expected ReadOperation for spanner_mapped_table but got: " + op.getQuery().getSql(),
-                            op.getQuery().getSql().contains("spanner_mapped_table"));
-                      }
-                      assertEquals(1, count);
-                      return null;
-                    });
+                // Assert that the pipeline correctly translated the spanner name and generated one
+                // ReadOperation
+                PAssert.that(input)
+                    .satisfies(
+                        ops -> {
+                          int count = 0;
+                          for (ReadOperation op : ops) {
+                            count++;
+                            assertTrue(
+                                "Expected ReadOperation for spanner_mapped_table but got: "
+                                    + op.getQuery().getSql(),
+                                op.getQuery().getSql().contains("spanner_mapped_table"));
+                          }
+                          assertEquals(1, count);
+                          return null;
+                        });
 
                 // Return an empty PCollection of Structs
-                return input.getPipeline().apply("MockEmptyRead2", Create.empty(org.apache.beam.sdk.values.TypeDescriptor.of(Struct.class)));
+                return input
+                    .getPipeline()
+                    .apply(
+                        "MockEmptyRead2",
+                        Create.empty(org.apache.beam.sdk.values.TypeDescriptor.of(Struct.class)));
               }
             };
           }

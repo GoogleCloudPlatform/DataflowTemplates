@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -34,7 +35,6 @@ import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -255,6 +255,7 @@ public class GCSSpannerDV {
     String getTransformationCustomParameters();
 
     void setTransformationCustomParameters(String value);
+
     @TemplateParameter.Text(
         order = 16,
         optional = true,
@@ -269,7 +270,8 @@ public class GCSSpannerDV {
         order = 17,
         optional = true,
         description = "GCS path to a file containing a list of source tables to validate",
-        helpText = "A GCS file path containing a list of source tables to validate. This must be a plain text file with one table name per line (empty lines and trailing spaces are ignored).")
+        helpText =
+            "A GCS file path containing a list of source tables to validate. This must be a plain text file with one table name per line (empty lines and trailing spaces are ignored).")
     @Default.String("")
     String getTableListFilePath();
 
@@ -286,8 +288,7 @@ public class GCSSpannerDV {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
-    TableSelectionConfig tableConfig = 
-        TableSelectionConfig.parseFromOptions(options);
+    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
@@ -358,5 +359,4 @@ public class GCSSpannerDV {
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
   }
-
 }

@@ -30,8 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Configuration class for table-based filtering in Data Validation pipeline.
- * Encapsulates parsing, matching, and validation of source and Spanner tables.
+ * Configuration class for table-based filtering in Data Validation pipeline. Encapsulates parsing,
+ * matching, and validation of source and Spanner tables.
  */
 public class TableSelectionConfig implements Serializable {
 
@@ -43,9 +43,7 @@ public class TableSelectionConfig implements Serializable {
     this.configuredSourceTables = configuredSourceTables;
   }
 
-  /**
-   * Creates an empty configuration with no filters. Useful for testing.
-   */
+  /** Creates an empty configuration with no filters. Useful for testing. */
   public static TableSelectionConfig empty() {
     return new TableSelectionConfig(new HashSet<>());
   }
@@ -80,8 +78,7 @@ public class TableSelectionConfig implements Serializable {
       try {
         ResourceId resourceId = FileSystems.matchNewResource(tableListFilePath, false);
         try (BufferedReader reader =
-            new BufferedReader(
-                Channels.newReader(FileSystems.open(resourceId), "UTF-8"))) {
+            new BufferedReader(Channels.newReader(FileSystems.open(resourceId), "UTF-8"))) {
           String line;
           while ((line = reader.readLine()) != null) {
             String trimmed = line.trim();
@@ -96,7 +93,7 @@ public class TableSelectionConfig implements Serializable {
     }
 
     TableSelectionConfig config = new TableSelectionConfig(configuredTables);
-    
+
     return config;
   }
 
@@ -122,8 +119,8 @@ public class TableSelectionConfig implements Serializable {
   }
 
   /**
-   * Checks if a Spanner table is allowed by the configuration.
-   * Translates the Spanner table name to its source table counterpart using the schema mapper.
+   * Checks if a Spanner table is allowed by the configuration. Translates the Spanner table name to
+   * its source table counterpart using the schema mapper.
    *
    * @param spannerTableName The Spanner table name.
    * @param schemaMapper The schema mapper to translate the table name.
@@ -137,7 +134,9 @@ public class TableSelectionConfig implements Serializable {
       String sourceTable = schemaMapper.getSourceTableName("", spannerTableName);
       return configuredSourceTables.contains(sourceTable);
     } catch (NoSuchElementException e) {
-      LOG.warn("Could not map Spanner table '{}' back to a source table. Skipping validation.", spannerTableName);
+      LOG.warn(
+          "Could not map Spanner table '{}' back to a source table. Skipping validation.",
+          spannerTableName);
       return false;
     }
   }

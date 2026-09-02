@@ -16,16 +16,17 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
+import com.google.cloud.teleport.v2.config.TableSelectionConfig;
 import com.google.cloud.teleport.v2.dofn.SourceHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
-import org.apache.beam.sdk.io.FileIO;
-import org.apache.beam.sdk.transforms.Create;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -33,9 +34,6 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
-import java.util.ArrayList;
 
 public class SourceReaderTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
@@ -73,9 +71,7 @@ public class SourceReaderTransform
                 .withSideInputs(ddlView));
   }
 
-  // VisibleForTesting
-  static List<String> getFilePatterns(
-      String gcsInputDirectory, TableSelectionConfig tableConfig) {
+  static List<String> getFilePatterns(String gcsInputDirectory, TableSelectionConfig tableConfig) {
     List<String> filePatterns = new ArrayList<>();
     String cleanPath =
         gcsInputDirectory.endsWith("/")
