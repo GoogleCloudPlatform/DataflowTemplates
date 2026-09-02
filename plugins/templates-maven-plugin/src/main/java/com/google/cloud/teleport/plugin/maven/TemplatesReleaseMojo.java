@@ -74,8 +74,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Pattern DISPLAY_NAME_PATTERN =
       Pattern.compile(
-          "^\\s*display_name:\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\r\\n#]+))",
-          Pattern.MULTILINE);
+          "^\\s*display_name:\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\r\\n#]+))", Pattern.MULTILINE);
 
   private record ManifestEntry(String name, String path) {}
 

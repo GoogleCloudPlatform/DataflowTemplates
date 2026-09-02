@@ -25,13 +25,16 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
     displayName = "Pub/Sub to BigTable (YAML)",
-    description = "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+    description =
+        "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToBigTable.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
-    documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The input Pub/Sub topic must exist.",
+    requirements = {
+      "The input Pub/Sub topic must exist.",
       "The mapToField Pub/Sub error topic must exist.",
       "The output BigTable table must exist."
     },
@@ -45,8 +48,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "Pub/Sub input topic",
       helpText = "Pub/Sub topic to read the input from.",
-      example = "projects/your-project-id/topics/your-topic-name"
-    )
+      example = "projects/your-project-id/topics/your-topic-name")
   @Validation.Required
   String getTopic();
 
@@ -56,8 +58,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "The message format.",
       helpText = "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.",
-      example = ""
-    )
+      example = "")
   @Validation.Required
   String getFormat();
 
@@ -66,9 +67,9 @@ public interface PubSubToBigTableYaml {
       name = "schema",
       optional = false,
       description = "Data schema.",
-      helpText = "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
-      example = ""
-    )
+      helpText =
+          "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
+      example = "")
   @Validation.Required
   String getSchema();
 
@@ -77,9 +78,9 @@ public interface PubSubToBigTableYaml {
       name = "attributes",
       optional = true,
       description = "List of attribute keys.",
-      helpText = "List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
-      example = ""
-    )
+      helpText =
+          "List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
+      example = "")
   String getAttributes();
 
   @TemplateParameter.Text(
@@ -87,19 +88,20 @@ public interface PubSubToBigTableYaml {
       name = "attributesMap",
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
-      helpText = "Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
-      example = ""
-    )
+      helpText =
+          "Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
+      example = "")
   String getAttributesMap();
 
   @TemplateParameter.Text(
       order = 6,
       name = "idAttribute",
       optional = true,
-      description = "The attribute on incoming Pub/Sub messages to use as a unique record identifier.",
-      helpText = "The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.",
-      example = ""
-    )
+      description =
+          "The attribute on incoming Pub/Sub messages to use as a unique record identifier.",
+      helpText =
+          "The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.",
+      example = "")
   String getIdAttribute();
 
   @TemplateParameter.Text(
@@ -107,9 +109,9 @@ public interface PubSubToBigTableYaml {
       name = "timestampAttribute",
       optional = true,
       description = "Message value to use as element timestamp.",
-      helpText = "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
-      example = ""
-    )
+      helpText =
+          "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
+      example = "")
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
@@ -118,8 +120,7 @@ public interface PubSubToBigTableYaml {
       optional = true,
       description = "Error handling configuration",
       helpText = "This option specifies whether and where to output error rows.",
-      example = ""
-    )
+      example = "")
   String getErrorHandling();
 
   @TemplateParameter.Text(
@@ -128,8 +129,7 @@ public interface PubSubToBigTableYaml {
       optional = true,
       description = "Pub/Sub subscription",
       helpText = "Pub/Sub subscription to read the input from.",
-      example = "projects/your-project-id/subscriptions/your-subscription-name"
-    )
+      example = "projects/your-project-id/subscriptions/your-subscription-name")
   String getSubscription();
 
   @TemplateParameter.Text(
@@ -137,9 +137,9 @@ public interface PubSubToBigTableYaml {
       name = "language",
       optional = false,
       description = "Language used to define the expressions.",
-      helpText = "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
-      example = ""
-    )
+      helpText =
+          "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
+      example = "")
   @Validation.Required
   String getLanguage();
 
@@ -148,9 +148,9 @@ public interface PubSubToBigTableYaml {
       name = "fields",
       optional = false,
       description = "Field mapping configuration",
-      helpText = "The output fields to compute, each mapping to the expression or callable that creates them.",
-      example = ""
-    )
+      helpText =
+          "The output fields to compute, each mapping to the expression or callable that creates them.",
+      example = "")
   @Validation.Required
   String getFields();
 
@@ -160,8 +160,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "BigTable project ID",
       helpText = "The Google Cloud project ID of the BigTable instance.",
-      example = ""
-    )
+      example = "")
   @Validation.Required
   String getProjectId();
 
@@ -171,8 +170,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "BigTable instance ID",
       helpText = "The BigTable instance ID.",
-      example = ""
-    )
+      example = "")
   @Validation.Required
   String getInstanceId();
 
@@ -182,8 +180,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "BigTable output table",
       helpText = "BigTable table ID to write the output to.",
-      example = ""
-    )
+      example = "")
   @Validation.Required
   String getTableId();
 
@@ -192,9 +189,9 @@ public interface PubSubToBigTableYaml {
       name = "windowing",
       optional = true,
       description = "Windowing options",
-      helpText = "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
-      example = ""
-    )
+      helpText =
+          "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
+      example = "")
   String getWindowing();
 
   @TemplateParameter.Text(
@@ -203,8 +200,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "Pub/Sub transformation error topic",
       helpText = "Pub/Sub error topic for failed transformation messages.",
-      example = "projects/your-project-id/topics/your-error-topic-name"
-    )
+      example = "projects/your-project-id/topics/your-error-topic-name")
   @Validation.Required
   String getOutputDeadLetterPubSubTopic();
 }

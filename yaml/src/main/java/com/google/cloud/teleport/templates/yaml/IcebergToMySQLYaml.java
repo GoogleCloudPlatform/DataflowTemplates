@@ -26,13 +26,20 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Iceberg to MySql (YAML)",
-    description = "The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg and outputs the records to MySQL table.",
+    description =
+        "The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg and outputs the records to MySQL table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "IcebergToMySQL.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/mysql_options.yaml", "options/iceberg_options.yaml"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/mysql_options.yaml",
+      "options/iceberg_options.yaml"
+    },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {"The Input Iceberg table must exist.",
+    requirements = {
+      "The Input Iceberg table must exist.",
       "The Output MySQL table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
@@ -45,8 +52,7 @@ public interface IcebergToMySQLYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:mysql://your-host:3306/your-db"
-    )
+      example = "jdbc:mysql://your-host:3306/your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -56,8 +62,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "Username for the JDBC connection.",
       helpText = "The database username.",
-      example = "my_user"
-    )
+      example = "my_user")
   String getUsername();
 
   @TemplateParameter.Password(
@@ -66,18 +71,17 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "Password for the JDBC connection.",
       helpText = "The database password.",
-      example = "my_secret_password"
-    )
+      example = "my_secret_password")
   String getPassword();
 
   @TemplateParameter.Text(
       order = 4,
       name = "driverClassName",
       optional = true,
-      description = "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver",
+      description =
+          "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.mysql.jdbc.Driver"
-    )
+      example = "com.mysql.jdbc.Driver")
   @Default.String("com.mysql.jdbc.Driver")
   String getDriverClassName();
 
@@ -87,8 +91,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
       helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mysql-42.2.23.jar"
-    )
+      example = "gs://your-bucket/mysql-42.2.23.jar")
   String getDriverJars();
 
   @TemplateParameter.Text(
@@ -97,8 +100,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "JDBC connection properties.",
       helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2"
-    )
+      example = "key1=value1;key2=value2")
   String getConnectionProperties();
 
   @TemplateParameter.Text(
@@ -107,8 +109,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
       helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]"
-    )
+      example = "[\"SET TIME ZONE UTC\"]")
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
@@ -116,9 +117,9 @@ public interface IcebergToMySQLYaml {
       name = "jdbcType",
       optional = true,
       description = "Type of JDBC source. Default: mysql.",
-      helpText = "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mysql"
-    )
+      helpText =
+          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
+      example = "mysql")
   @Default.String("mysql")
   String getJdbcType();
 
@@ -128,8 +129,7 @@ public interface IcebergToMySQLYaml {
       optional = false,
       description = "The name of the table to write to.",
       helpText = "The name of the database table to write data to.",
-      example = "public.my_destination_table"
-    )
+      example = "public.my_destination_table")
   @Validation.Required
   String getLocation();
 
@@ -139,8 +139,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "The SQL statement to use for inserting records.",
       helpText = "The SQL query for inserting records, with placeholders for values.",
-      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)"
-    )
+      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
   String getWriteStatement();
 
   @TemplateParameter.Integer(
@@ -149,8 +148,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "The number of records to group for each write operation.",
       helpText = "The number of records to group together for each write.",
-      example = "1000"
-    )
+      example = "1000")
   @Default.Integer(1000)
   Integer getBatchSize();
 
@@ -160,8 +158,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "False"
-    )
+      example = "False")
   Boolean getAutoSharding();
 
   @TemplateParameter.Text(
@@ -170,8 +167,7 @@ public interface IcebergToMySQLYaml {
       optional = false,
       description = "A fully-qualified table identifier.",
       helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
-      example = "my_dataset.my_table"
-    )
+      example = "my_dataset.my_table")
   @Validation.Required
   String getTable();
 
@@ -181,8 +177,7 @@ public interface IcebergToMySQLYaml {
       optional = false,
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
-      example = "my_hadoop_catalog"
-    )
+      example = "my_hadoop_catalog")
   @Validation.Required
   String getCatalogName();
 
@@ -192,8 +187,7 @@ public interface IcebergToMySQLYaml {
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
-      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}"
-    )
+      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
   @Validation.Required
   String getCatalogProperties();
 
@@ -203,8 +197,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
       helpText = "A map of properties to pass to the Hadoop Configuration.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}"
-    )
+      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
   String getConfigProperties();
 
   @TemplateParameter.Text(
@@ -213,8 +206,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
       helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
-      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]"
-    )
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
   String getDrop();
 
   @TemplateParameter.Text(
@@ -223,8 +215,7 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18"
-    )
+      example = "age > 18")
   String getFilter();
 
   @TemplateParameter.Text(
@@ -233,7 +224,6 @@ public interface IcebergToMySQLYaml {
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]"
-    )
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
 }
