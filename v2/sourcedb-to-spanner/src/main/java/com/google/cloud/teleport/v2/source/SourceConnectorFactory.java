@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 
 /** Factory to create {@link ISrcToSpSourceConnector} instances based on pipeline options. */
@@ -46,7 +47,7 @@ public class SourceConnectorFactory {
     } else if (SourceDbToSpannerOptions.ORACLE_SOURCE_DIALECT.equals(dialect)) {
       return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.SQLSERVER_SOURCE_DIALECT.equals(dialect)) {
-      return new com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector();
+      return new SqlServerSrcToSpSourceConnector();
     }
     /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
     throw new IllegalArgumentException("Unsupported source database dialect: " + dialect);
@@ -73,7 +74,7 @@ public class SourceConnectorFactory {
       case Constants.ORACLE_SOURCE_TYPE:
         return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
       case Constants.SQLSERVER_SOURCE_TYPE:
-        return new com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector();
+        return new SqlServerSrcToSpSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }
@@ -95,7 +96,7 @@ public class SourceConnectorFactory {
     } else if (dialect == SQLDialect.ORACLE) {
       return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
     } else if (dialect == SQLDialect.SQLSERVER) {
-      return new com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector();
+      return new SqlServerSrcToSpSourceConnector();
     }
     throw new IllegalArgumentException("Unsupported SQL dialect: " + dialect);
   }

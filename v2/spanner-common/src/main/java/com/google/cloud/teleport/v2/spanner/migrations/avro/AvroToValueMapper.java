@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +70,7 @@ import org.apache.commons.lang3.math.NumberUtils;
  */
 public class AvroToValueMapper {
 
-  interface AvroToValueFunction {
+  public interface AvroToValueFunction {
     Value apply(Object recordValue, Schema fieldSchema);
   }
 
@@ -207,37 +208,99 @@ public class AvroToValueMapper {
     return gsqlFunctions;
   }
 
-  /* TODO Support for AvroArrays to PG */
   static Map<Type, AvroToValueFunction> getPgMap() {
     Map<Type, AvroToValueFunction> pgFunctions = new HashMap<>();
     pgFunctions.put(
         Type.pgBool(),
         (recordValue, fieldSchema) -> Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgBool()),
+        (recordValue, fieldSchema) ->
+            Value.boolArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToBoolean)));
+
+    pgFunctions.put(
         Type.pgInt8(),
         (recordValue, fieldSchema) -> Value.int64(avroFieldToLong(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgInt8()),
+        (recordValue, fieldSchema) ->
+            Value.int64Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToLong)));
+
     pgFunctions.put(
         Type.pgFloat4(),
         (recordValue, fieldSchema) -> Value.float32(avroFieldToFloat32(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgFloat4()),
+        (recordValue, fieldSchema) ->
+            Value.float32Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToFloat32)));
+
+    pgFunctions.put(
         Type.pgFloat8(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgFloat8()),
+        (recordValue, fieldSchema) ->
+            Value.float64Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToDouble)));
+
     pgFunctions.put(
         Type.pgVarchar(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgVarchar()),
+        (recordValue, fieldSchema) ->
+            Value.stringArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
+
+    pgFunctions.put(
         Type.pgText(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgText()),
+        (recordValue, fieldSchema) ->
+            Value.stringArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
+
+    pgFunctions.put(
         Type.pgJsonb(),
         (recordValue, fieldSchema) -> Value.pgJsonb(avroFieldToString(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgJsonb()),
+        (recordValue, fieldSchema) ->
+            Value.pgJsonbArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
+
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
             Value.numeric(avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgNumeric()),
+        (recordValue, fieldSchema) ->
+            Value.numericArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToNumericBigDecimal)));
+
+    pgFunctions.put(
         Type.pgBytea(),
         (recordValue, fieldSchema) -> Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgBytea()),
+        (recordValue, fieldSchema) ->
+            Value.bytesArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToByteArray)));
+
     pgFunctions.put(
         Type.pgCommitTimestamp(),
         (recordValue, fieldSchema) ->
@@ -247,8 +310,22 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) ->
             Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgArray(Type.pgTimestamptz()),
+        (recordValue, fieldSchema) ->
+            Value.timestampArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToTimestamp)));
+
+    pgFunctions.put(
         Type.pgDate(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgDate()),
+        (recordValue, fieldSchema) ->
+            Value.dateArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToDate)));
+
     pgFunctions.put(
         Type.pgUuid(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
@@ -279,6 +356,29 @@ public class AvroToValueMapper {
     try {
       if (recordValue == null) {
         return null;
+      }
+      // It is required for BIT data type.
+      if (recordValue instanceof Boolean) {
+        return ((Boolean) recordValue) ? 1L : 0L;
+      }
+      // It is required for BIT data type.
+      if ("true".equalsIgnoreCase(recordValue.toString())) {
+        return 1L;
+      }
+      // It is required for BIT data type.
+      if ("false".equalsIgnoreCase(recordValue.toString())) {
+        return 0L;
+      }
+      if (recordValue instanceof ByteBuffer) {
+        // For scenarios where source 8 bytes need to be converted to Long.
+        ByteBuffer buf = ((ByteBuffer) recordValue).duplicate();
+        if (buf.remaining() == 8) {
+          return buf.getLong();
+        }
+        // If size of buf is less than 8, then underflow exception will be thrown.
+        byte[] bytes = new byte[buf.remaining()];
+        buf.get(bytes);
+        return new BigInteger(bytes).longValue();
       }
       return Long.parseLong(recordValue.toString());
     } catch (Exception e) {
@@ -330,6 +430,14 @@ public class AvroToValueMapper {
     try {
       if (recordValue == null) {
         return null;
+      }
+      if (recordValue instanceof ByteBuffer) {
+        // If source byte buffer need to be translated to String.
+        // For eg: rowversion in SQL Server to String.
+        ByteBuffer buf = ((ByteBuffer) recordValue).duplicate();
+        byte[] bytes = new byte[buf.remaining()];
+        buf.get(bytes);
+        return Hex.encodeHexString(bytes);
       }
       return recordValue.toString();
     } catch (Exception e) {
@@ -392,13 +500,18 @@ public class AvroToValueMapper {
       }
 
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
-        // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
-
-        if (s.length() % 2 == 1) {
-          s = "0" + s;
+        try {
+          // Translate hex string to byte array.
+          String hexStr = s.replace("-", "");
+          if (hexStr.length() % 2 == 1) {
+            hexStr = "0" + hexStr;
+          }
+          return ByteArray.copyFrom(Hex.decodeHex(hexStr));
+        } catch (Exception e) {
+          // Translate string to byte array.
+          return ByteArray.copyFrom(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
-        return ByteArray.copyFrom(Hex.decodeHex(s));
       }
       return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {
@@ -468,8 +581,14 @@ public class AvroToValueMapper {
       if (recordValue == null) {
         return null;
       }
-      for (int i = 0; i < Array.getLength(recordValue); i++) {
-        recordArrayList.add(valueExtractor.extract(Array.get(recordValue, i), elementSchema));
+      if (recordValue instanceof Collection<?>) {
+        for (Object item : (Collection<?>) recordValue) {
+          recordArrayList.add(valueExtractor.extract(item, elementSchema));
+        }
+      } else {
+        for (int i = 0; i < Array.getLength(recordValue); i++) {
+          recordArrayList.add(valueExtractor.extract(Array.get(recordValue, i), elementSchema));
+        }
       }
       return recordArrayList;
 

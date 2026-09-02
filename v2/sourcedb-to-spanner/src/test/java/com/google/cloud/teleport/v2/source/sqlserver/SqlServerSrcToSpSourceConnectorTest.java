@@ -16,8 +16,10 @@
 package com.google.cloud.teleport.v2.source.sqlserver;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.iowrapper.config.defaults.SqlServerConfigDefaults;
 import org.junit.Test;
 
 public class SqlServerSrcToSpSourceConnectorTest {
@@ -26,6 +28,8 @@ public class SqlServerSrcToSpSourceConnectorTest {
   public void testGetTypeMapping() {
     SqlServerSrcToSpSourceConnector connector = new SqlServerSrcToSpSourceConnector();
     assertTrue(connector.getTypeMapping().containsKey("INT"));
+    assertTrue(connector.getTypeMapping().containsKey("JSON"));
+    assertTrue(connector.getTypeMapping().containsKey("VECTOR"));
   }
 
   @Test
@@ -33,5 +37,21 @@ public class SqlServerSrcToSpSourceConnectorTest {
     SqlServerSrcToSpSourceConnector connector = new SqlServerSrcToSpSourceConnector();
     String url = connector.getJdbcUrl("localhost", 1433, "mydb", "prop1=val1", null, null);
     assertEquals("jdbc:sqlserver://localhost:1433;databaseName=mydb;encrypt=false;prop1=val1", url);
+
+    String urlNoProps = connector.getJdbcUrl("localhost", 1433, "mydb", "", null, null);
+    assertEquals("jdbc:sqlserver://localhost:1433;databaseName=mydb;encrypt=false", urlNoProps);
+  }
+
+  @Test
+  public void testConnectorConfigMethods() {
+    SqlServerSrcToSpSourceConnector connector = new SqlServerSrcToSpSourceConnector();
+    assertEquals("sqlserver", connector.getSourceType());
+    assertEquals(
+        SqlServerConfigDefaults.DEFAULT_SQLSERVER_VALUE_MAPPING_PROVIDER,
+        connector.getJdbcValueMappingsProvider());
+    assertTrue(SqlServerConfigDefaults.DEFAULT_SQLSERVER_URL_PROPERTIES.isEmpty());
+    assertEquals("mydb", connector.getSourceSchemaReference("mydb", "dbo").jdbc().dbName());
+    assertEquals("dbo", connector.getSourceSchemaReference("mydb", "dbo").jdbc().namespace());
+    assertNotNull(connector.getJdbcIOWrapperConfigBuilder());
   }
 }
