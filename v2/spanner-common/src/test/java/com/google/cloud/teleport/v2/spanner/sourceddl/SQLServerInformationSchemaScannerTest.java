@@ -58,11 +58,12 @@ public class SQLServerInformationSchemaScannerTest {
     when(mockTablesRs.getString("TABLE_NAME")).thenReturn("Users");
 
     when(mockMetaData.getColumns(any(), eq("dbo"), eq("Users"), eq("%"))).thenReturn(mockColsRs);
-    when(mockColsRs.next()).thenReturn(true, true, false);
-    when(mockColsRs.getString("COLUMN_NAME")).thenReturn("UserId", "Name");
-    when(mockColsRs.getString("TYPE_NAME")).thenReturn("bigint", "nvarchar");
-    when(mockColsRs.getString("IS_NULLABLE")).thenReturn("NO", "YES");
-    when(mockColsRs.getString("IS_AUTOINCREMENT")).thenReturn("NO", "NO");
+    when(mockColsRs.next()).thenReturn(true, true, true, false);
+    when(mockColsRs.getString("COLUMN_NAME")).thenReturn("UserId", "Name", "FullName");
+    when(mockColsRs.getString("TYPE_NAME")).thenReturn("bigint", "nvarchar", "nvarchar");
+    when(mockColsRs.getString("IS_NULLABLE")).thenReturn("NO", "YES", "YES");
+    when(mockColsRs.getString("IS_AUTOINCREMENT")).thenReturn("YES", "NO", "NO");
+    when(mockColsRs.getString("IS_GENERATEDCOLUMN")).thenReturn("NO", "NO", "YES");
 
     when(mockMetaData.getPrimaryKeys(any(), eq("dbo"), eq("Users"))).thenReturn(mockPkRs);
     when(mockPkRs.next()).thenReturn(true, false);
@@ -81,7 +82,7 @@ public class SQLServerInformationSchemaScannerTest {
     assertNotNull(table);
     assertEquals("Users", table.name());
     assertEquals("dbo", table.schema());
-    assertEquals(2, table.columns().size());
+    assertEquals(3, table.columns().size());
     assertEquals(1, table.primaryKeyColumns().size());
     assertEquals("UserId", table.primaryKeyColumns().get(0));
 
@@ -89,11 +90,19 @@ public class SQLServerInformationSchemaScannerTest {
     assertEquals("UserId", col1.name());
     assertEquals("bigint", col1.type());
     assertFalse(col1.isNullable());
+    assertFalse(col1.isGenerated());
 
     SourceColumn col2 = table.columns().get(1);
     assertEquals("Name", col2.name());
     assertEquals("nvarchar", col2.type());
     assertTrue(col2.isNullable());
+    assertFalse(col2.isGenerated());
+
+    SourceColumn col3 = table.columns().get(2);
+    assertEquals("FullName", col3.name());
+    assertEquals("nvarchar", col3.type());
+    assertTrue(col3.isNullable());
+    assertTrue(col3.isGenerated());
   }
 
   @Test

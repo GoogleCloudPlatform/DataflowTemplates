@@ -67,7 +67,9 @@ public class SQLServerSpToSrcSourceConnectorTest {
     when(mockShard.getDbName()).thenReturn("testdb");
 
     String url = connector.getConnectionUrl(mockShard);
-    assertEquals("jdbc:sqlserver://localhost:1433;databaseName=testdb", url);
+    assertEquals(
+        "jdbc:sqlserver://localhost:1433;databaseName=testdb;trustServerCertificate=true;encrypt=false",
+        url);
   }
 
   @Test
@@ -89,5 +91,21 @@ public class SQLServerSpToSrcSourceConnectorTest {
     connector.initConnectionHelper(List.of(mockShard), 10);
 
     verify(mockConnectionHelper).init(any(ConnectionHelperRequest.class));
+  }
+
+  @Test
+  public void testClassifyException() {
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(new java.sql.SQLSyntaxErrorException("syntax error")));
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(new java.sql.SQLDataException("data error")));
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(new java.sql.SQLNonTransientConnectionException("conn error")));
+    org.junit.Assert.assertNull(
+        connector.classifyException(new java.sql.SQLTransientConnectionException("transient")));
+    org.junit.Assert.assertNull(connector.classifyException(new RuntimeException("generic")));
   }
 }

@@ -21,14 +21,23 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONObject;
@@ -245,5 +254,203 @@ public final class SQLServerDMLGeneratorTest {
 
     String sql = response.getDmlStatement();
     assertTrue(sql.contains("target.[FirstName] = 'CustomJohn'"));
+  }
+
+  @Test
+  public void testJsonDataType() {
+    String jsonVal = "{\"key\":\"value\",\"num\":123}";
+
+    // Test SQL Server json column with GSQL JSON and PG jsonb / string / varchar
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "JSON"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "PG_JSONB"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "STRING"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "PG_VARCHAR"));
+
+    // Test SQL Server varchar column with JSON / PG_JSONB
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("varchar", jsonVal, "+00:00", "JSON"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("varchar", jsonVal, "+00:00", "PG_JSONB"));
+
+    // Test getMappedColumnValue with JSON column
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T")
+            .column("json_col")
+            .type(Type.json())
+            .endColumn()
+            .column("pg_jsonb_col")
+            .type(Type.pgJsonb())
+            .endColumn()
+            .endTable()
+            .build();
+    Column gsqlJsonCol = ddl.table("T").column("json_col");
+    SourceColumn sourceJsonCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("json_col").type("json").build();
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("json_col", jsonVal);
+    valuesJson.put("pg_jsonb_col", jsonVal);
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            gsqlJsonCol, sourceJsonCol, valuesJson, "+00:00", new ArrayList<>()));
+
+    // Test getMappedColumnValue with PG_JSONB column
+    Column pgJsonbCol = ddl.table("T").column("pg_jsonb_col");
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgJsonbCol, sourceJsonCol, valuesJson, "+00:00", new ArrayList<>()));
+  }
+
+  @Test
+  public void testVectorDataType() {
+    String vectorVal = "[1.5,2.5,3.5]";
+
+    // Test SQL Server vector column with GSQL ARRAY and PG ARRAY
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getColumnValueByType(
+            "vector", vectorVal, "+00:00", "ARRAY<FLOAT64>"));
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getColumnValueByType("vector", vectorVal, "+00:00", "PG_ARRAY"));
+
+    // Test getMappedColumnValue with GSQL ARRAY column
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T")
+            .column("vec_col")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("pg_vec_col")
+            .type(Type.pgArray(Type.pgFloat8()))
+            .endColumn()
+            .endTable()
+            .build();
+    Column gsqlArrayCol = ddl.table("T").column("vec_col");
+    SourceColumn sourceVectorCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("vec_col").type("vector").build();
+    JSONObject valuesJson =
+        new JSONObject("{\"vec_col\":[1.5,2.5,3.5],\"pg_vec_col\":[1.5,2.5,3.5]}");
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            gsqlArrayCol, sourceVectorCol, valuesJson, "+00:00", new ArrayList<>()));
+
+    // Test getMappedColumnValue with PG ARRAY column
+    Column pgArrayCol = ddl.table("T").column("pg_vec_col");
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgArrayCol, sourceVectorCol, valuesJson, "+00:00", new ArrayList<>()));
+  }
+
+  @Test
+  public void testGeneratedPkColumnUpsertAndDelete() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("generated_pk_column_table")
+            .column("first_name_col")
+            .type(Type.string())
+            .endColumn()
+            .column("last_name_col")
+            .type(Type.string())
+            .endColumn()
+            .column("generated_column_col")
+            .type(Type.string())
+            .endColumn()
+            .primaryKey()
+            .asc("generated_column_col")
+            .end()
+            .endTable()
+            .build();
+
+    SourceTable sourceTable =
+        SourceTable.builder(SourceDatabaseType.SQLSERVER)
+            .name("generated_pk_column_table")
+            .columns(
+                ImmutableList.of(
+                    SourceColumn.builder(SourceDatabaseType.SQLSERVER)
+                        .name("first_name_col")
+                        .type("varchar")
+                        .isGenerated(false)
+                        .build(),
+                    SourceColumn.builder(SourceDatabaseType.SQLSERVER)
+                        .name("last_name_col")
+                        .type("varchar")
+                        .isGenerated(false)
+                        .build(),
+                    SourceColumn.builder(SourceDatabaseType.SQLSERVER)
+                        .name("generated_column_col")
+                        .type("varchar")
+                        .isGenerated(true)
+                        .build()))
+            .primaryKeyColumns(ImmutableList.of("generated_column_col"))
+            .build();
+
+    SourceSchema sourceSchema =
+        SourceSchema.builder(SourceDatabaseType.SQLSERVER)
+            .databaseName("test")
+            .tables(ImmutableMap.of("generated_pk_column_table", sourceTable))
+            .build();
+
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+
+    SQLServerDMLGenerator generator = new SQLServerDMLGenerator();
+
+    // 1. Test UPDATE with generated PK column
+    JSONObject updateNewValues =
+        new JSONObject("{\"first_name_col\":\"a\",\"last_name_col\":\"c\"}");
+    JSONObject updateKeyValues = new JSONObject("{\"generated_column_col\":\"a \"}");
+    DMLGeneratorResponse upsertResponse =
+        generator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    "UPDATE",
+                    "generated_pk_column_table",
+                    updateNewValues,
+                    updateKeyValues,
+                    "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+
+    String upsertSql = upsertResponse.getDmlStatement();
+    assertTrue(upsertSql.contains("WHEN MATCHED THEN UPDATE SET"));
+    assertTrue(upsertSql.contains("target.[first_name_col] = 'a'"));
+    assertTrue(upsertSql.contains("target.[last_name_col] = 'c'"));
+
+    // 2. Test DELETE with null non-PK column value in generated PK table
+    JSONObject deleteNewValues =
+        new JSONObject("{\"first_name_col\":\"b\",\"last_name_col\":null}");
+    JSONObject deleteKeyValues = new JSONObject("{\"generated_column_col\":\"b \"}");
+    DMLGeneratorResponse deleteResponse =
+        generator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    "DELETE",
+                    "generated_pk_column_table",
+                    deleteNewValues,
+                    deleteKeyValues,
+                    "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+
+    String deleteSql = deleteResponse.getDmlStatement();
+    assertEquals(
+        "DELETE FROM [generated_pk_column_table] WHERE  [first_name_col] = 'b' AND  [last_name_col] IS NULL",
+        deleteSql);
   }
 }
