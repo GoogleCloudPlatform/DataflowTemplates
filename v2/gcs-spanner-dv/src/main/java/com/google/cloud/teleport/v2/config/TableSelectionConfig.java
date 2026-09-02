@@ -78,7 +78,9 @@ public class TableSelectionConfig implements Serializable {
       try {
         ResourceId resourceId = FileSystems.matchNewResource(tableListFilePath, false);
         try (BufferedReader reader =
-            new BufferedReader(Channels.newReader(FileSystems.open(resourceId), "UTF-8"))) {
+            new BufferedReader(
+                Channels.newReader(
+                    FileSystems.open(resourceId), java.nio.charset.StandardCharsets.UTF_8))) {
           String line;
           while ((line = reader.readLine()) != null) {
             String trimmed = line.trim();
@@ -92,9 +94,7 @@ public class TableSelectionConfig implements Serializable {
       }
     }
 
-    TableSelectionConfig config = new TableSelectionConfig(configuredTables);
-
-    return config;
+    return new TableSelectionConfig(configuredTables);
   }
 
   public boolean hasFilters() {

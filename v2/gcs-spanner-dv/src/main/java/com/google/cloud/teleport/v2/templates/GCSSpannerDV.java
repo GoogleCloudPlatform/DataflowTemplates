@@ -72,7 +72,6 @@ public class GCSSpannerDV {
 
     @TemplateParameter.GcsReadFolder(
         order = 1,
-        optional = true,
         description = "GCS directory for AVRO files",
         helpText = "This directory is used to read the AVRO files of the records read from source.",
         example = "gs://your-bucket/your-path")

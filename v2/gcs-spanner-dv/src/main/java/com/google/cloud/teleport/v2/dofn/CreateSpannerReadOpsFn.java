@@ -47,7 +47,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     List<String> tableNames = ddl.getTablesOrderedByReference();
 
     for (String tableName : tableNames) {
-      if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
+      if (tableConfig != null && !tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
         continue;
       }
       String quote = ddl.dialect() == com.google.cloud.spanner.Dialect.POSTGRESQL ? "\"" : "`";
