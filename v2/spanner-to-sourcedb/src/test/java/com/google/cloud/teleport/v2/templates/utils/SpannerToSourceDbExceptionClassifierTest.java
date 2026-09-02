@@ -42,7 +42,6 @@ public class SpannerToSourceDbExceptionClassifierTest {
       ErrorCode.ALREADY_EXISTS,
       ErrorCode.OUT_OF_RANGE,
       ErrorCode.INVALID_ARGUMENT,
-      ErrorCode.NOT_FOUND,
       ErrorCode.FAILED_PRECONDITION,
       ErrorCode.PERMISSION_DENIED,
       ErrorCode.UNAUTHENTICATED,
@@ -66,6 +65,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
       ErrorCode.UNKNOWN,
       ErrorCode.RESOURCE_EXHAUSTED,
       ErrorCode.CANCELLED,
+      ErrorCode.NOT_FOUND,
     };
 
     for (ErrorCode code : retryableCodes) {

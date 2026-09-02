@@ -63,6 +63,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -200,7 +201,7 @@ public final class SpannerResourceManager implements ResourceManager {
     } else if (!hasInstance) {
       LOG.info("Creating instance {} in project {}.", instanceId, projectId);
       try {
-        InstanceInfo instanceInfo =
+        InstanceInfo.Builder instanceInfoBuilder =
             InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
                 .setInstanceConfigId(
                     InstanceConfigId.of(
@@ -211,10 +212,12 @@ public final class SpannerResourceManager implements ResourceManager {
                             ? region
                             : "regional-" + region))
                 .setDisplayName(instanceId)
-                .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
-                .setNodeCount(nodeCount)
-                .build();
+                .setNodeCount(nodeCount);
 
+        if (!region.contains("private")) {
+          instanceInfoBuilder.setEdition(Edition.ENTERPRISE_PLUS); // Needed by Full Text Search.
+        }
+        InstanceInfo instanceInfo = instanceInfoBuilder.build();
         // Retry creation if there's a quota error
         Instance instance =
             Failsafe.with(
@@ -792,10 +795,11 @@ public final class SpannerResourceManager implements ResourceManager {
     /**
      * Looks at the system properties if there's an instance id, and reuses it if configured.
      *
+     * @param staticInstanceHint optional instance Id of the spanner instance.
      * @return this builder with the instance ID set.
      */
     @SuppressWarnings("nullness")
-    public Builder maybeUseStaticInstance() {
+    public Builder maybeUseStaticInstance(Optional<Integer> staticInstanceHint) {
       String spannerInstanceId = System.getProperty("spannerInstanceId");
       boolean isTestProject =
           Objects.equals(projectId, "cloud-teleport-testing")
@@ -806,12 +810,28 @@ public final class SpannerResourceManager implements ResourceManager {
       if (isTestProject && shouldPickRandomInstance) {
         this.useStaticInstance = true;
         List<String> staticInstanceList = TestConstants.SPANNER_TEST_INSTANCES;
-        this.instanceId = staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+        if (staticInstanceHint.isPresent()) {
+          this.instanceId =
+              staticInstanceList.get(staticInstanceHint.get() % staticInstanceList.size());
+        } else {
+          this.instanceId = staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+        }
       } else if (spannerInstanceId != null) {
         this.useStaticInstance = true;
         this.instanceId = spannerInstanceId;
       }
       // Else useStaticInstance would remain false and a new Spanner test instance would be created.
+      return this;
+    }
+
+    /**
+     * Looks at the system properties if there's an instance id, and reuses it if configured.
+     *
+     * @return this builder with the instance ID set.
+     */
+    @SuppressWarnings("nullness")
+    public Builder maybeUseStaticInstance() {
+      maybeUseStaticInstance(Optional.empty());
       return this;
     }
 

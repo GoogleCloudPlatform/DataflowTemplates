@@ -20,10 +20,10 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Mutation.WriteBuilder;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -36,6 +36,7 @@ import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -57,37 +58,45 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           "DMLGeneratorRequest is null. Cannot process the request.");
     }
 
-    String sourceTableName = request.getSpannerTableName();
+    // Target - The spanner database which this pipeline is writing to
+    // Original - The spanner database whose writes are being replicated via changestream
+    String origSpannerTableName = request.getSpannerTableName();
     ISchemaMapper schemaMapper = request.getSchemaMapper();
-    Ddl spannerDdl = request.getSpannerDdl();
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema sourceSchema =
+    Ddl originalSpannerDdl = request.getSpannerDdl();
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema targetSpannerSchema =
         request.getSourceSchema();
 
     if (schemaMapper == null) {
       throw new InvalidDMLGenerationException("SchemaMapper must not be null.");
     }
-    if (spannerDdl == null) {
-      throw new InvalidDMLGenerationException("Source Spanner DDL must not be null.");
+    if (originalSpannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner DDL must not be null.");
     }
-    if (sourceSchema == null) {
-      throw new InvalidDMLGenerationException("SourceSchema must not be null.");
+    if (targetSpannerSchema == null) {
+      throw new InvalidDMLGenerationException("target spanner schema could not be fetched.");
     }
 
-    Table sourceSpannerTable = spannerDdl.table(sourceTableName);
-    if (sourceSpannerTable == null) {
+    Ddl targetDdl =
+        (targetSpannerSchema.rawDdl() instanceof Ddl) ? (Ddl) targetSpannerSchema.rawDdl() : null;
+    if (targetDdl == null) {
+      throw new InvalidDMLGenerationException("target spanner ddl could not be fetched.");
+    }
+
+    Table origSpannerTable = originalSpannerDdl.table(origSpannerTableName);
+    if (origSpannerTable == null) {
       throw new InvalidDMLGenerationException(
-          "Source Spanner table '" + sourceTableName + "' not found in source DDL.");
+          "Original Spanner table '" + origSpannerTableName + "' not found in source DDL.");
     }
 
     String targetTableName;
     try {
-      targetTableName = schemaMapper.getSourceTableName("", sourceTableName);
+      targetTableName = schemaMapper.getSourceTableName("", origSpannerTableName);
     } catch (NoSuchElementException e) {
       throw new InvalidDMLGenerationException(
-          "Could not find target table name for source Spanner table: " + sourceTableName, e);
+          "Could not find target table name for source Spanner table: " + origSpannerTableName, e);
     }
 
-    SourceTable targetSpannerTable = sourceSchema.table(targetTableName);
+    SourceTable targetSpannerTable = targetSpannerSchema.table(targetTableName);
     if (targetSpannerTable == null) {
       throw new InvalidDMLGenerationException(
           "Target table '" + targetTableName + "' not found in SourceSchema.");
@@ -104,175 +113,231 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     String modType = request.getModType();
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
       return buildUpsertMutation(
-          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName, targetDdl);
     } else if ("DELETE".equals(modType)) {
       return buildDeleteMutation(
-          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+          origSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName, targetDdl);
     } else {
       throw new InvalidDMLGenerationException(
-          "Unsupported modType '" + modType + "' for table " + sourceTableName);
+          "Unsupported modType '" + modType + "' for table " + origSpannerTableName);
     }
   }
 
   private static DMLGeneratorResponse buildUpsertMutation(
-      Table sourceSpannerTable,
+      Table origSpannerTable,
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
-      String targetTableName) {
+      String targetTableName,
+      Ddl targetDdl) {
 
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(targetTableName);
     JSONObject newValuesJson = request.getNewValuesJson();
     JSONObject keyValuesJson = request.getKeyValuesJson();
+    Table targetSpTable = targetDdl.table(targetTableName);
 
-    for (com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn targetCol :
-        targetSpannerTable.columns()) {
+    for (Column targetCol : targetSpTable.columns()) {
       if (targetCol.isGenerated()) {
         continue;
       }
 
       String targetColName = targetCol.name();
 
-      String sourceColName;
-      try {
-        sourceColName =
-            schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-
-      Column sourceCol = sourceSpannerTable.column(sourceColName);
-      if (sourceCol == null) {
-        continue;
-      }
-
       if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
-        Object customVal = request.getCustomTransformationResponse().get(sourceColName);
+          && request.getCustomTransformationResponse().containsKey(targetColName)) {
+        Object customVal = request.getCustomTransformationResponse().get(targetColName);
         if (customVal == null) {
-          setNullValue(builder, targetColName, sourceCol.type());
+          setNullValue(builder, targetColName, targetCol.type());
         } else {
-          setCustomColumnValue(builder, targetColName, sourceCol, customVal);
+          setCustomColumnValue(builder, targetCol, customVal);
         }
-      } else if (newValuesJson.has(sourceColName)) {
-        if (newValuesJson.isNull(sourceColName)) {
-          setNullValue(builder, targetColName, sourceCol.type());
-        } else {
-          setColumnValue(builder, targetColName, sourceCol, newValuesJson);
+      } else {
+        String originalColName;
+        try {
+          originalColName =
+              schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
+        } catch (NoSuchElementException e) {
+          continue;
         }
-      } else if (keyValuesJson.has(sourceColName)) {
-        if (keyValuesJson.isNull(sourceColName)) {
-          setNullValue(builder, targetColName, sourceCol.type());
-        } else {
-          setColumnValue(builder, targetColName, sourceCol, keyValuesJson);
+
+        Column origCol = origSpannerTable.column(originalColName);
+        if (origCol == null) {
+          // There is no column in the original spanner which maps to the target spanner
+          continue;
+        }
+        JSONObject valuesJson = keyValuesJson.has(originalColName) ? keyValuesJson : newValuesJson;
+        if (valuesJson.has(originalColName)) {
+          if (valuesJson.isNull(originalColName)) {
+            setNullValue(builder, targetColName, origCol.type());
+          } else {
+            setColumnValue(builder, targetCol, origCol, valuesJson);
+          }
         }
       }
     }
 
-    return new SpannerMutationResponse(builder.build());
+    Key primaryKey =
+        buildTargetPrimaryKey(
+            origSpannerTable,
+            targetDdl,
+            targetSpannerTable,
+            schemaMapper,
+            newValuesJson,
+            keyValuesJson,
+            request.getCustomTransformationResponse());
+    return new SpannerMutationResponse(builder.build(), primaryKey);
+  }
+
+  private static Key buildTargetPrimaryKey(
+      Table origSpannerTable,
+      Ddl targetDdl,
+      SourceTable targetSpannerTable,
+      ISchemaMapper schemaMapper,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      Map<String, Object> customTransformationResponse) {
+    Key.Builder keyBuilder = Key.newBuilder();
+    for (String targetColName : targetSpannerTable.primaryKeyColumns()) {
+      Column targetCol = null;
+      if (targetDdl != null && targetDdl.table(targetSpannerTable.name()) != null) {
+        targetCol = targetDdl.table(targetSpannerTable.name()).column(targetColName);
+      }
+      if (targetCol == null) {
+        throw new InvalidDMLGenerationException(
+            "Primary key column '" + targetColName + "' not found in DDL.");
+      }
+
+      Object targetColValue = null;
+      if (customTransformationResponse != null
+          && customTransformationResponse.containsKey(targetColName)) {
+        targetColValue = customTransformationResponse.get(targetColName);
+      } else {
+        String origColName = null;
+        try {
+          if (schemaMapper != null) {
+            origColName =
+                schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
+          }
+        } catch (NoSuchElementException e) {
+          throw new InvalidDMLGenerationException(
+              "there is no mapped column or custom transformation for table'"
+                  + targetSpannerTable.name()
+                  + "' column'"
+                  + targetColName
+                  + "'");
+        }
+        // Fetch the value from the changestream record
+        if (keyValuesJson != null && keyValuesJson.has(origColName)) {
+          // column was a part of key in the original record.
+          targetColValue = keyValuesJson.get(origColName);
+        } else if (newValuesJson != null && newValuesJson.has(origColName)) {
+          // column was not a part of key in the original record.
+          targetColValue = newValuesJson.get(origColName);
+        } else {
+          // column not resolvable
+          throw new InvalidDMLGenerationException(
+              "Primary key column '"
+                  + targetColName
+                  + "' could not be resolved because of incorrect schema mapper.");
+        }
+      }
+      appendCustomKeyComponent(keyBuilder, targetCol, targetColValue);
+    }
+    return keyBuilder.build();
   }
 
   private static DMLGeneratorResponse buildDeleteMutation(
-      Table sourceSpannerTable,
+      Table origSpannerTable,
       SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
-      String targetTableName) {
+      String targetTableName,
+      Ddl targetDdl) {
 
     JSONObject keyValuesJson = request.getKeyValuesJson();
     JSONObject newValuesJson = request.getNewValuesJson();
 
-    Key.Builder keyBuilder = Key.newBuilder();
-    for (IndexColumn pkIndexCol : sourceSpannerTable.primaryKeys()) {
-      String sourceColName = pkIndexCol.name();
-
-      String targetColName;
-      try {
-        targetColName = schemaMapper.getSourceColumnName("", targetTableName, sourceColName);
-      } catch (NoSuchElementException e) {
-        targetColName = sourceColName;
-      }
-
-      Column sourceCol = sourceSpannerTable.column(sourceColName);
-      if (sourceCol == null) {
-        throw new InvalidDMLGenerationException(
-            "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
-      }
-
-      Object customVal = null;
-      if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
-        customVal = request.getCustomTransformationResponse().get(sourceColName);
-      }
-
-      JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
-
-      if (!valuesJson.has(sourceColName) && customVal == null) {
-        LOG.warn("Primary key column '{}' not found in change record for DELETE.", sourceColName);
-        throw new InvalidDMLGenerationException(
-            "Primary key column '" + sourceColName + "' not found in change record for DELETE.");
-      }
-
-      if (customVal != null) {
-        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
-      } else {
-        appendKeyComponent(keyBuilder, sourceCol, valuesJson, sourceColName);
-      }
-    }
-
-    Mutation mutation = Mutation.delete(targetTableName, keyBuilder.build());
-    return new SpannerMutationResponse(mutation);
+    Key primaryKey =
+        buildTargetPrimaryKey(
+            origSpannerTable,
+            targetDdl,
+            targetSpannerTable,
+            schemaMapper,
+            newValuesJson,
+            keyValuesJson,
+            request.getCustomTransformationResponse());
+    Mutation mutation = Mutation.delete(targetTableName, primaryKey);
+    return new SpannerMutationResponse(mutation, primaryKey);
   }
 
   private static void setColumnValue(
-      Mutation.WriteBuilder builder, String targetColName, Column col, JSONObject valuesJson) {
-    String sourceColName = col.name();
-    Type type = col.type();
+      WriteBuilder builder, Column targetCol, Column origCol, JSONObject valuesJson) {
+    String origColName = origCol.name();
+    Type type = targetCol.type();
 
-    if (type.getCode() == Type.Code.ARRAY) {
+    if (type.getCode() == Type.Code.ARRAY || type.getCode() == Type.Code.PG_ARRAY) {
       builder
-          .set(targetColName)
-          .to(buildArrayValue(type.getArrayElementType(), valuesJson.getJSONArray(sourceColName)));
+          .set(targetCol.name())
+          .to(buildArrayValue(type.getArrayElementType(), valuesJson.getJSONArray(origColName)));
       return;
     }
 
-    Object value = valuesJson.get(sourceColName);
-    setCustomColumnValue(builder, targetColName, col, value);
+    Object value = valuesJson.get(origColName);
+    setCustomColumnValue(builder, targetCol, value);
   }
 
   private static void setNullValue(Mutation.WriteBuilder builder, String targetColName, Type type) {
     switch (type.getCode()) {
       case BOOL:
+      case PG_BOOL:
         builder.set(targetColName).to((Boolean) null);
         break;
       case INT64:
+      case PG_INT8:
         builder.set(targetColName).to((Long) null);
         break;
       case FLOAT64:
+      case PG_FLOAT8:
         builder.set(targetColName).to((Double) null);
         break;
       case FLOAT32:
+      case PG_FLOAT4:
         builder.set(targetColName).to((Float) null);
         break;
       case STRING:
+      case PG_TEXT:
+      case PG_VARCHAR:
+      case UUID:
+      case PG_UUID:
         builder.set(targetColName).to((String) null);
         break;
       case JSON:
         builder.set(targetColName).to(Value.json(null));
         break;
+      case PG_JSONB:
+        builder.set(targetColName).to(Value.pgJsonb(null));
+        break;
       case BYTES:
+      case PG_BYTEA:
         builder.set(targetColName).to((ByteArray) null);
         break;
       case DATE:
+      case PG_DATE:
         builder.set(targetColName).to((Date) null);
         break;
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+      case PG_COMMIT_TIMESTAMP:
         builder.set(targetColName).to((Timestamp) null);
         break;
       case NUMERIC:
         builder.set(targetColName).to((BigDecimal) null);
         break;
+      case PG_NUMERIC:
+        builder.set(targetColName).to(Value.pgNumeric(null));
+        break;
       case ARRAY:
+      case PG_ARRAY:
         setNullArrayValue(builder, targetColName, type.getArrayElementType());
         break;
       default:
@@ -284,45 +349,56 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       Mutation.WriteBuilder builder, String targetColName, Type elementType) {
     switch (elementType.getCode()) {
       case BOOL:
+      case PG_BOOL:
         builder.set(targetColName).toBoolArray((Iterable<Boolean>) null);
         break;
       case INT64:
+      case PG_INT8:
         builder.set(targetColName).toInt64Array((Iterable<Long>) null);
         break;
       case FLOAT64:
+      case PG_FLOAT8:
         builder.set(targetColName).toFloat64Array((Iterable<Double>) null);
         break;
       case FLOAT32:
+      case PG_FLOAT4:
         builder.set(targetColName).toFloat32Array((Iterable<Float>) null);
         break;
       case STRING:
+      case PG_TEXT:
+      case PG_VARCHAR:
+      case UUID:
+      case PG_UUID:
         builder.set(targetColName).toStringArray((Iterable<String>) null);
         break;
       case JSON:
         builder.set(targetColName).toJsonArray((Iterable<String>) null);
         break;
+      case PG_JSONB:
+        builder.set(targetColName).toPgJsonbArray((Iterable<String>) null);
+        break;
       case BYTES:
+      case PG_BYTEA:
         builder.set(targetColName).toBytesArray((Iterable<ByteArray>) null);
         break;
       case DATE:
+      case PG_DATE:
         builder.set(targetColName).toDateArray((Iterable<Date>) null);
         break;
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+      case PG_COMMIT_TIMESTAMP:
         builder.set(targetColName).toTimestampArray((Iterable<Timestamp>) null);
         break;
       case NUMERIC:
         builder.set(targetColName).toNumericArray((Iterable<BigDecimal>) null);
         break;
+      case PG_NUMERIC:
+        builder.set(targetColName).toPgNumericArray((Iterable<String>) null);
+        break;
       default:
         builder.set(targetColName).toStringArray((Iterable<String>) null);
     }
-  }
-
-  /** Appends a single primary-key component to the Key builder. */
-  private static void appendKeyComponent(
-      Key.Builder keyBuilder, Column col, JSONObject valuesJson, String sourceColName) {
-    Object value = valuesJson.get(sourceColName);
-    appendCustomKeyComponent(keyBuilder, col, value);
   }
 
   /**
@@ -330,11 +406,12 @@ public class SpannerDMLGenerator implements IDMLGenerator {
    * Spanner type. Strings are coerced into the correct primitive when needed; already-typed values
    * (e.g. from Java-based transformers) are bound directly.
    */
-  private static void setCustomColumnValue(
-      Mutation.WriteBuilder builder, String targetColName, Column col, Object value) {
-    Type type = col.type();
+  private static void setCustomColumnValue(WriteBuilder builder, Column targetCol, Object value) {
+    String targetColName = targetCol.name();
+    Type type = targetCol.type();
     switch (type.getCode()) {
       case BOOL:
+      case PG_BOOL:
         if (value instanceof Boolean) {
           builder.set(targetColName).to((Boolean) value);
         } else {
@@ -342,6 +419,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case INT64:
+      case PG_INT8:
         if (value instanceof Number) {
           builder.set(targetColName).to(((Number) value).longValue());
         } else {
@@ -349,6 +427,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case FLOAT64:
+      case PG_FLOAT8:
         if (value instanceof Number) {
           builder.set(targetColName).to(((Number) value).doubleValue());
         } else {
@@ -356,6 +435,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case FLOAT32:
+      case PG_FLOAT4:
         if (value instanceof Number) {
           builder.set(targetColName).to(((Number) value).floatValue());
         } else {
@@ -363,12 +443,20 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case STRING:
+      case PG_TEXT:
+      case PG_VARCHAR:
+      case UUID:
+      case PG_UUID:
         builder.set(targetColName).to(value.toString());
         break;
       case JSON:
         builder.set(targetColName).to(Value.json(value.toString()));
         break;
+      case PG_JSONB:
+        builder.set(targetColName).to(Value.pgJsonb(value.toString()));
+        break;
       case BYTES:
+      case PG_BYTEA:
         if (value instanceof byte[]) {
           builder.set(targetColName).to(ByteArray.copyFrom((byte[]) value));
         } else if (value instanceof ByteArray) {
@@ -378,6 +466,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case DATE:
+      case PG_DATE:
         if (value instanceof com.google.cloud.Date) {
           builder.set(targetColName).to((com.google.cloud.Date) value);
         } else {
@@ -385,6 +474,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+      case PG_COMMIT_TIMESTAMP:
         if (value instanceof com.google.cloud.Timestamp) {
           builder.set(targetColName).to((com.google.cloud.Timestamp) value);
         } else {
@@ -397,6 +488,9 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         } else {
           builder.set(targetColName).to(new BigDecimal(value.toString()));
         }
+        break;
+      case PG_NUMERIC:
+        builder.set(targetColName).to(Value.pgNumeric(value.toString()));
         break;
       default:
         LOG.warn(
@@ -412,9 +506,14 @@ public class SpannerDMLGenerator implements IDMLGenerator {
    * {@link #setCustomColumnValue} for the DELETE path.
    */
   private static void appendCustomKeyComponent(Key.Builder keyBuilder, Column col, Object value) {
+    if (value == null) {
+      keyBuilder.appendObject(null);
+      return;
+    }
     Type type = col.type();
     switch (type.getCode()) {
       case BOOL:
+      case PG_BOOL:
         if (value instanceof Boolean) {
           keyBuilder.append((Boolean) value);
         } else {
@@ -422,6 +521,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case INT64:
+      case PG_INT8:
         if (value instanceof Number) {
           keyBuilder.append(((Number) value).longValue());
         } else {
@@ -429,6 +529,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case FLOAT64:
+      case PG_FLOAT8:
         if (value instanceof Number) {
           keyBuilder.append(((Number) value).doubleValue());
         } else {
@@ -436,6 +537,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case FLOAT32:
+      case PG_FLOAT4:
         if (value instanceof Number) {
           keyBuilder.append(((Number) value).floatValue());
         } else {
@@ -443,6 +545,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case BYTES:
+      case PG_BYTEA:
         if (value instanceof byte[]) {
           keyBuilder.append(ByteArray.copyFrom((byte[]) value));
         } else if (value instanceof ByteArray) {
@@ -452,6 +555,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case DATE:
+      case PG_DATE:
         if (value instanceof com.google.cloud.Date) {
           keyBuilder.append((com.google.cloud.Date) value);
         } else {
@@ -459,6 +563,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+      case PG_COMMIT_TIMESTAMP:
         if (value instanceof com.google.cloud.Timestamp) {
           keyBuilder.append((com.google.cloud.Timestamp) value);
         } else {
@@ -466,6 +572,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case NUMERIC:
+      case PG_NUMERIC:
         if (value instanceof BigDecimal) {
           keyBuilder.append((BigDecimal) value);
         } else {
@@ -481,6 +588,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   private static Value buildArrayValue(Type elementSpannerType, JSONArray jsonArray) {
     switch (elementSpannerType.getCode()) {
       case BOOL:
+      case PG_BOOL:
         {
           List<Boolean> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -489,6 +597,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           return Value.boolArray(vals);
         }
       case INT64:
+      case PG_INT8:
         {
           List<Long> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -497,6 +606,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           return Value.int64Array(vals);
         }
       case FLOAT64:
+      case PG_FLOAT8:
         {
           List<Double> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -505,6 +615,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           return Value.float64Array(vals);
         }
       case FLOAT32:
+      case PG_FLOAT4:
         {
           List<Float> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -513,6 +624,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           return Value.float32Array(vals);
         }
       case DATE:
+      case PG_DATE:
         {
           List<Date> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -521,6 +633,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           return Value.dateArray(vals);
         }
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+      case PG_COMMIT_TIMESTAMP:
         {
           List<Timestamp> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
@@ -536,6 +650,14 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           }
           return Value.numericArray(vals);
         }
+      case PG_NUMERIC:
+        {
+          List<String> vals = new ArrayList<>();
+          for (int i = 0; i < jsonArray.length(); i++) {
+            vals.add(jsonArray.isNull(i) ? null : jsonArray.getString(i));
+          }
+          return Value.pgNumericArray(vals);
+        }
       case JSON:
         {
           List<String> vals = new ArrayList<>();
@@ -544,7 +666,16 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           }
           return Value.jsonArray(vals);
         }
+      case PG_JSONB:
+        {
+          List<String> vals = new ArrayList<>();
+          for (int i = 0; i < jsonArray.length(); i++) {
+            vals.add(jsonArray.isNull(i) ? null : jsonArray.getString(i));
+          }
+          return Value.pgJsonbArray(vals);
+        }
       case BYTES:
+      case PG_BYTEA:
         {
           List<ByteArray> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {

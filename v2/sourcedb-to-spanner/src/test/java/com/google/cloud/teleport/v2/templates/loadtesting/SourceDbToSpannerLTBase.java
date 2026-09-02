@@ -19,14 +19,19 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -34,6 +39,7 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -106,7 +112,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(3))
             .setNodeCount(SPANNER_NODE_COUNT)
             .setMonitoringClient(monitoringClient)
             .build();
@@ -175,11 +181,40 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   protected Map<String, String> getJdbcParameters(StaticJDBCResource jdbcResource) {
-    return getJdbcParameters(
-        jdbcResource.getconnectionURL(),
-        jdbcResource.username(),
-        jdbcResource.password(),
-        driverClassName());
+    try {
+      return getJdbcParameters(
+          createAndUploadShardConfigToGcs(jdbcResource),
+          jdbcResource.username(),
+          jdbcResource.password(),
+          driverClassName());
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create and upload shard config", e);
+    }
+  }
+
+  protected String createAndUploadShardConfigToGcs(StaticJDBCResource jdbcResource)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(jdbcResource.username());
+    shard.setPassword(jdbcResource.password());
+    shard.setHost(jdbcResource.hostname());
+    shard.setPort(String.valueOf(jdbcResource.port()));
+    shard.setDbName(jdbcResource.database());
+
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(Collections.singletonList(shard));
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+    return getGcsPath("input/shard.json", gcsResourceManager);
+  }
+
+  protected String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
+    return ArtifactUtils.getFullGcsPath(
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
   }
 
   protected Map<String, String> getJdbcParameters(
@@ -187,8 +222,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     Map<String, String> params = new HashMap<>();
     params.put("sourceDbDialect", dialect.name());
     params.put("sourceConfigURL", connectionUrl);
-    params.put("username", username);
-    params.put("password", password);
     params.put("jdbcDriverClassName", driverClassName);
     return params;
   }
@@ -212,7 +245,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
     Map<String, String> params = getCommonParameters();
     params.putAll(getJdbcParameters(sourceDatabaseResource));
-    params.put("workerMachineType", "n2-standard-4");
 
     params.putAll(ADDITIONAL_JOB_PARAMS);
     params.putAll(templateParameters);
@@ -221,6 +253,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .setParameters(params);
     environmentOptions.forEach(options::addEnvironment);
 

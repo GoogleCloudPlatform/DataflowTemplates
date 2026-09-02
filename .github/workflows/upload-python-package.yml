@@ -51,7 +51,7 @@ jobs:
       # as the official 2.76.0 expansion service shadowJar will natively package the Delta Lake IO classes.
       # See PR#4038 for further details on code removal.
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: 'temurin'
           java-version: '17'

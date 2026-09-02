@@ -49,18 +49,10 @@ variable "jdbc_driver_class_name" {
 
 variable "source_config_url" {
   type        = string
-  description = "JDBC connection url for the source database. Ex- jdbc:postgresql://127.4.5.30:5432/my-db"
+  description = "Source connection config file URL. The file format is dependent on the source type."
 }
 
-variable "username" {
-  type        = string
-  description = "Username to log in to the specified source database"
-}
 
-variable "password" {
-  type        = string
-  description = "Password to log in to the specified source database"
-}
 
 variable "num_partitions" {
   type        = number

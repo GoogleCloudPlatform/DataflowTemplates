@@ -80,10 +80,6 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
-  /**
-   * TODO: This IT is currently not complete since shard id population is pending on reader. This
-   * test needs to be updated whenever reader support is added.
-   */
   @Test
   public void singleShardWithIdPopulationTest() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
@@ -107,10 +103,10 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
 
   private List<Map<String, Object>> getExpectedData() {
     return List.of(
-        Map.of(PKID, 1, NAME, "Alice", STATUS, "active", SHARD_ID, "NULL"),
-        Map.of(PKID, 2, NAME, "Bob", STATUS, "inactive", SHARD_ID, "NULL"),
-        Map.of(PKID, 3, NAME, "Carol", STATUS, "pending", SHARD_ID, "NULL"),
-        Map.of(PKID, 4, NAME, "David", STATUS, "complete", SHARD_ID, "NULL"),
-        Map.of(PKID, 5, NAME, "Emily", STATUS, "error", SHARD_ID, "NULL"));
+        Map.of(PKID, 1, NAME, "Alice", STATUS, "active", SHARD_ID, "Shard1"),
+        Map.of(PKID, 2, NAME, "Bob", STATUS, "inactive", SHARD_ID, "Shard1"),
+        Map.of(PKID, 3, NAME, "Carol", STATUS, "pending", SHARD_ID, "Shard1"),
+        Map.of(PKID, 4, NAME, "David", STATUS, "complete", SHARD_ID, "Shard1"),
+        Map.of(PKID, 5, NAME, "Emily", STATUS, "error", SHARD_ID, "Shard1"));
   }
 }

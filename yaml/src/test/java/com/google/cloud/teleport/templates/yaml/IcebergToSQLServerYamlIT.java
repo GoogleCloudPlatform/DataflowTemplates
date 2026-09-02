@@ -215,7 +215,7 @@ public class IcebergToSQLServerYamlIT extends TemplateTestBase {
   private Map<String, String> getCatalogProperties() {
     return Map.of(
         "type", "rest",
-        "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
+        "uri", "https://biglake.googleapis.com/iceberg/v1/restcatalog",
         "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project", PROJECT,
         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager");

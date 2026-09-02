@@ -20,7 +20,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,6 +72,12 @@ public class SpannerSpToSrcSourceConnectorTest {
     when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");
     when(mockSpannerShard.getDatabaseId()).thenReturn("my-database");
 
+    com.google.cloud.teleport.v2.spanner.ddl.Ddl ddl =
+        com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder().build();
+    connector.setTargetDdl(ddl);
+
+    assertEquals(ddl, connector.getTargetDdl());
+
     IDao dao = connector.getDao(mockSpannerShard);
     assertNotNull(dao);
     assertTrue(dao instanceof SpannerTargetDao);
@@ -112,45 +117,8 @@ public class SpannerSpToSrcSourceConnectorTest {
   }
 
   @Test
-  public void testValidate_Colocation_Success() throws Exception {
-    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
-        mock(org.apache.beam.sdk.options.PipelineOptions.class);
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
-        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    when(mockPipelineOptions.as(
-            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
-        .thenReturn(mockOptions);
-
-    when(mockOptions.getSpannerProjectId()).thenReturn("p1");
-    when(mockOptions.getMetadataInstance()).thenReturn("i1");
-    when(mockOptions.getMetadataDatabase()).thenReturn("d1");
-
-    when(mockSpannerShard.getProjectId()).thenReturn("p1");
-    when(mockSpannerShard.getInstanceId()).thenReturn("i1");
-    when(mockSpannerShard.getDatabaseId()).thenReturn("d1");
-
-    connector.validate(List.of(mockSpannerShard), mockPipelineOptions);
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testValidate_Colocation_Failure() throws Exception {
-    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
-        mock(org.apache.beam.sdk.options.PipelineOptions.class);
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
-        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    when(mockPipelineOptions.as(
-            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
-        .thenReturn(mockOptions);
-
-    when(mockOptions.getSpannerProjectId()).thenReturn("p1");
-    when(mockOptions.getMetadataInstance()).thenReturn("i1");
-    when(mockOptions.getMetadataDatabase()).thenReturn("d1");
-
-    when(mockSpannerShard.getProjectId()).thenReturn("p2");
-    when(mockSpannerShard.getInstanceId()).thenReturn("i1");
-    when(mockSpannerShard.getDatabaseId()).thenReturn("d1");
-
-    connector.validate(List.of(mockSpannerShard), mockPipelineOptions);
+  public void testValidate_Success() throws Exception {
+    connector.validate(List.of(mockSpannerShard), null);
   }
 
   @Test
@@ -171,5 +139,41 @@ public class SpannerSpToSrcSourceConnectorTest {
   @Test(expected = IllegalArgumentException.class)
   public void testValidate_InvalidShardType_Failure() throws Exception {
     connector.validate(List.of(mockGenericShard), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_EmptyShards_Failure() throws Exception {
+    connector.validate(List.of(), null);
+  }
+
+  @Test
+  public void testDefaultConstructor() {
+    SpannerSpToSrcSourceConnector defaultConnector = new SpannerSpToSrcSourceConnector();
+    assertNotNull(defaultConnector.getConnectionHelper());
+    assertNotNull(defaultConnector.getDmlGenerator());
+  }
+
+  @Test
+  public void testGetConnectionUrl_Success() {
+    when(mockSpannerShard.getProjectId()).thenReturn("p");
+    when(mockSpannerShard.getInstanceId()).thenReturn("i");
+    when(mockSpannerShard.getDatabaseId()).thenReturn("d");
+
+    assertEquals("p/i/d", connector.getConnectionUrl(mockSpannerShard));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetConnectionUrl_InvalidShardTypeThrows() {
+    connector.getConnectionUrl(mockGenericShard);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetConnectionUrl_NullShardThrows() {
+    connector.getConnectionUrl(null);
+  }
+
+  @Test
+  public void testClassifyExceptionReturnsNull() {
+    org.junit.Assert.assertNull(connector.classifyException(new RuntimeException("test")));
   }
 }

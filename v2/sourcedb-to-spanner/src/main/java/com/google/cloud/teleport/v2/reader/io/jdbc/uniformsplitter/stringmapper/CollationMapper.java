@@ -27,6 +27,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -258,7 +259,9 @@ public abstract class CollationMapper implements Serializable {
       for (int i = 0; i < query.lines().count() + 1; i++) {
         if (foundResultSet) {
           ResultSet rs = statement.getResultSet();
-          mapper = fromResultSet(rs, collationReference);
+          List<CollationOrderRow> rows =
+              dbAdapter.processCollationResultSet(rs, collationReference);
+          mapper = fromRows(rows, collationReference);
           break;
         }
         foundResultSet = statement.getMoreResults();
@@ -283,6 +286,15 @@ public abstract class CollationMapper implements Serializable {
     return mapper;
   }
 
+  static CollationMapper fromRows(
+      List<CollationOrderRow> rows, CollationReference collationReference) {
+    Builder builder = builder(collationReference);
+    for (CollationOrderRow row : rows) {
+      builder.addCharacter(row);
+    }
+    return builder.build();
+  }
+
   private long getCharsetSize(boolean lastCharacter) {
     return (lastCharacter && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getCharsetSize()
@@ -299,15 +311,6 @@ public abstract class CollationMapper implements Serializable {
     return (firstIteration && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getCharacterFromPosition(ordinalPosition)
         : this.allPositionsIndex().getCharacterFromPosition(ordinalPosition);
-  }
-
-  private static CollationMapper fromResultSet(ResultSet rs, CollationReference collationReference)
-      throws SQLException {
-    Builder builder = builder(collationReference);
-    while (rs.next()) {
-      builder.addCharacter(CollationOrderRow.fromRS(rs));
-    }
-    return builder.build();
   }
 
   @AutoValue.Builder

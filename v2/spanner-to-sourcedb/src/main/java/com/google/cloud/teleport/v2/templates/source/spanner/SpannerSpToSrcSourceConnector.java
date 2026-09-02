@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
@@ -29,9 +30,16 @@ import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptions;
 
+/**
+ * Implementation of SpToSrcConnector which will read from a Spanner database (called
+ * originalSpanner) and write to a new database (called targetSpanner). The type of objects being
+ * returned maybe tagged as SourceSchema etc as the target being written to is referred to as the
+ * source for all other sources.
+ */
 public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
+  private Ddl targetDdl;
 
   public SpannerSpToSrcSourceConnector() {
     this.connectionHelper = new SpannerConnectionHelper();
@@ -40,6 +48,14 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   @VisibleForTesting
   SpannerSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
+  }
+
+  public void setTargetDdl(Ddl targetDdl) {
+    this.targetDdl = targetDdl;
+  }
+
+  public Ddl getTargetDdl() {
+    return targetDdl;
   }
 
   @Override
@@ -64,9 +80,24 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   @Override
   public IDao getDao(Shard shard) {
+    SpannerShard spannerShard = (SpannerShard) shard;
+    checkAndInitTargetDdl(spannerShard);
     return new SpannerTargetDao(
-        SpannerConnectionHelper.connectionKey((SpannerShard) shard),
-        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper());
+        SpannerConnectionHelper.connectionKey(spannerShard),
+        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper(),
+        targetDdl);
+  }
+
+  private synchronized void checkAndInitTargetDdl(SpannerShard spannerShard) {
+    // TODO - update the flow to set targetDDL in the constructor/init
+    if (targetDdl == null) {
+      SpannerConfig targetSpannerConfig =
+          SpannerConfig.create()
+              .withProjectId(spannerShard.getProjectId())
+              .withInstanceId(spannerShard.getInstanceId())
+              .withDatabaseId(spannerShard.getDatabaseId());
+      targetDdl = new SpannerInformationSchemaScanner(targetSpannerConfig).scanDdl();
+    }
   }
 
   @Override
@@ -94,22 +125,6 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
       throw new IllegalArgumentException(
           "Expected SpannerShard but got: " + shards.get(0).getClass());
     }
-    SpannerShard spannerShard = (SpannerShard) shards.get(0);
-
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options spannerOptions =
-        options.as(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    if (spannerOptions != null
-        && spannerOptions.getSpannerProjectId() != null
-        && spannerOptions.getMetadataInstance() != null
-        && spannerOptions.getMetadataDatabase() != null) {
-      if (!spannerOptions.getSpannerProjectId().equals(spannerShard.getProjectId())
-          || !spannerOptions.getMetadataInstance().equals(spannerShard.getInstanceId())
-          || !spannerOptions.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
-        throw new IllegalArgumentException(
-            "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
-      }
-      // TODO check for read only as well ?
-    }
   }
 
   @Override
@@ -120,7 +135,10 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
             .withProjectId(spannerShard.getProjectId())
             .withInstanceId(spannerShard.getInstanceId())
             .withDatabaseId(spannerShard.getDatabaseId());
-    return new SpannerInformationSchemaScanner(targetSpannerConfig).scan();
+    SpannerInformationSchemaScanner scanner =
+        new SpannerInformationSchemaScanner(targetSpannerConfig);
+    targetDdl = scanner.scanDdl();
+    return scanner.convertDdlToSourceSchema(targetDdl);
   }
 
   @Override

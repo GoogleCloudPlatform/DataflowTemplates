@@ -65,13 +65,17 @@ mvn test
 ### Executing Template
 
 #### Required Parameters
-* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf). Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
-* **username** (username of the source database): The username which can be used to connect to the source database.
-* **password** (username of the source database): The username which can be used to connect to the source database.
+* **sourceConfigURL** (Source connection config file URL): The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). You can optionally specify a `"connectionProperties"` string in the JDBC config to configure the JDBC connection (e.g. `useSSL=true&requireSSL=true`), where keys and values can be URL-encoded if they contain special characters. For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **outputDirectory** (GCS path of the output directory): The GCS path of the directory where all errors and skipped events are dumped to be used during migrations
+
+**Referencing SSL Certificates**:
+To connect to a JDBC source using a custom SSL certificate (e.g. a truststore), you must first make the certificate file available to the Dataflow workers:
+1. Upload your certificate file (e.g., `truststore.jks`) to a Google Cloud Storage bucket.
+2. When launching the Dataflow template, provide the GCS path to the `--extraFilesToStage` parameter (e.g. `--extraFilesToStage="gs://<BUCKET_NAME>/truststore.jks"`). The file will be downloaded to the `/extra_files` directory on each worker.
+3. In your shards JSON configuration, set the `"connectionProperties"` to reference this local file path. For example, for MySQL you would specify the `trustCertificateKeyStoreUrl` and password: `"connectionProperties": "useSSL=true&requireSSL=true&trustCertificateKeyStoreUrl=file:/extra_files/truststore.jks&trustCertificateKeyStorePassword=my_password"`
 
 #### Optional Parameters
 * **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
@@ -89,7 +93,7 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
+        --parameters sourceConfigURL="gs://<bucket-name>/source-config.json",instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
         --additional-experiments=disable_runner_v2
 ```
 #### Replaying DLQ entries.

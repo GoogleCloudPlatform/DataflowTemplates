@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -113,7 +114,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(1))
             .setNodeCount(10)
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
@@ -138,7 +139,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     if (separateShadowTableDb) {
       shadowTableSpannerResourceManager =
           SpannerResourceManager.builder("shadow_" + testName, project, region)
-              .maybeUseStaticInstance()
+              .maybeUseStaticInstance(Optional.of(1))
               .setNodeCount(10)
               .setMonitoringClient(monitoringClient)
               .setSuppressVerboseLogs(true)
@@ -206,7 +207,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
-            put("workerMachineType", "n2-standard-4");
           }
         };
 
@@ -230,6 +230,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));

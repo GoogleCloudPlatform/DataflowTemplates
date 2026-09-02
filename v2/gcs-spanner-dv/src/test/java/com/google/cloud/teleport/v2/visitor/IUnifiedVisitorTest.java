@@ -23,6 +23,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -61,6 +62,39 @@ public class IUnifiedVisitorTest {
     IUnifiedVisitor.dispatch(value, visitor);
 
     verify(visitor).visitFloat64(input);
+  }
+
+  @Test
+  public void testDispatchMatchesFloat32() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    float input = 123.456f;
+    Value value = Value.float32(input);
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitFloat32(input);
+  }
+
+  @Test
+  public void testDispatchMatchesPgNumeric() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    BigDecimal input = new BigDecimal("123.456");
+    Value value = Value.pgNumeric(input.toString());
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitNumeric(input);
+  }
+
+  @Test
+  public void testDispatchMatchesPgJsonb() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    String input = "{\"key\": \"value\"}";
+    Value value = Value.pgJsonb(input);
+
+    IUnifiedVisitor.dispatch(value, visitor);
+
+    verify(visitor).visitJson(input);
   }
 
   @Test
@@ -149,6 +183,15 @@ public class IUnifiedVisitorTest {
     IUnifiedVisitor.dispatch(value, visitor);
 
     verify(visitor).visitDefault(value);
+  }
+
+  @Test
+  public void testDispatchMatchesUuid() {
+    IUnifiedVisitor visitor = mock(IUnifiedVisitor.class);
+    UUID testUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    Value mockValue = Value.uuid(testUuid);
+    IUnifiedVisitor.dispatch(mockValue, visitor);
+    verify(visitor).visitUuid(testUuid);
   }
 
   @Test

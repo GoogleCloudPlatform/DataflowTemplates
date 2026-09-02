@@ -87,8 +87,9 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
     POSTGRES
   }
 
-  // TODO: Decrease timeout. Currently need to wait for long to make sure results are propagated.
-  @Rule public Timeout timeout = new Timeout(40, TimeUnit.MINUTES);
+  // TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/2459): Decrease timeout.
+  //  Currently need to wait for long to make sure results are propagated.
+  @Rule public Timeout timeout = new Timeout(60, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "ROW_ID";
@@ -200,6 +201,8 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/2459") // elevated test
+  // timeout
   public void testDataStreamPostgresToBigQuery() throws IOException {
     simpleJdbcToBigQueryTest(
         JDBCType.POSTGRES,

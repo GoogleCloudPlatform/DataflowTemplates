@@ -125,6 +125,14 @@ public class JdbcUrlTest {
 
   @Test
   public void testOf_derby() {
+
+    JdbcUrl oracleUrl =
+        JdbcUrl.of("jdbc:oracle:thin:@//myhost.example.com:1521/my_service?prop=value");
+    assertThat(oracleUrl).isNotNull();
+    assertThat(oracleUrl.getScheme()).isEqualTo("oracle");
+    assertThat(oracleUrl.getHostAndPort()).isEqualTo("myhost.example.com:1521");
+    assertThat(oracleUrl.getDatabase()).isEqualTo("my_service");
+
     JdbcUrl jdbcUrl = JdbcUrl.of("jdbc:derby:memory:testDB");
     assertThat(jdbcUrl).isNotNull();
     assertThat(jdbcUrl.getScheme()).isEqualTo("derby");

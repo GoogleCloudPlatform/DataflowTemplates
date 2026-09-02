@@ -53,8 +53,6 @@ resource "google_dataflow_flex_template_job" "generated" {
     jdbcDriverClassName            = var.jdbc_driver_class_name
     maxConnections                 = tostring(var.max_connections)
     sourceConfigURL                = var.source_config_url
-    username                       = var.username
-    password                       = var.password
     numPartitions                  = tostring(var.num_partitions)
     instanceId                     = var.instance_id
     databaseId                     = var.database_id

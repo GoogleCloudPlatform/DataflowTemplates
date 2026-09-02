@@ -75,43 +75,10 @@ SET @charset_chars_with_codepoints = CONCAT(
     '  FROM (', @charset_chars, ') AS charset_with_codepoints_query '
 );
 
-
-
--- We use codepoint to map character of the string to a java code-point.
--- equivalent_codepoint is the minimum code point which is equal to a given character for the given @db_collation.
--- For example in any case insensitive collation, the equivalent_codepoint for 'a' will be the codepoint for 'A'
--- Mysql ignores empty characters coming in between a string for comparison. For example _utf8mb4`ab` will compare equal to CONCAT(_utf8mb4'a', CONVERT(UNHEX('001A') using utf8mb4), _utf8mb4'b')
--- Trailing spaces are ignored depending on whether a collation is PAD SPACE or not.
--- Note that there are various codepoints that can potentially represent a space, like the ascii space or non-breaking space (UNHEX(C2H0)) when the collation is Pad Space. These have same behavior to ascii space as far as trailing or non-trailing comparison is concerned.
-SET @find_equivalents_query = CONCAT(
-    ' SELECT *, ',
-    ' FIRST_VALUE(CAST(codepoint AS SIGNED)) OVER (PARTITION BY charset_char COLLATE ', @db_collation, ', is_empty ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_codepoint, ',
-    ' FIRST_VALUE(charset_char) OVER (PARTITION BY charset_char COLLATE ', @db_collation, ', is_empty ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_charset_char, ',
-    ' FIRST_VALUE(CAST(codepoint AS SIGNED)) OVER (PARTITION BY charset_char_non_trailing COLLATE ', @db_collation, ', is_empty ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_codepoint_non_trailing, ',
-    ' FIRST_VALUE(charset_char) OVER (PARTITION BY charset_char_non_trailing COLLATE ', @db_collation, ', is_empty ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_charset_char_non_trailing, ',
-    ' FIRST_VALUE(CAST(codepoint AS SIGNED)) OVER (PARTITION BY charset_char COLLATE ', @db_collation, ', is_empty, is_space ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_codepoint_pad_space, ',
-    ' FIRST_VALUE(charset_char) OVER (PARTITION BY charset_char COLLATE ', @db_collation, ', is_empty, is_space ORDER BY charset_char COLLATE ', @db_collation, ',CAST(codepoint AS SIGNED) ) AS equivalent_charset_char_pad_space ',
-    ' FROM ( ', @charset_chars_with_codepoints, ' ) AS find_equivalents',
-    ' ORDER BY codepoint'
-);
-
--- Find the rank of a code_point as per the collation ordering.
--- The `_pad_space` rank is the rank of the code_point at trailing position if pad-space comparison is enforced.
-SET @find_rank_query = CONCAT(
-    'SELECT *, ',
-    ' DENSE_RANK() OVER (PARTITION BY is_empty ORDER BY equivalent_charset_char_non_trailing COLLATE ', @db_collation, ') - 1 AS codepoint_rank, ',
-    ' DENSE_RANK() OVER (PARTITION BY is_empty, is_space ORDER BY equivalent_charset_char_pad_space COLLATE ', @db_collation, ') - 1 AS codepoint_rank_pad_space ',
-    ' FROM ( ',
-    @find_equivalents_query,
-    ' ) AS find_rank ',
-    ' ORDER BY CAST(codepoint AS SIGNED) ASC '
-);
-
 SET @output_query = CONCAT(
-  ' SELECT * ',
-  ' FROM (',
-    @find_rank_query,
-  ' ) AS output_query ',
+  ' SELECT *, ',
+  '   WEIGHT_STRING(charset_char COLLATE ', @db_collation, ') AS weight ',
+  ' FROM (', @charset_chars_with_codepoints, ' ) AS output_query ',
   ' ORDER BY CAST(codepoint AS SIGNED) '
 );
 

@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -79,7 +80,7 @@ public class PostgreSQL5KTablesLT extends SourceDbToSpannerLTBase {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(3))
             .setMonitoringClient(monitoringClient)
             .build();
 
@@ -176,9 +177,11 @@ public class PostgreSQL5KTablesLT extends SourceDbToSpannerLTBase {
     params.put("maxConnections", "16");
     params.put("numWorkers", "16");
     params.put("maxNumWorkers", "16");
-    params.put("workerMachineType", "n2-standard-4");
 
-    LaunchConfig.Builder options = LaunchConfig.builder(testName, SPEC_PATH).setParameters(params);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .setParameters(params)
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     PipelineLauncher.LaunchInfo jobInfo = launchJob(options);
 
