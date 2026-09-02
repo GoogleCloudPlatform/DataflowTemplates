@@ -63,7 +63,8 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
         + ":"
         + shard.getPort()
         + ";databaseName="
-        + shard.getDbName();
+        + shard.getDbName()
+        + ";trustServerCertificate=true;encrypt=false";
   }
 
   @Override
@@ -73,17 +74,15 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
 
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
-    if (!connectionHelper.isConnectionPoolInitialized()) {
-      ConnectionHelperRequest request =
-          new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "com.microsoft.sqlserver.jdbc.SQLServerDriver",
-              null,
-              "jdbc:sqlserver://");
-      connectionHelper.init(request);
-    }
+    ConnectionHelperRequest request =
+        new ConnectionHelperRequest(
+            shards,
+            null,
+            maxConnections,
+            "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+            null,
+            "jdbc:sqlserver://");
+    connectionHelper.init(request);
   }
 
   @Override
@@ -116,14 +115,10 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
     Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-    String url =
-        getConnectionUrl(shard)
-            + ";user="
-            + shard.getUserName()
-            + ";password="
-            + shard.getPassword()
-            + ";trustServerCertificate=true;encrypt=false";
-    return java.sql.DriverManager.getConnection(url);
+    java.util.Properties props = new java.util.Properties();
+    props.setProperty("user", shard.getUserName());
+    props.setProperty("password", shard.getPassword());
+    return java.sql.DriverManager.getConnection(getConnectionUrl(shard), props);
   }
 
   @Override

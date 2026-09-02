@@ -44,12 +44,11 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
 
   @Override
   public synchronized void init(ConnectionHelperRequest connectionHelperRequest) {
-    if (connectionPoolMap != null) {
-      return;
+    if (connectionPoolMap == null) {
+      connectionPoolMap = new HashMap<>();
     }
     LOG.info(
         "Initializing connection pool with size: {}", connectionHelperRequest.getMaxConnections());
-    Map<String, HikariDataSource> localMap = new HashMap<>();
     for (Shard shard : connectionHelperRequest.getShards()) {
       String sourceConnectionUrl;
       if (connectionHelperRequest.getJdbcUrlPrefix() != null
@@ -62,6 +61,7 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
                 .append(shard.getPort())
                 .append(";databaseName=")
                 .append(shard.getDbName())
+                .append(";trustServerCertificate=true;encrypt=false")
                 .toString();
       } else {
         sourceConnectionUrl =
@@ -73,6 +73,10 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
                 .append("/")
                 .append(shard.getDbName())
                 .toString();
+      }
+      String connectionKey = sourceConnectionUrl + "/" + shard.getUserName();
+      if (connectionPoolMap.containsKey(connectionKey)) {
+        continue;
       }
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
@@ -97,9 +101,8 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
         config.addDataSourceProperty(key, value);
       }
       HikariDataSource ds = new HikariDataSource(config);
-      localMap.put(sourceConnectionUrl + "/" + shard.getUserName(), ds);
+      connectionPoolMap.put(connectionKey, ds);
     }
-    connectionPoolMap = localMap;
   }
 
   @Override

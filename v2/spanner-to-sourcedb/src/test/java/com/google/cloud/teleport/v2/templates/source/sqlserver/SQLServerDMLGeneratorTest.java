@@ -21,14 +21,19 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONObject;
@@ -245,5 +250,105 @@ public final class SQLServerDMLGeneratorTest {
 
     String sql = response.getDmlStatement();
     assertTrue(sql.contains("target.[FirstName] = 'CustomJohn'"));
+  }
+
+  @Test
+  public void testJsonDataType() {
+    String jsonVal = "{\"key\":\"value\",\"num\":123}";
+
+    // Test SQL Server json column with GSQL JSON and PG jsonb / string / varchar
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "JSON"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "PG_JSONB"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "STRING"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("json", jsonVal, "+00:00", "PG_VARCHAR"));
+
+    // Test SQL Server varchar column with JSON / PG_JSONB
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("varchar", jsonVal, "+00:00", "JSON"));
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getColumnValueByType("varchar", jsonVal, "+00:00", "PG_JSONB"));
+
+    // Test getMappedColumnValue with JSON column
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T")
+            .column("json_col")
+            .type(Type.json())
+            .endColumn()
+            .column("pg_jsonb_col")
+            .type(Type.pgJsonb())
+            .endColumn()
+            .endTable()
+            .build();
+    Column gsqlJsonCol = ddl.table("T").column("json_col");
+    SourceColumn sourceJsonCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("json_col").type("json").build();
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("json_col", jsonVal);
+    valuesJson.put("pg_jsonb_col", jsonVal);
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            gsqlJsonCol, sourceJsonCol, valuesJson, "+00:00", new ArrayList<>()));
+
+    // Test getMappedColumnValue with PG_JSONB column
+    Column pgJsonbCol = ddl.table("T").column("pg_jsonb_col");
+    assertEquals(
+        "'{\"key\":\"value\",\"num\":123}'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgJsonbCol, sourceJsonCol, valuesJson, "+00:00", new ArrayList<>()));
+  }
+
+  @Test
+  public void testVectorDataType() {
+    String vectorVal = "[1.5,2.5,3.5]";
+
+    // Test SQL Server vector column with GSQL ARRAY and PG ARRAY
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getColumnValueByType(
+            "vector", vectorVal, "+00:00", "ARRAY<FLOAT64>"));
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getColumnValueByType("vector", vectorVal, "+00:00", "PG_ARRAY"));
+
+    // Test getMappedColumnValue with GSQL ARRAY column
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T")
+            .column("vec_col")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("pg_vec_col")
+            .type(Type.pgArray(Type.pgFloat8()))
+            .endColumn()
+            .endTable()
+            .build();
+    Column gsqlArrayCol = ddl.table("T").column("vec_col");
+    SourceColumn sourceVectorCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("vec_col").type("vector").build();
+    JSONObject valuesJson =
+        new JSONObject("{\"vec_col\":[1.5,2.5,3.5],\"pg_vec_col\":[1.5,2.5,3.5]}");
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            gsqlArrayCol, sourceVectorCol, valuesJson, "+00:00", new ArrayList<>()));
+
+    // Test getMappedColumnValue with PG ARRAY column
+    Column pgArrayCol = ddl.table("T").column("pg_vec_col");
+    assertEquals(
+        "'[1.5,2.5,3.5]'",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgArrayCol, sourceVectorCol, valuesJson, "+00:00", new ArrayList<>()));
   }
 }

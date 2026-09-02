@@ -67,7 +67,9 @@ public class SQLServerSpToSrcSourceConnectorTest {
     when(mockShard.getDbName()).thenReturn("testdb");
 
     String url = connector.getConnectionUrl(mockShard);
-    assertEquals("jdbc:sqlserver://localhost:1433;databaseName=testdb", url);
+    assertEquals(
+        "jdbc:sqlserver://localhost:1433;databaseName=testdb;trustServerCertificate=true;encrypt=false",
+        url);
   }
 
   @Test

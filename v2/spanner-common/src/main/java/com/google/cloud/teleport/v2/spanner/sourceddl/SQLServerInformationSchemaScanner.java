@@ -19,12 +19,15 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
   private final Connection connection;
@@ -68,6 +71,24 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
         SourceTable.builder(SourceDatabaseType.SQLSERVER).name(tableName).schema(schemaPattern);
     List<SourceColumn> columns = new ArrayList<>();
 
+    Set<String> computedColumns = new HashSet<>();
+    String query =
+        "SELECT c.name FROM sys.computed_columns c "
+            + "JOIN sys.tables t ON c.object_id = t.object_id "
+            + "JOIN sys.schemas s ON t.schema_id = s.schema_id "
+            + "WHERE s.name = ? AND t.name = ?";
+    try (PreparedStatement stmt = connection.prepareStatement(query)) {
+      stmt.setString(1, schemaPattern);
+      stmt.setString(2, tableName);
+      try (ResultSet compRs = stmt.executeQuery()) {
+        while (compRs.next()) {
+          computedColumns.add(compRs.getString(1));
+        }
+      }
+    } catch (Exception e) {
+      // Ignore if sys.computed_columns is not accessible and fallback to metadata
+    }
+
     try (ResultSet colsRs = metaData.getColumns(null, schemaPattern, tableName, "%")) {
       while (colsRs.next()) {
         String columnName = colsRs.getString("COLUMN_NAME");
@@ -79,12 +100,14 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
                 .type(dataType)
                 .isNullable("YES".equalsIgnoreCase(colsRs.getString("IS_NULLABLE")));
 
-        String isAutoIncrement = "";
+        String isGeneratedStr = "";
         try {
-          isAutoIncrement = colsRs.getString("IS_AUTOINCREMENT");
+          isGeneratedStr = colsRs.getString("IS_GENERATEDCOLUMN");
         } catch (Exception e) {
         }
-        colBuilder.isGenerated("YES".equalsIgnoreCase(isAutoIncrement));
+        boolean isGenerated =
+            computedColumns.contains(columnName) || "YES".equalsIgnoreCase(isGeneratedStr);
+        colBuilder.isGenerated(isGenerated);
         columns.add(colBuilder.build());
       }
     }
