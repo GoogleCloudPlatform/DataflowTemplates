@@ -436,7 +436,7 @@ public interface DataStreamToSpannerOptions
   void setShadowTableSpannerInstanceId(String value);
 
   @TemplateParameter.Text(
-      order = 33,
+      order = 34,
       optional = true,
       groupName = "Target",
       description = "Cloud Spanner Shadow Table Database Id.",
@@ -448,7 +448,7 @@ public interface DataStreamToSpannerOptions
   void setShadowTableSpannerDatabaseId(String value);
 
   @TemplateParameter.Text(
-      order = 34,
+      order = 35,
       optional = true,
       description = "Failure injection parameter",
       helpText = "Failure injection parameter. Only used for testing.")
