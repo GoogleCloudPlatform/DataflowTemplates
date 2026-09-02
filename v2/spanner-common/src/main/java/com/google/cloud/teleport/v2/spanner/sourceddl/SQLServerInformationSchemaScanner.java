@@ -21,9 +21,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
@@ -35,6 +33,12 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
     this.databaseName = databaseName;
   }
 
+  /**
+   * TODO: Analyze if it is needed to populate Indexes and Foreign Keys. Also, how to support other
+   * schemas.
+   *
+   * @return SourceSchema
+   */
   @Override
   public SourceSchema scan() {
     Map<String, SourceTable> tablesMap = new HashMap<>();
@@ -66,8 +70,8 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
       throws SQLException {
     SourceTable.Builder tableBuilder =
         SourceTable.builder(SourceDatabaseType.SQLSERVER).name(tableName).schema(schemaPattern);
-    List<SourceColumn> columns = new ArrayList<>();
 
+    ImmutableList.Builder<SourceColumn> columnsBuilder = ImmutableList.builder();
     try (ResultSet colsRs = metaData.getColumns(null, schemaPattern, tableName, "%")) {
       while (colsRs.next()) {
         String columnName = colsRs.getString("COLUMN_NAME");
@@ -79,25 +83,21 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
                 .type(dataType)
                 .isNullable("YES".equalsIgnoreCase(colsRs.getString("IS_NULLABLE")));
 
-        String isAutoIncrement = "";
-        try {
-          isAutoIncrement = colsRs.getString("IS_AUTOINCREMENT");
-        } catch (Exception e) {
-        }
-        colBuilder.isGenerated("YES".equalsIgnoreCase(isAutoIncrement));
-        columns.add(colBuilder.build());
+        boolean isGenerated = "YES".equalsIgnoreCase(colsRs.getString("IS_GENERATEDCOLUMN"));
+        colBuilder.isGenerated(isGenerated);
+        columnsBuilder.add(colBuilder.build());
       }
     }
 
-    List<String> pks = new ArrayList<>();
-    try (ResultSet pkRs = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
-      while (pkRs.next()) {
-        pks.add(pkRs.getString("COLUMN_NAME"));
+    ImmutableList.Builder<String> pksBuilder = ImmutableList.builder();
+    try (ResultSet pkResultSet = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
+      while (pkResultSet.next()) {
+        pksBuilder.add(pkResultSet.getString("COLUMN_NAME"));
       }
     }
 
-    tableBuilder.columns(ImmutableList.copyOf(columns));
-    tableBuilder.primaryKeyColumns(ImmutableList.copyOf(pks));
+    tableBuilder.columns(columnsBuilder.build());
+    tableBuilder.primaryKeyColumns(pksBuilder.build());
     return tableBuilder.build();
   }
 }

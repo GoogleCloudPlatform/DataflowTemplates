@@ -25,16 +25,26 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConne
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.values.TupleTag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SQLServerSpToSrcSourceConnector.class);
+  private static final String JDBC_URL_PREFIX = "jdbc:sqlserver://";
 
   private final IConnectionHelper connectionHelper;
 
@@ -58,12 +68,18 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:sqlserver://"
-        + shard.getHost()
-        + ":"
-        + shard.getPort()
-        + ";databaseName="
-        + shard.getDbName();
+    String url =
+        JDBC_URL_PREFIX
+            + shard.getHost()
+            + ":"
+            + shard.getPort()
+            + ";databaseName="
+            + shard.getDbName()
+            + ";trustServerCertificate=true;encrypt=false";
+    if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
+      url += ";" + shard.getConnectionProperties();
+    }
+    return url;
   }
 
   @Override
@@ -74,14 +90,12 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
+      for (Shard shard : shards) {
+        shard.setConnectionUrl(getConnectionUrl(shard));
+      }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "com.microsoft.sqlserver.jdbc.SQLServerDriver",
-              null,
-              "jdbc:sqlserver://");
+              shards, null, maxConnections, "com.microsoft.sqlserver.jdbc.SQLServerDriver", null);
       connectionHelper.init(request);
     }
   }
@@ -101,7 +115,28 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
 
   @Override
   public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
-    // Basic validation could be implemented here
+    for (Shard shard : shards) {
+      try (Connection conn = createConnection(shard)) {
+        if (conn != null) {
+          try (Statement stmt = conn.createStatement();
+              ResultSet rs =
+                  stmt.executeQuery(
+                      "SELECT CASE WHEN DATABASEPROPERTYEX(DB_NAME(), 'Updateability') = 'READ_ONLY' THEN 1 ELSE 0 END")) {
+            if (rs != null && rs.next() && rs.getInt(1) == 1) {
+              throw new RuntimeException(
+                  "SQL Server destination is in read-only mode for shard: "
+                      + shard.getLogicalShardId());
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Error checking SQL Server read-only status for shard {}: {}",
+            shard.getLogicalShardId(),
+            e.getMessage());
+        throw new RuntimeException("Error checking SQL Server read-only status", e);
+      }
+    }
   }
 
   @Override
@@ -116,14 +151,8 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
     Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-    String url =
-        getConnectionUrl(shard)
-            + ";user="
-            + shard.getUserName()
-            + ";password="
-            + shard.getPassword()
-            + ";trustServerCertificate=true;encrypt=false";
-    return java.sql.DriverManager.getConnection(url);
+    return DriverManager.getConnection(
+        getConnectionUrl(shard), shard.getUserName(), shard.getPassword());
   }
 
   @Override
@@ -137,7 +166,14 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
+  public TupleTag<String> classifyException(Throwable cause) {
+    if (cause instanceof java.sql.SQLSyntaxErrorException
+        || cause instanceof java.sql.SQLDataException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+    if (cause instanceof java.sql.SQLNonTransientConnectionException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    }
     return null;
   }
 }
