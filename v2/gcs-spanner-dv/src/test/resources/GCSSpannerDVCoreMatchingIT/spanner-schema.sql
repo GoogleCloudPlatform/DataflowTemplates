@@ -14,7 +14,7 @@ CREATE TABLE AccountRoles (
 CREATE TABLE Users_ConfiguredTables (
     user_id INT64 NOT NULL,
     event_id STRING(MAX) NOT NULL,
-    user_name STRING(MAX),
+    full_name STRING(MAX),
     age INT64,
     created_at TIMESTAMP
 ) PRIMARY KEY (user_id, event_id);
