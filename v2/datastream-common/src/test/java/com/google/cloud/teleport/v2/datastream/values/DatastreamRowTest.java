@@ -16,7 +16,11 @@
 package com.google.cloud.teleport.v2.datastream.values;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -77,4 +81,25 @@ public class DatastreamRowTest {
     assertEquals("_metadata_timestamp", sortFields.get(0));
     assertEquals("_metadata_lsn", sortFields.get(1));
   }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_nullSafeWhenNoMetadataField() throws IOException {
+    JsonNode jsonNode = new ObjectMapper().readTree("{\"id\": 123}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    assertTrue(pks.isEmpty());
+    assertNull(row.getSourceType());
+  }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_oracleFallback() throws IOException {
+    JsonNode jsonNode = new ObjectMapper().readTree("{\"_metadata_source_type\": \"oracle\"}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    assertEquals(1, pks.size());
+    assertEquals(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY, pks.get(0));
+  }
 }
+

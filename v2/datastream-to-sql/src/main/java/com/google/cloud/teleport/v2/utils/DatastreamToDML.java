@@ -320,10 +320,20 @@ public abstract class DatastreamToDML
         failsafeValue);
   }
 
+  private boolean hasRowId(JsonNode rowObj) {
+    String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
+    return rowObj.has(this.rowIdColumnName)
+        || rowObj.has(casedRowId)
+        || rowObj.has("_metadata_row_id");
+  }
+
   public String getDmlTemplate(JsonNode rowObj, List<String> primaryKeys) {
     Boolean isDelete = rowObj.get("_metadata_deleted").asBoolean();
     Boolean hasPrimaryKeys = primaryKeys.size() != 0;
     if (isDelete && !hasPrimaryKeys) {
+      if (hasRowId(rowObj)) {
+        return getDeleteDmlStatement();
+      }
       throw new DeletedWithoutPrimaryKey("Delete DML without primary keys cannot be applied");
     } else if (isDelete) {
       return getDeleteDmlStatement();
@@ -365,8 +375,14 @@ public abstract class DatastreamToDML
     String columnValue;
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
-      LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
-      return "";
+      if (columnName.equals(this.rowIdColumnName) && rowObj.has("_metadata_row_id")) {
+        columnObj = rowObj.get("_metadata_row_id");
+      } else if (columnName.equals("_metadata_row_id") && rowObj.has(this.rowIdColumnName)) {
+        columnObj = rowObj.get(this.rowIdColumnName);
+      } else {
+        LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
+        return "";
+      }
     }
     if (columnObj.isTextual()) {
       columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
@@ -502,6 +518,42 @@ public abstract class DatastreamToDML
         }
       }
     }
+
+    if (pkToValueSql.isEmpty()) {
+      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        String destinationPkName = applyCasingLogic(sourceFieldName, this.columnCasing);
+
+        if (primaryKeys.contains(destinationPkName)) {
+          String columnValue = getValueSql(rowObj, sourceFieldName, tableSchema);
+          String quotedDestinationPkName = quote(destinationPkName);
+
+          if (pkToValueSql.isEmpty()) {
+            pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+          } else {
+            pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+          }
+        }
+      }
+    }
+
+    if (pkToValueSql.isEmpty() && hasRowId(rowObj)) {
+      String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
+      String sourceRowIdField = null;
+      if (rowObj.has(this.rowIdColumnName)) {
+        sourceRowIdField = this.rowIdColumnName;
+      } else if (rowObj.has(casedRowId)) {
+        sourceRowIdField = casedRowId;
+      } else if (rowObj.has("_metadata_row_id")) {
+        sourceRowIdField = "_metadata_row_id";
+      }
+
+      if (sourceRowIdField != null) {
+        String columnValue = getValueSql(rowObj, sourceRowIdField, tableSchema);
+        pkToValueSql = quote(casedRowId) + "=" + columnValue;
+      }
+    }
+
     return pkToValueSql;
   }
 
