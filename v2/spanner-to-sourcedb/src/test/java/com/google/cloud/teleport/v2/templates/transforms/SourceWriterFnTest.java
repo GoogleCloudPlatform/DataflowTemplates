@@ -35,6 +35,7 @@ import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.TransactionRunner;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -47,7 +48,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -107,7 +107,7 @@ public class SourceWriterFnTest {
   @Mock private DoFn.ProcessContext processContext;
   @Mock private ISpannerMigrationTransformer mockSpannerMigrationTransformer;
   @Mock private SourceProcessor mockSourceProcessor;
-  @Mock private Options mockOptions;
+  @Mock private SpannerToSourceDbOptions mockOptions;
   @Mock private PCollectionView<Ddl> mockDdlView;
   @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
   @Mock private IDMLGenerator mockDMLGenerator;
@@ -245,7 +245,7 @@ public class SourceWriterFnTest {
     // Mock side input access in ProcessContext
     when(processContext.sideInput(mockDdlView)).thenReturn(testDdl);
     when(processContext.sideInput(mockShadowTableDdlView)).thenReturn(shadowTableDdl);
-    when(mockOptions.as(Options.class)).thenReturn(mockOptions);
+    when(mockOptions.as(SpannerToSourceDbOptions.class)).thenReturn(mockOptions);
   }
 
   @Test

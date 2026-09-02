@@ -43,6 +43,7 @@ import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -54,7 +55,6 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
@@ -99,7 +99,7 @@ public class AssignShardIdFnTest {
 
   @Mock private DoFn.ProcessContext processContext;
 
-  @Mock private Options mockOptions;
+  @Mock private SpannerToSourceDbOptions mockOptions;
 
   @Mock private PCollectionView<Ddl> mockDdlView;
 
