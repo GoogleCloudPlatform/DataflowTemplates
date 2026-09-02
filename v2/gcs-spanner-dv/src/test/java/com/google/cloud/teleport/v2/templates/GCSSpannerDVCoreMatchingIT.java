@@ -456,11 +456,10 @@ public class GCSSpannerDVCoreMatchingIT extends GCSSpannerDVITBase {
             gcsInputDirectory,
             null,
             null,
-            "[{Users, Users_ConfiguredTables}]", // Table mapping to validate only
-            // Users_ConfiguredTables
-            null, // Column overrides
+            "[{Users, Users_ConfiguredTables}]", // table overrides
             null,
-            java.util.Map.of("tables", "Users"));
+            null,
+            java.util.Map.of("tables", "Users")); // Table mapping to validate only Users
 
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
