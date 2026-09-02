@@ -17,12 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.teleport.v2.options.DataStreamToSpannerOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.PubSubNotifiedDlqIO;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
@@ -30,6 +26,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
+import com.google.cloud.teleport.v2.options.DataStreamToSpannerOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
@@ -71,10 +68,7 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -208,7 +202,8 @@ public class DataStreamToSpanner {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
     LOG.info("Starting DataStream to Cloud Spanner");
-    DataStreamToSpannerOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
     boolean isRetryDLQMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     options.setStreaming(!isRetryDLQMode);
     validateSourceType(options);

@@ -18,14 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SOURCE_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANNER_TAG;
 
-import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -38,8 +36,6 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -71,7 +67,8 @@ public class GCSSpannerDV {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    GCSSpannerDVOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSSpannerDVOptions.class);
+    GCSSpannerDVOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSSpannerDVOptions.class);
     run(options);
   }
 

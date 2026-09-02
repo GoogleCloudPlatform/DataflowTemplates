@@ -16,23 +16,18 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.PubSubNotifiedDlqIO;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.options.CommonTemplateOptions;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -70,9 +65,7 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -121,7 +114,8 @@ public class SpannerToSourceDb {
 
     LOG.info("Starting Spanner change streams to sink");
 
-    SpannerToSourceDbOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToSourceDbOptions.class);
+    SpannerToSourceDbOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToSourceDbOptions.class);
 
     // Stage SSL certificates to extraFiles if required as per the pipeline options.
     // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
