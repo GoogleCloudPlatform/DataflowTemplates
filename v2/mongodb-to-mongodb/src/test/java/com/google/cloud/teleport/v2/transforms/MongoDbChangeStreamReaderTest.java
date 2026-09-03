@@ -717,4 +717,128 @@ public class MongoDbChangeStreamReaderTest {
     assertTrue(continuation.shouldResume());
     fn.teardown();
   }
+
+  @Test
+  public void testGenerateDatabasePartitions_singleSplit() {
+    List<ChangeStreamPartition> partitions =
+        MongoDbChangeStreamReader.generateDatabasePartitions(
+            "mongodb://localhost:27017",
+            "testDb",
+            1,
+            new BsonTimestamp(1700000000, 5),
+            "updateLookup");
+
+    assertEquals(1, partitions.size());
+    ChangeStreamPartition p = partitions.get(0);
+    assertTrue(p.isDatabaseLevel());
+    assertNull(p.getSourceCollection());
+    assertNull(p.getTargetCollection());
+    assertEquals("testDb", p.getSourceDatabase());
+    assertEquals(0, p.getPartitionIndex());
+    assertEquals(1, p.getTotalPartitions());
+    assertEquals(1700000000L, p.getStartAtOperationTimeSeconds());
+    assertEquals(5, p.getStartAtOperationTimeInc());
+    assertNull(p.getMatchFilterJson());
+  }
+
+  @Test
+  public void testGenerateDatabasePartitions_multipleSplits() {
+    List<ChangeStreamPartition> partitions =
+        MongoDbChangeStreamReader.generateDatabasePartitions(
+            "mongodb://localhost:27017",
+            "testDb",
+            4,
+            new BsonTimestamp(1700000000, 0),
+            "updateLookup");
+
+    assertEquals(4, partitions.size());
+    for (int i = 0; i < 4; i++) {
+      ChangeStreamPartition p = partitions.get(i);
+      assertTrue(p.isDatabaseLevel());
+      assertNull(p.getSourceCollection());
+      assertEquals(i, p.getPartitionIndex());
+      assertEquals(4, p.getTotalPartitions());
+      assertNotNull(p.getMatchFilterJson());
+      assertTrue(p.getMatchFilterJson().contains("$toHashedIndexKey"));
+    }
+  }
+
+  @Test
+  public void testMapChangeStreamEvent_databaseLevel_extractsCollection() {
+    BsonDocument docKey = new BsonDocument("_id", new BsonString("doc-123"));
+    Document fullDoc = new Document("_id", "doc-123").append("key", "val");
+    BsonTimestamp ts = new BsonTimestamp(1700000000, 1);
+
+    ChangeStreamDocument<Document> event =
+        new ChangeStreamDocument<>(
+            OperationType.INSERT.getValue(),
+            new BsonDocument(),
+            BsonDocument.parse("{\"db\": \"testDb\", \"coll\": \"orders\"}"),
+            null,
+            null,
+            fullDoc,
+            null,
+            docKey,
+            ts,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    // Database-level partition (sourceCollection = null, targetCollection = null)
+    DocumentWithMetadata result =
+        MongoDbChangeStreamReader.mapChangeStreamEvent(event, null, null);
+
+    assertNotNull(result);
+    assertEquals("orders", result.getSourceCollection());
+    assertEquals("orders", result.getTargetCollection());
+    assertEquals(DocumentWithMetadata.OperationType.INSERT, result.getOperationType());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testProcessChangeStreamPartitionFn_databaseLevel_watchesDatabase() {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+
+    when(mockClient.getDatabase("testDb")).thenReturn(mockDb);
+    when(mockDb.watch(anyList())).thenReturn(mockStream);
+    when(mockStream.batchSize(anyInt())).thenReturn(mockStream);
+    when(mockStream.maxAwaitTime(anyLong(), any())).thenReturn(mockStream);
+    when(mockStream.fullDocument(any())).thenReturn(mockStream);
+    when(mockStream.cursor()).thenReturn(mockCursor);
+    when(mockCursor.tryNext()).thenReturn(null);
+
+    ProcessChangeStreamPartitionFn fn = new ProcessChangeStreamPartitionFn(uri -> mockClient);
+    ChangeStreamPartition partition =
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            null,
+            null,
+            0,
+            1,
+            null,
+            0,
+            0,
+            "updateLookup");
+
+    assertTrue(partition.isDatabaseLevel());
+
+    ChangeStreamRestrictionTracker tracker =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
+
+    ProcessContinuation continuation = fn.processElement(partition, tracker, mockReceiver);
+    assertNotNull(continuation);
+    assertTrue(continuation.shouldResume());
+
+    // Verify db.watch() was called on MongoDatabase, NOT on a MongoCollection
+    verify(mockDb, times(1)).watch(anyList());
+    fn.teardown();
+  }
 }

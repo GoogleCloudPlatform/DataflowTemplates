@@ -392,6 +392,13 @@ public class MongoDbToMongoDb {
     String sourceUri = options.getSourceUri();
     String sourceDatabase = options.getSourceDatabase();
     String sourceCollection = options.getSourceCollection();
+    String targetCollectionRaw = options.getTargetCollection();
+
+    if ((sourceCollection == null || sourceCollection.isEmpty())
+        && (targetCollectionRaw != null && !targetCollectionRaw.isEmpty())) {
+      throw new IllegalArgumentException(
+          "targetCollection cannot be specified when migrating an entire database without specifying sourceCollection.");
+    }
 
     List<String> sourceCollections = new ArrayList<>();
     if (sourceCollection != null && !sourceCollection.isEmpty()) {
@@ -438,7 +445,7 @@ public class MongoDbToMongoDb {
     LOG.info("  Source Collections:      {}", sourceCollections);
     LOG.info(
         "  Backfill Configuration:  coarse-split sequential cursor streaming (numBackfillSplits={})",
-        options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 4);
+        options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 1);
     LOG.info(
         "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
             + " dlqMaxRetries={}",
@@ -528,7 +535,6 @@ public class MongoDbToMongoDb {
 
       try {
         for (String inputCollection : sourceCollections) {
-          String targetCollectionRaw = options.getTargetCollection();
           final String targetCollection =
               (targetCollectionRaw == null || targetCollectionRaw.isEmpty())
                   ? inputCollection
@@ -565,7 +571,7 @@ public class MongoDbToMongoDb {
             }
           }
 
-          if (includeCdc) {
+          if (includeCdc && (sourceCollection != null && !sourceCollection.isEmpty())) {
             int numCdcSplits =
                 options.getNumChangeStreamSplits() != null
                     ? options.getNumChangeStreamSplits()
@@ -598,6 +604,38 @@ public class MongoDbToMongoDb {
                       t0,
                       options.getChangeStreamFullDocument()));
             }
+          }
+        }
+
+        if (includeCdc && (sourceCollection == null || sourceCollection.isEmpty())) {
+          int numCdcSplits =
+              options.getNumChangeStreamSplits() != null ? options.getNumChangeStreamSplits() : 1;
+          LOG.info(
+              "Configuring database-level change stream on database '{}' with {} parallel splits",
+              options.getSourceDatabase(),
+              numCdcSplits);
+          try {
+            cdcPartitions.addAll(
+                MongoDbChangeStreamReader.generateDatabasePartitions(
+                    setupClient,
+                    options.getSourceUri(),
+                    options.getSourceDatabase(),
+                    numCdcSplits,
+                    t0,
+                    options.getChangeStreamFullDocument()));
+          } catch (Exception e) {
+            LOG.warn(
+                "Could not generate database-level change stream splits ({}). Falling back to single"
+                    + " split.",
+                e.getMessage());
+            cdcPartitions.addAll(
+                MongoDbChangeStreamReader.generateDatabasePartitions(
+                    null,
+                    options.getSourceUri(),
+                    options.getSourceDatabase(),
+                    1,
+                    t0,
+                    options.getChangeStreamFullDocument()));
           }
         }
       } finally {

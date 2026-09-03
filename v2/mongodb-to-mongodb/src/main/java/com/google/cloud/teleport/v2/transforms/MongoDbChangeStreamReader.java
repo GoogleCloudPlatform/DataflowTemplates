@@ -161,6 +161,10 @@ public class MongoDbChangeStreamReader {
       return fullDocumentStrategy;
     }
 
+    public boolean isDatabaseLevel() {
+      return sourceCollection == null || sourceCollection.isEmpty();
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -200,8 +204,11 @@ public class MongoDbChangeStreamReader {
     @Override
     public String toString() {
       return "ChangeStreamPartition{"
-          + "collection='"
-          + sourceCollection
+          + "database='"
+          + sourceDatabase
+          + '\''
+          + ", collection='"
+          + (isDatabaseLevel() ? "[DATABASE_WIDE]" : sourceCollection)
           + '\''
           + ", partition="
           + partitionIndex
@@ -360,6 +367,75 @@ public class MongoDbChangeStreamReader {
         sourceDatabase,
         sourceCollection,
         targetCollection,
+        numSplits,
+        startAtOperationTime,
+        fullDocumentStrategy);
+  }
+
+  /**
+   * Generates database-level change stream partition descriptors for an entire database.
+   */
+  public static List<ChangeStreamPartition> generateDatabasePartitions(
+      MongoClient client,
+      String sourceUri,
+      String sourceDatabase,
+      int numSplits,
+      BsonTimestamp startAtOperationTime,
+      String fullDocumentStrategy) {
+    List<ChangeStreamPartition> partitions = new ArrayList<>();
+    long startSec = startAtOperationTime != null ? startAtOperationTime.getTime() : 0L;
+    int startInc = startAtOperationTime != null ? startAtOperationTime.getInc() : 0;
+
+    if (numSplits <= 1) {
+      partitions.add(
+          new ChangeStreamPartition(
+              sourceUri,
+              sourceDatabase,
+              null,
+              null,
+              0,
+              1,
+              null,
+              startSec,
+              startInc,
+              fullDocumentStrategy));
+      return partitions;
+    }
+
+    for (int i = 0; i < numSplits; i++) {
+      BsonDocument changeStreamFilter = generateHashedMatchFilter(numSplits, i);
+      String filterJson = changeStreamFilter.toJson();
+
+      partitions.add(
+          new ChangeStreamPartition(
+              sourceUri,
+              sourceDatabase,
+              null,
+              null,
+              i,
+              numSplits,
+              filterJson,
+              startSec,
+              startInc,
+              fullDocumentStrategy));
+    }
+
+    return partitions;
+  }
+
+  /**
+   * Generates database-level change stream partition descriptors for an entire database.
+   */
+  public static List<ChangeStreamPartition> generateDatabasePartitions(
+      String sourceUri,
+      String sourceDatabase,
+      int numSplits,
+      BsonTimestamp startAtOperationTime,
+      String fullDocumentStrategy) {
+    return generateDatabasePartitions(
+        null,
+        sourceUri,
+        sourceDatabase,
         numSplits,
         startAtOperationTime,
         fullDocumentStrategy);
@@ -707,8 +783,7 @@ public class MongoDbChangeStreamReader {
 
       String partitionKey =
           partition.getSourceDatabase()
-              + "."
-              + partition.getSourceCollection()
+              + (partition.isDatabaseLevel() ? "#db" : "." + partition.getSourceCollection())
               + "#"
               + partition.getPartitionIndex();
 
@@ -731,18 +806,23 @@ public class MongoDbChangeStreamReader {
               clientCache.computeIfAbsent(partition.getSourceUri(), clientFactory::apply);
 
           MongoDatabase db = mongoClient.getDatabase(partition.getSourceDatabase());
-          MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
 
           List<Bson> pipeline = new ArrayList<>();
           if (partition.getMatchFilterJson() != null && !partition.getMatchFilterJson().isEmpty()) {
             pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
           }
 
-          ChangeStreamIterable<Document> stream =
-              collection
-                  .watch(pipeline)
-                  .batchSize(MAX_EVENTS_PER_SLICE)
-                  .maxAwaitTime(500L, java.util.concurrent.TimeUnit.MILLISECONDS);
+          ChangeStreamIterable<Document> stream;
+          if (partition.isDatabaseLevel()) {
+            stream = db.watch(pipeline);
+          } else {
+            MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
+            stream = collection.watch(pipeline);
+          }
+
+          stream
+              .batchSize(MAX_EVENTS_PER_SLICE)
+              .maxAwaitTime(500L, java.util.concurrent.TimeUnit.MILLISECONDS);
 
           String fullDocStrategy = partition.getFullDocumentStrategy();
           if ("whenAvailable".equalsIgnoreCase(fullDocStrategy)) {
@@ -777,13 +857,17 @@ public class MongoDbChangeStreamReader {
           changeStreamCursorReconnects.inc();
         } catch (com.mongodb.MongoCommandException mce) {
           int errCode = mce.getErrorCode();
+          String targetDesc =
+              partition.isDatabaseLevel()
+                  ? "database '" + partition.getSourceDatabase() + "'"
+                  : "collection '" + partition.getSourceCollection() + "'";
           if (errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280
               || errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286) {
             changeStreamHistoryLost.inc();
             LOG.error(
-                "FATAL: ChangeStreamHistoryLost (code={}) on collection '{}' partition {}. MongoDB oplog rolled over: {}",
+                "FATAL: ChangeStreamHistoryLost (code={}) on {} partition {}. MongoDB oplog rolled over: {}",
                 errCode,
-                partition.getSourceCollection(),
+                targetDesc,
                 partition.getPartitionIndex(),
                 mce.getMessage());
           }
@@ -791,10 +875,14 @@ public class MongoDbChangeStreamReader {
           closeCursorForPartition(partitionKey);
           return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
         } catch (Exception e) {
+          String targetDesc =
+              partition.isDatabaseLevel()
+                  ? "database '" + partition.getSourceDatabase() + "'"
+                  : "collection '" + partition.getSourceCollection() + "'";
           changeEventsErrors.inc();
           LOG.error(
-              "Error initializing change stream cursor for collection '{}', partition {}: {}. Will retry in 1s.",
-              partition.getSourceCollection(),
+              "Error initializing change stream cursor for {}, partition {}: {}. Will retry in 1s.",
+              targetDesc,
               partition.getPartitionIndex(),
               e.getMessage(),
               e);
@@ -886,13 +974,17 @@ public class MongoDbChangeStreamReader {
         }
       } catch (com.mongodb.MongoCommandException mce) {
         int errCode = mce.getErrorCode();
+        String targetDesc =
+            partition.isDatabaseLevel()
+                ? "database '" + partition.getSourceDatabase() + "'"
+                : "collection '" + partition.getSourceCollection() + "'";
         if (errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280
             || errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286) {
           changeStreamHistoryLost.inc();
           LOG.error(
-              "FATAL: ChangeStreamHistoryLost (code={}) during streaming on collection '{}' partition {}. MongoDB oplog rolled over: {}",
+              "FATAL: ChangeStreamHistoryLost (code={}) during streaming on {} partition {}. MongoDB oplog rolled over: {}",
               errCode,
-              partition.getSourceCollection(),
+              targetDesc,
               partition.getPartitionIndex(),
               mce.getMessage());
         }
@@ -900,10 +992,14 @@ public class MongoDbChangeStreamReader {
         closeCursorForPartition(partitionKey);
         return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
       } catch (Exception e) {
+        String targetDesc =
+            partition.isDatabaseLevel()
+                ? "database '" + partition.getSourceDatabase() + "'"
+                : "collection '" + partition.getSourceCollection() + "'";
         changeEventsErrors.inc();
         LOG.warn(
-            "Transient exception during change stream poll on collection '{}', partition {}: {}. Reconnecting cursor...",
-            partition.getSourceCollection(),
+            "Transient exception during change stream poll on {}, partition {}: {}. Reconnecting cursor...",
+            targetDesc,
             partition.getPartitionIndex(),
             e.getMessage());
         closeCursorForPartition(partitionKey);
@@ -966,6 +1062,19 @@ public class MongoDbChangeStreamReader {
       return null;
     }
 
+    String eventCol = sourceCollection;
+    if (event.getNamespace() != null && event.getNamespace().getCollectionName() != null) {
+      eventCol = event.getNamespace().getCollectionName();
+    }
+    if (eventCol == null || eventCol.startsWith("system.")) {
+      return null;
+    }
+
+    String targetCol =
+        (targetCollection != null && !targetCollection.isEmpty())
+            ? targetCollection
+            : eventCol;
+
     com.mongodb.client.model.changestream.OperationType mongoOp = event.getOperationType();
     if (mongoOp == null) {
       return null;
@@ -1016,6 +1125,6 @@ public class MongoDbChangeStreamReader {
     String originalDocStr = fullDoc != null ? fullDoc.toJson(CANONICAL_JSON_SETTINGS) : null;
 
     return DocumentWithMetadata.cdcEvent(
-        fullDoc, originalDocStr, sourceCollection, targetCollection, opType, sortKey, docKeyStr);
+        fullDoc, originalDocStr, eventCol, targetCol, opType, sortKey, docKeyStr);
   }
 }

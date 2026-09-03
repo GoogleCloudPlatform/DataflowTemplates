@@ -53,6 +53,7 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
@@ -722,5 +723,177 @@ public class MongoDbTransformsTest {
     // Teardown closes the client
     fn.teardown();
     org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.times(1)).close();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_insertThenDelete_emitsOnlyDelete() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    Document doc1 = new Document("_id", 100).append("name", "Alice");
+    DocumentWithMetadata insertItem = DocumentWithMetadata.of(doc1, "users", "users");
+
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000, 1),
+            new Document("_id", 100).toJson());
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("users#0", Arrays.asList(insertItem, deleteItem)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof DeleteOneModel);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_multipleUpdates_emitsLatestPayload() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    Document docV1 = new Document("_id", 200).append("val", 1);
+    Document docV2 = new Document("_id", 200).append("val", 2);
+    Document docV3 = new Document("_id", 200).append("val", 3);
+
+    DocumentWithMetadata item1 = DocumentWithMetadata.of(docV1, "metrics", "metrics");
+    DocumentWithMetadata item2 = DocumentWithMetadata.of(docV2, "metrics", "metrics");
+    DocumentWithMetadata item3 = DocumentWithMetadata.of(docV3, "metrics", "metrics");
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("metrics#1", Arrays.asList(item1, item2, item3)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+    ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
+    assertEquals(3, replaceModel.getReplacement().get("val"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_mixedUniqueAndDuplicates() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    List<DocumentWithMetadata> batchItems = new ArrayList<>();
+    // 5 unique items
+    for (int i = 1; i <= 5; i++) {
+      batchItems.add(
+          DocumentWithMetadata.of(new Document("_id", i).append("name", "name" + i), "items", "items"));
+    }
+    // Update to id=1 and id=2
+    batchItems.add(
+        DocumentWithMetadata.of(
+            new Document("_id", 1).append("name", "name1_updated"), "items", "items"));
+    batchItems.add(
+        DocumentWithMetadata.of(
+            new Document("_id", 2).append("name", "name2_updated"), "items", "items"));
+    // Delete for id=3
+    batchItems.add(
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "items",
+            "items",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(2000, 1),
+            new Document("_id", 3).toJson()));
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("items#0", batchItems));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(5, capturedModels.size());
   }
 }

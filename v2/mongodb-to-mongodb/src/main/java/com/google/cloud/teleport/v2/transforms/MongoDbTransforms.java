@@ -38,6 +38,7 @@ import com.mongodb.client.model.WriteModel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -1102,7 +1103,6 @@ public class MongoDbTransforms {
 
     private final String uri;
     private final String database;
-    private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
     private final Integer initialWriteRatePerWorker;
@@ -1132,11 +1132,10 @@ public class MongoDbTransforms {
         Metrics.counter(WriteWithDlq.class, "writeDeletes");
     private final Counter writeDropsSkipped =
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
+    private final Counter writeBatchesCoalesced =
+        Metrics.counter(WriteWithDlq.class, "writeBatchesCoalesced");
 
     private transient MongoClient mongoClient;
-    private transient ExecutorService executor;
-    private transient Semaphore semaphore;
-    private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
     private transient AtomicLong successfulCount;
     private transient ConcurrentHashMap<String, AtomicLong> dynamicCounters;
@@ -1167,7 +1166,6 @@ public class MongoDbTransforms {
         TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
       this.database = database;
-      this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
       this.initialWriteRatePerWorker = initialWriteRatePerWorker;
@@ -1297,8 +1295,6 @@ public class MongoDbTransforms {
 
     @Setup
     public void setup() {
-      executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
-      semaphore = new Semaphore(maxConcurrentAsyncWrites);
       if (clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
@@ -1323,9 +1319,8 @@ public class MongoDbTransforms {
         LOG.info("Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
-          "Initialized MongoDB WriteBatchesFn worker thread for database '{}' (maxConcurrentAsyncWrites={}, maxWriteRetries={})",
+          "Initialized MongoDB WriteBatchesFn worker thread for database '{}' (maxWriteRetries={})",
           database,
-          maxConcurrentAsyncWrites,
           maxWriteRetries);
     }
 
@@ -1369,9 +1364,6 @@ public class MongoDbTransforms {
 
     @Teardown
     public void teardown() {
-      if (executor != null) {
-        executor.shutdown();
-      }
       if (mongoClient != null) {
         try {
           mongoClient.close();
@@ -1382,10 +1374,9 @@ public class MongoDbTransforms {
 
     @StartBundle
     public void startBundle() {
-      if (mongoClient == null) {
+      if (mongoClient == null && clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
-      futures = new ConcurrentLinkedQueue<>();
       failures = new ConcurrentLinkedQueue<>();
       successfulCount = new AtomicLong(0);
       dynamicCounters = new ConcurrentHashMap<>();
@@ -1416,13 +1407,24 @@ public class MongoDbTransforms {
       }
     }
 
+    private static class CoalescedOp {
+      final WriteModel<Document> model;
+      final DocumentWithMetadata item;
+      final boolean isDelete;
+
+      CoalescedOp(WriteModel<Document> model, DocumentWithMetadata item, boolean isDelete) {
+        this.model = model;
+        this.item = item;
+        this.isDelete = isDelete;
+      }
+    }
+
     private void flushBatch(List<DocumentWithMetadata> items) throws InterruptedException {
       if (items == null || items.isEmpty()) {
         return;
       }
 
-      Map<String, List<WriteModel<Document>>> updatesByCollection = new HashMap<>();
-      Map<String, List<DocumentWithMetadata>> itemsByCollection = new HashMap<>();
+      Map<String, LinkedHashMap<Object, CoalescedOp>> coalescedByCollection = new HashMap<>();
 
       for (DocumentWithMetadata item : items) {
         String targetCol = item.getTargetCollection();
@@ -1433,11 +1435,16 @@ public class MongoDbTransforms {
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
           Object id = item.getId();
           if (id != null) {
-            updatesByCollection
-                .computeIfAbsent(targetCol, k -> new ArrayList<>())
-                .add(new DeleteOneModel<>(new Document("_id", id)));
-            itemsByCollection.computeIfAbsent(targetCol, k -> new ArrayList<>()).add(item);
-            writeDeletes.inc();
+            LinkedHashMap<Object, CoalescedOp> colMap =
+                coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
+            CoalescedOp prev =
+                colMap.put(
+                    id,
+                    new CoalescedOp(
+                        new DeleteOneModel<>(new Document("_id", id)), item, true));
+            if (prev != null) {
+              writeBatchesCoalesced.inc();
+            }
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1456,13 +1463,19 @@ public class MongoDbTransforms {
           if (doc != null) {
             Object id = doc.get("_id");
             if (id != null) {
-              updatesByCollection
-                  .computeIfAbsent(targetCol, k -> new ArrayList<>())
-                  .add(
-                      new ReplaceOneModel<>(
-                          new Document("_id", id), doc, new ReplaceOptions().upsert(true)));
-              itemsByCollection.computeIfAbsent(targetCol, k -> new ArrayList<>()).add(item);
-              writeInsertsUpserts.inc();
+              LinkedHashMap<Object, CoalescedOp> colMap =
+                  coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
+              CoalescedOp prev =
+                  colMap.put(
+                      id,
+                      new CoalescedOp(
+                          new ReplaceOneModel<>(
+                              new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                          item,
+                          false));
+              if (prev != null) {
+                writeBatchesCoalesced.inc();
+              }
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
@@ -1479,39 +1492,48 @@ public class MongoDbTransforms {
         }
       }
 
-      if (!updatesByCollection.isEmpty()) {
+      if (!coalescedByCollection.isEmpty()) {
         batchesFlushed.inc();
         updateRateLimiterIfNeeded();
-        if (rateLimiter != null && !items.isEmpty()) {
-          rateLimiter.acquire(items.size());
+
+        int totalCoalescedCount = 0;
+        for (LinkedHashMap<Object, CoalescedOp> colMap : coalescedByCollection.values()) {
+          totalCoalescedCount += colMap.size();
         }
+
+        if (rateLimiter != null && totalCoalescedCount > 0) {
+          rateLimiter.acquire(totalCoalescedCount);
+        }
+
         LOG.debug(
-            "Flushing batch of {} documents across {} target collection(s) to MongoDB (active async write futures in queue: {})",
+            "Flushing coalesced batch of {} documents (from {} input items) across {} target collection(s) to MongoDB",
+            totalCoalescedCount,
             items.size(),
-            updatesByCollection.size(),
-            futures.size());
-        semaphore.acquire();
-        CompletableFuture<Void> future =
-            CompletableFuture.runAsync(
-                () -> {
-                  try {
-                    for (Map.Entry<String, List<WriteModel<Document>>> entry :
-                        updatesByCollection.entrySet()) {
-                      String colName = entry.getKey();
-                      List<WriteModel<Document>> currentUpdates = entry.getValue();
-                      List<DocumentWithMetadata> currentItemList = itemsByCollection.get(colName);
+            coalescedByCollection.size());
 
-                      MongoCollection<Document> col =
-                          mongoClient.getDatabase(database).getCollection(colName);
+        for (Map.Entry<String, LinkedHashMap<Object, CoalescedOp>> entry :
+            coalescedByCollection.entrySet()) {
+          String colName = entry.getKey();
+          LinkedHashMap<Object, CoalescedOp> colMap = entry.getValue();
 
-                      writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
-                    }
-                  } finally {
-                    semaphore.release();
-                  }
-                },
-                executor);
-        futures.add(future);
+          List<WriteModel<Document>> currentUpdates = new ArrayList<>(colMap.size());
+          List<DocumentWithMetadata> currentItemList = new ArrayList<>(colMap.size());
+
+          for (CoalescedOp op : colMap.values()) {
+            currentUpdates.add(op.model);
+            currentItemList.add(op.item);
+            if (op.isDelete) {
+              writeDeletes.inc();
+            } else {
+              writeInsertsUpserts.inc();
+            }
+          }
+
+          MongoCollection<Document> col =
+              mongoClient.getDatabase(database).getCollection(colName);
+
+          writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
+        }
       }
     }
 
@@ -1732,8 +1754,6 @@ public class MongoDbTransforms {
 
     @FinishBundle
     public void finishBundle(FinishBundleContext c) {
-      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
       successfulWrites.inc(successfulCount.get());
       if (inMemoryRetriesCount != null) {
         inMemoryRetries.inc(inMemoryRetriesCount.get());
