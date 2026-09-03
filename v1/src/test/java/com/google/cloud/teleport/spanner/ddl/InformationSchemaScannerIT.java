@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
@@ -1669,11 +1668,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
           assertThat(
               ddl.table("t_sequences_account").prettyPrint(),
-              anyOf(
-                  equalToCompressingWhiteSpace(
-                      "CREATE TABLE `t_sequences_account` ( `id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE s_sequences_mySequence)), `balanceId` INT64 NOT NULL, ) PRIMARY KEY (`id` ASC)"),
-                  equalToCompressingWhiteSpace(
-                      "CREATE TABLE `t_sequences_account` ( `id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE s_sequences_mySequence)) OPTIONS (locality_group=\"default\"), `balanceId` INT64 NOT NULL OPTIONS (locality_group=\"default\"), ) PRIMARY KEY (`id` ASC)")));
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE `t_sequences_account` ( `id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE s_sequences_mySequence)), `balanceId` INT64 NOT NULL, ) PRIMARY KEY (`id` ASC)"));
 
           Collection<Schema> result = converter.convert(ddl);
 
@@ -1760,11 +1756,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
           assertThat(
               ddl.table("t_pgSequences_Account").prettyPrint(),
-              anyOf(
-                  equalToCompressingWhiteSpace(
-                      "CREATE TABLE \"t_pgSequences_Account\" ( \"id\" bigint NOT NULL DEFAULT nextval('\"s_pgSequences_myPGSequence\"'::text), \"balanceId\" bigint NOT NULL, PRIMARY KEY (\"id\") )"),
-                  equalToCompressingWhiteSpace(
-                      "CREATE TABLE \"t_pgSequences_Account\" ( \"id\" bigint NOT NULL DEFAULT nextval('\"s_pgSequences_myPGSequence\"'::text) OPTIONS (locality_group='default'), \"balanceId\" bigint NOT NULL OPTIONS (locality_group='default'), PRIMARY KEY (\"id\") )")));
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE \"t_pgSequences_Account\" ( \"id\" bigint NOT NULL DEFAULT nextval('\"s_pgSequences_myPGSequence\"'::text), \"balanceId\" bigint NOT NULL, PRIMARY KEY (\"id\") )"));
         });
   }
 
@@ -2068,22 +2061,6 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                   + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
                   + ") PRIMARY KEY (`user_id` ASC)\n\n");
 
-      List<String> statementsWithLocalityGroup =
-          Arrays.asList(
-              "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"
-                  + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY OPTIONS (locality_group=\"default\"),\n\t"
-                  + "`val`                                   STRING(MAX) OPTIONS (locality_group=\"default\"),\n"
-                  + ") PRIMARY KEY (`location` ASC)\n\n\n",
-              "CREATE TABLE `t_placementTables_PlacedUsers` (\n\t"
-                  + "`location`                              STRING(MAX) NOT NULL OPTIONS (locality_group=\"default\"),\n\t"
-                  + "`user_id`                               INT64 NOT NULL OPTIONS (locality_group=\"default\"),\n"
-                  + ") PRIMARY KEY (`location` ASC, `user_id` ASC),\n"
-                  + "INTERLEAVE IN PARENT `t_placementTables_PlacementKeyAsPrimaryKey`\n\n\n",
-              "CREATE TABLE `t_placementTables_UsersByPlacement` (\n\t"
-                  + "`user_id`                               INT64 NOT NULL OPTIONS (locality_group=\"default\"),\n\t"
-                  + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY OPTIONS (locality_group=\"default\"),\n"
-                  + ") PRIMARY KEY (`user_id` ASC)\n\n");
-
       spannerResourceManager.executeDdlStatements(statements);
       Ddl ddl = getDatabaseDdl(spannerResourceManager);
       assertThat(
@@ -2097,19 +2074,13 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
           equalToCompressingWhiteSpace(statements.get(3)));
       assertThat(
           ddl.table("t_placementTables_PlacementKeyAsPrimaryKey").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(4)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(0))));
+          equalToCompressingWhiteSpace(statements.get(4)));
       assertThat(
           ddl.table("t_placementTables_PlacedUsers").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(5)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(1))));
+          equalToCompressingWhiteSpace(statements.get(5)));
       assertThat(
           ddl.table("t_placementTables_UsersByPlacement").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(6)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(2))));
+          equalToCompressingWhiteSpace(statements.get(6)));
     } finally {
       if (spannerResourceManager != null) {
         spannerResourceManager.cleanupAll();
@@ -2141,42 +2112,18 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
                   + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
                   + " PRIMARY KEY (\"user_id\")"
                   + " )");
-      List<String> statementsWithLocalityGroup =
-          Arrays.asList(
-              " CREATE TABLE \"t_pgPlacementTables_PlacementKeyAsPrimaryKey\" ("
-                  + " \"location\"                              character varying NOT NULL PLACEMENT KEY OPTIONS (locality_group='default'),"
-                  + " \"val\"                                   character varying OPTIONS (locality_group='default'),"
-                  + " PRIMARY KEY (\"location\")"
-                  + " )",
-              " CREATE TABLE \"t_pgPlacementTables_PlacedUsers\" ("
-                  + " \"location\"                              character varying NOT NULL OPTIONS (locality_group='default'),"
-                  + " \"user_id\"                               character varying NOT NULL OPTIONS (locality_group='default'),"
-                  + " PRIMARY KEY (\"location\", \"user_id\") "
-                  + ") INTERLEAVE IN PARENT \"t_pgPlacementTables_PlacementKeyAsPrimaryKey\"",
-              " CREATE TABLE \"t_pgPlacementTables_UsersWithPlacement\" ("
-                  + " \"user_id\"                               bigint NOT NULL OPTIONS (locality_group='default'),"
-                  + " \"location\"                              character varying NOT NULL PLACEMENT KEY OPTIONS (locality_group='default'),"
-                  + " PRIMARY KEY (\"user_id\")"
-                  + " )");
-
       // Validate the PLACEMENT KEY constraint is available in placement tables.
       pgSpannerResourceManager.executeDdlStatements(statements);
       Ddl ddl = getPgDatabaseDdl(pgSpannerResourceManager);
       assertThat(
           ddl.table("t_pgPlacementTables_PlacementKeyAsPrimaryKey").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(1)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(0))));
+          equalToCompressingWhiteSpace(statements.get(1)));
       assertThat(
           ddl.table("t_pgPlacementTables_PlacedUsers").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(2)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(1))));
+          equalToCompressingWhiteSpace(statements.get(2)));
       assertThat(
           ddl.table("t_pgPlacementTables_UsersWithPlacement").prettyPrint(),
-          anyOf(
-              equalToCompressingWhiteSpace(statements.get(3)),
-              equalToCompressingWhiteSpace(statementsWithLocalityGroup.get(2))));
+          equalToCompressingWhiteSpace(statements.get(3)));
     } finally {
       if (pgSpannerResourceManager != null) {
         pgSpannerResourceManager.cleanupAll();
