@@ -188,13 +188,11 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     result.put(
         "bit",
         createRows(ByteArray.copyFrom("0").toBase64(), ByteArray.copyFrom("1").toBase64(), "NULL"));
-    // bit_to_string is commented out to avoid failing the test case; returned data is the literal
-    // string "java.nio.HeapByteBuffer[pos=0 lim=32 cap=32]"
-    // result.put("bit_to_string", createRows("0", "1", "NULL"));
+    result.put(
+        "bit_to_string",
+        createRows("00000000000000000000000000000000", "00000000000000000000000000000001", "NULL"));
     result.put("bit_varying", createRows(ByteArray.copyFrom("0101").toBase64(), "NULL"));
-    // bit_varying_to_string is commented out to avoid failing the test case; returned data is the
-    // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
-    // result.put("bit_varying_to_string", createRows("5", "NULL"));
+    result.put("bit_varying_to_string", createRows("0101", "NULL"));
     result.put("bool", createRows("false", "true", "NULL"));
     result.put("bool_to_string", createRows("false", "true", "NULL"));
     result.put("boolean", createRows("false", "true", "NULL"));

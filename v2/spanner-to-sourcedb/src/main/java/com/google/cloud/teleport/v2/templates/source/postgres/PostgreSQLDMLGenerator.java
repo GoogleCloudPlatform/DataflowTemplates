@@ -299,7 +299,12 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       case "bytea":
       case "binary":
       case "varbinary":
-        response = colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
+        if (isStringType(spannerColType)) {
+          response = "decode(" + getQuotedEscapedString(colValue, spannerColType) + ", 'hex')";
+        } else {
+          response =
+              colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
+        }
         break;
       default:
         response = colValue;
@@ -315,6 +320,12 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     // For standard string literals '', we just need to escape the single quote as
     // ''
     return cleanedNullBytes;
+  }
+
+  private static boolean isStringType(String spannerColType) {
+    return "STRING".equalsIgnoreCase(spannerColType)
+        || "PG_VARCHAR".equalsIgnoreCase(spannerColType)
+        || "PG_TEXT".equalsIgnoreCase(spannerColType);
   }
 
   static String getQuotedEscapedString(String input, String spannerColType) {
