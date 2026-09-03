@@ -81,12 +81,12 @@ public class TableConfigurationTest {
   }
 
   @Test
-  public void testParseFromOptionsWithTableListFile() throws IOException {
-    File tableListFile = tempFolder.newFile("tables.json");
-    try (FileWriter writer = new FileWriter(tableListFile)) {
+  public void testParseFromOptionsWithTableConfigFile() throws IOException {
+    File tableConfigFile = tempFolder.newFile("tables.json");
+    try (FileWriter writer = new FileWriter(tableConfigFile)) {
       writer.write("{\"tableNames\": [\"tableA\", \" tableB \", \"\", \"tableC\"]}");
     }
-    options.setTableConfigurationFilePath(tableListFile.getAbsolutePath());
+    options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
 
     File inputDir = tempFolder.newFolder("input");
     options.setGcsInputDirectory(inputDir.getAbsolutePath());
@@ -167,7 +167,7 @@ public class TableConfigurationTest {
   }
 
   @Test
-  public void testParseFromOptionsThrowsWhenTableListFileFailsToRead() {
+  public void testParseFromOptionsThrowsWhenTableConfigFileFailsToRead() {
     options.setTableConfigurationFilePath(
         tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
 

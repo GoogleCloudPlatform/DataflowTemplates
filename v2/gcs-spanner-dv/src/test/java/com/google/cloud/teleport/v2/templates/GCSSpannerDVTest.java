@@ -51,7 +51,7 @@ public class GCSSpannerDVTest {
   }
 
   @Test
-  public void testRunThrowsExceptionWhenTableListFileFailsToRead() {
+  public void testRunThrowsExceptionWhenTableConfigurationFileFailsToRead() {
     options.setTableConfigurationFilePath("non_existent_file.json");
 
     RuntimeException thrown = assertThrows(RuntimeException.class, () -> GCSSpannerDV.run(options));
