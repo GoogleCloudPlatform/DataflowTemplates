@@ -20,7 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -93,7 +93,7 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
         new SpannerReaderTransform(
-            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+            spannerConfig, ddlView, IdentityMapper::new, TableConfiguration.empty()) {
           @Override
           protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
             return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
@@ -138,7 +138,7 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
         new SpannerReaderTransform(
-            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+            spannerConfig, ddlView, IdentityMapper::new, TableConfiguration.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -204,7 +204,7 @@ public class SpannerReaderTransformTest implements Serializable {
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
     SpannerReaderTransform transform =
         new SpannerReaderTransform(
-            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty()) {
+            spannerConfig, ddlView, IdentityMapper::new, TableConfiguration.empty()) {
           @Override
           protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
               readFromSpanner() {
@@ -243,7 +243,7 @@ public class SpannerReaderTransformTest implements Serializable {
 
     SpannerReaderTransform transform =
         new SpannerReaderTransform(
-            spannerConfig, ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+            spannerConfig, ddlView, IdentityMapper::new, TableConfiguration.empty());
 
     assertNotNull(transform.readFromSpanner());
     pipeline.run();
@@ -277,10 +277,10 @@ public class SpannerReaderTransformTest implements Serializable {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
-    // 2. Setup TableSelectionConfig with only one table
+    // 2. Setup TableConfiguration with only one table
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("AllowedTable");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     // 3. Create Transform with overridden readFromSpanner to intercept and assert ReadOperations
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
@@ -353,10 +353,10 @@ public class SpannerReaderTransformTest implements Serializable {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
-    // 2. Setup TableSelectionConfig with the Source name
+    // 2. Setup TableConfiguration with the Source name
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("source_mapped_table");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     // 3. Create a Serializable SchemaMapper stub to translate spanner_mapped_table ->
     // source_mapped_table

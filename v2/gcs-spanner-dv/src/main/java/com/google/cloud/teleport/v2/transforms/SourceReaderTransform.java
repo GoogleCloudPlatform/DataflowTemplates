@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dofn.SourceHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
@@ -42,14 +42,14 @@ public class SourceReaderTransform
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
   private final CustomTransformation customTransformation;
-  private final TableSelectionConfig tableConfig;
+  private final TableConfiguration tableConfig;
 
   public SourceReaderTransform(
       String gcsInputDirectory,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
       CustomTransformation customTransformation,
-      TableSelectionConfig tableConfig) {
+      TableConfiguration tableConfig) {
     this.gcsInputDirectory = gcsInputDirectory;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
@@ -71,7 +71,7 @@ public class SourceReaderTransform
                 .withSideInputs(ddlView));
   }
 
-  static List<String> getFilePatterns(String gcsInputDirectory, TableSelectionConfig tableConfig) {
+  static List<String> getFilePatterns(String gcsInputDirectory, TableConfiguration tableConfig) {
     List<String> filePatterns = new ArrayList<>();
     String cleanPath =
         gcsInputDirectory.endsWith("/")

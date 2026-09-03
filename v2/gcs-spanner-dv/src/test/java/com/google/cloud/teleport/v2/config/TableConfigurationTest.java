@@ -35,7 +35,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class TableSelectionConfigTest {
+public class TableConfigurationTest {
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -50,7 +50,7 @@ public class TableSelectionConfigTest {
 
   @Test
   public void testEmptyConfig() {
-    TableSelectionConfig config = TableSelectionConfig.empty();
+    TableConfiguration config = TableConfiguration.empty();
     assertFalse(config.hasFilters());
     assertTrue(config.getSourceTables().isEmpty());
     assertTrue(config.isSourceTableAllowed("any_table"));
@@ -70,7 +70,7 @@ public class TableSelectionConfigTest {
     new File(inputDir, "table3").mkdirs();
     new File(inputDir, "table3/data.avro").createNewFile();
 
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasFilters());
     assertEquals(3, config.getSourceTables().size());
@@ -82,12 +82,9 @@ public class TableSelectionConfigTest {
 
   @Test
   public void testParseFromOptionsWithTableListFile() throws IOException {
-    File tableListFile = tempFolder.newFile("tables.txt");
+    File tableListFile = tempFolder.newFile("tables.json");
     try (FileWriter writer = new FileWriter(tableListFile)) {
-      writer.write("tableA\n");
-      writer.write(" tableB \n");
-      writer.write("\n"); // Empty line
-      writer.write("tableC\n");
+      writer.write("{\"tableNames\": [\"tableA\", \" tableB \", \"\", \"tableC\"]}");
     }
     options.setTableListFilePath(tableListFile.getAbsolutePath());
 
@@ -100,7 +97,7 @@ public class TableSelectionConfigTest {
     new File(inputDir, "tableC").mkdirs();
     new File(inputDir, "tableC/data.avro").createNewFile();
 
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasFilters());
     assertEquals(3, config.getSourceTables().size());
@@ -116,7 +113,7 @@ public class TableSelectionConfigTest {
 
     IllegalArgumentException thrown =
         assertThrows(
-            IllegalArgumentException.class, () -> TableSelectionConfig.parseFromOptions(options));
+            IllegalArgumentException.class, () -> TableConfiguration.parseFromOptions(options));
     assertTrue(
         thrown.getMessage().contains("Please configure only one of these parameters at a time."));
   }
@@ -126,7 +123,7 @@ public class TableSelectionConfigTest {
     options.setTables("table1,table2");
     options.setGcsInputDirectory(null);
 
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
     assertTrue(config.hasFilters());
     assertEquals(2, config.getSourceTables().size());
   }
@@ -135,7 +132,7 @@ public class TableSelectionConfigTest {
   public void testIsSourceTableAllowed() {
     options.setTables("table1,table2");
     options.setGcsInputDirectory(null);
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.isSourceTableAllowed("table1"));
     assertTrue(config.isSourceTableAllowed("table2"));
@@ -146,7 +143,7 @@ public class TableSelectionConfigTest {
   public void testIsSpannerTableAllowed() {
     options.setTables("source_table1,source_table2");
     options.setGcsInputDirectory(null);
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     when(mockSchemaMapper.getSourceTableName("", "spanner_table1")).thenReturn("source_table1");
     when(mockSchemaMapper.getSourceTableName("", "spanner_table2")).thenReturn("source_table2");
@@ -161,7 +158,7 @@ public class TableSelectionConfigTest {
   public void testIsSpannerTableAllowedThrowsNoSuchElementException() {
     options.setTables("source_table1");
     options.setGcsInputDirectory(null);
-    TableSelectionConfig config = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     when(mockSchemaMapper.getSourceTableName(anyString(), anyString()))
         .thenThrow(new NoSuchElementException("Table not found"));
@@ -171,10 +168,10 @@ public class TableSelectionConfigTest {
 
   @Test
   public void testParseFromOptionsThrowsWhenTableListFileFailsToRead() {
-    options.setTableListFilePath(tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.txt");
+    options.setTableListFilePath(tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
 
     RuntimeException thrown =
-        assertThrows(RuntimeException.class, () -> TableSelectionConfig.parseFromOptions(options));
-    assertTrue(thrown.getMessage().contains("Failed to read tableListFilePath"));
+        assertThrows(RuntimeException.class, () -> TableConfiguration.parseFromOptions(options));
+    assertTrue(thrown.getMessage().contains("Failed to read JSON tableListFilePath"));
   }
 }

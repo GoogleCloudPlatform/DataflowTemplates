@@ -17,15 +17,17 @@ package com.google.cloud.teleport.v2.config;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
-import java.io.BufferedReader;
-import java.io.IOException;
+import com.google.gson.Gson;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,28 +35,28 @@ import org.slf4j.LoggerFactory;
  * Configuration class for table-based filtering in Data Validation pipeline. Encapsulates parsing,
  * matching, and validation of source and Spanner tables.
  */
-public class TableSelectionConfig implements Serializable {
+public class TableConfiguration implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TableSelectionConfig.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TableConfiguration.class);
 
   private final Set<String> configuredSourceTables;
 
-  private TableSelectionConfig(Set<String> configuredSourceTables) {
+  private TableConfiguration(Set<String> configuredSourceTables) {
     this.configuredSourceTables = configuredSourceTables;
   }
 
   /** Creates an empty configuration with no filters. Useful for testing. */
-  public static TableSelectionConfig empty() {
-    return new TableSelectionConfig(new HashSet<>());
+  public static TableConfiguration empty() {
+    return new TableConfiguration(new HashSet<>());
   }
 
   /**
    * Parses and validates table list from pipeline options.
    *
    * @param options The pipeline options.
-   * @return A TableSelectionConfig instance containing the configured source tables.
+   * @return A TableConfiguration instance containing the configured source tables.
    */
-  public static TableSelectionConfig parseFromOptions(GCSSpannerDV.Options options) {
+  public static TableConfiguration parseFromOptions(GCSSpannerDV.Options options) {
     String tablesConfig = options.getTables();
     String tableListFilePath = options.getTableListFilePath();
     boolean hasTablesConfig = tablesConfig != null && !tablesConfig.trim().isEmpty();
@@ -77,24 +79,26 @@ public class TableSelectionConfig implements Serializable {
     } else if (hasTableListFile) {
       try {
         ResourceId resourceId = FileSystems.matchNewResource(tableListFilePath, false);
-        try (BufferedReader reader =
-            new BufferedReader(
-                Channels.newReader(
-                    FileSystems.open(resourceId), java.nio.charset.StandardCharsets.UTF_8))) {
-          String line;
-          while ((line = reader.readLine()) != null) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-              configuredTables.add(trimmed);
+        try (InputStream stream = Channels.newInputStream(FileSystems.open(resourceId))) {
+          String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
+          Gson gson = new Gson();
+          TableListConfig fileConfig = gson.fromJson(result, TableListConfig.class);
+
+          if (fileConfig != null && fileConfig.getTableNames() != null) {
+            for (String table : fileConfig.getTableNames()) {
+              String trimmed = table.trim();
+              if (!trimmed.isEmpty()) {
+                configuredTables.add(trimmed);
+              }
             }
           }
         }
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to read tableListFilePath: " + tableListFilePath, e);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to read JSON tableListFilePath: " + tableListFilePath, e);
       }
     }
 
-    TableSelectionConfig config = new TableSelectionConfig(configuredTables);
+    TableConfiguration config = new TableConfiguration(configuredTables);
 
     return config;
   }

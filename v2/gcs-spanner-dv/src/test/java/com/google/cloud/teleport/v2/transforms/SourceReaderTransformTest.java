@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -84,7 +84,7 @@ public class SourceReaderTransformTest implements Serializable {
     // This allows us to pass a tempFolder into the same transform that accepts a GCS path
     SourceReaderTransform transform =
         new SourceReaderTransform(
-            inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -128,7 +128,7 @@ public class SourceReaderTransformTest implements Serializable {
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
         new SourceReaderTransform(
-            inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
     // AvroIO throws a RuntimeException when no files are found matching the pattern
@@ -168,7 +168,7 @@ public class SourceReaderTransformTest implements Serializable {
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
         new SourceReaderTransform(
-            inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     pipeline.apply(transform);
 
@@ -211,7 +211,7 @@ public class SourceReaderTransformTest implements Serializable {
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
         new SourceReaderTransform(
-            inputPath, ddlView, IdentityMapper::new, null, TableSelectionConfig.empty());
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -275,10 +275,10 @@ public class SourceReaderTransformTest implements Serializable {
     File skippedDir = tempFolder.newFolder("SkippedTable");
     createAvroFile(new File(skippedDir, "data.avro"), "SkippedTable", "2");
 
-    // 3. Configure TableSelectionConfig to only allow "AllowedTable"
+    // 3. Configure TableConfiguration to only allow "AllowedTable"
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("AllowedTable");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     // 4. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
@@ -353,7 +353,7 @@ public class SourceReaderTransformTest implements Serializable {
   @Test
   public void testGetFilePatternsEmptyConfig() {
     java.util.List<String> patterns =
-        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir/", TableSelectionConfig.empty());
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir/", TableConfiguration.empty());
     org.junit.Assert.assertEquals(1, patterns.size());
     // Also tests that trailing slash is handled correctly
     org.junit.Assert.assertEquals("gs://my-bucket/dir/**.avro", patterns.get(0));
@@ -363,7 +363,7 @@ public class SourceReaderTransformTest implements Serializable {
   public void testGetFilePatternsWithTables() {
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("Table1,Table2");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     java.util.List<String> patterns =
         SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);

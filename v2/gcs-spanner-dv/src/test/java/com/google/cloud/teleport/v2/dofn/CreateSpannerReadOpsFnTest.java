@@ -20,7 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -54,7 +54,7 @@ public class CreateSpannerReadOpsFnTest {
 
     // Create DoFn
     CreateSpannerReadOpsFn doFn =
-        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableConfiguration.empty());
 
     // Execute
     doFn.processElement(context);
@@ -88,7 +88,7 @@ public class CreateSpannerReadOpsFnTest {
 
     // Create DoFn
     CreateSpannerReadOpsFn doFn =
-        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableSelectionConfig.empty());
+        new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, TableConfiguration.empty());
 
     // Execute
     doFn.processElement(context);
@@ -122,7 +122,7 @@ public class CreateSpannerReadOpsFnTest {
 
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableA,TableC");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     CreateSpannerReadOpsFn doFn =
         new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
@@ -155,7 +155,7 @@ public class CreateSpannerReadOpsFnTest {
 
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableA,TableC");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     CreateSpannerReadOpsFn doFn =
         new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
@@ -184,7 +184,7 @@ public class CreateSpannerReadOpsFnTest {
 
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("TableB");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     CreateSpannerReadOpsFn doFn =
         new CreateSpannerReadOpsFn(ddlView, IdentityMapper::new, tableConfig);
@@ -209,7 +209,7 @@ public class CreateSpannerReadOpsFnTest {
 
     GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
     options.setTables("source_table");
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     ISchemaMapper mockMapper = mock(ISchemaMapper.class);
     when(mockMapper.getSourceTableName(

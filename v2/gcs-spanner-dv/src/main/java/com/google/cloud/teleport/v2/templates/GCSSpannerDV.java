@@ -23,7 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -270,7 +270,7 @@ public class GCSSpannerDV {
         optional = true,
         description = "GCS path to a file containing a list of source tables to validate",
         helpText =
-            "A GCS file path containing a list of source tables to validate. This must be a plain text file with one table name per line (empty lines and trailing spaces are ignored).")
+            "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`.")
     @Default.String("")
     String getTableListFilePath();
 
@@ -287,7 +287,7 @@ public class GCSSpannerDV {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
-    TableSelectionConfig tableConfig = TableSelectionConfig.parseFromOptions(options);
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 

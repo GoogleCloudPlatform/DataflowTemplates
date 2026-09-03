@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
-import com.google.cloud.teleport.v2.config.TableSelectionConfig;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dofn.CreateSpannerReadOpsFn;
 import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
@@ -44,13 +44,13 @@ public class SpannerReaderTransform
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
-  private final TableSelectionConfig tableConfig;
+  private final TableConfiguration tableConfig;
 
   public SpannerReaderTransform(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
-      TableSelectionConfig tableConfig) {
+      TableConfiguration tableConfig) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
