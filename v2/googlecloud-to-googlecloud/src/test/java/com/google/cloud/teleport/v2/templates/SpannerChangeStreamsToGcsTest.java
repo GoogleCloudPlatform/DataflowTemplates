@@ -245,6 +245,30 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   }
 
   @Test
+  public void testSpannerDirectedReadOptions() {
+    mockGetDialect();
+
+    exception.expect(SpannerException.class);
+    SpannerChangeStreamsToGcsOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
+    options.setOutputFileFormat(FileFormat.AVRO);
+    options.setGcsOutputDirectory(fakeDir);
+    options.setOutputFilenamePrefix(FILENAME_PREFIX);
+    options.setNumShards(NUM_SHARDS);
+    options.setTempLocation(fakeTempLocation);
+    options.setSpannerProjectId(TEST_PROJECT);
+    options.setSpannerInstanceId(TEST_INSTANCE);
+    options.setSpannerDatabase(TEST_TABLE);
+    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+    options.setSpannerMetadataDatabase(TEST_TABLE);
+    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+    options.setSpannerDirectedReadOptions(
+        "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}");
+
+    run(options);
+  }
+
+  @Test
   @Category(IntegrationTest.class)
   // This test can only be run locally with the following command:
   // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToGcsTest test
