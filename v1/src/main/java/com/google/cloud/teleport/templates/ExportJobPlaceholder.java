@@ -165,6 +165,15 @@ public class ExportJobPlaceholder {
         helpText = "The maximum number of retry attempts for the Bigtable client.")
     ValueProvider<String> getBigtableMaxAttempts();
 
+    @TemplateParameter.Text(
+        order = 14,
+        groupName = "Source",
+        optional = true,
+        description = "Bigtable read partial row timeout",
+        helpText = "How long a scan may go without receiving a response, in milliseconds, " +
+            "before it is cancelled and retried.")
+    ValueProvider<String> getBigtableReadPartialRowTimeoutMs();
+
     @TemplateCreationParameter(value = "false")
     @Description("Wait for pipeline to finish.")
     @Default.Boolean(false)
