@@ -27,10 +27,16 @@ import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.templates.utils.SpannerGeneratedColumnUtils;
 import com.google.common.io.Resources;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +49,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.SSLMySQLResourceManager;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
@@ -84,7 +90,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static MySQLResourceManager jdbcResourceManager;
+  private static SSLMySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
@@ -103,12 +109,36 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         spannerResourceManager = createSpannerDatabase(SpannerToSourceDbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = SSLMySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        gcsResourceManager.uploadArtifact(
+            "input/truststore_Shard1.jks", jdbcResourceManager.getTruststorePath());
+        String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks", gcsResourceManager);
+
+        String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
+
+        String props =
+            String.format(
+                "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s",
+                URLEncoder.encode(truststoreLocalUrl, StandardCharsets.UTF_8),
+                URLEncoder.encode(jdbcResourceManager.getPassword(), StandardCharsets.UTF_8));
+
+        Shard shard = new Shard();
+        shard.setLogicalShardId("Shard1");
+        shard.setUser(jdbcResourceManager.getUsername());
+        shard.setPassword(jdbcResourceManager.getPassword());
+        shard.setHost(jdbcResourceManager.getHost());
+        shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
+        shard.setDbName(jdbcResourceManager.getDatabaseName());
+        shard.setConnectionProperties(props);
+
+        JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+        jdbcShardConfig.setShardConfigs(java.util.Collections.singletonList(shard));
+        JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+        gcsResourceManager.createArtifact("input/shard.json", jsObj.toString());
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
@@ -123,6 +153,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             new HashMap<>() {
               {
                 put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+                put("extraFilesToStage", truststoreGcsUrl);
               }
             };
         jobInfo =
