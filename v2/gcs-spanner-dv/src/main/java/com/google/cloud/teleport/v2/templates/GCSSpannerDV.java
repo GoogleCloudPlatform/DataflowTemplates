@@ -272,9 +272,9 @@ public class GCSSpannerDV {
         helpText =
             "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`.")
     @Default.String("")
-    String getTableListFilePath();
+    String getTableConfigurationFilePath();
 
-    void setTableListFilePath(String value);
+    void setTableConfigurationFilePath(String value);
   }
 
   public static void main(String[] args) {

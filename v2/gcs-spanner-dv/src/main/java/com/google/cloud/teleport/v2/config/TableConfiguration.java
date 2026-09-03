@@ -51,20 +51,21 @@ public class TableConfiguration implements Serializable {
   }
 
   /**
-   * Parses and validates table list from pipeline options.
+   * Parses and validates table configuration from pipeline options.
    *
    * @param options The pipeline options.
    * @return A TableConfiguration instance containing the configured source tables.
    */
   public static TableConfiguration parseFromOptions(GCSSpannerDV.Options options) {
     String tablesConfig = options.getTables();
-    String tableListFilePath = options.getTableListFilePath();
+    String tableConfigurationFilePath = options.getTableConfigurationFilePath();
     boolean hasTablesConfig = tablesConfig != null && !tablesConfig.trim().isEmpty();
-    boolean hasTableListFile = tableListFilePath != null && !tableListFilePath.trim().isEmpty();
+    boolean hasTableConfigFile =
+        tableConfigurationFilePath != null && !tableConfigurationFilePath.trim().isEmpty();
 
-    if (hasTablesConfig && hasTableListFile) {
+    if (hasTablesConfig && hasTableConfigFile) {
       throw new IllegalArgumentException(
-          "Both --tables and --tableListFilePath are provided. Please configure only one of these parameters at a time.");
+          "Both --tables and --tableConfigurationFilePath are provided. Please configure only one of these parameters at a time.");
     }
 
     Set<String> configuredTables = new HashSet<>();
@@ -76,13 +77,13 @@ public class TableConfiguration implements Serializable {
           configuredTables.add(trimmed);
         }
       }
-    } else if (hasTableListFile) {
+    } else if (hasTableConfigFile) {
       try {
-        ResourceId resourceId = FileSystems.matchNewResource(tableListFilePath, false);
+        ResourceId resourceId = FileSystems.matchNewResource(tableConfigurationFilePath, false);
         try (InputStream stream = Channels.newInputStream(FileSystems.open(resourceId))) {
           String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
           Gson gson = new Gson();
-          TableListConfig fileConfig = gson.fromJson(result, TableListConfig.class);
+          TableConfigurationFile fileConfig = gson.fromJson(result, TableConfigurationFile.class);
 
           if (fileConfig != null && fileConfig.getTableNames() != null) {
             for (String table : fileConfig.getTableNames()) {
@@ -95,7 +96,7 @@ public class TableConfiguration implements Serializable {
         }
       } catch (Exception e) {
         throw new RuntimeException(
-            "Failed to read JSON tableListFilePath: " + tableListFilePath, e);
+            "Failed to read JSON tableConfigurationFilePath: " + tableConfigurationFilePath, e);
       }
     }
 

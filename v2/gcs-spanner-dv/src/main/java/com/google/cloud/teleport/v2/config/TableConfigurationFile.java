@@ -18,12 +18,12 @@ package com.google.cloud.teleport.v2.config;
 import java.io.Serializable;
 import java.util.List;
 
-/** POJO representing the table list configuration JSON file. */
-public class TableListConfig implements Serializable {
+/** POJO representing the table configuration JSON file. */
+public class TableConfigurationFile implements Serializable {
 
   private final List<String> tableNames;
 
-  public TableListConfig(List<String> tableNames) {
+  public TableConfigurationFile(List<String> tableNames) {
     this.tableNames = tableNames;
   }
 

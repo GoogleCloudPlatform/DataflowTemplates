@@ -41,7 +41,7 @@ public class GCSSpannerDVTest {
   @Test
   public void testRunThrowsExceptionWhenBothTableConfigsProvided() {
     options.setTables("table1,table2");
-    options.setTableListFilePath("gs://dummy/tables.json");
+    options.setTableConfigurationFilePath("gs://dummy/tables.json");
 
     IllegalArgumentException thrown =
         assertThrows(IllegalArgumentException.class, () -> GCSSpannerDV.run(options));
@@ -52,10 +52,10 @@ public class GCSSpannerDVTest {
 
   @Test
   public void testRunThrowsExceptionWhenTableListFileFailsToRead() {
-    options.setTableListFilePath("non_existent_file.json");
+    options.setTableConfigurationFilePath("non_existent_file.json");
 
     RuntimeException thrown = assertThrows(RuntimeException.class, () -> GCSSpannerDV.run(options));
 
-    assertTrue(thrown.getMessage().contains("Failed to read JSON tableListFilePath"));
+    assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
   }
 }

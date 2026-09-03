@@ -93,6 +93,19 @@ variable "columnOverrides" {
   default     = null
 }
 
+
+variable "tables" {
+  type        = string
+  description = "Comma-separated list of source tables to validate. Defaults to empty."
+  default     = null
+}
+
+variable "tableConfigurationFilePath" {
+  type        = string
+  description = "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`. Defaults to empty."
+  default     = null
+}
+
 variable "bigQueryDataset" {
   type        = string
   description = "The BigQuery dataset ID where the validation results will be stored. For example, `validation_report_dataset`"
@@ -252,6 +265,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     schemaOverridesFilePath        = var.schemaOverridesFilePath
     tableOverrides                 = var.tableOverrides
     columnOverrides                = var.columnOverrides
+    tables                         = var.tables
+    tableConfigurationFilePath              = var.tableConfigurationFilePath
     bigQueryDataset                = var.bigQueryDataset
     runId                          = var.runId
     transformationJarPath          = var.transformationJarPath

@@ -207,7 +207,8 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-spanner-data-validator-job" \
 -DtemplateName="GCS_Spanner_Data_Validator" \
--Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \-f v2/gcs-spanner-dv
+-Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+-f v2/gcs-spanner-dv
 ```
 
 ## Terraform

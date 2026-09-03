@@ -86,7 +86,7 @@ public class TableConfigurationTest {
     try (FileWriter writer = new FileWriter(tableListFile)) {
       writer.write("{\"tableNames\": [\"tableA\", \" tableB \", \"\", \"tableC\"]}");
     }
-    options.setTableListFilePath(tableListFile.getAbsolutePath());
+    options.setTableConfigurationFilePath(tableListFile.getAbsolutePath());
 
     File inputDir = tempFolder.newFolder("input");
     options.setGcsInputDirectory(inputDir.getAbsolutePath());
@@ -109,7 +109,7 @@ public class TableConfigurationTest {
   @Test
   public void testParseFromOptionsThrowsWhenBothProvided() {
     options.setTables("table1");
-    options.setTableListFilePath("gs://dummy/tables.txt");
+    options.setTableConfigurationFilePath("gs://dummy/tables.txt");
 
     IllegalArgumentException thrown =
         assertThrows(
@@ -168,11 +168,11 @@ public class TableConfigurationTest {
 
   @Test
   public void testParseFromOptionsThrowsWhenTableListFileFailsToRead() {
-    options.setTableListFilePath(
+    options.setTableConfigurationFilePath(
         tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
 
     RuntimeException thrown =
         assertThrows(RuntimeException.class, () -> TableConfiguration.parseFromOptions(options));
-    assertTrue(thrown.getMessage().contains("Failed to read JSON tableListFilePath"));
+    assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
   }
 }
