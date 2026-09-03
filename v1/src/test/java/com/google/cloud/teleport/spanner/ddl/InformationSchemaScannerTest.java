@@ -17,6 +17,8 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -240,5 +242,70 @@ public class InformationSchemaScannerTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
+  }
+
+  @Test
+  public void testListLocalityGroupsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listLocalityGroupsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.locality_group_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name"));
+
+    assertThat(
+        postgresSQLInfoScanner.listLocalityGroupsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.locality_group_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name"));
+  }
+
+  @Test
+  public void testListLocalityGroups() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any())).thenReturn(mockResultSet);
+
+    // Row 1: default (skipped after getString(0)), Row 2: lg1 storage, Row 3: lg1 ssd_to_hdd_spill_timespan
+    when(mockResultSet.next()).thenReturn(true, true, true, false);
+    when(mockResultSet.getString(0)).thenReturn("default", "lg1", "lg1");
+    when(mockResultSet.getString(1)).thenReturn("storage", "ssd_to_hdd_spill_timespan");
+    when(mockResultSet.getString(2)).thenReturn("STRING", "STRING");
+    when(mockResultSet.getString(3)).thenReturn("ssd", "30d");
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
+
+    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
+    scanner.listLocalityGroups(builder);
+
+    Ddl ddl = builder.build();
+    assertNull(ddl.localityGroup("default"));
+    assertNotNull(ddl.localityGroup("lg1"));
+    assertEquals(2, ddl.localityGroup("lg1").options().size());
+    assertEquals("storage=\"ssd\"", ddl.localityGroup("lg1").options().get(0));
+    assertEquals("ssd_to_hdd_spill_timespan=\"30d\"", ddl.localityGroup("lg1").options().get(1));
+
+    // PostgreSQL test
+    ReadContext mockContextPg = mock(ReadContext.class);
+    ResultSet mockResultSetPg = mock(ResultSet.class);
+    when(mockContextPg.executeQuery(any())).thenReturn(mockResultSetPg);
+
+    when(mockResultSetPg.next()).thenReturn(true, false);
+    when(mockResultSetPg.getString(0)).thenReturn("lg_pg");
+    when(mockResultSetPg.getString(1)).thenReturn("storage");
+    when(mockResultSetPg.getString(2)).thenReturn("character varying");
+    when(mockResultSetPg.getString(3)).thenReturn("ssd");
+
+    InformationSchemaScanner scannerPg =
+        new InformationSchemaScanner(mockContextPg, Dialect.POSTGRESQL);
+    Ddl.Builder builderPg = Ddl.builder(Dialect.POSTGRESQL);
+    scannerPg.listLocalityGroups(builderPg);
+
+    Ddl ddlPg = builderPg.build();
+    assertNotNull(ddlPg.localityGroup("lg_pg"));
+    assertEquals(1, ddlPg.localityGroup("lg_pg").options().size());
+    assertEquals("storage='ssd'", ddlPg.localityGroup("lg_pg").options().get(0));
   }
 }

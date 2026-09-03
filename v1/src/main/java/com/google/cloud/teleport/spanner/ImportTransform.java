@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.LocalityGroup;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
@@ -519,6 +520,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
                           List<KV<String, Schema>> missingUdfs = new ArrayList<>();
                           List<KV<String, Schema>> missingPlacements = new ArrayList<>();
+                          List<KV<String, Schema>> missingLocalityGroups = new ArrayList<>();
                           List<KV<String, Schema>> missingPropertyGraphs = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
                             if (informationSchemaDdl.schema(kv.getKey()) == null
@@ -529,6 +531,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 && informationSchemaDdl.udf(kv.getKey()) == null
                                 && informationSchemaDdl.sequence(kv.getKey()) == null
                                 && informationSchemaDdl.placement(kv.getKey()) == null
+                                && informationSchemaDdl.localityGroup(kv.getKey()) == null
                                 && informationSchemaDdl.propertyGraph(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
                               if (schema.getProp(AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE)
@@ -548,6 +551,9 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 missingNamedSchemas.add(KV.of(kv.getKey(), schema));
                               } else if ("Placement".equals(schema.getProp("spannerEntity"))) {
                                 missingPlacements.add(KV.of(kv.getKey(), schema));
+                              } else if (AvroUtil.SPANNER_ENTITY_LOCALITY_GROUP.equals(
+                                  schema.getProp("spannerEntity"))) {
+                                missingLocalityGroups.add(KV.of(kv.getKey(), schema));
                               } else if (AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH.equals(
                                   schema.getProp("spannerEntity"))) {
                                 missingPropertyGraphs.add(KV.of(kv.getKey(), schema));
@@ -638,6 +644,18 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createPlacementStatements());
+                          }
+
+                          if (!missingLocalityGroups.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            for (KV<String, Schema> kv : missingLocalityGroups) {
+                              LocalityGroup localityGroup =
+                                  converter.toLocalityGroup(kv.getKey(), kv.getValue());
+                              builder.addLocalityGroup(localityGroup);
+                              mergedDdl.addLocalityGroup(localityGroup);
+                            }
+                            Ddl newDdl = builder.build();
+                            ddlStatements.addAll(newDdl.createLocalityGroupStatements());
                           }
 
                           if (!missingTables.isEmpty()
@@ -855,6 +873,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(placement.getName(), fullPath));
                         }
                       }
+                      for (Export.Table localityGroup : proto.getLocalityGroupsList()) {
+                        for (String f : localityGroup.getDataFilesList()) {
+                          String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
+                          c.output(KV.of(localityGroup.getName(), fullPath));
+                        }
+                      }
                     }
                   }));
 
@@ -890,6 +914,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       for (Export.Table placement : proto.getPlacementsList()) {
                         if (!Strings.isNullOrEmpty(placement.getManifestFile())) {
                           c.output(KV.of(placement.getName(), placement.getManifestFile()));
+                        }
+                      }
+                      for (Export.Table localityGroup : proto.getLocalityGroupsList()) {
+                        if (!Strings.isNullOrEmpty(localityGroup.getManifestFile())) {
+                          c.output(KV.of(localityGroup.getName(), localityGroup.getManifestFile()));
                         }
                       }
                     }

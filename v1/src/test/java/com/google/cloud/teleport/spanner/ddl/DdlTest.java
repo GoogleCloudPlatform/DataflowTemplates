@@ -1565,6 +1565,87 @@ public class DdlTest {
   }
 
   @Test
+  public void localityGroups() {
+    Ddl ddl =
+        Ddl.builder()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .createLocalityGroup("lg2")
+            .options(ImmutableList.of("storage='ssd'", "ssd_to_hdd_spill_timespan='30d'"))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP `lg1` OPTIONS (storage='ssd')"
+                + " CREATE LOCALITY GROUP `lg2` OPTIONS (storage='ssd', ssd_to_hdd_spill_timespan='30d')"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage='ssd')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP `lg2` OPTIONS (storage='ssd', ssd_to_hdd_spill_timespan='30d')"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(2, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void pgLocalityGroups() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg1\" OPTIONS (storage='ssd')"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(1, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg1\" OPTIONS (storage='ssd')"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(1, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void localityGroupsBeforeTables() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage='ssd')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(ddl.table("Users").prettyPrint()));
+  }
+
+  @Test
   public void protobundle() {
     Ddl.Builder builder = Ddl.builder();
     builder.mergeProtoBundle(

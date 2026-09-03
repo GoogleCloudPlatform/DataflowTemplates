@@ -39,6 +39,7 @@ public class AvroUtil {
   public static final String SPANNER_ENTITY_MODEL = "Model";
   public static final String SPANNER_ENTITY_PROPERTY_GRAPH = "PropertyGraph";
   public static final String SPANNER_ENTITY_PLACEMENT = "Placement";
+  public static final String SPANNER_ENTITY_LOCALITY_GROUP = "LocalityGroup";
   public static final String SPANNER_FOREIGN_KEY = "spannerForeignKey_";
   public static final String SPANNER_INDEX = "spannerIndex_";
   public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";

@@ -1507,6 +1507,61 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void localityGroups() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"LocalityGroup1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"storage='ssd'\","
+            + "  \"spannerOption_1\" : \"ssd_to_hdd_spill_timespan='30d'\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.localityGroups(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE LOCALITY GROUP `LocalityGroup1`\n\t"
+                + " OPTIONS (storage='ssd', ssd_to_hdd_spill_timespan='30d')"));
+  }
+
+  @Test
+  public void pgLocalityGroups() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"LocalityGroup1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"storage='ssd'\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.localityGroups(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE LOCALITY GROUP \"LocalityGroup1\"\n\t"
+                + " OPTIONS (storage='ssd')"));
+  }
+
+  @Test
   public void placementTable() {
     String placementKeyAsPrimaryKeyAvroString =
         "{"

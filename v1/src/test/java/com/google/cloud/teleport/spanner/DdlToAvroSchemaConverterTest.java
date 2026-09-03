@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_LOCALITY_GROUP;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
@@ -2383,6 +2384,47 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema2.getProp(SPANNER_OPTION + "1"),
         equalTo("default_leader=\"" + defaultLeader + "\""));
+  }
+
+  @Test
+  public void localityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    String lgName1 = "lg1";
+    String lgName2 = "lg2";
+    Ddl ddl =
+        Ddl.builder()
+            .createLocalityGroup(lgName1)
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .createLocalityGroup(lgName2)
+            .options(ImmutableList.of("storage='ssd'", "ssd_to_hdd_spill_timespan='30d'"))
+            .endLocalityGroup()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema1.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema1.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema1.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchema1.getFields(), empty());
+    assertThat(avroSchema1.getName(), equalTo(lgName1));
+    assertThat(avroSchema1.getProp(SPANNER_OPTION + "0"), equalTo("storage='ssd'"));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema2.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema2.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema2.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchema2.getFields(), empty());
+    assertThat(avroSchema2.getName(), equalTo(lgName2));
+    assertThat(avroSchema2.getProp(SPANNER_OPTION + "0"), equalTo("storage='ssd'"));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "1"), equalTo("ssd_to_hdd_spill_timespan='30d'"));
   }
 
   @Test

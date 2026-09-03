@@ -116,6 +116,9 @@ public class InformationSchemaScanner {
     if (placementsSupported()) {
       listPlacements(builder);
     }
+    if (isLocalityGroupSupported()) {
+      listLocalityGroups(builder);
+    }
     if (isPropertyGraphSupported()) {
       listPropertyGraphs(builder);
       listPropertyGraphPropertyDeclarations(builder);
@@ -2109,6 +2112,103 @@ public class InformationSchemaScanner {
       String placementName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
       builder.createPlacement(placementName).options(options).endPlacement();
+    }
+  }
+
+  @VisibleForTesting
+  boolean isLocalityGroupSupported() {
+    Statement statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
+                    + " AND t.TABLE_NAME = 'LOCALITY_GROUP_OPTIONS'");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'information_schema'"
+                    + " AND t.TABLE_NAME = 'locality_group_options'");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      resultSet.next();
+      return resultSet.getLong(0) > 0;
+    }
+  }
+
+  @VisibleForTesting
+  Statement listLocalityGroupsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.locality_group_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
+  @VisibleForTesting
+  void listLocalityGroups(Ddl.Builder builder) {
+    ResultSet resultSet = context.executeQuery(listLocalityGroupsSQL());
+
+    Map<String, ImmutableList.Builder<String>> localityGroupNameToOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String name = resultSet.getString(0);
+      if ("default".equalsIgnoreCase(name)) {
+        // Skip `default` locality group as this is not created by user DDL.
+        continue;
+      }
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+      LOG.info(
+          "locality group option name = "
+              + optionName
+              + ", optionType = "
+              + optionType
+              + ", optionValue = "
+              + optionValue);
+
+      ImmutableList.Builder<String> options =
+          localityGroupNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING") || optionType.equalsIgnoreCase("STRING(MAX)")) {
+        options.add(
+            optionName
+                + "="
+                + GSQL_LITERAL_QUOTE
+                + OPTION_STRING_ESCAPER.escape(optionValue)
+                + GSQL_LITERAL_QUOTE);
+      } else if (optionType.equalsIgnoreCase("character varying")
+          || optionType.equalsIgnoreCase("text")) {
+        options.add(
+            optionName
+                + "="
+                + POSTGRESQL_LITERAL_QUOTE
+                + OPTION_STRING_ESCAPER.escape(optionValue)
+                + POSTGRESQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry :
+        localityGroupNameToOptions.entrySet()) {
+      String localityGroupName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createLocalityGroup(localityGroupName).options(options).endLocalityGroup();
     }
   }
 

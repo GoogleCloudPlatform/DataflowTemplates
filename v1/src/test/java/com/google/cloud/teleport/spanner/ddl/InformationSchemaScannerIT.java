@@ -1761,6 +1761,62 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
+  private SharedTestCase localityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    List<String> statements =
+        Arrays.asList(
+            "CREATE LOCALITY GROUP `lg_it_gsql` OPTIONS (storage = 'ssd')");
+
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.localityGroup("lg_it_gsql"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_gsql").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE LOCALITY GROUP `lg_it_gsql` OPTIONS (storage = 'ssd')"));
+
+          Collection<Schema> result = converter.convert(ddl);
+          Map<String, Schema> schemas =
+              result.stream().collect(Collectors.toMap(Schema::getName, s -> s));
+
+          Schema avroSchema = schemas.get("lg_it_gsql");
+          assertThat(avroSchema, notNullValue());
+          assertThat(avroSchema.getName(), equalTo("lg_it_gsql"));
+          assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(avroSchema.getProp("spannerOption_0"), equalTo("storage=\"ssd\""));
+        });
+  }
+
+  private SharedTestCase pgLocalityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    List<String> statements =
+        Arrays.asList(
+            "CREATE LOCALITY GROUP \"lg_it_pg\" OPTIONS (storage = 'ssd')");
+
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.localityGroup("lg_it_pg"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_pg").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE LOCALITY GROUP \"lg_it_pg\" OPTIONS (storage = 'ssd')"));
+
+          Collection<Schema> result = converter.convert(ddl);
+          Map<String, Schema> schemas =
+              result.stream().collect(Collectors.toMap(Schema::getName, s -> s));
+
+          Schema avroSchema = schemas.get("lg_it_pg");
+          assertThat(avroSchema, notNullValue());
+          assertThat(avroSchema.getName(), equalTo("lg_it_pg"));
+          assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(avroSchema.getProp("spannerOption_0"), equalTo("storage='ssd'"));
+        });
+  }
+
   private SharedTestCase propertyGraphOnViewGroupBy() {
     List<String> statements =
         Arrays.asList(
@@ -1963,6 +2019,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             databaseOptions(),
             changeStreams(),
             sequences(),
+            localityGroups(),
             propertyGraphOnViewGroupBy(),
             propertyGraphOnViewSimple(),
             propertyGraphOnViewMixedOrder(),
@@ -2002,7 +2059,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             pgIdentityColumns(),
             pgDatabaseOptions(),
             pgChangeStreams(),
-            pgSequences());
+            pgSequences(),
+            pgLocalityGroups());
 
     List<String> allStatements = new ArrayList<>();
     for (SharedTestCase testCase : testCases) {

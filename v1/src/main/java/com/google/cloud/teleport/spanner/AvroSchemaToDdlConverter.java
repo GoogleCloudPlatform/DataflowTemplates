@@ -29,6 +29,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_LOCALITY_GROUP;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
@@ -73,6 +74,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable;
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.Kind;
+import com.google.cloud.teleport.spanner.ddl.LocalityGroup;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
@@ -126,6 +128,8 @@ public class AvroSchemaToDdlConverter {
         builder.addSchema(toSchema(null, schema));
       } else if (SPANNER_ENTITY_PLACEMENT.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addPlacement(toPlacement(null, schema));
+      } else if (SPANNER_ENTITY_LOCALITY_GROUP.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addLocalityGroup(toLocalityGroup(null, schema));
       } else if (SPANNER_ENTITY_PROPERTY_GRAPH.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addPropertyGraph(toPropertyGraph(null, schema));
       } else {
@@ -575,6 +579,27 @@ public class AvroSchemaToDdlConverter {
       placementOptions.add(spannerOption);
     }
     builder.options(placementOptions.build());
+
+    return builder.build();
+  }
+
+  public LocalityGroup toLocalityGroup(String localityGroupName, Schema schema) {
+    if (localityGroupName == null) {
+      localityGroupName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl localityGroupName {}", localityGroupName);
+
+    LocalityGroup.Builder builder = LocalityGroup.builder(dialect).name(localityGroupName);
+
+    ImmutableList.Builder<String> localityGroupOptions = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerOption = schema.getProp(SPANNER_OPTION + i);
+      if (spannerOption == null) {
+        break;
+      }
+      localityGroupOptions.add(spannerOption);
+    }
+    builder.options(localityGroupOptions.build());
 
     return builder.build();
   }
