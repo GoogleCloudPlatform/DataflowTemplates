@@ -1,3 +1,3 @@
-apache-beam[dataframe,gcp,test,yaml,aws,azure]
+apache-beam[dataframe,gcp,test,yaml,aws,azure]==2.76.0
 setuptools
 job-builder-util-transforms @ https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-20/job_builder_util_transforms-0.2.2.tar.gz
