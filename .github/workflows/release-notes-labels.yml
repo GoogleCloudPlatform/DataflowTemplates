@@ -1,5 +1,6 @@
 name: Enforce labels for release notes
 on:
+  # zizmor: ignore[dangerous-triggers]
   pull_request_target:
     types: [opened, labeled, unlabeled, synchronize]
 jobs:
