@@ -31,4 +31,3 @@ public class TableListConfig implements Serializable {
     return tableNames;
   }
 }
-

@@ -94,7 +94,8 @@ public class TableConfiguration implements Serializable {
           }
         }
       } catch (Exception e) {
-        throw new RuntimeException("Failed to read JSON tableListFilePath: " + tableListFilePath, e);
+        throw new RuntimeException(
+            "Failed to read JSON tableListFilePath: " + tableListFilePath, e);
       }
     }
 

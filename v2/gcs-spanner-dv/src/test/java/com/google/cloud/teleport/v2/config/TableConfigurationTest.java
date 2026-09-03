@@ -168,7 +168,8 @@ public class TableConfigurationTest {
 
   @Test
   public void testParseFromOptionsThrowsWhenTableListFileFailsToRead() {
-    options.setTableListFilePath(tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
+    options.setTableListFilePath(
+        tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
 
     RuntimeException thrown =
         assertThrows(RuntimeException.class, () -> TableConfiguration.parseFromOptions(options));
