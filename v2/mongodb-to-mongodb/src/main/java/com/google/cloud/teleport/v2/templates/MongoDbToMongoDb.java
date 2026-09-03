@@ -19,9 +19,14 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadataCoder;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader;
+import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader.BackfillPartition;
+import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader;
+import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ChangeStreamPartition;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
-import com.google.cloud.teleport.v2.transforms.ReadSplitGenerator;
+import com.google.cloud.teleport.v2.transforms.StatefulDeduplication;
 import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
@@ -31,14 +36,12 @@ import java.util.Date;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.mongodb.FindQuery;
-import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -50,24 +53,24 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.bson.BsonDocument;
-import org.bson.Document;
+import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Dataflow template which copies data from one MongoDB database to another. */
+/** Dataflow template which copies data from one MongoDB database to another with CDC streaming support. */
 @Template(
     name = "Mongodb_To_Mongodb",
-    category = TemplateCategory.BATCH,
+    category = TemplateCategory.STREAMING,
     displayName = "MongoDB to MongoDB",
-    description = "Copy data from one MongoDB database to another.",
+    description = "Copy or stream data from one MongoDB database to another.",
     flexContainerName = "mongodb-to-mongodb",
     optionsClass = MongoDbToMongoDb.Options.class)
 public class MongoDbToMongoDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
-  public interface Options extends JavascriptTextTransformer.JavascriptTextTransformerOptions {
+  public interface Options
+      extends JavascriptTextTransformer.JavascriptTextTransformerOptions, StreamingOptions {
     @TemplateParameter.Text(
         order = 1,
         groupName = "Source",
@@ -136,15 +139,15 @@ public class MongoDbToMongoDb {
         order = 7,
         groupName = "Source",
         optional = true,
-        description = "Number of Read Splits",
+        description = "Number of Backfill Read Splits",
         helpText =
-            "Number of parallel queries to generate for high-throughput reads (e.g., 16 or 32)."
-                + " Uses MongoDB's $sample aggregation to discover data-driven boundaries across"
-                + " active BSON types.")
-    @Default.Integer(0)
-    Integer getNumReadSplits();
+            "Number of parallel coarse read splits generated per collection during historical"
+                + " backfill (e.g. 1, 4, 8). Each split opens a sequential index-range cursor."
+                + " Default is 1.")
+    @Default.Integer(1)
+    Integer getNumBackfillSplits();
 
-    void setNumReadSplits(Integer value);
+    void setNumBackfillSplits(Integer value);
 
     @TemplateParameter.Integer(
         order = 8,
@@ -270,6 +273,98 @@ public class MongoDbToMongoDb {
     Boolean getReadFromDlq();
 
     void setReadFromDlq(Boolean value);
+
+    @TemplateParameter.Enum(
+        order = 19,
+        groupName = "Source",
+        enumOptions = {
+          @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
+          @TemplateParameter.TemplateEnumOption("STREAMING_CDC"),
+          @TemplateParameter.TemplateEnumOption("BATCH")
+        },
+        optional = true,
+        description = "Migration Mode",
+        helpText =
+            "Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in"
+                + " parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only),"
+                + " or 'BATCH' (historical backfill only).")
+    @Default.String("BACKFILL_AND_STREAMING")
+    String getMigrationMode();
+
+    void setMigrationMode(String value);
+
+    @TemplateParameter.Integer(
+        order = 20,
+        groupName = "Source",
+        optional = true,
+        description = "Number of Change Stream Splits",
+        helpText =
+            "Number of parallel change stream cursors per collection for high-throughput CDC"
+                + " streaming (e.g. 1, 4, 8, 16).")
+    @Default.Integer(1)
+    Integer getNumChangeStreamSplits();
+
+    void setNumChangeStreamSplits(Integer value);
+
+    @TemplateParameter.Enum(
+        order = 21,
+        groupName = "Source",
+        enumOptions = {
+          @TemplateParameter.TemplateEnumOption("updateLookup"),
+          @TemplateParameter.TemplateEnumOption("whenAvailable"),
+          @TemplateParameter.TemplateEnumOption("required"),
+          @TemplateParameter.TemplateEnumOption("default")
+        },
+        optional = true,
+        description = "Change Stream Full Document Strategy",
+        helpText =
+            "Strategy for fetching full document in change streams: 'updateLookup' (lookup full"
+                + " doc from collection on updates, compatible with MongoDB 4+), 'whenAvailable'"
+                + " (MongoDB 6+ post-image oplog extraction without extra lookup), 'required', or"
+                + " 'default'.")
+    @Default.String("updateLookup")
+    String getChangeStreamFullDocument();
+
+    void setChangeStreamFullDocument(String value);
+
+    @TemplateParameter.Text(
+        order = 22,
+        groupName = "Source",
+        optional = true,
+        description = "Start At Operation Time",
+        helpText =
+            "Optional starting clusterTime (epoch seconds or ISO-8601 timestamp) to start change"
+                + " stream cursors from. If omitted in BACKFILL_AND_STREAMING mode, captures the"
+                + " current clusterTime before backfill starts.")
+    String getStartAtOperationTime();
+
+    void setStartAtOperationTime(String value);
+
+    @TemplateParameter.Integer(
+        order = 23,
+        groupName = "Target",
+        optional = true,
+        description = "Number of Write Shards",
+        helpText =
+            "Number of parallel shards per collection for batched writes to prevent Windmill"
+                + " single-key hotspots and maximize write parallelism. Default is 64.")
+    @Default.Integer(64)
+    Integer getNumWriteShards();
+
+    void setNumWriteShards(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 24,
+        groupName = "Target",
+        optional = true,
+        description = "Max Buffering Duration Milliseconds",
+        helpText =
+            "Maximum duration in milliseconds to buffer documents before flushing a batch to target"
+                + " MongoDB. Default is 200ms.")
+    @Default.Integer(200)
+    Integer getMaxBufferingDurationMs();
+
+    void setMaxBufferingDurationMs(Integer value);
   }
 
   public static void main(String[] args) {
@@ -278,6 +373,20 @@ public class MongoDbToMongoDb {
   }
 
   public static void run(Options options) {
+    String migrationMode = options.getMigrationMode();
+    if (migrationMode == null || migrationMode.isEmpty()) {
+      migrationMode = "BACKFILL_AND_STREAMING";
+    }
+
+    boolean isStreamingMode =
+        "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
+            || "STREAMING_CDC".equalsIgnoreCase(migrationMode);
+
+    if (isStreamingMode) {
+      options.setStreaming(true);
+      options.as(DataflowPipelineOptions.class).setEnableStreamingEngine(true);
+    }
+
     Pipeline pipeline = Pipeline.create(options);
 
     String sourceUri = options.getSourceUri();
@@ -288,11 +397,15 @@ public class MongoDbToMongoDb {
     if (sourceCollection != null && !sourceCollection.isEmpty()) {
       sourceCollections.add(sourceCollection);
     } else {
-      // List collections from source
+      // List collections from source excluding internal system collections
       try (MongoClient mongoClient = MongoDbTransforms.createMongoClient(sourceUri)) {
         MongoDatabase db = mongoClient.getDatabase(sourceDatabase);
         for (String name : db.listCollectionNames()) {
-          sourceCollections.add(name);
+          if (!name.startsWith("system.")) {
+            sourceCollections.add(name);
+          } else {
+            LOG.info("Excluding internal MongoDB system collection '{}' from migration", name);
+          }
         }
       }
     }
@@ -324,10 +437,8 @@ public class MongoDbToMongoDb {
     LOG.info("  Target Database:         {}", options.getTargetDatabase());
     LOG.info("  Source Collections:      {}", sourceCollections);
     LOG.info(
-        "  Read Strategy:           {}",
-        (options.getNumReadSplits() != null && options.getNumReadSplits() > 1)
-            ? "Parallel Index-Slice Reading (numReadSplits=" + options.getNumReadSplits() + ")"
-            : "Standard unpartitioned MongoDbIO.read()");
+        "  Backfill Configuration:  coarse-split sequential cursor streaming (numBackfillSplits={})",
+        options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 4);
     LOG.info(
         "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
             + " dlqMaxRetries={}",
@@ -342,12 +453,50 @@ public class MongoDbToMongoDb {
         options.getMaxWriteRatePerWorker(),
         options.getWriteRateRampUpMinutes(),
         options.getWriteRateRampUpSteps());
+    LOG.info("  Migration Mode:          {}", options.getMigrationMode());
+    LOG.info("  Change Stream Splits:    {}", options.getNumChangeStreamSplits());
+    LOG.info("  Change Stream Strategy:  {}", options.getChangeStreamFullDocument());
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
     LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
     LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
     LOG.info(
         "  DLQ Inspection Command:  gcloud storage cat \"{}/**/output-*\" | head -n 5",
         permanentDlqPath);
+
+    boolean includeBackfill =
+        "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
+            || "BATCH".equalsIgnoreCase(migrationMode);
+    boolean includeCdc =
+        "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
+            || "STREAMING_CDC".equalsIgnoreCase(migrationMode);
+
+    BsonTimestamp t0 = null;
+    if (includeCdc) {
+      if (options.getStartAtOperationTime() != null
+          && !options.getStartAtOperationTime().isEmpty()) {
+        try {
+          long sec = Long.parseLong(options.getStartAtOperationTime());
+          t0 = new BsonTimestamp((int) sec, 0);
+        } catch (NumberFormatException nfe) {
+          LOG.warn(
+              "Could not parse startAtOperationTime '{}' as epoch seconds. Capturing current"
+                  + " cluster time.",
+              options.getStartAtOperationTime());
+          t0 =
+              MongoDbChangeStreamReader.captureCurrentClusterTime(
+                  sourceUri, sourceDatabase);
+        }
+      } else {
+        t0 =
+            MongoDbChangeStreamReader.captureCurrentClusterTime(
+                sourceUri, sourceDatabase);
+      }
+      LOG.info(
+          "Captured initial cluster time T0: {} (seconds={}, inc={})",
+          t0,
+          t0.getTime(),
+          t0.getInc());
+    }
 
     if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
       String reconsumePath = options.getReconsumeDlqPath();
@@ -356,47 +505,197 @@ public class MongoDbToMongoDb {
             "Reconsume DLQ path must be specified when reading from DLQ.");
       }
       PCollection<DocumentWithMetadata> documents = readFromDlq(pipeline, reconsumePath);
-      documents.apply(
-          "ProcessDlq",
-          new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
+      PCollection<DocumentWithMetadata> validDocs =
+          documents.apply(
+              "ProcessDlq",
+              new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory, true));
+      validDocs.apply(
+          "WriteDlq",
+          new WriteDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
     } else {
-      for (String inputCollection : sourceCollections) {
-        String targetCollectionRaw = options.getTargetCollection();
-        final String targetCollection =
-            (targetCollectionRaw == null || targetCollectionRaw.isEmpty())
-                ? inputCollection
-                : targetCollectionRaw;
+      List<PCollection<DocumentWithMetadata>> allStreams = new ArrayList<>();
+      List<BackfillPartition> backfillPartitions = new ArrayList<>();
+      List<ChangeStreamPartition> cdcPartitions = new ArrayList<>();
 
-        PCollection<DocumentWithMetadata> documents =
-            readFromMongo(pipeline, options, inputCollection, targetCollection);
-        documents.apply(
-            "Process_" + inputCollection,
-            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
+      MongoClient setupClient = null;
+      try {
+        setupClient = MongoDbTransforms.createMongoClient(options.getSourceUri());
+      } catch (Exception e) {
+        LOG.warn(
+            "Could not connect to MongoDB during setup using shared client ({}). Using fallback.",
+            e.getMessage());
       }
+
+      try {
+        for (String inputCollection : sourceCollections) {
+          String targetCollectionRaw = options.getTargetCollection();
+          final String targetCollection =
+              (targetCollectionRaw == null || targetCollectionRaw.isEmpty())
+                  ? inputCollection
+                  : targetCollectionRaw;
+
+          if (includeBackfill) {
+            int numBackfillSplits =
+                options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 1;
+            try {
+              backfillPartitions.addAll(
+                  MongoDbBackfillReader.generatePartitions(
+                      setupClient,
+                      options.getSourceUri(),
+                      options.getSourceDatabase(),
+                      inputCollection,
+                      targetCollection,
+                      numBackfillSplits,
+                      t0));
+            } catch (Exception e) {
+              LOG.warn(
+                  "Could not generate partitioned splits for collection '{}' ({}). Falling back to"
+                      + " single split.",
+                  inputCollection,
+                  e.getMessage());
+              backfillPartitions.addAll(
+                  MongoDbBackfillReader.generatePartitions(
+                      null,
+                      options.getSourceUri(),
+                      options.getSourceDatabase(),
+                      inputCollection,
+                      targetCollection,
+                      1,
+                      t0));
+            }
+          }
+
+          if (includeCdc) {
+            int numCdcSplits =
+                options.getNumChangeStreamSplits() != null
+                    ? options.getNumChangeStreamSplits()
+                    : 1;
+            try {
+              cdcPartitions.addAll(
+                  MongoDbChangeStreamReader.generatePartitions(
+                      setupClient,
+                      options.getSourceUri(),
+                      options.getSourceDatabase(),
+                      inputCollection,
+                      targetCollection,
+                      numCdcSplits,
+                      t0,
+                      options.getChangeStreamFullDocument()));
+            } catch (Exception e) {
+              LOG.warn(
+                  "Could not generate change stream splits for collection '{}' ({}). Falling back"
+                      + " to single split.",
+                  inputCollection,
+                  e.getMessage());
+              cdcPartitions.addAll(
+                  MongoDbChangeStreamReader.generatePartitions(
+                      null,
+                      options.getSourceUri(),
+                      options.getSourceDatabase(),
+                      inputCollection,
+                      targetCollection,
+                      1,
+                      t0,
+                      options.getChangeStreamFullDocument()));
+            }
+          }
+        }
+      } finally {
+        if (setupClient != null) {
+          try {
+            setupClient.close();
+          } catch (Exception ignored) {
+          }
+        }
+      }
+
+      if (includeBackfill && !backfillPartitions.isEmpty()) {
+        PCollection<DocumentWithMetadata> backfillDocs =
+            pipeline
+                .apply(
+                    "ReadBackfill",
+                    new MongoDbBackfillReader.ReadPartitions(backfillPartitions))
+                .setCoder(DocumentWithMetadataCoder.of());
+        allStreams.add(backfillDocs);
+      }
+
+      if (includeCdc && !cdcPartitions.isEmpty()) {
+        PCollection<DocumentWithMetadata> cdcDocs =
+            pipeline
+                .apply(
+                    "ReadCDC",
+                    new MongoDbChangeStreamReader.ReadPartitions(cdcPartitions))
+                .setCoder(DocumentWithMetadataCoder.of());
+        allStreams.add(cdcDocs);
+      }
+
+      PCollection<DocumentWithMetadata> documents;
+      if (allStreams.size() == 1) {
+        documents = allStreams.get(0);
+      } else if (allStreams.size() > 1) {
+        documents =
+            PCollectionList.of(allStreams)
+                .apply("MergeStreams", Flatten.pCollections());
+      } else {
+        throw new IllegalStateException("No streams configured to read.");
+      }
+
+      PCollection<DocumentWithMetadata> validDocs =
+          documents.apply(
+              "ProcessDocuments",
+              new ProcessDocuments(
+                  options, retryableDlqPath, permanentDlqPath, tmpDirectory, isStreamingMode));
+
+      validDocs.apply(
+          "WriteDocuments",
+          new WriteDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
     }
 
     pipeline.run();
   }
 
+  /**
+   * PTransform that processes documents: stateful deduplication, metric counting,
+   * UDF transformation, and validation, routing process failures to DLQ.
+   */
   public static class ProcessDocuments
-      extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+      extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
     private final transient Options options;
     private final String retryableDlqPath;
     private final String permanentDlqPath;
     private final String tmpDirectory;
+    private final boolean isStreamingMode;
 
     public ProcessDocuments(
-        Options options, String retryableDlqPath, String permanentDlqPath, String tmpDirectory) {
+        Options options,
+        String retryableDlqPath,
+        String permanentDlqPath,
+        String tmpDirectory,
+        boolean isStreamingMode) {
       this.options = options;
       this.retryableDlqPath = retryableDlqPath;
       this.permanentDlqPath = permanentDlqPath;
       this.tmpDirectory = tmpDirectory;
+      this.isStreamingMode = isStreamingMode;
+    }
+
+    public ProcessDocuments(
+        Options options, String retryableDlqPath, String permanentDlqPath, String tmpDirectory) {
+      this(options, retryableDlqPath, permanentDlqPath, tmpDirectory, false);
     }
 
     @Override
-    public PDone expand(PCollection<DocumentWithMetadata> input) {
-      PCollection<DocumentWithMetadata> documents =
-          input.apply(
+    public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
+      PCollection<DocumentWithMetadata> documents = input;
+
+      // Stateful Deduplication Stage
+      if (isStreamingMode) {
+        documents = documents.apply("Deduplicate", StatefulDeduplication.of());
+      }
+
+      // Metrics Stage
+      documents =
+          documents.apply(
               "CountTotalProcessed",
               ParDo.of(
                   new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
@@ -437,7 +736,7 @@ public class MongoDbToMongoDb {
         documents =
             udfProcessed
                 .get(udfSuccessTag)
-                .setCoder(SerializableCoder.of(DocumentWithMetadata.class));
+                .setCoder(DocumentWithMetadataCoder.of());
       }
 
       // Validation Stage with DLQ
@@ -447,32 +746,7 @@ public class MongoDbToMongoDb {
       PCollectionTuple processed =
           documents.apply(
               "Validate",
-              ParDo.of(
-                      new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
-                        private final Counter contextCreationFailures =
-                            Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
-
-                        @ProcessElement
-                        public void processElement(ProcessContext c) {
-                          DocumentWithMetadata item = c.element();
-                          if (item == null || item.getDocument() == null) {
-                            contextCreationFailures.inc();
-                            c.output(
-                                failureTag,
-                                DocumentWithMetadata.of(
-                                    null,
-                                    null,
-                                    0,
-                                    "Null document",
-                                    DocumentWithMetadata.ErrorType.PERMANENT,
-                                    null,
-                                    null,
-                                    DocumentWithMetadata.FailureStage.VALIDATE));
-                          } else {
-                            c.output(successTag, item);
-                          }
-                        }
-                      })
+              ParDo.of(new ValidateFn(failureTag))
                   .withOutputTags(successTag, TupleTagList.of(failureTag)));
 
       // Write Process Failures to DLQ
@@ -482,16 +756,39 @@ public class MongoDbToMongoDb {
               "WriteToDlq_Validate",
               new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
-      // Write Stage with DLQ
-      PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
+      return processed.get(successTag).setCoder(DocumentWithMetadataCoder.of());
+    }
+  }
 
+  /**
+   * PTransform that writes valid documents in bulk to target MongoDB, routing write failures to DLQ.
+   */
+  public static class WriteDocuments
+      extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+    private final transient Options options;
+    private final String retryableDlqPath;
+    private final String permanentDlqPath;
+    private final String tmpDirectory;
+
+    public WriteDocuments(
+        Options options, String retryableDlqPath, String permanentDlqPath, String tmpDirectory) {
+      this.options = options;
+      this.retryableDlqPath = retryableDlqPath;
+      this.permanentDlqPath = permanentDlqPath;
+      this.tmpDirectory = tmpDirectory;
+    }
+
+    @Override
+    public PDone expand(PCollection<DocumentWithMetadata> validDocs) {
       PCollection<DocumentWithMetadata> writeFailures =
           validDocs.apply(
-              "Write",
+              "WriteToTarget",
               MongoDbTransforms.writeWithDlq()
                   .withUri(options.getTargetUri())
                   .withDatabase(options.getTargetDatabase())
                   .withBatchSize(options.getBatchSize())
+                  .withNumWriteShards(options.getNumWriteShards())
+                  .withMaxBufferingDurationMs(options.getMaxBufferingDurationMs())
                   .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
                   .withMaxWriteRetries(options.getMaxWriteRetries())
                   .withDlqMaxRetries(options.getDlqMaxRetries())
@@ -516,7 +813,73 @@ public class MongoDbToMongoDb {
           "WriteToDlq_Write",
           new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
-      return PDone.in(input.getPipeline());
+      return PDone.in(validDocs.getPipeline());
+    }
+  }
+
+  public static class ValidateFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
+    private final Counter contextCreationFailures =
+        Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
+    private final Counter validationPassed =
+        Metrics.counter(MongoDbToMongoDb.class, "validationPassed");
+    private final Counter validationFailedNullPayload =
+        Metrics.counter(MongoDbToMongoDb.class, "validationFailedNullPayload");
+    private final TupleTag<DocumentWithMetadata> failureTag;
+
+    public ValidateFn(TupleTag<DocumentWithMetadata> failureTag) {
+      this.failureTag = failureTag;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      DocumentWithMetadata item = c.element();
+      if (item == null
+          || (item.getDocument() == null
+              && (item.getOperationType() == null
+                  || (!item.getOperationType().isDelete()
+                      && item.getOperationType() != DocumentWithMetadata.OperationType.DROP
+                      && item.getOperationType() != DocumentWithMetadata.OperationType.RENAME)))) {
+        contextCreationFailures.inc();
+        validationFailedNullPayload.inc();
+        c.output(
+            failureTag,
+            item != null
+                ? item.withFailure(
+                    "Null document payload",
+                    DocumentWithMetadata.ErrorType.PERMANENT,
+                    DocumentWithMetadata.FailureStage.VALIDATE)
+                : DocumentWithMetadata.of(
+                    null,
+                    null,
+                    0,
+                    "Null element",
+                    DocumentWithMetadata.ErrorType.PERMANENT,
+                    null,
+                    null,
+                    DocumentWithMetadata.FailureStage.VALIDATE));
+      } else {
+        validationPassed.inc();
+        c.output(item);
+      }
+    }
+  }
+
+  public static class ParseDlqFn extends DoFn<String, DocumentWithMetadata> {
+    private final Counter retriedDocuments =
+        Metrics.counter(MongoDbToMongoDb.class, "retriedDocuments");
+    private final Counter contextCreationFailures =
+        Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      String line = c.element();
+      try {
+        c.output(DocumentWithMetadata.fromDlqJson(line));
+        retriedDocuments.inc();
+      } catch (Exception e) {
+        LOG.error("Failed to parse DLQ event", e);
+        contextCreationFailures.inc();
+      }
     }
   }
 
@@ -525,104 +888,8 @@ public class MongoDbToMongoDb {
     PCollection<String> dlqStrings =
         pipeline.apply("ReadDlq", TextIO.read().from(reconsumePath + "/**"));
 
-    return dlqStrings.apply(
-        "ParseDlq",
-        ParDo.of(
-            new DoFn<String, DocumentWithMetadata>() {
-              private final Counter retriedDocuments =
-                  Metrics.counter(MongoDbToMongoDb.class, "retriedDocuments");
-              private final Counter contextCreationFailures =
-                  Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
-
-              @ProcessElement
-              public void processElement(ProcessContext c) {
-                String line = c.element();
-                try {
-                  c.output(DocumentWithMetadata.fromDlqJson(line));
-                  retriedDocuments.inc();
-                } catch (Exception e) {
-                  LOG.error("Failed to parse DLQ event", e);
-                  contextCreationFailures.inc();
-                }
-              }
-            }));
-  }
-
-  private static PCollection<DocumentWithMetadata> readFromMongo(
-      Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
-    Integer numReadSplits = options.getNumReadSplits();
-    if (numReadSplits != null && numReadSplits > 1) {
-      List<BsonDocument> filters;
-      try (MongoClient client = MongoDbTransforms.createMongoClient(options.getSourceUri())) {
-        filters =
-            ReadSplitGenerator.generateIndexSliceFilters(
-                client, options.getSourceDatabase(), sourceCollection, numReadSplits);
-      } catch (Exception e) {
-        LOG.warn(
-            "Could not connect to MongoDB during setup to generate data-driven read splits ({})."
-                + " Using offline uniform split generation.",
-            e.getMessage());
-        filters = ReadSplitGenerator.generateIndexSliceFilters(numReadSplits);
-      }
-
-      List<PCollection<DocumentWithMetadata>> readBranches = new ArrayList<>();
-
-      LOG.info(
-          "Generating {} parallel index-slice read branches for collection '{}'",
-          filters.size(),
-          sourceCollection);
-
-      String readGroup = "ReadSlices(" + sourceCollection + ")";
-      for (int i = 0; i < filters.size(); i++) {
-        final String filterJson = filters.get(i).toJson();
-        LOG.info("  Read Branch [{}/{}] Query Filter: {}", i, filters.size() - 1, filterJson);
-        MongoDbIO.Read read =
-            MongoDbIO.read()
-                .withUri(options.getSourceUri())
-                .withDatabase(options.getSourceDatabase())
-                .withCollection(sourceCollection)
-                .withQueryFn(FindQuery.create().withFilters(filters.get(i)));
-
-        PCollection<DocumentWithMetadata> branch =
-            pipeline
-                .apply(readGroup + "/Slice_" + i + "/Read", read)
-                .apply(
-                    readGroup + "/Slice_" + i + "/MapToMetadata",
-                    ParDo.of(
-                        new DoFn<Document, DocumentWithMetadata>() {
-                          @ProcessElement
-                          public void processElement(ProcessContext c) {
-                            c.output(
-                                DocumentWithMetadata.of(
-                                    c.element(), sourceCollection, targetCollection));
-                          }
-                        }));
-        readBranches.add(branch);
-      }
-
-      return PCollectionList.of(readBranches).apply(readGroup + "/Merge", Flatten.pCollections());
-    }
-
-    LOG.info("Using standard unpartitioned MongoDbIO.read() for collection '{}'", sourceCollection);
-
-    MongoDbIO.Read read =
-        MongoDbIO.read()
-            .withUri(options.getSourceUri())
-            .withDatabase(options.getSourceDatabase())
-            .withCollection(sourceCollection);
-
-    String readGroup = "Read(" + sourceCollection + ")";
-    return pipeline
-        .apply(readGroup + "/Read", read)
-        .apply(
-            readGroup + "/MapToMetadata",
-            ParDo.of(
-                new DoFn<Document, DocumentWithMetadata>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    c.output(
-                        DocumentWithMetadata.of(c.element(), sourceCollection, targetCollection));
-                  }
-                }));
+    return dlqStrings
+        .apply("ParseDlq", ParDo.of(new ParseDlqFn()))
+        .setCoder(DocumentWithMetadataCoder.of());
   }
 }

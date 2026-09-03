@@ -18,12 +18,14 @@ package com.google.cloud.teleport.v2.transforms;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -316,6 +318,34 @@ public class ReadSplitGenerator {
       return Collections.singletonList(typeMatch);
     }
 
+    try {
+      BsonDocument minDoc =
+          col.find(typeMatch)
+              .projection(new BsonDocument("_id", new BsonInt32(1)))
+              .sort(new BsonDocument("_id", new BsonInt32(1)))
+              .limit(1)
+              .first();
+      BsonDocument maxDoc =
+          col.find(typeMatch)
+              .projection(new BsonDocument("_id", new BsonInt32(1)))
+              .sort(new BsonDocument("_id", new BsonInt32(-1)))
+              .limit(1)
+              .first();
+
+      if (minDoc != null && maxDoc != null && minDoc.containsKey("_id") && maxDoc.containsKey("_id")) {
+        BsonValue minVal = minDoc.get("_id");
+        BsonValue maxVal = maxDoc.get("_id");
+
+        if (minVal.isObjectId() && maxVal.isObjectId()) {
+          String minHex = minVal.asObjectId().getValue().toHexString();
+          String maxHex = maxVal.asObjectId().getValue().toHexString();
+          return generateProbedObjectIdSplits(minHex, maxHex, numSplits);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Fast min/max index probe failed in '{}.{}' ({}). Falling back to sample.", col.getNamespace().getDatabaseName(), col.getNamespace().getCollectionName(), e.getMessage());
+    }
+
     int sampleSize = Math.max(1000, numSplits * 64);
     List<BsonDocument> pipeline =
         Arrays.asList(
@@ -325,7 +355,8 @@ public class ReadSplitGenerator {
             new BsonDocument("$sort", new BsonDocument("_id", new BsonInt32(1))));
 
     List<BsonValue> sampledKeys = new ArrayList<>();
-    for (BsonDocument doc : col.aggregate(pipeline)) {
+    for (BsonDocument doc :
+        col.aggregate(pipeline).allowDiskUse(true).maxTime(30, TimeUnit.SECONDS)) {
       if (doc.containsKey("_id")) {
         sampledKeys.add(doc.get("_id"));
       }
@@ -365,6 +396,60 @@ public class ReadSplitGenerator {
         idDoc.append("$gte", boundaries.get(i - 1)).append("$lt", boundaries.get(i));
       }
       slices.add(new BsonDocument("_id", idDoc));
+    }
+    return slices;
+  }
+
+  /**
+   * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max hex keys.
+   */
+  public static List<BsonDocument> generateProbedObjectIdSplits(
+      String minHex, String maxHex, int numSplits) {
+    if (numSplits <= 1 || minHex.equals(maxHex)) {
+      return Collections.singletonList(
+          new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+    }
+
+    BigInteger minBig = new BigInteger(minHex, 16);
+    BigInteger maxBig = new BigInteger(maxHex, 16);
+    BigInteger range = maxBig.subtract(minBig);
+    BigInteger step = range.divide(BigInteger.valueOf(numSplits));
+
+    if (step.compareTo(BigInteger.ZERO) <= 0) {
+      return Collections.singletonList(
+          new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+    }
+
+    List<BsonDocument> slices = new ArrayList<>();
+    for (int i = 0; i < numSplits; i++) {
+      if (i == 0) {
+        BigInteger high = minBig.add(step);
+        String highHex = String.format("%024x", high);
+        slices.add(
+            BsonDocument.parse(
+                String.format(
+                    "{\"_id\": {\"$type\": \"objectId\", \"$lt\": {\"$oid\": \"%s\"}}}",
+                    highHex)));
+      } else if (i == numSplits - 1) {
+        BigInteger low = minBig.add(step.multiply(BigInteger.valueOf(i)));
+        String lowHex = String.format("%024x", low);
+        slices.add(
+            BsonDocument.parse(
+                String.format(
+                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}}}",
+                    lowHex)));
+      } else {
+        BigInteger low = minBig.add(step.multiply(BigInteger.valueOf(i)));
+        BigInteger high = minBig.add(step.multiply(BigInteger.valueOf(i + 1)));
+        String lowHex = String.format("%024x", low);
+        String highHex = String.format("%024x", high);
+        slices.add(
+            BsonDocument.parse(
+                String.format(
+                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}, \"$lt\":"
+                        + " {\"$oid\": \"%s\"}}}",
+                    lowHex, highHex)));
+      }
     }
     return slices;
   }
@@ -412,7 +497,8 @@ public class ReadSplitGenerator {
       BsonDocument filter =
           BsonDocument.parse(
               String.format(
-                  "{\"_id\": {\"$gte\": {\"$oid\": \"%s\"}, \"%s\": {\"$oid\": \"%s\"}}}",
+                  "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}, \"%s\":"
+                      + " {\"$oid\": \"%s\"}}}",
                   lowHex, highOp, highHex));
       filters.add(filter);
     }
@@ -441,16 +527,17 @@ public class ReadSplitGenerator {
 
   private static List<String> generateObjectIdBounds(int numSplits) {
     List<String> bounds = new ArrayList<>();
-    long minHex = 0x00000000L;
-    long maxHex = 0xffffffffL;
-    long step = (maxHex - minHex) / numSplits;
+    long nowSec = System.currentTimeMillis() / 1000L;
+    long minSec = Math.max(0L, nowSec - (5L * 365 * 86400));
+    long maxSec = nowSec + (30L * 86400);
+    long step = (maxSec - minSec) / numSplits;
     for (int i = 0; i <= numSplits; i++) {
       if (i == 0) {
         bounds.add("000000000000000000000000");
       } else if (i == numSplits) {
         bounds.add("ffffffffffffffffffffffff");
       } else {
-        long val = minHex + i * step;
+        long val = minSec + i * step;
         String hexPrefix = String.format("%08x", val);
         bounds.add(hexPrefix + "0000000000000000");
       }

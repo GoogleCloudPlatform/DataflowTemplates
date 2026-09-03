@@ -139,4 +139,58 @@ public class DocumentWithMetadataTest {
     DocumentWithMetadata item = DocumentWithMetadata.of(doc);
     assertEquals(null, item.getId());
   }
+
+  @Test
+  public void documentWithMetadata_cdcEvent_andDlqRoundTrip() {
+    TimestampSortKey key = TimestampSortKey.cdc(1724000000L, 7L);
+    DocumentWithMetadata cdcEvent =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            key,
+            "{\"_id\": 999}");
+
+    assertEquals(DocumentWithMetadata.OperationType.DELETE, cdcEvent.getOperationType());
+    assertTrue(cdcEvent.getOperationType().isDelete());
+    assertEquals(999, cdcEvent.getId());
+    assertEquals(key, cdcEvent.getTimestampSortKey());
+
+    String dlqJson = cdcEvent.toDlqJson("Delete target doc not found", RETRYABLE, 2);
+    DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(dlqJson);
+
+    assertEquals(DocumentWithMetadata.OperationType.DELETE, reconstructed.getOperationType());
+    assertEquals("{\"_id\": 999}", reconstructed.getDocumentKey());
+    assertEquals(999, reconstructed.getId());
+    assertEquals(key, reconstructed.getTimestampSortKey());
+    assertEquals(Integer.valueOf(2), reconstructed.getRetryCount());
+    assertTrue(reconstructed.isDlqReconsumed());
+  }
+
+  @Test
+  public void documentWithMetadata_withDocument_preservesCdcMetadata() {
+    TimestampSortKey key = TimestampSortKey.cdc(1724000000L, 5L);
+    Document originalDoc = new Document("_id", 100).append("val", "before");
+    DocumentWithMetadata item =
+        DocumentWithMetadata.cdcEvent(
+            originalDoc,
+            originalDoc.toJson(),
+            "sourceCol",
+            "targetCol",
+            DocumentWithMetadata.OperationType.UPDATE,
+            key,
+            "{\"_id\": 100}");
+
+    Document transformedDoc = new Document("_id", 100).append("val", "after");
+    DocumentWithMetadata updated = item.withDocument(transformedDoc);
+
+    assertEquals(transformedDoc, updated.getDocument());
+    assertEquals(DocumentWithMetadata.OperationType.UPDATE, updated.getOperationType());
+    assertEquals(key, updated.getTimestampSortKey());
+    assertEquals("{\"_id\": 100}", updated.getDocumentKey());
+    assertEquals("sourceCol", updated.getSourceCollection());
+    assertEquals("targetCol", updated.getTargetCollection());
+  }
 }

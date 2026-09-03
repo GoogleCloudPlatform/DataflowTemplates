@@ -34,6 +34,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
@@ -49,6 +50,7 @@ import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
@@ -238,6 +240,135 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 0L);
+  }
+
+  @Test
+  public void writeWithDlq_mixedUpsertAndDelete_success() {
+    List<WriteModel<Document>> capturedModels = Collections.synchronizedList(new ArrayList<>());
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              List<WriteModel<Document>> models = invocation.getArgument(0);
+              capturedModels.addAll(models);
+              return mock(BulkWriteResult.class);
+            });
+
+    DocumentWithMetadata upsertDoc =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", "u1").append("name", "Alice"),
+            "{\"_id\": \"u1\", \"name\": \"Alice\"}",
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000L, 1L),
+            "{\"_id\": \"u1\"}");
+
+    DocumentWithMetadata deleteDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000L, 2L),
+            "{\"_id\": \"d1\"}");
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(upsertDoc, deleteDoc));
+
+    input.apply(
+        "Write_Mixed",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(10)
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 2L);
+    assertEquals(2, capturedModels.size());
+    assertTrue(capturedModels.stream().anyMatch(m -> m instanceof ReplaceOneModel));
+    assertTrue(capturedModels.stream().anyMatch(m -> m instanceof DeleteOneModel));
+  }
+
+  @Test
+  public void writeWithDlq_deletePermanentFailure_sentToDlqWithMetadata() {
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenThrow(
+            new MongoBulkWriteException(
+                mock(BulkWriteResult.class),
+                Arrays.asList(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 0)),
+                null,
+                new ServerAddress(),
+                Collections.emptySet()));
+
+    DocumentWithMetadata deleteDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000L, 5L),
+            "{\"_id\": \"d99\"}");
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(deleteDoc));
+
+    PCollectionTuple tuple =
+        input.apply(
+            "Write_Delete_Failure",
+            ParDo.of(
+                    MongoDbTransforms.WriteFn.builder()
+                        .withUri("mongodb://localhost:27017")
+                        .withDatabase("test")
+                        .withBatchSize(1)
+                        .withMaxWriteRetries(1)
+                        .withDlqMaxRetries(3)
+                        .withClientFactory(new MockClientFactory())
+                        .withFailureTag(FAILURE_TAG)
+                        .build())
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(tuple.get(FAILURE_TAG))
+        .satisfies(
+            failures -> {
+              List<DocumentWithMetadata> list = new ArrayList<>();
+              failures.forEach(list::add);
+              assertEquals(1, list.size());
+              DocumentWithMetadata failedItem = list.get(0);
+              assertEquals(DocumentWithMetadata.OperationType.DELETE, failedItem.getOperationType());
+              assertEquals("{\"_id\": \"d99\"}", failedItem.getDocumentKey());
+              assertEquals(TimestampSortKey.cdc(1000L, 5L), failedItem.getTimestampSortKey());
+              assertEquals(DocumentWithMetadata.ErrorType.PERMANENT, failedItem.getErrorType());
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void writeWithDlq_dropEvent_skippedWithoutError() {
+    DocumentWithMetadata dropDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DROP,
+            TimestampSortKey.cdc(1000L, 10L),
+            null);
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(dropDoc));
+
+    input.apply(
+        "Write_Drop",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(10)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
 
@@ -536,5 +667,60 @@ public class MongoDbTransformsTest {
     assertEquals(25000.0, fn.getRateLimiter().getRate(), 0.01);
 
     fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_multiBundleExecution_preservesClientAcrossBundles() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    @SuppressWarnings("unchecked")
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(1)
+            .withMaxWriteRetries(1)
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+
+    @SuppressWarnings("unchecked")
+    DoFn<DocumentWithMetadata, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<DocumentWithMetadata, DocumentWithMetadata>.FinishBundleContext mockFinishCtx =
+        mock(DoFn.FinishBundleContext.class);
+
+    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "users", "users");
+    when(mockCtx.element()).thenReturn(doc1);
+
+    // Bundle 1
+    fn.startBundle();
+    fn.processElement(mockCtx);
+    fn.finishBundle(mockFinishCtx);
+
+    // Verify client was NOT closed after bundle 1
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.never()).close();
+
+    // Bundle 2
+    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "users", "users");
+    when(mockCtx.element()).thenReturn(doc2);
+    fn.startBundle();
+    fn.processElement(mockCtx);
+    fn.finishBundle(mockFinishCtx);
+
+    // Verify client still was NOT closed after bundle 2
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.never()).close();
+
+    // Teardown closes the client
+    fn.teardown();
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.times(1)).close();
   }
 }
