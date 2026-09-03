@@ -1,0 +1,17 @@
+scenarios:
+  # ==================================================================
+  # GCS Spanner Data Validator (v2/gcs-spanner-dv)
+  # ==================================================================
+  - id: dv-datatypes-googlesql
+    type: datatypes
+    template: v2/gcs-spanner-dv
+    context: com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationMySQLAllDataTypesE2EIT
+    description: "Porting reference MySQL DataTypes validation suite to verify Spanner Google SQL dialect type mappings and validation correctness."
+
+  - id: dv-datatypes-pgsql
+    type: datatypes
+    template: v2/gcs-spanner-dv
+    context: com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationPostgreSQLDataTypesE2EIT
+    description: "Porting reference PostgreSQL DataTypes validation suite to verify Spanner PG dialect type mappings and validation correctness."
+
+
