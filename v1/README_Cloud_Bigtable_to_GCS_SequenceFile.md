@@ -140,6 +140,7 @@ export BIGTABLE_FILTER=""
 export BIGTABLE_READ_RPC_TIMEOUT_MS=<bigtableReadRpcTimeoutMs>
 export BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS=<bigtableReadRpcAttemptTimeoutMs>
 export BIGTABLE_MAX_ATTEMPTS=<bigtableMaxAttempts>
+export BIGTABLE_READ_PARTIAL_ROW_TIMEOUT_MS=<bigtableReadPartialRowTimeoutMs>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-sequencefile-job" \
   --project "$PROJECT" \
@@ -157,7 +158,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-sequencefile-job" \
   --parameters "filenamePrefix=$FILENAME_PREFIX" \
   --parameters "bigtableReadRpcTimeoutMs=$BIGTABLE_READ_RPC_TIMEOUT_MS" \
   --parameters "bigtableReadRpcAttemptTimeoutMs=$BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS" \
-  --parameters "bigtableMaxAttempts=$BIGTABLE_MAX_ATTEMPTS"
+  --parameters "bigtableMaxAttempts=$BIGTABLE_MAX_ATTEMPTS" \
+  --parameters "bigtableReadPartialRowTimeoutMs=$BIGTABLE_READ_PARTIAL_ROW_TIMEOUT_MS"
 ```
 
 For more information about the command, please check:
@@ -191,6 +193,7 @@ export BIGTABLE_FILTER=""
 export BIGTABLE_READ_RPC_TIMEOUT_MS=<bigtableReadRpcTimeoutMs>
 export BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS=<bigtableReadRpcAttemptTimeoutMs>
 export BIGTABLE_MAX_ATTEMPTS=<bigtableMaxAttempts>
+export BIGTABLE_READ_PARTIAL_ROW_TIMEOUT_MS=<bigtableReadPartialRowTimeoutMs>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -199,7 +202,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-sequencefile-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_SequenceFile" \
--Dparameters="bigtableProject=$BIGTABLE_PROJECT,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,bigtableStartRow=$BIGTABLE_START_ROW,bigtableStopRow=$BIGTABLE_STOP_ROW,bigtableMaxVersions=$BIGTABLE_MAX_VERSIONS,bigtableFilter=$BIGTABLE_FILTER,destinationPath=$DESTINATION_PATH,filenamePrefix=$FILENAME_PREFIX,bigtableReadRpcTimeoutMs=$BIGTABLE_READ_RPC_TIMEOUT_MS,bigtableReadRpcAttemptTimeoutMs=$BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS,bigtableMaxAttempts=$BIGTABLE_MAX_ATTEMPTS" \
+-Dparameters="bigtableProject=$BIGTABLE_PROJECT,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,bigtableStartRow=$BIGTABLE_START_ROW,bigtableStopRow=$BIGTABLE_STOP_ROW,bigtableMaxVersions=$BIGTABLE_MAX_VERSIONS,bigtableFilter=$BIGTABLE_FILTER,destinationPath=$DESTINATION_PATH,filenamePrefix=$FILENAME_PREFIX,bigtableReadRpcTimeoutMs=$BIGTABLE_READ_RPC_TIMEOUT_MS,bigtableReadRpcAttemptTimeoutMs=$BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS,bigtableMaxAttempts=$BIGTABLE_MAX_ATTEMPTS,bigtableReadPartialRowTimeoutMs=$BIGTABLE_READ_PARTIAL_ROW_TIMEOUT_MS" \
 -f v1
 ```
 
