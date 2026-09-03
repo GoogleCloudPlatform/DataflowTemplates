@@ -85,3 +85,4 @@ WHERE run_id = 'your_run_id';
 
 ## References
 - See [README_GCS_Spanner_Data_Validator.md](README_GCS_Spanner_Data_Validator.md) for full commands to build and run the template.
+- For more advanced end-to-end deployment examples using Terraform, please refer to the [Terraform samples directory](terraform/samples/).
