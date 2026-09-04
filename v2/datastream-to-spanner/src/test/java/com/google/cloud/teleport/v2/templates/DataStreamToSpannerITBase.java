@@ -90,6 +90,45 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
+  public com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
+      setUpOracleResourceManager() {
+    org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
+        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
+    builder.maybeUseStaticInstance();
+    if (System.getProperty("cloudOracleHost") != null) {
+      org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager sysdba =
+          (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+              org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName)
+                  .setUsername("sys as sysdba")
+                  .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
+                  .setDatabaseName("XEPDB1")
+                  .setHost(System.getProperty("cloudOracleHost"))
+                  .setPort(1521)
+                  .build();
+
+      String isoUser =
+          "U_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+      String isoPassword =
+          "P_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+
+      sysdba.runSQLUpdate(
+          String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", isoUser, isoPassword));
+      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", isoUser));
+
+      builder.setPassword(isoPassword);
+      builder.setHost(System.getProperty("cloudOracleHost"));
+      builder.setPort(1521);
+      builder.setUsername(isoUser);
+      builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
+      builder.setDatabaseName("XEPDB1");
+    }
+    return new com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager(builder);
+  }
+
   public String generateSessionFile(
       int numOfTables, String srcDb, String spannerDb, List<String> tableNames, String sessionFile)
       throws IOException {
@@ -613,5 +652,38 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       }
     }
     return combinedCondition;
+  }
+
+  public void flushOracleRedoLogs(
+      org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager oracleResourceManager) {
+    boolean success = false;
+    if (oracleResourceManager != null) {
+      try {
+        oracleResourceManager.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class)
+            .info("Successfully flushed Oracle redo logs natively.");
+        success = true;
+      } catch (Exception e) {
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class)
+            .warn(
+                "Failed to switch Oracle log via ResourceManager, attempting raw JDBC fallback...",
+                e);
+      }
+    }
+
+    if (!success && System.getProperty("cloudOracleHost") != null) {
+      String url = "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost") + ":1521/XE";
+      String user = System.getProperty("cloudOracleUsername", "system");
+      String pass = System.getProperty("cloudOraclePassword", "TestPassword123");
+      try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
+          java.sql.Statement stmt = conn.createStatement()) {
+        stmt.execute("ALTER SYSTEM SWITCH LOGFILE");
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class)
+            .info("Successfully flushed Oracle redo logs via raw JDBC fallback.");
+      } catch (Exception ex) {
+        org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class)
+            .error("Raw JDBC fallback log flush also failed.", ex);
+      }
+    }
   }
 }

@@ -1,0 +1,10 @@
+{
+  "renamedTables":{
+    "person1":"human1"
+  },
+  "renamedColumns":{
+    "person1":{
+      "first_name1":"name1"
+    }
+  }
+}
