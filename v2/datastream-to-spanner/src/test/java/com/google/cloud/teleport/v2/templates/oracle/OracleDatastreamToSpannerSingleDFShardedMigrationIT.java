@@ -114,7 +114,6 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                             .setHost(System.getProperty("cloudOracleHost"))
                             .setPort(1521));
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Users\"");
         } catch (Exception e) {
         }
 

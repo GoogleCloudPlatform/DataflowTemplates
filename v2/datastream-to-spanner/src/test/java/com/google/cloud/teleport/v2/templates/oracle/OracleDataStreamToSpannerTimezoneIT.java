@@ -104,7 +104,6 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"DateData\"");
         } catch (Exception e) {
           // ignore
         }

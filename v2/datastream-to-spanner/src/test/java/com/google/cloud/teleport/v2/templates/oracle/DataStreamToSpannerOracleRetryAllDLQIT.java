@@ -96,9 +96,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         CloudOracleResourceManager trueSysUser =
             (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
 
-        String oracleUser = System.getProperty("cloudOracleUsername", "system");
-        String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
-
+        String oracleUser = sysUser.getUsername();
+        String oraclePassword = sysUser.getPassword();
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
             CloudOracleResourceManager.builder(testName);
         builder.setHost(sysUser.getHost());

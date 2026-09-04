@@ -96,10 +96,33 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
     builder.maybeUseStaticInstance();
     if (System.getProperty("cloudOracleHost") != null) {
-      builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
+      org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager sysdba =
+          (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+              org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName)
+                  .setUsername("sys as sysdba")
+                  .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
+                  .setDatabaseName("XEPDB1")
+                  .setHost(System.getProperty("cloudOracleHost"))
+                  .setPort(1521)
+                  .build();
+
+      String isoUser =
+          "U_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+      String isoPassword =
+          "P_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+
+      sysdba.runSQLUpdate(
+          String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", isoUser, isoPassword));
+      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", isoUser));
+
+      builder.setPassword(isoPassword);
       builder.setHost(System.getProperty("cloudOracleHost"));
       builder.setPort(1521);
-      builder.setUsername(System.getProperty("cloudOracleUsername", "system"));
+      builder.setUsername(isoUser);
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
       builder.setDatabaseName("XEPDB1");
     }

@@ -106,7 +106,10 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
                 .toUpperCase();
         cloudSqlResourceManager.runSQLUpdate(
             String.format("CREATE USER %s IDENTIFIED BY %s1A", oracleSchema, oracleSchema));
-        cloudSqlResourceManager.runSQLUpdate(String.format("GRANT DBA TO %s", oracleSchema));
+        cloudSqlResourceManager.runSQLUpdate(
+            String.format("GRANT DBA TO %s CONTAINER=ALL", oracleSchema));
+        cloudSqlResourceManager.runSQLUpdate(
+            String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", oracleSchema));
         String sessionContent = generateBaseSchema();
         sessionContent = sessionContent.replaceAll("SRC_DATABASE", oracleSchema);
         sessionContent =

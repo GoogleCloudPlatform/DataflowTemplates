@@ -23,10 +23,6 @@ import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,11 +95,9 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"Category\"");
         } catch (Exception e) {
         }
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"Books\"");
         } catch (Exception e) {
         }
         executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
@@ -127,7 +121,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
             "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
                 + " CURRENT_TIMESTAMP)");
 
-        flushOracleLogs();
+        flushOracleRedoLogs(oracleResourceManager);
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -188,21 +182,6 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         oracleResourceManager);
   }
 
-  private void flushOracleLogs() {
-    try (Connection conn =
-            DriverManager.getConnection(
-                "jdbc:oracle:thin:@//"
-                    + System.getProperty("cloudOracleHost", "localhost")
-                    + ":1521/FREE",
-                "system",
-                "TestPassword123");
-        Statement stmt = conn.createStatement()) {
-      stmt.execute("ALTER SYSTEM SWITCH LOGFILE");
-    } catch (SQLException e) {
-      throw new RuntimeException("Failed to flush Oracle logs", e);
-    }
-  }
-
   @Test
   public void migrationTestWithRenameAndDrops() {
     ChainedConditionCheck conditionCheck =
@@ -234,7 +213,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2");
     oracleResourceManager.runSQLUpdate("DELETE FROM \"Category\" WHERE \"category_id\"=1");
 
-    flushOracleLogs();
+    flushOracleRedoLogs(oracleResourceManager);
 
     conditionCheck =
         ChainedConditionCheck.builder(

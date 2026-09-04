@@ -87,62 +87,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
   private void setUpOracleUser(String user, String password) {
     oracleSysUser.runSQLUpdate(
         String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
+    oracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
     oracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT CONNECT TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT CREATE SESSION TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$DATABASE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$PDBS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON DBA_SUPPLEMENTAL_LOGGING TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$ARCHIVED_LOG TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$LOG TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$LOGFILE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$THREAD TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$PARAMETER TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$NLS_PARAMETERS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$TIMEZONE_NAMES TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$LOGMNR_LOGS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$ARCHIVE_DEST_STATUS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.V_$TRANSACTION TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON SYS.DBA_REGISTRY TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.OBJ$ TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT SELECT ON SYS.ENC$ TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT CREATE TABLE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT UNLIMITED TABLESPACE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ANY DICTIONARY TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT SET CONTAINER TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT LOGMINING TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON DBMS_LOGMNR_D TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT SELECT ANY TABLE TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT SELECT ON DBA_EXTENTS TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT CREATE ANY TABLE TO %s CONTAINER=ALL", user));
+        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
     oracleSysUser.runSQLUpdate(
         String.format("ALTER USER %s QUOTA 50m ON USERS CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
   }
 
   @Before
@@ -253,19 +202,6 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
         datastreamResourceManager);
   }
 
-  private void flushOracleLogs() {
-    try (java.sql.Connection conn =
-            java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost") + ":1521/XE",
-                "system",
-                System.getProperty("cloudOraclePassword", "TestPassword123"));
-        java.sql.Statement stmt = conn.createStatement()) {
-      flushOracleRedoLogs(null);
-    } catch (Exception e) {
-      LOG.warn("Log switch failed. Continuing...", e);
-    }
-  }
-
   @Test
   public void migrationTestSimpleTable() throws Exception {
     ConditionCheck insertRecords =
@@ -284,7 +220,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                 oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (1, 10)");
                 oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (2, 20)");
                 oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (3, 30)");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -309,7 +245,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
               try {
                 oracleResourceManager.runSQLUpdate("UPDATE MY_TABLE SET VAL = 10 WHERE ID = 2");
                 oracleResourceManager.runSQLUpdate("DELETE FROM MY_TABLE WHERE ID = 1");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -333,7 +269,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
             if (!executed) {
               try {
                 oracleResourceManager.runSQLUpdate("UPDATE MY_TABLE SET ID = 10 WHERE ID = 3");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -441,7 +377,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                         + " ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
                         + " 'YYYY-MM-DD'), 12345.1234, 30)");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -467,7 +403,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                 oracleResourceManager.runSQLUpdate("DELETE FROM ALLTYPES WHERE INT64_FIELD = 1");
                 oracleResourceManager.runSQLUpdate(
                     "UPDATE ALLTYPES SET VAL = 10 WHERE INT64_FIELD = 2");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -492,7 +428,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
               try {
                 oracleResourceManager.runSQLUpdate(
                     "UPDATE ALLTYPES SET INT64_FIELD = 10 WHERE INT64_FIELD = 3");
-                flushOracleLogs();
+                flushOracleRedoLogs(oracleResourceManager);
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());

@@ -23,9 +23,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -84,24 +81,6 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
       datastreamResourceManager;
 
-  private void flushOracleLogs() {
-    try {
-      Class.forName("oracle.jdbc.OracleDriver");
-      try (Connection conn =
-              DriverManager.getConnection(
-                  "jdbc:oracle:thin:@//"
-                      + System.getProperty("cloudOracleHost", "localhost")
-                      + ":1521/XE",
-                  "system",
-                  "TestPassword123");
-          Statement stmt = conn.createStatement()) {
-        flushOracleRedoLogs(null);
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to switch logfile", e);
-    }
-  }
-
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
@@ -140,7 +119,6 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
         };
         for (String table : tables) {
           try {
-            oracleResourceManager.runSQLUpdate("DROP TABLE \"" + table + "\" CASCADE CONSTRAINTS");
           } catch (Exception e) {
             // Ignore if doesn't exist
           }
@@ -148,12 +126,11 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
 
         // Also drop sequences
         try {
-          oracleResourceManager.runSQLUpdate("DROP SEQUENCE sequence_id");
         } catch (Exception e) {
         }
         executeSqlScript(
             oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql");
-        flushOracleLogs();
+        flushOracleRedoLogs(oracleResourceManager);
 
         jobInfo =
             launchDataflowJob(
@@ -221,7 +198,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
                           executeSqlScript(
                               oracleResourceManager,
                               "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql");
-                          flushOracleLogs();
+                          flushOracleRedoLogs(oracleResourceManager);
                           return new CheckResult(true, "Success");
                         } catch (Exception e) {
                           return new CheckResult(false, e.getMessage());

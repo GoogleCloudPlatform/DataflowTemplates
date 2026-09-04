@@ -94,11 +94,9 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         LOG.info("Oracle resource manager created with URI: {}", oracleResourceManager.getUri());
 
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"LargeKey\" CASCADE CONSTRAINTS");
         } catch (Exception e) {
         }
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"LargeCell\" CASCADE CONSTRAINTS");
         } catch (Exception e) {
         }
 

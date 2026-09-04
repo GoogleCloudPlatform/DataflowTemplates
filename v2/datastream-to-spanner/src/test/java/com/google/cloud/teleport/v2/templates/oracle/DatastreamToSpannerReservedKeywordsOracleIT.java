@@ -25,9 +25,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -112,34 +109,16 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
         datastreamResourceManager);
   }
 
-  private void flushOracleLogs() {
-    LOG.info("Flushing Oracle logs via raw JDBC...");
-    try (Connection conn =
-            DriverManager.getConnection(
-                "jdbc:oracle:thin:@"
-                    + System.getProperty("cloudOracleHost", "localhost")
-                    + ":1521/XEPDB1",
-                "system",
-                "TestPassword123");
-        Statement stmt = conn.createStatement()) {
-      flushOracleRedoLogs(null);
-      LOG.info("Successfully switched Oracle log file.");
-    } catch (Exception e) {
-      LOG.error("Failed to switch Oracle logfile", e);
-    }
-  }
-
   @Test
   public void testOracleReservedKeywords() throws Exception {
     LOG.info("Executing Oracle DDL script...");
     try {
-      oracleResourceManager.runSQLUpdate("DROP TABLE \"true\" CASCADE CONSTRAINTS PURGE");
     } catch (Exception e) {
       LOG.info("Table true does not exist or could not be dropped: " + e.getMessage());
     }
     executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
 
-    flushOracleLogs();
+    flushOracleRedoLogs(oracleResourceManager);
 
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);

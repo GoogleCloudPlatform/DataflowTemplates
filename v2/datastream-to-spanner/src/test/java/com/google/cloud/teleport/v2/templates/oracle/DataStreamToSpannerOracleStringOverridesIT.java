@@ -94,14 +94,11 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
                 .replace("gs://" + gcsResourceManager.getBucket(), "");
 
         try {
-          oracleResourceManager.runSQLUpdate("DROP TABLE \"person1\"");
         } catch (Exception e) {
         }
         executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
 
         try {
-          oracleResourceManager.runSQLUpdate(
-              "GRANT EXECUTE_CATALOG_ROLE TO c##datastream CONTAINER=ALL");
         } catch (Exception e) {
           // Might exist or fail if we are not SYS, ignore wrapper
         }

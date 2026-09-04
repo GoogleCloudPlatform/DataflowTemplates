@@ -108,15 +108,12 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
 
         jdbcResourceManagerShardA = setUpOracleResourceManagerForShard("A");
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Customers\"");
         } catch (Exception e) {
         }
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Orders\"");
         } catch (Exception e) {
         }
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"AllDataTypes\"");
         } catch (Exception e) {
         }
         executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);

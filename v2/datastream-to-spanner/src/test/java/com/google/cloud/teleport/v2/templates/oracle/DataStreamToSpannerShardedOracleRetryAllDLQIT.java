@@ -85,29 +85,16 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        String oracleUser = System.getProperty("cloudOracleUsername", "system");
-        String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
-
-        jdbcResourceManagerShardA =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(
-                    (CloudOracleResourceManager.Builder)
-                        CloudOracleResourceManager.builder(testName)
-                            .setUsername(oracleUser)
-                            .setPassword(oraclePassword)
-                            .setDatabaseName("XEPDB1")
-                            .setHost(System.getProperty("cloudOracleHost"))
-                            .setPort(1521));
+        jdbcResourceManagerShardA = setUpOracleResourceManager();
+        String oracleUser = jdbcResourceManagerShardA.getUsername();
+        String oraclePassword = jdbcResourceManagerShardA.getPassword();
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Customers\"");
         } catch (Exception e) {
         }
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"Orders\"");
         } catch (Exception e) {
         }
         try {
-          jdbcResourceManagerShardA.runSQLUpdate("DROP TABLE \"AllDataTypes\"");
         } catch (Exception e) {
         }
         executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);

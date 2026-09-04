@@ -23,9 +23,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -86,24 +83,6 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
   public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
       datastreamResourceManager;
 
-  private void flushOracleLogs() {
-    try {
-      Class.forName("oracle.jdbc.OracleDriver");
-      try (Connection conn =
-              DriverManager.getConnection(
-                  "jdbc:oracle:thin:@//"
-                      + System.getProperty("cloudOracleHost", "localhost")
-                      + ":1521/XE",
-                  "system",
-                  "TestPassword123");
-          Statement stmt = conn.createStatement()) {
-        flushOracleRedoLogs(null);
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to switch logfile", e);
-    }
-  }
-
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
@@ -143,7 +122,6 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
         };
         for (String table : tables) {
           try {
-            oracleResourceManager.runSQLUpdate("DROP TABLE \"" + table + "\" CASCADE CONSTRAINTS");
           } catch (Exception e) {
             // Ignore if doesn't exist
           }
@@ -151,13 +129,12 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
         // Also drop sequences
         try {
-          oracleResourceManager.runSQLUpdate("DROP SEQUENCE sequence_id");
         } catch (Exception e) {
         }
         executeSqlScript(
             oracleResourceManager,
             "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-schema.sql");
-        flushOracleLogs();
+        flushOracleRedoLogs(oracleResourceManager);
 
         jobInfo =
             launchDataflowJob(
@@ -238,7 +215,7 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
                                 oracleResourceManager,
                                 "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-inserts.sql");
                             executed = true; // Repositioned ABOVE flushOracleLogs
-                            flushOracleLogs();
+                            flushOracleRedoLogs(oracleResourceManager);
                           } catch (Exception e) {
                             return new CheckResult(false, e.getMessage());
                           }
