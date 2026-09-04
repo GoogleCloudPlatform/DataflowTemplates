@@ -255,8 +255,6 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
     tableNames.forEach(
         tableName -> {
           cloudSqlResourceManager.createTable(tableName, createJdbcSchema());
-          cloudSqlResourceManager.runSQLUpdate(
-              String.format("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableName));
         });
 
     OracleSource jdbcSource =

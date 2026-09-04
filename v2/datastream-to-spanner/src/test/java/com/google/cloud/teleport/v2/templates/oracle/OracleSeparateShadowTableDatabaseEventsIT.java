@@ -231,7 +231,7 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
 
     // Supplement logging requirement
-    cloudOracleSysUser.runSQLUpdate("ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
+
   }
 
   @AfterClass

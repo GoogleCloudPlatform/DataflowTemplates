@@ -114,13 +114,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         executeSqlScript(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE);
 
         // Add Supplemental Log Data required by Datastream CDC
-        List.of("Customers", "Orders", "AllDataTypes")
-            .forEach(
-                tableName -> {
-                  jdbcResourceManager.runSQLUpdate(
-                      String.format(
-                          "ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableName));
-                });
+        List.of("Customers", "Orders", "AllDataTypes").forEach(tableName -> {});
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 

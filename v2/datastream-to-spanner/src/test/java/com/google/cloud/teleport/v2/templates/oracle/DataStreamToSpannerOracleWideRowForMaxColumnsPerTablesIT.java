@@ -177,8 +177,6 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
     TABLE_NAMES.forEach(
         tableName -> {
           cloudOracleResourceManager.runSQLUpdate(getJDBCSchema(tableName));
-          cloudOracleResourceManager.runSQLUpdate(
-              String.format("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableName));
         });
     createSpannerTables();
   }

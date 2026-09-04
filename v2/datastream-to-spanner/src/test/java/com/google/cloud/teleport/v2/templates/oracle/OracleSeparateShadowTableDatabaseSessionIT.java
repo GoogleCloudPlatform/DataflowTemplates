@@ -106,10 +106,6 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
         } catch (Exception e) {
         }
         executeSqlScript(cloudOracleResourceManager, ORACLE_DDL_RESOURCE);
-        cloudOracleResourceManager.runSQLUpdate(
-            String.format("ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", TABLE1));
-        cloudOracleResourceManager.runSQLUpdate(
-            String.format("ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", TABLE2));
 
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();

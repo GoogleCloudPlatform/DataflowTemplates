@@ -161,8 +161,6 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
     TABLE_NAMES.forEach(
         tableName -> {
           oracleResourceManager.createTable(tableName, createJdbcSchema());
-          oracleResourceManager.runSQLUpdate(
-              "ALTER TABLE " + tableName + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         });
     createSpannerTables();
   }

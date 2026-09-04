@@ -163,12 +163,6 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     TABLE_NAMES.forEach(
         tableName -> {
           cloudSqlResourceManager.runSQLUpdate(getJDBCSchema(tableName));
-          cloudSqlResourceManager.runSQLUpdate(
-              "ALTER TABLE \""
-                  + oracleSchema
-                  + "\".\""
-                  + tableName
-                  + "\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         });
     createSpannerTables();
   }

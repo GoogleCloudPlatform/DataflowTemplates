@@ -273,7 +273,6 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
     cloudOracleSysUser.runSQLUpdate(
         String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate("ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
   }
 
   @AfterClass

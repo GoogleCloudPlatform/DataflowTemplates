@@ -112,13 +112,6 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
         }
         executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);
 
-        jdbcResourceManagerShardA.runSQLUpdate(
-            "ALTER TABLE \"Customers\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        jdbcResourceManagerShardA.runSQLUpdate(
-            "ALTER TABLE \"Orders\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        jdbcResourceManagerShardA.runSQLUpdate(
-            "ALTER TABLE \"AllDataTypes\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
         datastreamResourceManager =

@@ -120,9 +120,6 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
 
         executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);
 
-        jdbcResourceManagerShardA.runSQLUpdate(
-            "ALTER TABLE \"Users\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-
         datastreamResourceManager =
             org.apache.beam.it.gcp.datastream.DatastreamResourceManager.builder(
                     testName, PROJECT, REGION)

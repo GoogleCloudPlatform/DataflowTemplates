@@ -124,18 +124,6 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         LOG.info("Executing Oracle DDL script...");
         executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
 
-        LOG.info("Adding supplemental logging to tables...");
-        try {
-          oracleResourceManager.runSQLUpdate(
-              "ALTER TABLE \"LargeKey\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        } catch (Exception e) {
-        }
-        try {
-          oracleResourceManager.runSQLUpdate(
-              "ALTER TABLE \"LargeCell\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        } catch (Exception e) {
-        }
-
         LOG.info("Creating Spanner DDL...");
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 

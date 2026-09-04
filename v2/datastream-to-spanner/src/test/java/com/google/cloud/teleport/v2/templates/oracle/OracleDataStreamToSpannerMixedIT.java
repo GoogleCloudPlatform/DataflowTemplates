@@ -192,12 +192,6 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
 
     executeSqlScript(
         cloudSqlResourceManager, "oracle/OracleDataStreamToSpannerMixedIT/oracle-schema.sql");
-    cloudSqlResourceManager.runSQLUpdate(
-        String.format("ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", "Authors"));
-    cloudSqlResourceManager.runSQLUpdate(
-        String.format("ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", "Books"));
-    cloudSqlResourceManager.runSQLUpdate(
-        String.format("ALTER TABLE \"%s\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", "Genre"));
 
     OracleSource jdbcSource =
         OracleSource.builder(

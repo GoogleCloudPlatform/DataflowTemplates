@@ -128,11 +128,6 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithMigrationShard
         executeSqlScript(
             jdbcResourceManagerShardA,
             "oracle/OracleSeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColumnIT/oracle-schema.sql");
-        try {
-          jdbcResourceManagerShardA.runSQLUpdate(
-              "ALTER TABLE \"Users\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        } catch (Exception e) {
-        }
 
         OracleSource jdbcSource =
             OracleSource.builder(
@@ -279,7 +274,6 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithMigrationShard
     cloudOracleSysUser.runSQLUpdate(
         String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
     cloudOracleSysUser.runSQLUpdate(String.format("GRANT ALTER SYSTEM TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate("ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
   }
 
   @AfterClass

@@ -138,8 +138,7 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
       LOG.info("Table true does not exist or could not be dropped: " + e.getMessage());
     }
     executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
-    oracleResourceManager.runSQLUpdate(
-        "ALTER TABLE \"true\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
     flushOracleLogs();
 
     LOG.info("Creating Spanner DDL...");
