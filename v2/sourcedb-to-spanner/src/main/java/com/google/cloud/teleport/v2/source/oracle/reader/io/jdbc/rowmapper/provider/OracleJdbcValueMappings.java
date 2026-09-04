@@ -298,12 +298,12 @@ public class OracleJdbcValueMappings implements JdbcValueMappingsProvider {
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-D4EC7A0D-C119-4CB6-B6A2-EB0BCEDDBD35
            * Size of BFILE can go upto 2gb, so setting to Interger.MAX_VALUE
            */
-          .put("BFILE", ResultSet::getBytes, valuePassThrough, Integer.MAX_VALUE)
+          .put("BFILE", ResultSet::getBytes, byteArrayToByteBuffer, Integer.MAX_VALUE)
           /*
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-D4EC7A0D-C119-4CB6-B6A2-EB0BCEDDBD35
            * Size of LONG RAW/LONG can go upto 2gb, so setting to Interger.MAX_VALUE
            */
-          .put("LONG RAW", ResultSet::getBytes, valuePassThrough, Integer.MAX_VALUE)
+          .put("LONG RAW", ResultSet::getBytes, byteArrayToByteBuffer, Integer.MAX_VALUE)
           .put("LONG", ResultSet::getString, valuePassThrough, Integer.MAX_VALUE)
           /*
            * Ref: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-D4EC7A0D-C119-4CB6-B6A2-EB0BCEDDBD35
