@@ -162,6 +162,13 @@ public class SourceProcessorFactoryTest {
         oracleSource
             instanceof
             com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector sqlServerSource = SourceProcessorFactory.getSource("sqlserver");
+    Assert.assertTrue(
+        sqlServerSource
+            instanceof
+            com.google.cloud.teleport.v2.templates.source.sqlserver
+                .SQLServerSpToSrcSourceConnector);
   }
 
   @Test(expected = UnsupportedSourceException.class)
