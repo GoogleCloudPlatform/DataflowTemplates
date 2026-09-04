@@ -171,10 +171,14 @@ public class DocumentWithMetadata implements Serializable {
    * Returns a unique deduplication key scoped by collection and document identifier.
    */
   public String getDedupKey() {
-    String col =
-        targetCollection != null
-            ? targetCollection
-            : (sourceCollection != null ? sourceCollection : "default");
+    String col;
+    if (targetCollection != null && !targetCollection.isEmpty()) {
+      col = targetCollection;
+    } else if (sourceCollection != null && !sourceCollection.isEmpty()) {
+      col = sourceCollection;
+    } else {
+      col = "default";
+    }
     if (documentKey != null && !documentKey.isEmpty()) {
       return col + "#" + documentKey;
     }
@@ -194,7 +198,13 @@ public class DocumentWithMetadata implements Serializable {
 
   /** Returns the original document string. */
   public String getOriginalDocument() {
-    return originalDocument;
+    if (originalDocument != null) {
+      return originalDocument;
+    }
+    if (document != null) {
+      return document.toJson(CANONICAL_JSON_SETTINGS);
+    }
+    return null;
   }
 
   /** Returns the retry count associated with this document in DLQ. */
@@ -318,7 +328,7 @@ public class DocumentWithMetadata implements Serializable {
   public DocumentWithMetadata withDocument(Document newDoc) {
     return new DocumentWithMetadata(
         newDoc,
-        originalDocument,
+        getOriginalDocument(),
         retryCount,
         errorMessage,
         errorType,
@@ -399,22 +409,14 @@ public class DocumentWithMetadata implements Serializable {
   }
 
   public static DocumentWithMetadata of(Document document) {
-    return new DocumentWithMetadata(
-        document,
-        document != null ? document.toJson(CANONICAL_JSON_SETTINGS) : null,
-        0,
-        null,
-        null,
-        null,
-        null,
-        null);
+    return new DocumentWithMetadata(document, null, 0, null, null, null, null, null);
   }
 
   public static DocumentWithMetadata of(
       Document document, String sourceCollection, String targetCollection) {
     return new DocumentWithMetadata(
         document,
-        document != null ? document.toJson(CANONICAL_JSON_SETTINGS) : null,
+        null,
         0,
         null,
         null,
@@ -471,14 +473,13 @@ public class DocumentWithMetadata implements Serializable {
       String sourceCollection,
       String targetCollection,
       TimestampSortKey timestampSortKey) {
-    String original = document != null ? document.toJson(CANONICAL_JSON_SETTINGS) : null;
     String docKey = null;
     if (document != null && document.containsKey("_id")) {
       docKey = new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
     }
     return new DocumentWithMetadata(
         document,
-        original,
+        null,
         0,
         null,
         null,
@@ -635,7 +636,7 @@ public class DocumentWithMetadata implements Serializable {
     DocumentWithMetadata that = (DocumentWithMetadata) o;
     return isDlqReconsumed == that.isDlqReconsumed
         && java.util.Objects.equals(document, that.document)
-        && java.util.Objects.equals(originalDocument, that.originalDocument)
+        && java.util.Objects.equals(getOriginalDocument(), that.getOriginalDocument())
         && java.util.Objects.equals(retryCount, that.retryCount)
         && java.util.Objects.equals(errorMessage, that.errorMessage)
         && errorType == that.errorType
@@ -651,7 +652,7 @@ public class DocumentWithMetadata implements Serializable {
   public int hashCode() {
     return java.util.Objects.hash(
         document,
-        originalDocument,
+        getOriginalDocument(),
         retryCount,
         errorMessage,
         errorType,

@@ -549,7 +549,9 @@ public class MongoDbChangeStreamReaderTest {
     ProcessContinuation continuation = fn.processElement(partition, tracker, mockReceiver);
 
     assertTrue(continuation.shouldResume());
-    assertEquals(200L, continuation.resumeDelay().getMillis()); // 200ms delay for idle
+    assertEquals(
+        ProcessChangeStreamPartitionFn.IDLE_RESUME_DELAY_MS,
+        continuation.resumeDelay().getMillis());
     assertNotNull(tracker.currentRestriction().getResumeTokenJson());
     assertTrue(tracker.currentRestriction().getResumeTokenJson().contains("8266D57F9B"));
     fn.teardown();

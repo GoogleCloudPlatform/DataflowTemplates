@@ -61,7 +61,15 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     String docJson =
         value.getDocument() != null ? value.getDocument().toJson(CANONICAL_JSON_SETTINGS) : null;
     STRING_CODER.encode(docJson, outStream);
-    STRING_CODER.encode(value.getOriginalDocument(), outStream);
+
+    String originalDoc = value.getOriginalDocument();
+    boolean hasDistinctOriginal =
+        originalDoc != null && (docJson == null || !originalDoc.equals(docJson));
+    BOOLEAN_CODER.encode(hasDistinctOriginal, outStream);
+    if (hasDistinctOriginal) {
+      STRING_CODER.encode(originalDoc, outStream);
+    }
+
     VARINT_CODER.encode(value.getRetryCount() != null ? value.getRetryCount() : 0, outStream);
     STRING_CODER.encode(value.getErrorMessage(), outStream);
     STRING_CODER.encode(
@@ -86,7 +94,9 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
 
     String docJson = STRING_CODER.decode(inStream);
     Document doc = docJson != null ? Document.parse(docJson) : null;
-    String originalDoc = STRING_CODER.decode(inStream);
+
+    boolean hasDistinctOriginal = BOOLEAN_CODER.decode(inStream);
+    String originalDoc = hasDistinctOriginal ? STRING_CODER.decode(inStream) : null;
     int retryCount = VARINT_CODER.decode(inStream);
     String errorMessage = STRING_CODER.decode(inStream);
     String errorTypeStr = STRING_CODER.decode(inStream);

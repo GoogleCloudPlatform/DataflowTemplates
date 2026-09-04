@@ -650,8 +650,9 @@ public class MongoDbChangeStreamReader {
   public static class ProcessChangeStreamPartitionFn
       extends DoFn<ChangeStreamPartition, DocumentWithMetadata> {
 
-    public static final int MAX_EVENTS_PER_SLICE = 1000;
-    public static final long MAX_SLICE_DURATION_MS = 3000L;
+    public static final int MAX_EVENTS_PER_SLICE = 5000;
+    public static final long MAX_SLICE_DURATION_MS = 5000L;
+    public static final long IDLE_RESUME_DELAY_MS = 100L;
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle timeout
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280 = 280;
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286 = 286;
@@ -1014,7 +1015,7 @@ public class MongoDbChangeStreamReader {
       } else {
         changeStreamEmptyPolls.inc();
         return ProcessContinuation.resume()
-            .withResumeDelay(Duration.millis(200)); // 200ms idle backoff
+            .withResumeDelay(Duration.millis(IDLE_RESUME_DELAY_MS));
       }
     }
 

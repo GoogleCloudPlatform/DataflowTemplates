@@ -75,6 +75,8 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -109,9 +111,9 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> pool.maxSize(20).minSize(0).maxWaitTime(30, TimeUnit.SECONDS));
+        pool -> pool.maxSize(64).minSize(16).maxWaitTime(30, TimeUnit.SECONDS));
     builder.applyToSocketSettings(
-        socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS));
+        socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS));
     return MongoClients.create(builder.build());
   }
 
@@ -1796,6 +1798,8 @@ public class MongoDbTransforms {
   /** A {@link DoFn} that applies a JavaScript UDF to the document. */
   public static class ApplyUdfFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
     private static final Logger LOG = LoggerFactory.getLogger(ApplyUdfFn.class);
+    private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
+        JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final String fileSystemPath;
     private final String functionName;
@@ -1837,7 +1841,15 @@ public class MongoDbTransforms {
       }
       if (javascriptRuntime != null) {
         try {
-          String transformed = javascriptRuntime.invoke(item.getOriginalDocument());
+          String payload = item.getOriginalDocument();
+          if (payload == null && item.getDocument() != null) {
+            payload = item.getDocument().toJson(CANONICAL_JSON_SETTINGS);
+          }
+          if (payload == null) {
+            c.output(item);
+            return;
+          }
+          String transformed = javascriptRuntime.invoke(payload);
           if (transformed != null) {
             Document doc = Document.parse(transformed);
             c.output(item.withDocument(doc));

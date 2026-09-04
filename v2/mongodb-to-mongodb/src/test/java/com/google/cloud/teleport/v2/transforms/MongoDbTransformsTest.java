@@ -491,6 +491,63 @@ public class MongoDbTransformsTest {
               DocumentWithMetadata result = collection.iterator().next();
               assertEquals(true, result.getDocument().get("udf_applied"));
               assertEquals("test", result.getDocument().get("name"));
+              assertEquals(input.getOriginalDocument(), result.getOriginalDocument());
+              return null;
+            });
+
+    PAssert.that(output.get(FAILURE_TAG)).empty();
+
+    pipeline.run();
+  }
+
+  @Test
+  public void applyUdfFn_cdcFullDoc_preservesOriginalDocument() throws Exception {
+    File udfFile = tempFolder.newFile("cdc_transform.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write(
+          "function transform(inJson) {\n"
+              + "  var obj = JSON.parse(inJson);\n"
+              + "  obj.enriched = 'yes';\n"
+              + "  return JSON.stringify(obj);\n"
+              + "}");
+    }
+
+    Document fullDoc = new Document("_id", 42).append("status", "ACTIVE").append("tier", "GOLD");
+    TimestampSortKey sortKey = TimestampSortKey.cdc(1700000000L, 1L);
+    DocumentWithMetadata cdcEvent =
+        DocumentWithMetadata.cdcEvent(
+            fullDoc,
+            fullDoc.toJson(),
+            "users",
+            "users_target",
+            DocumentWithMetadata.OperationType.UPDATE,
+            sortKey,
+            new Document("_id", 42).toJson());
+
+    PCollection<DocumentWithMetadata> inputCollection = pipeline.apply(Create.of(cdcEvent));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF_CDC",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(), "transform", 0, FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG))
+        .satisfies(
+            collection -> {
+              DocumentWithMetadata result = collection.iterator().next();
+              assertEquals("yes", result.getDocument().get("enriched"));
+              assertEquals("ACTIVE", result.getDocument().get("status"));
+              assertEquals("GOLD", result.getDocument().get("tier"));
+              // Verify that originalDocument retains the untransformed original fullDoc
+              assertEquals(fullDoc.toJson(), result.getOriginalDocument());
+              // Verify that CDC metadata is preserved
+              assertEquals(DocumentWithMetadata.OperationType.UPDATE, result.getOperationType());
+              assertEquals(sortKey, result.getTimestampSortKey());
+              assertEquals("users", result.getSourceCollection());
+              assertEquals("users_target", result.getTargetCollection());
               return null;
             });
 
