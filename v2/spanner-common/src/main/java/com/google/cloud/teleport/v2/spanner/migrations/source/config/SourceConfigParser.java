@@ -95,6 +95,7 @@ public class SourceConfigParser {
       case ORACLE:
       case MYSQL:
       case PG:
+      case SQLSERVER:
         String jdbcFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> jdbcConfigMap = parseConfigToConfigMap(jdbcFileContent);
         JdbcShardConfig jdbcShardConfig = mapper.convertValue(jdbcConfigMap, JdbcShardConfig.class);
