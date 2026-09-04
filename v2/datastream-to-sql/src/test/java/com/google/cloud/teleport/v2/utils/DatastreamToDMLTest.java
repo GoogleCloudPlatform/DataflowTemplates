@@ -1492,5 +1492,44 @@ public class DatastreamToDMLTest {
         "'{\"a\":1,\"b\":\"test\"}','{\"c\":true,\"d\":[1,2]}',"
             + "decode('aGVsbG9fd29ybGQ=','base64'),'Top.Science.Astronomy'::ltree",
         dml.getColumnsValuesSql(rowObj, tableSchema));
+  @Test
+  public void testJdbcTableCache_passesNullForEmptyCatalogAndSchema() throws Exception {
+    DataSource ds = mock(DataSource.class);
+    java.sql.Connection conn = mock(java.sql.Connection.class);
+    java.sql.DatabaseMetaData metaData = mock(java.sql.DatabaseMetaData.class);
+    java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
+
+    when(ds.getConnection()).thenReturn(conn);
+    when(conn.getMetaData()).thenReturn(metaData);
+    when(metaData.getColumns(null, "public", "my_table", null)).thenReturn(rs);
+    when(rs.next()).thenReturn(true, false);
+    when(rs.getString("COLUMN_NAME")).thenReturn("col1");
+    when(rs.getString("TYPE_NAME")).thenReturn("VARCHAR");
+
+    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(ds);
+    Map<String, String> schema = cache.getObjectValue(List.of("", "public", "my_table"));
+
+    assertThat(schema).containsEntry("col1", "VARCHAR");
+    verify(metaData).getColumns(null, "public", "my_table", null);
+  }
+
+  @Test
+  public void testJdbcPrimaryKeyCache_passesNullForEmptyCatalogAndSchema() throws Exception {
+    DataSource ds = mock(DataSource.class);
+    java.sql.Connection conn = mock(java.sql.Connection.class);
+    java.sql.DatabaseMetaData metaData = mock(java.sql.DatabaseMetaData.class);
+    java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
+
+    when(ds.getConnection()).thenReturn(conn);
+    when(conn.getMetaData()).thenReturn(metaData);
+    when(metaData.getPrimaryKeys(null, "public", "my_table")).thenReturn(rs);
+    when(rs.next()).thenReturn(true, false);
+    when(rs.getString("COLUMN_NAME")).thenReturn("id");
+
+    DatastreamToDML.JdbcPrimaryKeyCache cache = new DatastreamToDML.JdbcPrimaryKeyCache(ds);
+    List<String> pks = cache.getObjectValue(List.of("", "public", "my_table"));
+
+    assertThat(pks).containsExactly("id");
+    verify(metaData).getPrimaryKeys(null, "public", "my_table");
   }
 }
