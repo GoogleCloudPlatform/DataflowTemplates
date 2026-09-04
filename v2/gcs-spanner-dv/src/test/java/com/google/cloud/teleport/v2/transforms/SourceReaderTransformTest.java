@@ -18,9 +18,11 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -31,6 +33,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -80,7 +83,8 @@ public class SourceReaderTransformTest implements Serializable {
     // FileIO in beam support a variety of paths dynamically, such as GCS, S3 and TempFolder
     // This allows us to pass a tempFolder into the same transform that accepts a GCS path
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
+        new SourceReaderTransform(
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -123,14 +127,15 @@ public class SourceReaderTransformTest implements Serializable {
     // 2. Run Pipeline with input path that has no avro files
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
+        new SourceReaderTransform(
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
-    pipeline.apply(transform);
-
+    PCollection<ComparisonRecord> output = pipeline.apply(transform);
     // AvroIO throws a RuntimeException when no files are found matching the pattern
-    // if withHintMatchesManyFiles is used (which uses match() internally).
-    RuntimeException e = assertThrows(RuntimeException.class, () -> pipeline.run());
-    assertTrue(e.getMessage().contains("No files matched spec"));
+    // AvroIO.parseAllGenericRecords does not throw when it matches 0 files, it emits 0 elements.
+    org.apache.beam.sdk.testing.PAssert.that(output).empty();
+
+    pipeline.run();
   }
 
   @Test
@@ -162,7 +167,8 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
+        new SourceReaderTransform(
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     pipeline.apply(transform);
 
@@ -204,7 +210,8 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
+        new SourceReaderTransform(
+            inputPath, ddlView, IdentityMapper::new, null, TableConfiguration.empty());
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -221,6 +228,78 @@ public class SourceReaderTransformTest implements Serializable {
               }
               if (count != 2) {
                 throw new AssertionError("Expected 2 records, got " + count);
+              }
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testReadWithTableConfigFiltersTables() throws IOException {
+    // 1. Setup Ddl
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("AllowedTable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("SkippedTable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+
+    // 2. Create Avro files for both tables in separate directories
+    File allowedDir = tempFolder.newFolder("AllowedTable");
+    createAvroFile(new File(allowedDir, "data.avro"), "AllowedTable", "1");
+    File skippedDir = tempFolder.newFolder("SkippedTable");
+    createAvroFile(new File(skippedDir, "data.avro"), "SkippedTable", "2");
+
+    // 3. Configure TableConfiguration to only allow "AllowedTable"
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    options.setTables("AllowedTable");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    // 4. Run Pipeline
+    String inputPath = tempFolder.getRoot().getAbsolutePath();
+    SourceReaderTransform transform =
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null, tableConfig);
+
+    PCollection<ComparisonRecord> output = pipeline.apply(transform);
+
+    // 5. Verify only AllowedTable was read
+    PAssert.that(output)
+        .satisfies(
+            records -> {
+              int count = 0;
+              for (ComparisonRecord rec : records) {
+                count++;
+                if (!rec.getTableName().equals("AllowedTable")) {
+                  throw new AssertionError("Expected AllowedTable, got " + rec.getTableName());
+                }
+              }
+              if (count != 1) {
+                throw new AssertionError("Expected exactly 1 record, got " + count);
               }
               return null;
             });
@@ -261,5 +340,35 @@ public class SourceReaderTransformTest implements Serializable {
 
       dataFileWriter.append(record);
     }
+  }
+
+  @Test
+  public void testGetFilePatternsNullConfig() {
+    java.util.List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", null);
+    org.junit.Assert.assertEquals(1, patterns.size());
+    org.junit.Assert.assertEquals("gs://my-bucket/dir/**.avro", patterns.get(0));
+  }
+
+  @Test
+  public void testGetFilePatternsEmptyConfig() {
+    java.util.List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir/", TableConfiguration.empty());
+    org.junit.Assert.assertEquals(1, patterns.size());
+    // Also tests that trailing slash is handled correctly
+    org.junit.Assert.assertEquals("gs://my-bucket/dir/**.avro", patterns.get(0));
+  }
+
+  @Test
+  public void testGetFilePatternsWithTables() {
+    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    options.setTables("Table1,Table2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    java.util.List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);
+    org.junit.Assert.assertEquals(2, patterns.size());
+    org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table1/**.avro"));
+    org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table2/**.avro"));
   }
 }

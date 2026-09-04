@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -71,7 +72,6 @@ public class GCSSpannerDV {
 
     @TemplateParameter.GcsReadFolder(
         order = 1,
-        optional = true,
         description = "GCS directory for AVRO files",
         helpText = "This directory is used to read the AVRO files of the records read from source.",
         example = "gs://your-bucket/your-path")
@@ -254,6 +254,27 @@ public class GCSSpannerDV {
     String getTransformationCustomParameters();
 
     void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Comma-separated list of source tables to validate",
+        helpText = "A comma-separated list of source tables to include in the validation run.")
+    @Default.String("")
+    String getTables();
+
+    void setTables(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 17,
+        optional = true,
+        description = "GCS path to a file containing a list of source tables to validate",
+        helpText =
+            "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`.")
+    @Default.String("")
+    String getTableConfigurationFilePath();
+
+    void setTableConfigurationFilePath(String value);
   }
 
   public static void main(String[] args) {
@@ -265,6 +286,8 @@ public class GCSSpannerDV {
 
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
+
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
@@ -297,13 +320,14 @@ public class GCSSpannerDV {
                 options.getGcsInputDirectory(),
                 ddlView,
                 schemaMapperProvider,
-                customTransformation));
+                customTransformation,
+                tableConfig));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords =
         pipeline.apply(
             "ReadSpannerRecords",
-            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider));
+            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider, tableConfig));
 
     PCollectionTuple inputs =
         PCollectionTuple.of(SOURCE_TAG, sourceRecords).and(SPANNER_TAG, spannerRecords);
