@@ -638,6 +638,29 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2023-12-22T15:26:01.769602"));
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ false));
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ true));
+
+    // Test empty string for timestamp
+    JSONObject emptyEvent = new JSONObject();
+    emptyEvent.put("empty_field", "");
+    JsonNode emptyCe = getJsonNode(emptyEvent.toString());
+    assertNull(
+        ChangeEventTypeConvertor.toTimestamp(emptyCe, "empty_field", /* requiredField= */ false));
+    assertNull(ChangeEventTypeConvertor.toDate(emptyCe, "empty_field", /* requiredField= */ false));
+
+    // Test Datastream SQL Server Avro nested datetime {"date": 20692, "time": 51566713000}
+    JSONObject nestedDatetimeEvent = new JSONObject();
+    JSONObject datetimeObj = new JSONObject();
+    datetimeObj.put("date", 20692);
+    datetimeObj.put("time", 51566713000L);
+    nestedDatetimeEvent.put("datetime_field", datetimeObj);
+    JsonNode nestedCe = getJsonNode(nestedDatetimeEvent.toString());
+    assertEquals(
+        Timestamp.parseTimestamp("2026-08-27T14:19:26.713Z"),
+        ChangeEventTypeConvertor.toTimestamp(
+            nestedCe, "datetime_field", /* requiredField= */ true));
+    assertEquals(
+        Date.parseDate("2026-08-27"),
+        ChangeEventTypeConvertor.toDate(nestedCe, "datetime_field", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
