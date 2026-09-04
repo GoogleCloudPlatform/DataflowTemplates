@@ -34,6 +34,8 @@ public class CustomTransformationImplFetcher {
 
     if (spannerMigrationTransformer == null) {
       spannerMigrationTransformer = getApplyTransformationImpl(customTransformation);
+    } else if (customTransformation != null) {
+      spannerMigrationTransformer.init(customTransformation.customParameters());
     }
     return spannerMigrationTransformer;
   }

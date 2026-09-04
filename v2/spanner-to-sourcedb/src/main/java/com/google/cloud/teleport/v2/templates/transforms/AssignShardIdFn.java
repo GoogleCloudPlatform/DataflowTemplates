@@ -669,6 +669,14 @@ public class AssignShardIdFn
         case JSON:
         case PG_JSONB:
           return DataChangeRecordTypeConvertor.toString(valuesJson, colName, false);
+        case ARRAY:
+        case PG_ARRAY:
+          if (valuesJson == null || !valuesJson.has(colName) || valuesJson.get(colName).isNull()) {
+            return null;
+          }
+          return valuesJson.get(colName).isTextual()
+              ? valuesJson.get(colName).asText()
+              : valuesJson.get(colName).toString();
         case BYTES:
         case PG_BYTEA:
           return DataChangeRecordTypeConvertor.toByteArray(valuesJson, colName, false);
@@ -717,6 +725,9 @@ public class AssignShardIdFn
         case JSON:
         case PG_JSONB:
           return value.getString();
+        case ARRAY:
+        case PG_ARRAY:
+          return value.isNull() ? null : value.toString();
         case BYTES:
           return value.getBytes();
         case PG_BYTEA:

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SQLSERVER;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
@@ -47,6 +48,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +56,82 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+
+  private static MSSQLResourceManager staticMSSQLResourceManager;
+  private static MSSQLResourceManager staticMSSQLResourceManagerShardB;
+
+  private static synchronized MSSQLResourceManager getStaticMSSQLResourceManager() {
+    if (staticMSSQLResourceManager == null) {
+      staticMSSQLResourceManager = MSSQLResourceManager.builder("static-sqlserver").build();
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    if (staticMSSQLResourceManager != null) {
+                      try {
+                        staticMSSQLResourceManager.cleanupAll();
+                      } catch (Exception e) {
+                        LOG.warn("Failed to clean up static MSSQL resource manager", e);
+                      }
+                    }
+                  }));
+    }
+    return staticMSSQLResourceManager;
+  }
+
+  private static synchronized MSSQLResourceManager getStaticMSSQLResourceManagerShardB() {
+    if (staticMSSQLResourceManagerShardB == null) {
+      staticMSSQLResourceManagerShardB =
+          MSSQLResourceManager.builder("static-sqlserver-shard-b").build();
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    if (staticMSSQLResourceManagerShardB != null) {
+                      try {
+                        staticMSSQLResourceManagerShardB.cleanupAll();
+                      } catch (Exception e) {
+                        LOG.warn("Failed to clean up static MSSQL shard B resource manager", e);
+                      }
+                    }
+                  }));
+    }
+    return staticMSSQLResourceManagerShardB;
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManager() {
+    return setUpMSSQLResourceManager(testName);
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManager(String testId) {
+    MSSQLResourceManager staticServer = getStaticMSSQLResourceManager();
+    synchronized (staticServer) {
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testId);
+      builder.useStaticContainer();
+      builder.setHost(staticServer.getHost());
+      builder.setPort(staticServer.getPort());
+      builder.setUsername(staticServer.getUsername());
+      builder.setPassword(staticServer.getPassword());
+      return builder.build();
+    }
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManagerShardB() {
+    return setUpMSSQLResourceManagerShardB(testName + "shardB");
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManagerShardB(String testId) {
+    MSSQLResourceManager staticServer = getStaticMSSQLResourceManagerShardB();
+    synchronized (staticServer) {
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testId);
+      builder.useStaticContainer();
+      builder.setHost(staticServer.getHost());
+      builder.setPort(staticServer.getPort());
+      builder.setUsername(staticServer.getUsername());
+      builder.setPassword(staticServer.getPassword());
+      return builder.build();
+    }
+  }
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -174,6 +252,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
@@ -299,7 +381,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                             && !Objects.equals(
                                 sourceType,
                                 com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                                    .SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, SOURCE_SQLSERVER))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -308,6 +391,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("workerMachineType", "n2-standard-4");
             put("sourceType", sourceType);
             // Query Spanner server time to bypass local clock skew and set as startTimestamp
             // to ensure the DirectRunner catches all test mutations during initialization.
@@ -527,6 +611,60 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       MySQLResourceManager jdbcResourceManager, String tableName, int n, String stringSize)
       throws Exception {
     // Validate the table name
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("Table name must be specified and non-blank");
+    }
+
+    if (n < 1) {
+      throw new IllegalArgumentException("Number of columns must be at least 1");
+    }
+
+    if (stringSize == null || stringSize.isBlank()) {
+      throw new IllegalArgumentException("String size must be specified and non-blank");
+    }
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
+    ddlBuilder.append("    id VARCHAR(20) NOT NULL PRIMARY KEY,\n");
+
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" VARCHAR(").append(stringSize).append("),\n");
+    }
+
+    ddlBuilder.setLength(ddlBuilder.length() - 2);
+    ddlBuilder.append("\n);");
+
+    String ddl = ddlBuilder.toString().trim();
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL generation failed for column count: " + n);
+    }
+
+    try {
+      jdbcResourceManager.runSQLUpdate(ddl);
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
+  }
+
+  protected void createSQLServerSchema(
+      MSSQLResourceManager jdbcResourceManager, String sqlServerSchemaFile) throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(sqlServerSchemaFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        jdbcResourceManager.runSQLUpdate(d);
+      }
+    }
+  }
+
+  protected void createSQLServerTableWithNColumns(
+      MSSQLResourceManager jdbcResourceManager, String tableName, int n, String stringSize)
+      throws Exception {
     if (tableName == null || tableName.isBlank()) {
       throw new IllegalArgumentException("Table name must be specified and non-blank");
     }

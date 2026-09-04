@@ -409,7 +409,8 @@ public class SpannerToSourceDb {
           @TemplateEnumOption("cassandra"),
           @TemplateEnumOption("postgresql"),
           @TemplateEnumOption("spanner"),
-          @TemplateEnumOption("oracle")
+          @TemplateEnumOption("oracle"),
+          @TemplateEnumOption("sqlserver")
         },
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
