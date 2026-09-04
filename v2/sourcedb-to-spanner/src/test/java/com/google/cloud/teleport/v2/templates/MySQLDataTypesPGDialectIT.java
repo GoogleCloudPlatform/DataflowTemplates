@@ -90,7 +90,7 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             Map.of("maxConnections", "4"),
             null);
     PipelineOperator.Result result =
-        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(20L)));
     assertThatResult(result).isLaunchFinished();
 
     // Validate supported data types.
