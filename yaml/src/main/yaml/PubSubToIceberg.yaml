@@ -1,5 +1,5 @@
 template:
-  name: "Pubsub_To_Iceberg_Yaml"
+  name: "PubSub_To_Iceberg_Yaml"
   category: "STREAMING"
   type: "YAML"
   display_name: "Pub/Sub to Iceberg (YAML)"
@@ -7,7 +7,7 @@ template:
     The Pub/Sub to Iceberg template is a streaming pipeline that ingests data
     from a Pub/Sub topic or subscription and writes the records to an Apache Iceberg table.
   flex_container_name: "pipeline-yaml"
-  yamlTemplateFile: "PubsubToIceberg.yaml"
+  yamlTemplateFile: "PubSubToIceberg.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/iceberg_options.yaml"}
   contactInformation: "https://cloud.google.com/support"

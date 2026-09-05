@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.Validation;
     name = "PubSub_To_BigQuery_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "PubSub to BigQuery (YAML)",
+    displayName = "Pub/Sub to BigQuery (YAML)",
     description =
         "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",

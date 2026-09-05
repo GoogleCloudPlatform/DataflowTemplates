@@ -1,5 +1,5 @@
 
-PubSub to BigTable (YAML) template
+Pub/Sub to BigTable (YAML) template
 ---
 The PubSub to BigTable template is a streaming pipeline which ingests data from a
 PubSub topic, executes a user-defined mapping, and writes the resulting records
