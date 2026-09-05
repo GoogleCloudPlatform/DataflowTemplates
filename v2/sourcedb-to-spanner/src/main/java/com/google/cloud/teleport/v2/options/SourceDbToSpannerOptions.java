@@ -45,18 +45,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setSourceDbDialect(String sourceDatabaseDialect);
 
   @TemplateParameter.Text(
-      order = 2,
-      optional = true,
-      regexes = {"^.+$"},
-      description = "Comma-separated Cloud Storage path(s) of the JDBC driver(s)",
-      helpText = "The comma-separated list of driver JAR files.",
-      example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
-  @Default.String("")
-  String getJdbcDriverJars();
-
-  void setJdbcDriverJars(String driverJar);
-
-  @TemplateParameter.Text(
       order = 3,
       optional = true,
       regexes = {"^.+$"},
