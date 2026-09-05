@@ -27,7 +27,8 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Delta Lake to Lakehouse",
     description =
-        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table and outputs the records to a Lakehouse table.",
+        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake"
+            + " table and outputs the records to a GCP Lakehouse table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "DeltaLakeToLakehouse.yaml",
     filesToCopy = {
@@ -56,19 +57,41 @@ public interface DeltaLakeToLakehouseYaml {
   @Validation.Required
   String getDeltaLakeTable();
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 2,
+      name = "deltaLakeVersion",
+      optional = true,
+      description = "Version of the Delta Lake table to read.",
+      helpText = "Version of the Delta Lake table to read. Cannot be set if timestamp is set.",
+      example = "0")
+  Integer getDeltaLakeVersion();
+
+  @TemplateParameter.Text(
+      order = 3,
+      name = "deltaLakeTimestamp",
+      optional = true,
+      description = "Timestamp of the Delta Lake table to read.",
+      helpText =
+          "Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g."
+              + " 2026-05-20T15:43:26Z). Cannot be set if version is set.",
+      example = "2026-05-20T15:43:26Z")
+  String getDeltaLakeTimestamp();
+
+  @TemplateParameter.Text(
+      order = 4,
       name = "deltaLakeHadoopConfig",
       optional = true,
       description = "Properties passed to Hadoop Configuration.",
       helpText = "A map of properties to pass to Hadoop Configuration, e.g. key-value pairs.",
       example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
   @Default.String(
-      "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\", \"fs.AbstractFileSystem.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\", \"fs.gs.project.id\": \"\"}")
+      "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\","
+          + " \"fs.AbstractFileSystem.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS\","
+          + " \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\", \"fs.gs.project.id\": \"\"}")
   String getDeltaLakeHadoopConfig();
 
   @TemplateParameter.Text(
-      order = 3,
+      order = 5,
       name = "lakehouseTable",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -78,7 +101,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseTable();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 6,
       name = "lakehouseCatalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -88,7 +111,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseCatalogName();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 7,
       name = "lakehouseCatalogProperties",
       optional = false,
       description = "Properties used to set up the Lakehouse catalog.",
@@ -98,7 +121,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 8,
       name = "lakehouseConfigProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -107,7 +130,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseConfigProperties();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 9,
       name = "lakehouseDrop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -116,7 +139,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseDrop();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 10,
       name = "lakehouseFilter",
       optional = true,
       description = "An optional filter expression to apply to the input records.",
@@ -125,7 +148,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseFilter();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 11,
       name = "lakehouseKeep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -134,7 +157,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseKeep();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 12,
       name = "lakehouseOnly",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -143,7 +166,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseOnly();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 13,
       name = "lakehousePartitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -152,7 +175,7 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehousePartitionFields();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 14,
       name = "lakehouseTableProperties",
       optional = true,
       description = "Lakehouse table properties to be set on table creation.",

@@ -9,6 +9,20 @@ options:
         required: true
         type: text
       - order: 2
+        name: "deltaLakeVersion"
+        description: "Version of the Delta Lake table to read."
+        help: "Version of the Delta Lake table to read. Cannot be set if timestamp is set."
+        example: 0
+        required: false
+        type: integer
+      - order: 3
+        name: "deltaLakeTimestamp"
+        description: "Timestamp of the Delta Lake table to read."
+        help: "Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set."
+        example: "2026-05-20T15:43:26Z"
+        required: false
+        type: text
+      - order: 4
         name: "deltaLakeHadoopConfig"
         description: "Properties passed to Hadoop Configuration."
         help: "A map of properties to pass to Hadoop Configuration, e.g. key-value pairs."

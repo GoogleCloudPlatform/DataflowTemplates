@@ -34,6 +34,12 @@ pipeline:
       name: ReadFromDeltaLake
       config:
         table: "{{ deltaLakeTable }}"
+        {% if deltaLakeVersion is defined and deltaLakeVersion != '' %}
+        version: {{ deltaLakeVersion }}
+        {% endif %}
+        {% if deltaLakeTimestamp is defined and deltaLakeTimestamp != '' %}
+        timestamp: "{{ deltaLakeTimestamp }}"
+        {% endif %}
         {% if deltaLakeHadoopConfig %}
         hadoop_config: {{ deltaLakeHadoopConfig }}
         {% endif %}

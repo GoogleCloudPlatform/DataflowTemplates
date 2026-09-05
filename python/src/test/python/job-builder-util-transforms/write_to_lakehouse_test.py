@@ -12,12 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 from unittest.mock import MagicMock, patch
+
+from apache_beam.yaml.yaml_io import write_to_iceberg
 from write_to_lakehouse import WriteToLakehouse
 
 
 class WriteToLakehouseTest(unittest.TestCase):
+
+  def test_parameters_match_iceberg(self):
+    """Ensure that the set of parameters does not deviate from Iceberg."""
+    lakehouse_params = inspect.signature(WriteToLakehouse).parameters
+    iceberg_params = inspect.signature(write_to_iceberg).parameters
+
+    self.assertEqual(
+        set(lakehouse_params.keys()),
+        set(iceberg_params.keys()),
+        "The set of parameters in WriteToLakehouse deviates from write_to_iceberg.",
+    )
+    for name, param in iceberg_params.items():
+      self.assertEqual(
+          lakehouse_params[name].default,
+          param.default,
+          f"Default value for parameter '{name}' deviates from write_to_iceberg.",
+      )
 
   @patch("write_to_lakehouse.write_to_iceberg")
   def test_write_to_lakehouse(self, mock_write_to_iceberg):
