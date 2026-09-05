@@ -27,8 +27,7 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Delta Lake to Lakehouse",
     description =
-        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake"
-            + " table and outputs the records to a GCP Lakehouse table.",
+        "The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table and outputs the records to a Lakehouse table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "DeltaLakeToLakehouse.yaml",
     filesToCopy = {
@@ -72,8 +71,7 @@ public interface DeltaLakeToLakehouseYaml {
       optional = true,
       description = "Timestamp of the Delta Lake table to read.",
       helpText =
-          "Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g."
-              + " 2026-05-20T15:43:26Z). Cannot be set if version is set.",
+          "Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set.",
       example = "2026-05-20T15:43:26Z")
   String getDeltaLakeTimestamp();
 
@@ -85,9 +83,7 @@ public interface DeltaLakeToLakehouseYaml {
       helpText = "A map of properties to pass to Hadoop Configuration, e.g. key-value pairs.",
       example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
   @Default.String(
-      "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\","
-          + " \"fs.AbstractFileSystem.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS\","
-          + " \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\", \"fs.gs.project.id\": \"\"}")
+      "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\", \"fs.AbstractFileSystem.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\", \"fs.gs.project.id\": \"\"}")
   String getDeltaLakeHadoopConfig();
 
   @TemplateParameter.Text(
