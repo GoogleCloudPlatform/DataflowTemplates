@@ -61,7 +61,7 @@ class ReadFromDeltaLake(PTransform):
         )
       else:
         expansion_service = JavaJarExpansionService(
-            'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-07-20/expansion-service-custom-0.2.0.jar'
+            'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-30/expansion-service-custom-0.3.1.jar'
         )
 
       return pbegin | SchemaAwareExternalTransform(
