@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -39,7 +39,7 @@ public class SpannerGeneratedColumnUtils {
 
   public static ConditionCheck buildConditionCheck(
       Map<String, List<Map<String, Value>>> spannerTableData,
-      MySQLResourceManager jdbcResourceManager) {
+      JDBCResourceManager jdbcResourceManager) {
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
       String tableName = getTableName(entry.getKey());
@@ -69,7 +69,7 @@ public class SpannerGeneratedColumnUtils {
 
   public static void assertRowInMySQL(
       Map<String, List<Map<String, Object>>> expectedData,
-      MySQLResourceManager jdbcResourceManager) {
+      JDBCResourceManager jdbcResourceManager) {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String type = expectedTableData.getKey();
       String tableName = getTableName(type);

@@ -389,7 +389,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     }
   }
 
-  protected void createMySQLSchema(MySQLResourceManager jdbcResourceManager, String mySqlSchemaFile)
+  protected void createMySQLSchema(JDBCResourceManager jdbcResourceManager, String mySqlSchemaFile)
       throws IOException {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
