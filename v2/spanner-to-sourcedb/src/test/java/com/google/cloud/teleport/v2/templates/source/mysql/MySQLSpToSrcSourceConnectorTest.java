@@ -114,7 +114,7 @@ public class MySQLSpToSrcSourceConnectorTest {
     assertEquals(maxConnections, request.getMaxConnections());
     assertEquals("com.mysql.cj.jdbc.Driver", request.getDriver());
     assertEquals("SET SESSION net_read_timeout=1200", request.getConnectionInitQuery());
-    assertEquals("jdbc:mysql://", request.getJdbcUrlPrefix());
+    verify(mockShard).setConnectionUrl(connector.getConnectionUrl(mockShard));
   }
 
   @Test

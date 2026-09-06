@@ -106,7 +106,7 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       connectionHelper.init(
           new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(
-              shards, null, maxConnections, null, null, null));
+              shards, null, maxConnections, null, null));
     }
   }
 
