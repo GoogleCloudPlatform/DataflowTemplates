@@ -200,8 +200,16 @@ def generate_java_interface(yaml_path, java_path):
 
     description = template_info.get('description', '').strip()
 
+    extra_imports = []
+    if any('default' in param for param in flat_parameters):
+        extra_imports.append("import org.apache.beam.sdk.options.Default;")
+    if any(param.get('required', False) for param in flat_parameters):
+        extra_imports.append("import org.apache.beam.sdk.options.Validation;")
+    extra_imports_code = ("\n" + "\n".join(extra_imports)) if extra_imports else ""
+
     # Replace placeholders in the template
     java_code = java_template.format(
+        extra_imports=extra_imports_code,
         template_info_name=template_info.get('name', ''),
         template_info_category=template_info.get('category', 'STREAMING'),
         template_info_display_name=template_info.get('display_name', ''),

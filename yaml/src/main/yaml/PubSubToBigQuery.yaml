@@ -3,7 +3,7 @@ template:
   name: "PubSub_To_BigQuery_Yaml"
   category: "STREAMING"
   type: "YAML"
-  display_name: "PubSub to BigQuery (YAML)"
+  display_name: "Pub/Sub to BigQuery (YAML)"
   description: >
     The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted
     data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.

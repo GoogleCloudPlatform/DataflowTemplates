@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.Validation;
     name = "SQLServer_To_Iceberg_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "SQLServer to Iceberg (YAML)",
+    displayName = "SQL Server to Iceberg (YAML)",
     description =
         "The SQLServer to Iceberg template is a batch pipeline executes the user provided SQL query to read data from SQLServer table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",
