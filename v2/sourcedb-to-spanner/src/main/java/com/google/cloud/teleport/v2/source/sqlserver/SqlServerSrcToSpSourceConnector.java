@@ -131,8 +131,13 @@ public class SqlServerSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCo
 
   @Override
   public SourceSchemaReference getSourceSchemaReference(String dbName, String namespace) {
-    return SourceSchemaReference.ofJdbc(
-        JdbcSchemaReference.builder().setDbName(dbName).setNamespace(namespace).build());
+    JdbcSchemaReference.Builder builder = JdbcSchemaReference.builder().setDbName(dbName);
+    if (StringUtils.isBlank(namespace)) {
+      builder.setNamespace("dbo");
+    } else {
+      builder.setNamespace(namespace);
+    }
+    return SourceSchemaReference.ofJdbc(builder.build());
   }
 
   @Override
@@ -143,11 +148,18 @@ public class SqlServerSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCo
       String connectionProperties,
       String namespace,
       Integer fetchSize) {
-    String jdbcUrl =
-        "jdbc:sqlserver://" + host + ":" + port + ";databaseName=" + dbName + ";encrypt=false";
-    if (StringUtils.isNotBlank(connectionProperties)) {
-      jdbcUrl = jdbcUrl + ";" + connectionProperties;
+    StringBuilder jdbcUrlBuilder =
+        new StringBuilder("jdbc:sqlserver://" + host + ":" + port + ";databaseName=" + dbName);
+    String lowerProps = connectionProperties != null ? connectionProperties.toLowerCase() : "";
+    for (Entry<String, String> entry :
+        SqlServerConfigDefaults.DEFAULT_SQLSERVER_URL_PROPERTIES.entrySet()) {
+      if (!lowerProps.contains(entry.getKey().toLowerCase() + "=")) {
+        jdbcUrlBuilder.append(";").append(entry.getKey()).append("=").append(entry.getValue());
+      }
     }
-    return jdbcUrl;
+    if (StringUtils.isNotBlank(connectionProperties)) {
+      jdbcUrlBuilder.append(";").append(connectionProperties);
+    }
+    return jdbcUrlBuilder.toString();
   }
 }

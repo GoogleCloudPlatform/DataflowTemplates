@@ -40,6 +40,13 @@ public class SqlServerSrcToSpSourceConnectorTest {
 
     String urlNoProps = connector.getJdbcUrl("localhost", 1433, "mydb", "", null, null);
     assertEquals("jdbc:sqlserver://localhost:1433;databaseName=mydb;encrypt=false", urlNoProps);
+
+    String urlOverrideEncrypt =
+        connector.getJdbcUrl(
+            "localhost", 1433, "mydb", "encrypt=true;trustServerCertificate=true", null, null);
+    assertEquals(
+        "jdbc:sqlserver://localhost:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true",
+        urlOverrideEncrypt);
   }
 
   @Test
@@ -49,9 +56,11 @@ public class SqlServerSrcToSpSourceConnectorTest {
     assertEquals(
         SqlServerConfigDefaults.DEFAULT_SQLSERVER_VALUE_MAPPING_PROVIDER,
         connector.getJdbcValueMappingsProvider());
-    assertTrue(SqlServerConfigDefaults.DEFAULT_SQLSERVER_URL_PROPERTIES.isEmpty());
+    assertEquals("false", SqlServerConfigDefaults.DEFAULT_SQLSERVER_URL_PROPERTIES.get("encrypt"));
     assertEquals("mydb", connector.getSourceSchemaReference("mydb", "dbo").jdbc().dbName());
     assertEquals("dbo", connector.getSourceSchemaReference("mydb", "dbo").jdbc().namespace());
+    assertEquals("dbo", connector.getSourceSchemaReference("mydb", null).jdbc().namespace());
+    assertEquals("sales", connector.getSourceSchemaReference("mydb", "sales").jdbc().namespace());
     assertNotNull(connector.getJdbcIOWrapperConfigBuilder());
   }
 }

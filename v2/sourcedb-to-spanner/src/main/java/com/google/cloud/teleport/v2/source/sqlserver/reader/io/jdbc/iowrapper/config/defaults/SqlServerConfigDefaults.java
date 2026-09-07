@@ -33,7 +33,7 @@ public class SqlServerConfigDefaults {
   public static final Long DEFAULT_SQLSERVER_MAX_CONNECTIONS = 160L;
 
   public static final ImmutableMap<String, String> DEFAULT_SQLSERVER_URL_PROPERTIES =
-      ImmutableMap.of();
+      ImmutableMap.of("encrypt", "false");
 
   public static final FluentBackoff DEFAULT_SQLSERVER_SCHEMA_DISCOVERY_BACKOFF =
       FluentBackoff.DEFAULT.withMaxCumulativeBackoff(Duration.standardMinutes(5L));

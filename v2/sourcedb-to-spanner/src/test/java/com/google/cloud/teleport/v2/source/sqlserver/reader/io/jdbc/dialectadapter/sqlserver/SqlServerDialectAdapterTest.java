@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadap
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -269,6 +268,12 @@ public class SqlServerDialectAdapterTest {
             new SQLException("Lock request time out period exceeded.", "40001", 1222)));
     assertFalse(adapter.checkForTimeout(new SQLException("Other error", "42000", 102)));
     assertFalse(adapter.checkForTimeout(new SQLException()));
-    assertNotNull(adapter.getCollationsOrderQuery("UTF8", "Latin1_General_BIN", false));
+
+    String query = adapter.getCollationsOrderQuery("UTF8", "SQL_Latin1_General_CP1_CI_AS", false);
+    assertThat(query).contains("COLLATE SQL_Latin1_General_CP1_CI_AS");
+    assertThat(query).contains("DENSE_RANK() OVER");
+
+    String fallbackQuery = adapter.getCollationsOrderQuery("UTF8", null, false);
+    assertThat(fallbackQuery).contains("COLLATE Latin1_General_BIN");
   }
 }

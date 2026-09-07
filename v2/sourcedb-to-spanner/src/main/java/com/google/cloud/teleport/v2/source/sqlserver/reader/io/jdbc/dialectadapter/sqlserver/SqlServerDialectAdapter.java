@@ -80,6 +80,13 @@ public class SqlServerDialectAdapter implements DialectAdapter {
 
   private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
+  private String getNamespace(JdbcSchemaReference sourceSchemaReference) {
+    return (sourceSchemaReference.namespace() == null
+            || sourceSchemaReference.namespace().isEmpty())
+        ? "dbo"
+        : sourceSchemaReference.namespace();
+  }
+
   @Override
   public ImmutableList<String> discoverTables(
       DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
@@ -87,11 +94,12 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
 
     String query =
-        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG = ?";
+        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG = ? AND TABLE_SCHEMA = ?";
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
+      stmt.setString(2, getNamespace(sourceSchemaReference));
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
           tablesBuilder.add(rs.getString(1));
@@ -123,7 +131,7 @@ public class SqlServerDialectAdapter implements DialectAdapter {
 
     String query =
         "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE "
-            + "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = ? AND TABLE_NAME IN "
+            + "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = ? AND TABLE_SCHEMA = ? AND TABLE_NAME IN "
             + DialectAdapter.generateInClause(tables.size());
     Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
@@ -131,8 +139,9 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
+      stmt.setString(2, getNamespace(sourceSchemaReference));
       for (int i = 0; i < tables.size(); i++) {
-        stmt.setString(i + 2, tables.get(i));
+        stmt.setString(i + 3, tables.get(i));
       }
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
@@ -224,8 +233,12 @@ public class SqlServerDialectAdapter implements DialectAdapter {
             + "INNER JOIN sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id "
             + "INNER JOIN sys.tables t ON ind.object_id = t.object_id "
             + "INNER JOIN sys.types ty ON col.system_type_id = ty.system_type_id AND col.user_type_id = ty.user_type_id "
-            + "LEFT JOIN sys.partitions p ON ind.object_id = p.object_id AND ind.index_id = p.index_id AND p.partition_number = 1 "
-            + "WHERE t.name IN "
+            + "LEFT JOIN (SELECT object_id, index_id, SUM(rows) AS rows FROM sys.partitions GROUP BY object_id, index_id) p ON ind.object_id = p.object_id AND ind.index_id = p.index_id "
+            + "WHERE SCHEMA_NAME(t.schema_id) = ? "
+            + "AND ic.is_included_column = 0 "
+            + "AND ind.is_disabled = 0 "
+            + "AND ind.is_hypothetical = 0 "
+            + "AND t.name IN "
             + DialectAdapter.generateInClause(tables.size());
 
     Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
@@ -233,8 +246,9 @@ public class SqlServerDialectAdapter implements DialectAdapter {
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
+      stmt.setString(1, getNamespace(sourceSchemaReference));
       for (int i = 0; i < tables.size(); i++) {
-        stmt.setString(i + 1, tables.get(i));
+        stmt.setString(i + 2, tables.get(i));
       }
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
@@ -335,19 +349,71 @@ public class SqlServerDialectAdapter implements DialectAdapter {
 
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    String sanitizedCollation =
+        (dbCollation == null || dbCollation.isEmpty() || !dbCollation.matches("^[a-zA-Z0-9_]+$"))
+            ? "Latin1_General_BIN"
+            : dbCollation;
     return "WITH Nums AS ("
         + " SELECT TOP 256 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n"
         + " FROM sys.all_objects a CROSS JOIN sys.all_objects b"
+        + "), "
+        + "CharsWithFlags AS ("
+        + " SELECT"
+        + "   n,"
+        + "   NCHAR(n) AS charset_char,"
+        + "   CAST(CASE WHEN ('a' + NCHAR(n) + 'a') COLLATE "
+        + sanitizedCollation
+        + "     = 'aa' COLLATE "
+        + sanitizedCollation
+        + " THEN 1 ELSE 0 END AS BIT) AS is_empty,"
+        + "   CAST(CASE WHEN ('a' + NCHAR(n) + 'a') COLLATE "
+        + sanitizedCollation
+        + "     = 'a a' COLLATE "
+        + sanitizedCollation
+        + " THEN 1 ELSE 0 END AS BIT) AS is_space"
+        + " FROM Nums"
+        + "), "
+        + "Equivalents AS ("
+        + " SELECT"
+        + "   n,"
+        + "   charset_char,"
+        + "   is_empty,"
+        + "   is_space,"
+        + "   FIRST_VALUE(charset_char) OVER ("
+        + "     PARTITION BY charset_char COLLATE "
+        + sanitizedCollation
+        + ", is_empty"
+        + "     ORDER BY charset_char COLLATE "
+        + sanitizedCollation
+        + ", n"
+        + "   ) AS equivalent_charset_char,"
+        + "   FIRST_VALUE(charset_char) OVER ("
+        + "     PARTITION BY charset_char COLLATE "
+        + sanitizedCollation
+        + ", is_empty, is_space"
+        + "     ORDER BY charset_char COLLATE "
+        + sanitizedCollation
+        + ", n"
+        + "   ) AS equivalent_charset_char_pad_space"
+        + " FROM CharsWithFlags"
         + ") "
         + "SELECT "
-        + "  NCHAR(n) AS charset_char,"
-        + "  NCHAR(n) AS equivalent_charset_char,"
-        + "  CAST(n AS BIGINT) AS codepoint_rank,"
-        + "  CAST(0 AS BIT) AS is_empty,"
-        + "  CAST(CASE WHEN n = 32 THEN 1 ELSE 0 END AS BIT) AS is_space,"
-        + "  NCHAR(n) AS equivalent_charset_char_pad_space,"
-        + "  CAST(CASE WHEN n < 32 THEN n WHEN n = 32 THEN 0 ELSE n - 1 END AS BIGINT) AS codepoint_rank_pad_space "
-        + "FROM Nums "
+        + "  charset_char,"
+        + "  equivalent_charset_char,"
+        + "  CAST(DENSE_RANK() OVER ("
+        + "    PARTITION BY is_empty"
+        + "    ORDER BY equivalent_charset_char COLLATE "
+        + sanitizedCollation
+        + "  ) - 1 AS BIGINT) AS codepoint_rank,"
+        + "  is_empty,"
+        + "  is_space,"
+        + "  equivalent_charset_char_pad_space,"
+        + "  CAST(DENSE_RANK() OVER ("
+        + "    PARTITION BY is_empty, is_space"
+        + "    ORDER BY equivalent_charset_char_pad_space COLLATE "
+        + sanitizedCollation
+        + "  ) - 1 AS BIGINT) AS codepoint_rank_pad_space "
+        + "FROM Equivalents "
         + "ORDER BY n";
   }
 
