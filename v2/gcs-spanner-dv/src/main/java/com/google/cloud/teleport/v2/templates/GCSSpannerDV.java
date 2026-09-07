@@ -18,13 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SOURCE_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANNER_TAG;
 
-import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -37,8 +36,6 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -54,7 +51,7 @@ import org.joda.time.Instant;
     description =
         "Batch pipeline that reads data from GCS and Spanner compares them to validate migration"
             + " correctness.",
-    optionsClass = GCSSpannerDV.Options.class,
+    optionsClass = GCSSpannerDVOptions.class,
     flexContainerName = "gcs-spanner-dv",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/gcs-spanner-dv",
@@ -67,203 +64,15 @@ import org.joda.time.Instant;
     })
 public class GCSSpannerDV {
 
-  public interface Options extends PipelineOptions {
-
-    @TemplateParameter.GcsReadFolder(
-        order = 1,
-        optional = true,
-        description = "GCS directory for AVRO files",
-        helpText = "This directory is used to read the AVRO files of the records read from source.",
-        example = "gs://your-bucket/your-path")
-    String getGcsInputDirectory();
-
-    void setGcsInputDirectory(String value);
-
-    @TemplateParameter.ProjectId(
-        order = 2,
-        optional = true,
-        description = "Cloud Spanner Project Id.",
-        helpText = "This is the name of the Cloud Spanner project.")
-    String getProjectId();
-
-    void setProjectId(String projectId);
-
-    @TemplateParameter.Text(
-        order = 3,
-        optional = true,
-        description = "Cloud Spanner Endpoint to call",
-        helpText = "The Cloud Spanner endpoint to call in the template.",
-        example = "https://batch-spanner.googleapis.com")
-    @Default.String("https://batch-spanner.googleapis.com")
-    String getSpannerHost();
-
-    void setSpannerHost(String value);
-
-    @TemplateParameter.Text(
-        order = 4,
-        groupName = "Target",
-        description = "Cloud Spanner Instance Id.",
-        helpText = "The destination Cloud Spanner instance.")
-    String getInstanceId();
-
-    void setInstanceId(String value);
-
-    @TemplateParameter.Text(
-        order = 5,
-        regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
-        description = "Cloud Spanner Database Id.",
-        helpText = "The destination Cloud Spanner database.")
-    String getDatabaseId();
-
-    void setDatabaseId(String value);
-
-    @TemplateParameter.Enum(
-        order = 6,
-        enumOptions = {
-          @TemplateParameter.TemplateEnumOption("LOW"),
-          @TemplateParameter.TemplateEnumOption("MEDIUM"),
-          @TemplateParameter.TemplateEnumOption("HIGH")
-        },
-        optional = true,
-        description = "Priority for Spanner RPC invocations",
-        helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
-    @Default.Enum("HIGH")
-    RpcPriority getSpannerPriority();
-
-    void setSpannerPriority(RpcPriority value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 7,
-        optional = true,
-        description =
-            "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
-        helpText =
-            "Session file path in Cloud Storage that contains mapping information from"
-                + " Spanner Migration Tool")
-    @Default.String("")
-    String getSessionFilePath();
-
-    void setSessionFilePath(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 8,
-        optional = true,
-        description = "File based overrides from source to spanner",
-        helpText =
-            "A file which specifies the table and the column name overrides from source to spanner.")
-    @Default.String("")
-    String getSchemaOverridesFilePath();
-
-    void setSchemaOverridesFilePath(String value);
-
-    @TemplateParameter.Text(
-        order = 9,
-        optional = true,
-        description = "Table name overrides from source to spanner",
-        regexes =
-            "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
-        example = "[{Singers, Vocalists}, {Albums, Records}]",
-        helpText =
-            "These are the table name overrides from source to spanner. They are written in the"
-                + " following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
-                + " This example shows mapping Singers table to Vocalists and Albums table to Records.")
-    @Default.String("")
-    String getTableOverrides();
-
-    void setTableOverrides(String value);
-
-    @TemplateParameter.Text(
-        order = 10,
-        optional = true,
-        regexes =
-            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
-        description = "Column name overrides from source to spanner",
-        example =
-            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
-        helpText =
-            "These are the column name overrides from source to spanner. They are written in"
-                + " the following format: [{SourceTableName1.SourceColumnName1,"
-                + " SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1,"
-                + " SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should"
-                + " remain the same in both the source and spanner pair. To override table names,"
-                + " use tableOverrides.The example shows mapping SingerName to TalentName and"
-                + " AlbumName to RecordName in Singers and Albums table respectively.")
-    @Default.String("")
-    String getColumnOverrides();
-
-    void setColumnOverrides(String value);
-
-    @TemplateParameter.Text(
-        order = 11,
-        optional = false,
-        regexes = {"^[^ ;]*$"},
-        description = "BigQuery dataset for reporting",
-        helpText = "The BigQuery dataset ID where the validation results will be stored.",
-        example = "validation_report_dataset")
-    String getBigQueryDataset();
-
-    void setBigQueryDataset(String value);
-
-    @TemplateParameter.Text(
-        order = 12,
-        optional = true,
-        regexes = {"^[^ ;]*$"},
-        description = "Run ID for the validation job",
-        helpText =
-            "A unique identifier for the validation run. If not provided, the Dataflow Job Name"
-                + " will be used.",
-        example = "run_20230101_120000")
-    String getRunId();
-
-    void setRunId(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 13,
-        optional = true,
-        description = "Custom jar location in Cloud Storage",
-        helpText =
-            "Custom jar location in Cloud Storage that contains the custom transformation logic for"
-                + " processing records.")
-    @Default.String("")
-    String getTransformationJarPath();
-
-    void setTransformationJarPath(String value);
-
-    @TemplateParameter.Text(
-        order = 14,
-        optional = true,
-        description = "Custom class name",
-        helpText =
-            "Fully qualified class name having the custom transformation logic. It is a"
-                + " mandatory field in case transformationJarPath is specified")
-    @Default.String("")
-    String getTransformationClassName();
-
-    void setTransformationClassName(String value);
-
-    @TemplateParameter.Text(
-        order = 15,
-        optional = true,
-        description = "Custom parameters for transformation",
-        helpText =
-            "String containing any custom parameters to be passed to the custom transformation"
-                + " class.")
-    @Default.String("")
-    String getTransformationCustomParameters();
-
-    void setTransformationCustomParameters(String value);
-  }
-
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    GCSSpannerDVOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSSpannerDVOptions.class);
     run(options);
   }
 
-  public static PipelineResult run(Options options) {
+  public static PipelineResult run(GCSSpannerDVOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
@@ -326,7 +135,7 @@ public class GCSSpannerDV {
   }
 
   @VisibleForTesting
-  static SpannerConfig createSpannerConfig(Options options) {
+  static SpannerConfig createSpannerConfig(GCSSpannerDVOptions options) {
     return SpannerConfig.create()
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
