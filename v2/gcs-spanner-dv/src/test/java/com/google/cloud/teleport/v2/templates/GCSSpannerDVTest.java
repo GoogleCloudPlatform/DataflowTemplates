@@ -30,7 +30,11 @@ public class GCSSpannerDVTest {
   public void testCreateSpannerConfig() {
     String[] args =
         new String[] {
-          "--projectId=test-project", "--instanceId=test-instance", "--databaseId=test-database"
+          "--projectId=test-project",
+          "--instanceId=test-instance",
+          "--databaseId=test-database",
+          "--bigQueryDataset=test-dataset",
+          "--gcsInputDirectory=test-directory"
         };
     GCSSpannerDVOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSSpannerDVOptions.class);

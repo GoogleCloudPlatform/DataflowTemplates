@@ -147,7 +147,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
           "These are the column name overrides from source to spanner. They are written in"
               + " the following format: [{SourceTableName1.SourceColumnName1,"
               + " SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1,"
-              + " SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should"
+              + " SourceTableName2.SpannerColumnName1}]. Note that the SourceTableName should"
               + " remain the same in both the source and spanner pair. To override table names,"
               + " use tableOverrides.The example shows mapping SingerName to TalentName and"
               + " AlbumName to RecordName in Singers and Albums table respectively.")
