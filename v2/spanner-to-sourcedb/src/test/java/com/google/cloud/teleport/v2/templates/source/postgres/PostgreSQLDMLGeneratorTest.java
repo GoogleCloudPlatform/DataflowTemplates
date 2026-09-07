@@ -466,6 +466,24 @@ public final class PostgreSQLDMLGeneratorTest {
   }
 
   @Test
+  public void testByteaTypeDMLFromSpannerString() throws Exception {
+    Column spannerCol = mock(Column.class);
+    when(spannerCol.name()).thenReturn("bytea_column");
+    when(spannerCol.type()).thenReturn(Type.string()); // Overridden mapping in Spanner
+
+    SourceColumn sourceCol = mock(SourceColumn.class);
+    when(sourceCol.name()).thenReturn("bytea_column");
+    when(sourceCol.type()).thenReturn("bytea");
+
+    JSONObject json =
+        new JSONObject("{\"bytea_column\":\"48656c6c6f\"}"); // "Hello" in hex, passed as string
+
+    String res =
+        PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
+    assertEquals("decode('48656c6c6f', 'hex')", res); // Wrapped in decode function
+  }
+
+  @Test
   public void testUuidTypeDML() throws Exception {
     Column spannerCol = mock(Column.class);
     when(spannerCol.name()).thenReturn("uuid_column");

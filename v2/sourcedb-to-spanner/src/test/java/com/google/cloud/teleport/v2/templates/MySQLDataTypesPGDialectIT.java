@@ -185,9 +185,7 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     expectedData.put("bit8", createRows("bit8", "0", "255", "NULL"));
     expectedData.put("bit1", createRows("bit1", "false", "true", "NULL"));
     expectedData.put("bit_to_bool", createRows("bit_to_bool", "false", "true", "NULL"));
-    // bit_to_string is commented out to avoid failing the test case; returned data is the long
-    // representation of the bits which is unexpected even if it's not necessarily incorrect
-    // expectedData.put("bit_to_string", createRows("bit_to_string", "7fff", "NULL"));
+    expectedData.put("bit_to_string", createRows("bit_to_string", "32767", "NULL"));
     expectedData.put("bit_to_int64", createRows("bit_to_int64", "9223372036854775807", "NULL"));
     expectedData.put("blob", createRows("blob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put(
