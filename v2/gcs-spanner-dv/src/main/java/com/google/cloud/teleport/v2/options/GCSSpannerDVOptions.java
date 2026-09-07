@@ -29,7 +29,6 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
 
   @TemplateParameter.GcsReadFolder(
       order = 1,
-      optional = true,
       description = "GCS directory for AVRO files",
       helpText = "This directory is used to read the AVRO files of the records read from source.",
       example = "gs://your-bucket/your-path")
@@ -39,7 +38,6 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
 
   @TemplateParameter.ProjectId(
       order = 2,
-      optional = true,
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
   String getProjectId();
@@ -154,7 +152,6 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 11,
-      optional = false,
       regexes = {"^[^ ;]*$"},
       description = "BigQuery dataset for reporting",
       helpText = "The BigQuery dataset ID where the validation results will be stored.",
