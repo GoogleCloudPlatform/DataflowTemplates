@@ -5,8 +5,8 @@ on:
     types: [opened, synchronize, reopened, edited]
     paths:
       - '**/SourceDbToSpannerOptions.java'
-      - '**/DataStreamToSpanner.java'
-      - '**/SpannerToSourceDb.java'
+      - '**/DataStreamToSpannerOptions.java'
+      - '**/SpannerToSourceDbOptions.java'
 
 jobs:
   enforce-codelab-bug:
@@ -24,20 +24,6 @@ jobs:
           REPO: ${{ github.repository }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          echo "Checking PR diff for template parameter changes..."
-          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr_diff.txt
-          
-          # Check if added (+) or removed (-) lines contain the parameter annotations
-          HAS_PARAM_CHANGES=false
-          if grep -E '^[+-].*(TemplateParameter|description|helpText|Validation\.Required)' pr_diff.txt | grep -v '^[+-]\{3\}' > /dev/null; then
-            HAS_PARAM_CHANGES=true
-          fi
-          
-          if [ "$HAS_PARAM_CHANGES" = false ]; then
-            echo "✅ No template parameter definitions were modified. Skipping codelab bug requirement."
-            exit 0
-          fi
-          
           echo "⚠️ Template parameter changes detected."
           MARKER="<!-- codelab-watchdog-comment -->"
           COMMENT_URL=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" -q ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .url" | head -n 1)
