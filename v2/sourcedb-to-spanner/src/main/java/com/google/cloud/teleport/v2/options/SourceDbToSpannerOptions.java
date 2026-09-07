@@ -218,17 +218,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationClassName(String value);
 
   @TemplateParameter.Text(
-      order = 17,
-      optional = true,
-      description = "Custom parameters for transformation",
-      helpText =
-          "String containing any custom parameters to be passed to the custom transformation class.")
-  @Default.String("")
-  String getTransformationCustomParameters();
-
-  void setTransformationCustomParameters(String value);
-
-  @TemplateParameter.Text(
       order = 18,
       optional = true,
       description = "Use Inserts instead of Upserts for spanner mutations.",
