@@ -24,14 +24,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.List;
 import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,46 +56,6 @@ public class SqlServerJdbcValueMappings implements JdbcValueMappingsProvider {
 
   private static final ResultSetValueMapper<BigDecimal> bigDecimalToByteArray =
       (value, schema) -> ByteBuffer.wrap(value.unscaledValue().toByteArray());
-
-  private static final ResultSetValueMapper<Object> vectorToAvroArray =
-      (value, schema) -> {
-        if (value == null) {
-          return null;
-        }
-        // Depending on the JDBC version and connection properties, value will either be raw byte[]
-        // containing
-        // SQL Server's internal binary vector representation (the default behavior in the JDBC
-        // driver when reading
-        //  native VECTOR columns) or a String / CharSequence in JSON array format ("[1.5, 2.5,
-        // 3.5]").
-        if (value instanceof byte[]) {
-          byte[] bytes = (byte[]) value;
-          if (bytes.length < 8) {
-            return Collections.emptyList();
-          }
-          ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-          buf.position(8);
-          int numDimensions = (bytes.length - 8) / 4;
-          List<Double> list = new ArrayList<>(numDimensions);
-          for (int i = 0; i < numDimensions; i++) {
-            list.add(Double.valueOf(Float.toString(buf.getFloat())));
-          }
-          return list;
-        }
-        String trimmed = value.toString().trim();
-        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-          trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
-        }
-        if (trimmed.isEmpty()) {
-          return Collections.emptyList();
-        }
-        String[] parts = trimmed.split(",");
-        List<Double> list = new ArrayList<>(parts.length);
-        for (String part : parts) {
-          list.add(Double.valueOf(part.trim()));
-        }
-        return list;
-      };
 
   private static int getLengthOrPrecision(SourceColumnType sourceColumnType) {
     Long[] mods = sourceColumnType.getMods();
@@ -152,22 +108,22 @@ public class SqlServerJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("SMALLMONEY", ResultSet::getBigDecimal, bigDecimalToByteArray, 4)
           .put("FLOAT", ResultSet::getDouble, valuePassThrough, 8)
           .put("REAL", ResultSet::getFloat, valuePassThrough, 4)
-          .put("DATE", utcDateExtractor, sqlDateToAvroDate, 4)
-          .put("TIME", ResultSet::getString, valuePassThrough, 12)
-          .put("DATETIME2", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
-          .put("DATETIMEOFFSET", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
-          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
-          .put("SMALLDATETIME", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
+          .put("DATE", utcDateExtractor, sqlDateToAvroDate, 3)
+          .put("TIME", ResultSet::getString, valuePassThrough, 5)
+          .put("DATETIME2", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 8)
+          .put("DATETIMEOFFSET", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 8)
+          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 10)
+          .put("SMALLDATETIME", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 4)
           .put(
               "CHAR",
               ResultSet::getString,
               valuePassThrough,
-              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 255))
+              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 8000))
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
-              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 65535))
+              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 8000))
           .put("TEXT", ResultSet::getString, valuePassThrough, 65535)
           .put(
               "NCHAR",
@@ -187,26 +143,18 @@ public class SqlServerJdbcValueMappings implements JdbcValueMappingsProvider {
               "BINARY",
               ResultSet::getBytes,
               bytesToByteBuffer,
-              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 255))
+              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 8000))
           .put(
               "VARBINARY",
               ResultSet::getBytes,
               bytesToByteBuffer,
-              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 65535))
+              sourceColumnType -> getLengthOrPrecision(sourceColumnType, 8000))
           .put("IMAGE", ResultSet::getBytes, bytesToByteBuffer, 65535)
           .put("ROWVERSION", ResultSet::getBytes, bytesToByteBuffer, 8)
           .put("TIMESTAMP", ResultSet::getBytes, bytesToByteBuffer, 8)
           .put("UNIQUEIDENTIFIER", ResultSet::getString, valuePassThrough, 36)
           .put("XML", ResultSet::getString, valuePassThrough, 65535)
           .put("JSON", ResultSet::getString, valuePassThrough, 65535)
-          .put(
-              "VECTOR",
-              ResultSet::getObject,
-              vectorToAvroArray,
-              sourceColumnType -> {
-                int n = getLengthOrPrecision(sourceColumnType, 0);
-                return n > 0 ? 8 + n * 4 : 65535;
-              })
           .build();
 
   @Override

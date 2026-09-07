@@ -260,7 +260,7 @@ public class SqlServerDialectAdapterTest {
   }
 
   @Test
-  public void testCheckForTimeoutAndCollationsOrderQuery() {
+  public void testCheckForTimeout() {
     assertTrue(adapter.checkForTimeout(new SQLTimeoutException()));
     assertTrue(adapter.checkForTimeout(new SQLException("Operation canceled", "HY008")));
     assertTrue(
@@ -268,12 +268,18 @@ public class SqlServerDialectAdapterTest {
             new SQLException("Lock request time out period exceeded.", "40001", 1222)));
     assertFalse(adapter.checkForTimeout(new SQLException("Other error", "42000", 102)));
     assertFalse(adapter.checkForTimeout(new SQLException()));
+  }
 
-    String query = adapter.getCollationsOrderQuery("UTF8", "SQL_Latin1_General_CP1_CI_AS", false);
-    assertThat(query).contains("COLLATE SQL_Latin1_General_CP1_CI_AS");
-    assertThat(query).contains("DENSE_RANK() OVER");
-
-    String fallbackQuery = adapter.getCollationsOrderQuery("UTF8", null, false);
-    assertThat(fallbackQuery).contains("COLLATE Latin1_General_BIN");
+  @Test
+  public void testGetCollationsOrderQuery() {
+    String query = adapter.getCollationsOrderQuery("UTF-8", "Latin1_General_100_CI_AS_SC", false);
+    assertThat(query).startsWith("WITH BaseChars AS");
+    assertThat(query).contains("GENERATE_SERIES(0, 65535)");
+    assertThat(query).contains("EquivalenceRanks AS");
+    assertThat(query).contains("codepoint_rank");
+    assertThat(query).contains("is_empty");
+    assertThat(query).contains("is_space");
+    // Ensure no single-line SQL comments that break query execution
+    assertThat(query).doesNotContain("--");
   }
 }

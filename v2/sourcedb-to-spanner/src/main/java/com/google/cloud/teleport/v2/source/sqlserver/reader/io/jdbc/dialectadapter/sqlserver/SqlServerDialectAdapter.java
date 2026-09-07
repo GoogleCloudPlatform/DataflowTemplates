@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver;
 
+import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -29,19 +32,25 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
+import java.sql.SQLTransientConnectionException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SqlServerDialectAdapter implements DialectAdapter {
 
-  private static final Logger logger = LoggerFactory.getLogger(SqlServerDialectAdapter.class);
+  private final Counter schemaDiscoveryErrors =
+      Metrics.counter(JdbcSourceRowMapper.class, MetricCounters.READER_SCHEMA_DISCOVERY_ERRORS);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDialectAdapter.class);
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
@@ -91,7 +100,7 @@ public class SqlServerDialectAdapter implements DialectAdapter {
   public ImmutableList<String> discoverTables(
       DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
-    logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
+    LOGGER.info("Discovering tables.");
 
     String query =
         "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG = ? AND TABLE_SCHEMA = ?";
@@ -105,12 +114,34 @@ public class SqlServerDialectAdapter implements DialectAdapter {
           tablesBuilder.add(rs.getString(1));
         }
       }
-    } catch (SQLException e) {
-      logger.error(
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
           String.format(
-              "Sql exception while discovering table list for datasource=%s cause=%s",
-              dataSource, e));
+              "Transient connection error while discovering tables for db=%s, cause=%s",
+              sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering tables for db=%s, cause=%s",
+              sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering tables for db=%s, cause=%s",
+              sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering tables for db=%s, cause=%s",
+              sourceSchemaReference, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
     return tablesBuilder.build();
   }
@@ -124,10 +155,10 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     if (tables.isEmpty()) {
       return ImmutableMap.of();
     }
-    logger.info(
+    LOGGER.info(
         String.format(
-            "Discovering table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
-            dataSource, sourceSchemaReference, tables));
+            "Discovering table schema for JdbcSchemaReference: %s, tables: %s",
+            sourceSchemaReference, tables));
 
     String query =
         "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE "
@@ -181,12 +212,34 @@ public class SqlServerDialectAdapter implements DialectAdapter {
           }
         }
       }
-    } catch (SQLException e) {
-      logger.error(
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
           String.format(
-              "Sql exception while discovering table schema for datasource=%s db=%s tables=%s, cause=%s",
-              dataSource, sourceSchemaReference, tables, e));
+              "Transient connection error while discovering table schema for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering table schema for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering table schema for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering table schema for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
 
     ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
@@ -194,10 +247,10 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     builders.forEach((t, b) -> result.put(t, b.build()));
 
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema = result.build();
-    logger.info(
+    LOGGER.info(
         String.format(
-            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
-            dataSource, sourceSchemaReference, tables));
+            "Discovered table schema for JdbcSchemaReference: %s, tables: %s",
+            sourceSchemaReference, tables));
     return tableSchema;
   }
 
@@ -210,10 +263,10 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     if (tables.isEmpty()) {
       return ImmutableMap.of();
     }
-    logger.info(
+    LOGGER.info(
         String.format(
-            "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
-            dataSource, sourceSchemaReference, tables));
+            "Discovering Indexes for JdbcSchemaReference: %s, Tables: %s",
+            sourceSchemaReference, tables));
     // Simplified index discovery for SQL Server. Focus on primary keys.
     String query =
         "SELECT "
@@ -274,15 +327,12 @@ public class SqlServerDialectAdapter implements DialectAdapter {
             if (collationName == null || collationName.isEmpty()) {
               collationName = "Latin1_General_BIN";
             }
-            com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
-                    .CollationReference
-                collation =
-                    com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper
-                        .CollationReference.builder()
-                        .setDbCharacterSet("UTF8")
-                        .setDbCollation(collationName)
-                        .setPadSpace(padSpace)
-                        .build();
+            CollationReference collation =
+                CollationReference.builder()
+                    .setDbCharacterSet("UTF8")
+                    .setDbCollation(collationName)
+                    .setPadSpace(padSpace)
+                    .build();
             infoBuilder.setCollationReference(collation);
             int maxLength = rs.getInt("max_length");
             if (maxLength <= 0) {
@@ -300,8 +350,34 @@ public class SqlServerDialectAdapter implements DialectAdapter {
           }
         }
       }
-    } catch (SQLException e) {
+    } catch (SQLTransientConnectionException e) {
+      LOGGER.warn(
+          String.format(
+              "Transient connection error while discovering table indexes for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new RetriableSchemaDiscoveryException(e);
+    } catch (SQLNonTransientConnectionException e) {
+      LOGGER.error(
+          String.format(
+              "Non Transient connection error while discovering table indexes for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
+    } catch (SQLException e) {
+      LOGGER.error(
+          String.format(
+              "Sql exception while discovering table indexes for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    } catch (SchemaDiscoveryException e) {
+      LOGGER.error(
+          String.format(
+              "Schema discovery exception while discovering table indexes for db=%s tables=%s, cause=%s",
+              sourceSchemaReference, tables, e));
+      schemaDiscoveryErrors.inc();
+      throw e;
     }
 
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
@@ -347,74 +423,122 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     return false;
   }
 
+  /**
+   * Generates a SQL query to extract character collation sort orders and equivalence classes for
+   * SQL Server.
+   *
+   * <p>The query operates as follows:
+   *
+   * <ul>
+   *   <li><b>BaseChars CTE</b>: Generates code points (0 to 65535) using {@code GENERATE_SERIES},
+   *       excluding UTF-16 surrogate code points (0xD800 - 0xDFFF / 55296 - 57343).
+   *       <ul>
+   *         <li>{@code KeyAllPos}: Character enclosed with non-space sentinels (e.g. 'X' + char +
+   *             'X') to isolate comparison from ANSI SQL-92 PAD SPACE behavior across all
+   *             positions.
+   *         <li>{@code KeyPadSpace}: Character at trailing position (e.g. 'X' + char), subject to
+   *             ANSI SQL-92 PAD SPACE equality rules.
+   *       </ul>
+   *   <li><b>CharsWithFlags CTE</b>: Identifies special character properties under the collation.
+   *       <ul>
+   *         <li>{@code is_empty}: True if equivalent to '\0' or zero-width (empty string) at all
+   *             positions.
+   *         <li>{@code is_space}: True if equivalent to ' ' at all positions.
+   *       </ul>
+   *   <li><b>EquivalenceRanks CTE</b>:
+   *       <ul>
+   *         <li>{@code codepointRank}: 0-offset rank partitioned by {@code is_empty} based on
+   *             collation sort order across all positions, guaranteeing contiguous indexing for
+   *             non-empty characters in {@link CollationIndex}.
+   *         <li>{@code codepointRankPadSpace}: 0-offset rank partitioned by {@code is_empty} and
+   *             {@code is_space} based on collation sort order at trailing position.
+   *         <li>{@code MinCodePointAllPos}: Lowest code point in the {@code (KeyAllPos, is_empty)}
+   *             equivalence group (canonical representative across all positions).
+   *         <li>{@code MinCodePointPadSpace}: Lowest code point in the {@code (KeyPadSpace,
+   *             is_empty, is_space)} equivalence group (canonical representative at trailing
+   *             position).
+   *       </ul>
+   *   <li><b>Main SELECT</b>:
+   *       <ul>
+   *         <li>Projects {@code charset_char}, {@code equivalent_charset_char}, {@code
+   *             codepoint_rank}, {@code equivalent_charset_char_pad_space}, {@code
+   *             codepoint_rank_pad_space}, {@code is_empty}, and {@code is_space}.
+   *         <li>Orders by {@code is_empty}, {@code codepointRank}, and {@code CodePoint}.
+   *       </ul>
+   * </ul>
+   */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    // TODO: currently this is only suppose to work for Unicode 2 byte charset and
+    // Latin1_General_100_CI_AS_SC
+    // collation. It need to be generalised for all charset and collations.
     String sanitizedCollation =
         (dbCollation == null || dbCollation.isEmpty() || !dbCollation.matches("^[a-zA-Z0-9_]+$"))
-            ? "Latin1_General_BIN"
+            ? "Latin1_General_100_CI_AS_SC"
             : dbCollation;
-    return "WITH Nums AS ("
-        + " SELECT TOP 256 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n"
-        + " FROM sys.all_objects a CROSS JOIN sys.all_objects b"
-        + "), "
-        + "CharsWithFlags AS ("
-        + " SELECT"
-        + "   n,"
-        + "   NCHAR(n) AS charset_char,"
-        + "   CAST(CASE WHEN ('a' + NCHAR(n) + 'a') COLLATE "
+    return "WITH BaseChars AS (\n"
+        + "    SELECT \n"
+        + "        s.value AS CodePoint,\n"
+        + "        NCHAR(s.value) AS charsetChar,\n"
+        + "        CAST(N'X' + NCHAR(s.value) + N'X' AS NVARCHAR(10)) \n"
+        + "            COLLATE "
         + sanitizedCollation
-        + "     = 'aa' COLLATE "
+        + " AS KeyAllPos,\n"
+        + "        CAST(N'X' + NCHAR(s.value) AS NVARCHAR(10)) \n"
+        + "            COLLATE "
         + sanitizedCollation
-        + " THEN 1 ELSE 0 END AS BIT) AS is_empty,"
-        + "   CAST(CASE WHEN ('a' + NCHAR(n) + 'a') COLLATE "
+        + " AS KeyPadSpace\n"
+        + "    FROM GENERATE_SERIES(0, 65535) s\n"
+        + "    WHERE s.value NOT BETWEEN 55296 AND 57343\n"
+        + "),\n"
+        + "CharsWithFlags AS (\n"
+        + "    SELECT \n"
+        + "        CodePoint,\n"
+        + "        charsetChar,\n"
+        + "        KeyAllPos,\n"
+        + "        KeyPadSpace,\n"
+        + "        CAST(CASE \n"
+        + "            WHEN KeyAllPos = CAST(N'X' + NCHAR(0) + N'X' AS NVARCHAR(10)) COLLATE "
         + sanitizedCollation
-        + "     = 'a a' COLLATE "
+        + " \n"
+        + "                OR KeyAllPos = CAST(N'XX' AS NVARCHAR(10)) COLLATE "
         + sanitizedCollation
-        + " THEN 1 ELSE 0 END AS BIT) AS is_space"
-        + " FROM Nums"
-        + "), "
-        + "Equivalents AS ("
-        + " SELECT"
-        + "   n,"
-        + "   charset_char,"
-        + "   is_empty,"
-        + "   is_space,"
-        + "   FIRST_VALUE(charset_char) OVER ("
-        + "     PARTITION BY charset_char COLLATE "
+        + " \n"
+        + "            THEN 1 ELSE 0 \n"
+        + "        END AS BIT) AS is_empty,\n"
+        + "        CAST(CASE \n"
+        + "            WHEN KeyAllPos = CAST(N'X' + N' ' + N'X' AS NVARCHAR(10)) COLLATE "
         + sanitizedCollation
-        + ", is_empty"
-        + "     ORDER BY charset_char COLLATE "
-        + sanitizedCollation
-        + ", n"
-        + "   ) AS equivalent_charset_char,"
-        + "   FIRST_VALUE(charset_char) OVER ("
-        + "     PARTITION BY charset_char COLLATE "
-        + sanitizedCollation
-        + ", is_empty, is_space"
-        + "     ORDER BY charset_char COLLATE "
-        + sanitizedCollation
-        + ", n"
-        + "   ) AS equivalent_charset_char_pad_space"
-        + " FROM CharsWithFlags"
-        + ") "
-        + "SELECT "
-        + "  charset_char,"
-        + "  equivalent_charset_char,"
-        + "  CAST(DENSE_RANK() OVER ("
-        + "    PARTITION BY is_empty"
-        + "    ORDER BY equivalent_charset_char COLLATE "
-        + sanitizedCollation
-        + "  ) - 1 AS BIGINT) AS codepoint_rank,"
-        + "  is_empty,"
-        + "  is_space,"
-        + "  equivalent_charset_char_pad_space,"
-        + "  CAST(DENSE_RANK() OVER ("
-        + "    PARTITION BY is_empty, is_space"
-        + "    ORDER BY equivalent_charset_char_pad_space COLLATE "
-        + sanitizedCollation
-        + "  ) - 1 AS BIGINT) AS codepoint_rank_pad_space "
-        + "FROM Equivalents "
-        + "ORDER BY n";
+        + " \n"
+        + "            THEN 1 ELSE 0 \n"
+        + "        END AS BIT) AS is_space\n"
+        + "    FROM BaseChars\n"
+        + "),\n"
+        + "EquivalenceRanks AS (\n"
+        + "    SELECT \n"
+        + "        CodePoint,\n"
+        + "        charsetChar,\n"
+        + "        is_empty,\n"
+        + "        is_space,\n"
+        + "        DENSE_RANK() OVER (PARTITION BY is_empty ORDER BY KeyAllPos) - 1 AS codepointRank,\n"
+        + "        DENSE_RANK() OVER (PARTITION BY is_empty, is_space ORDER BY KeyPadSpace) - 1 AS codepointRankPadSpace,\n"
+        + "        MIN(CodePoint) OVER (PARTITION BY KeyAllPos, is_empty) AS MinCodePointAllPos,\n"
+        + "        MIN(CodePoint) OVER (PARTITION BY KeyPadSpace, is_empty, is_space) AS MinCodePointPadSpace\n"
+        + "    FROM CharsWithFlags\n"
+        + ")\n"
+        + "SELECT \n"
+        + "    charsetChar as charset_char,\n"
+        + "    NCHAR(MinCodePointAllPos) AS equivalent_charset_char,\n"
+        + "    codepointRank as codepoint_rank,\n"
+        + "    NCHAR(MinCodePointPadSpace) AS equivalent_charset_char_pad_space,\n"
+        + "    codepointRankPadSpace AS codepoint_rank_pad_space,\n"
+        + "    is_empty,\n"
+        + "    is_space\n"
+        + "FROM EquivalenceRanks\n"
+        + "ORDER BY \n"
+        + "    is_empty,\n"
+        + "    codepointRank,\n"
+        + "    CodePoint;";
   }
 
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {

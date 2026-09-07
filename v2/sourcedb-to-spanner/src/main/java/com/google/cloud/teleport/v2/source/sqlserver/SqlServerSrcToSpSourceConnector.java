@@ -31,12 +31,8 @@ import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SqlServerSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceConnector {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SqlServerSrcToSpSourceConnector.class);
 
   // Based on sqlserver-datatype.csv mapping matrix
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
@@ -79,7 +75,6 @@ public class SqlServerSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCo
                   .stream()
                   .map(e -> Map.entry(e.getKey(), UnifiedMappingProvider.getMapping(e.getValue())))
                   .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue)))
-          .put("VECTOR", UnifiedMappingProvider.getArrayMapping(UnifiedMappingProvider.Type.DOUBLE))
           .build();
 
   @Override
