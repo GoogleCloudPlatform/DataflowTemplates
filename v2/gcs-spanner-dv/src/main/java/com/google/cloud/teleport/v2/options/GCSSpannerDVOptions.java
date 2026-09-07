@@ -19,6 +19,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation.Required;
 
 /**
  * Options supported by the pipeline.
@@ -32,6 +33,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       description = "GCS directory for AVRO files",
       helpText = "This directory is used to read the AVRO files of the records read from source.",
       example = "gs://your-bucket/your-path")
+  @Required
   String getGcsInputDirectory();
 
   void setGcsInputDirectory(String value);
@@ -40,6 +42,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       order = 2,
       description = "Cloud Spanner Project Id.",
       helpText = "This is the name of the Cloud Spanner project.")
+  @Required
   String getProjectId();
 
   void setProjectId(String projectId);
@@ -60,6 +63,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       groupName = "Target",
       description = "Cloud Spanner Instance Id.",
       helpText = "The destination Cloud Spanner instance.")
+  @Required
   String getInstanceId();
 
   void setInstanceId(String value);
@@ -70,6 +74,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
+  @Required
   String getDatabaseId();
 
   void setDatabaseId(String value);
@@ -157,6 +162,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       description = "BigQuery dataset for reporting",
       helpText = "The BigQuery dataset ID where the validation results will be stored.",
       example = "validation_report_dataset")
+  @Required
   String getBigQueryDataset();
 
   void setBigQueryDataset(String value);
