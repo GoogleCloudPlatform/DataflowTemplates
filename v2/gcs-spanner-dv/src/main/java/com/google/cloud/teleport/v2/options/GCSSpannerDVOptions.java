@@ -66,6 +66,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
 
   @TemplateParameter.Text(
       order = 5,
+      groupName = "Target",
       regexes = {"^[a-z]([a-z0-9_-]{0,28})[a-z0-9]$"},
       description = "Cloud Spanner Database Id.",
       helpText = "The destination Cloud Spanner database.")
