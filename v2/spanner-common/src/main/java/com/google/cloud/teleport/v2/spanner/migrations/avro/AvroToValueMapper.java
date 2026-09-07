@@ -370,12 +370,11 @@ public class AvroToValueMapper {
         return 0L;
       }
       if (recordValue instanceof ByteBuffer) {
-        // For scenarios where source 8 bytes need to be converted to Long.
+        // For scenarios where source bytes need to be converted to Long.
         ByteBuffer buf = ((ByteBuffer) recordValue).duplicate();
-        if (buf.remaining() == 8) {
-          return buf.getLong();
+        if (buf.remaining() == 0) {
+          return 0L;
         }
-        // If size of buf is less than 8, then underflow exception will be thrown.
         byte[] bytes = new byte[buf.remaining()];
         buf.get(bytes);
         return new BigInteger(bytes).longValue();

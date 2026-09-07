@@ -49,12 +49,11 @@ public class SqlServerJdbcValueMappings implements JdbcValueMappingsProvider {
       (value, schema) -> value.getTime() * 1000 + (value.getNanos() / 1000) % 1000;
 
   /* Extract UTC Values for date and time related types */
-  private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
   private static final ResultSetValueExtractor<Timestamp> utcTimeStampExtractor =
-      (rs, index) -> rs.getTimestamp(index, utcCalendar);
+      (rs, index) -> rs.getTimestamp(index, Calendar.getInstance(TimeZone.getTimeZone("UTC")));
 
   private static final ResultSetValueExtractor<Date> utcDateExtractor =
-      (rs, index) -> rs.getDate(index, utcCalendar);
+      (rs, index) -> rs.getDate(index, Calendar.getInstance(TimeZone.getTimeZone("UTC")));
 
   private static final ResultSetValueMapper<Date> sqlDateToAvroDate =
       (value, schema) -> (int) value.toLocalDate().toEpochDay();
