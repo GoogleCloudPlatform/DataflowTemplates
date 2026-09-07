@@ -454,7 +454,7 @@ public interface SpannerToSourceDbOptions extends CommonTemplateOptions, Streami
       description = "Priority for Spanner RPC invocations",
       helpText =
           "The request priority for Cloud Spanner calls. The value must be one of:"
-              + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `LOW`.")
+              + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
   @Default.Enum("HIGH")
   RpcPriority getSpannerPriority();
 
