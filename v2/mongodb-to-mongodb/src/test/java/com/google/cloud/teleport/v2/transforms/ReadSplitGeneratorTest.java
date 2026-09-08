@@ -243,4 +243,15 @@ public class ReadSplitGeneratorTest {
     assertTrue(slice0.contains("\"$type\": \"objectId\""));
     assertTrue(slice0.contains("\"$type\": [\"int\""));
   }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_smallCollectionReturnsSingleSplit() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(2000L);
+
+    List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16);
+    assertEquals(1, splits.size());
+    assertTrue(splits.get(0).isEmpty());
+  }
 }

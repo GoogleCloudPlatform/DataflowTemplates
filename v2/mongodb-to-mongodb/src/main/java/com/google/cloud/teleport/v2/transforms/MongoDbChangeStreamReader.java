@@ -650,12 +650,23 @@ public class MongoDbChangeStreamReader {
   public static class ProcessChangeStreamPartitionFn
       extends DoFn<ChangeStreamPartition, DocumentWithMetadata> {
 
-    public static final int MAX_EVENTS_PER_SLICE = 5000;
-    public static final long MAX_SLICE_DURATION_MS = 5000L;
-    public static final long IDLE_RESUME_DELAY_MS = 100L;
+    public static final int MAX_EVENTS_PER_SLICE = 10000;
+    public static final long MAX_SLICE_DURATION_MS = 10000L;
+    public static final long IDLE_RESUME_DELAY_MS = 20L;
+    public static final long GRACE_POLL_TIMEOUT_MS = 300L;
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle timeout
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280 = 280;
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286 = 286;
+
+    /**
+     * Stride (in events) at which the BSON resume token is serialized to an Extended JSON string
+     * during the inner polling loop. Serializing toJson() on all 10,000 events per slice causes
+     * heavy CPU and heap contention on reader threads. Reusing the serialized token string across
+     * this stride eliminates 99.5% of serialization overhead while still satisfying Beam's
+     * claim-before-output requirement on every single element. The exact final resume token is always
+     * serialized and committed at slice completion.
+     */
+    public static final int RESUME_TOKEN_SERIALIZATION_STRIDE = 200;
 
     private final Counter changeEventsRead =
         Metrics.counter(MongoDbChangeStreamReader.class, "changeEventsRead");
@@ -823,7 +834,7 @@ public class MongoDbChangeStreamReader {
 
           stream
               .batchSize(MAX_EVENTS_PER_SLICE)
-              .maxAwaitTime(500L, java.util.concurrent.TimeUnit.MILLISECONDS);
+              .maxAwaitTime(250L, java.util.concurrent.TimeUnit.MILLISECONDS);
 
           String fullDocStrategy = partition.getFullDocumentStrategy();
           if ("whenAvailable".equalsIgnoreCase(fullDocStrategy)) {
@@ -896,22 +907,36 @@ public class MongoDbChangeStreamReader {
       int eventsInSlice = 0;
       long currentOffset = currentRestriction.getOffset();
       BsonDocument postBatchToken = null;
+      BsonDocument lastSeenResumeToken = null;
+      String currentResumeTokenJson = currentRestriction.getResumeTokenJson();
 
       try {
         MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor = cursorHolder.getCursor();
+        long lastEventTimeMs = sliceStartTime;
         while (eventsInSlice < MAX_EVENTS_PER_SLICE
             && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
           ChangeStreamDocument<Document> event = cursor.tryNext();
           if (event == null) {
+            long timeSinceLastEvent = System.currentTimeMillis() - lastEventTimeMs;
+            if (timeSinceLastEvent < GRACE_POLL_TIMEOUT_MS
+                && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
+              try {
+                Thread.sleep(5);
+              } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+                break;
+              }
+              continue;
+            }
             // Post-batch resume token capture on idle
             try {
               postBatchToken = cursor.getResumeToken();
               if (postBatchToken != null) {
                 cursorHolder.setLastResumeToken(postBatchToken);
+                currentResumeTokenJson = postBatchToken.toJson(CANONICAL_JSON_SETTINGS);
                 if (!tracker.tryClaim(
                     new ChangeStreamRestriction(
-                        currentOffset + eventsInSlice,
-                        postBatchToken.toJson(CANONICAL_JSON_SETTINGS)))) {
+                        currentOffset + eventsInSlice, currentResumeTokenJson))) {
                   closeCursorForPartition(partitionKey);
                   return ProcessContinuation.stop();
                 }
@@ -922,6 +947,7 @@ public class MongoDbChangeStreamReader {
             break;
           }
 
+          lastEventTimeMs = System.currentTimeMillis();
           eventsInSlice++;
           changeEventsRead.inc();
 
@@ -953,11 +979,14 @@ public class MongoDbChangeStreamReader {
           }
 
           if (event.getResumeToken() != null) {
-            cursorHolder.setLastResumeToken(event.getResumeToken());
+            lastSeenResumeToken = event.getResumeToken();
+            cursorHolder.setLastResumeToken(lastSeenResumeToken);
+            if (eventsInSlice % RESUME_TOKEN_SERIALIZATION_STRIDE == 0) {
+              currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
+            }
             if (!tracker.tryClaim(
                 new ChangeStreamRestriction(
-                    currentOffset + eventsInSlice,
-                    event.getResumeToken().toJson(CANONICAL_JSON_SETTINGS)))) {
+                    currentOffset + eventsInSlice, currentResumeTokenJson))) {
               closeCursorForPartition(partitionKey);
               return ProcessContinuation.stop();
             }
@@ -972,6 +1001,12 @@ public class MongoDbChangeStreamReader {
           } else {
             changeEventsDroppedNullPayload.inc();
           }
+        }
+
+        if (lastSeenResumeToken != null && eventsInSlice % RESUME_TOKEN_SERIALIZATION_STRIDE != 0) {
+          currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
+          tracker.tryClaim(
+              new ChangeStreamRestriction(currentOffset + eventsInSlice, currentResumeTokenJson));
         }
       } catch (com.mongodb.MongoCommandException mce) {
         int errCode = mce.getErrorCode();

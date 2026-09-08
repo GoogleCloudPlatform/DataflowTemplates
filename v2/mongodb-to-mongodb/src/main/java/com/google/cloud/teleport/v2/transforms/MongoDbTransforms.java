@@ -111,7 +111,7 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> pool.maxSize(64).minSize(16).maxWaitTime(30, TimeUnit.SECONDS));
+        pool -> pool.maxSize(256).minSize(64).maxWaitTime(30, TimeUnit.SECONDS));
     builder.applyToSocketSettings(
         socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS));
     return MongoClients.create(builder.build());

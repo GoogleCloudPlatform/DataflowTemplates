@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
 public class MongoDbBackfillReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbBackfillReader.class);
-  public static final int DEFAULT_CURSOR_BATCH_SIZE = 5000;
+  public static final int DEFAULT_CURSOR_BATCH_SIZE = 10000;
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
@@ -213,7 +213,8 @@ public class MongoDbBackfillReader {
     List<BackfillPartition> partitions = new ArrayList<>();
     for (int i = 0; i < filters.size(); i++) {
       BsonDocument filter = filters.get(i);
-      String filterJson = (filter == null || filter.isEmpty()) ? null : filter.toJson();
+      String filterJson =
+          (filter == null || filter.isEmpty()) ? null : filter.toJson(CANONICAL_JSON_SETTINGS);
       partitions.add(
           new BackfillPartition(
               uri,
@@ -246,7 +247,8 @@ public class MongoDbBackfillReader {
     List<BackfillPartition> partitions = new ArrayList<>();
     for (int i = 0; i < filters.size(); i++) {
       BsonDocument filter = filters.get(i);
-      String filterJson = (filter == null || filter.isEmpty()) ? null : filter.toJson();
+      String filterJson =
+          (filter == null || filter.isEmpty()) ? null : filter.toJson(CANONICAL_JSON_SETTINGS);
       partitions.add(
           new BackfillPartition(
               uri,
@@ -414,8 +416,8 @@ public class MongoDbBackfillReader {
   public static class ProcessBackfillPartitionFn
       extends DoFn<BackfillPartition, DocumentWithMetadata> {
 
-    public static final int MAX_DOCS_PER_SLICE = 5000;
-    public static final long MAX_SLICE_DURATION_MS = 5000L;
+    public static final int MAX_DOCS_PER_SLICE = 10000;
+    public static final long MAX_SLICE_DURATION_MS = 10000L;
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle eviction
 
     private final SerializableFunction<String, MongoClient> clientFactory;

@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -72,126 +73,37 @@ public class ReadSplitGenerator {
    * @param numSplits Number of target parallel read splits.
    * @return List of BsonDocument filters.
    */
+  /**
+   * Generates a list of BsonDocument filter queries using 2-phase covered index type discovery
+   * and type-isolated quantile sampling.
+   *
+   * @param client MongoDB client connection.
+   * @param databaseName Database name.
+   * @param collectionName Collection name.
+   * @param numSplits Number of target parallel read splits.
+   * @return List of BsonDocument filters.
+   */
   public static List<BsonDocument> generateIndexSliceFilters(
       MongoClient client, String databaseName, String collectionName, int numSplits) {
     if (numSplits <= 1) {
       return Collections.singletonList(new BsonDocument());
     }
 
-    Set<IdType> activeTypes =
-        client != null
-            ? detectIdTypes(client, databaseName, collectionName)
-            : EnumSet.allOf(IdType.class);
-
-    if (client == null) {
-      return generateIndexSliceFilters(numSplits, activeTypes);
-    }
-
-    MongoCollection<BsonDocument> col =
-        client.getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
-
-    List<BsonDocument> numberFilters = Collections.emptyList();
-    if (activeTypes.contains(IdType.NUMBER)) {
+    if (client != null) {
       try {
-        numberFilters =
-            discoverSplitsForType(
-                col,
-                numSplits,
-                new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+        MongoDatabase db = client.getDatabase(databaseName);
+        MongoCollection<BsonDocument> col = db.getCollection(collectionName, BsonDocument.class);
+        return generateTypeIsolatedSplits(col, numSplits);
       } catch (Exception e) {
         LOG.warn(
-            "Data-driven splits failed for NUMBER type in '{}.{}' ({}). Falling back to uniform splits.",
-            databaseName,
-            collectionName,
-            e.getMessage());
-        numberFilters = generateNumberFilters(numSplits);
-      }
-    }
-
-    List<BsonDocument> stringFilters = Collections.emptyList();
-    if (activeTypes.contains(IdType.STRING)) {
-      try {
-        stringFilters =
-            discoverSplitsForType(
-                col,
-                numSplits,
-                new BsonDocument("_id", new BsonDocument("$type", new BsonString("string"))));
-      } catch (Exception e) {
-        LOG.warn(
-            "Data-driven splits failed for STRING type in '{}.{}' ({}). Falling back to uniform splits.",
-            databaseName,
-            collectionName,
-            e.getMessage());
-        stringFilters = generateStringFilters(numSplits);
-      }
-    }
-
-    List<BsonDocument> objectIdFilters = Collections.emptyList();
-    if (activeTypes.contains(IdType.OBJECT_ID)) {
-      try {
-        objectIdFilters =
-            discoverSplitsForType(
-                col,
-                numSplits,
-                new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
-      } catch (Exception e) {
-        LOG.warn(
-            "Data-driven splits failed for OBJECT_ID type in '{}.{}' ({}). Falling back to uniform splits.",
-            databaseName,
-            collectionName,
-            e.getMessage());
-        objectIdFilters = generateObjectIdFilters(numSplits);
-      }
-    }
-
-    List<BsonDocument> otherFilters = Collections.emptyList();
-    if (activeTypes.contains(IdType.OTHER)) {
-      try {
-        otherFilters =
-            discoverSplitsForType(
-                col,
-                numSplits,
-                new BsonDocument(
-                    "_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))));
-      } catch (Exception e) {
-        LOG.warn(
-            "Data-driven splits failed for OTHER type in '{}.{}' ({}).",
+            "Failed generating type-isolated splits for '{}.{}' ({}). Falling back to algorithmic splits.",
             databaseName,
             collectionName,
             e.getMessage());
       }
     }
 
-    List<BsonDocument> filters = new ArrayList<>();
-    for (int i = 0; i < numSplits; i++) {
-      List<BsonDocument> branchFilters = new ArrayList<>();
-      if (!numberFilters.isEmpty() && i < numberFilters.size()) {
-        branchFilters.add(numberFilters.get(i));
-      }
-      if (!stringFilters.isEmpty() && i < stringFilters.size()) {
-        branchFilters.add(stringFilters.get(i));
-      }
-      if (!objectIdFilters.isEmpty() && i < objectIdFilters.size()) {
-        branchFilters.add(objectIdFilters.get(i));
-      }
-      if (!otherFilters.isEmpty() && i < otherFilters.size()) {
-        branchFilters.add(otherFilters.get(i));
-      } else if (i == 0 && activeTypes.contains(IdType.OTHER)) {
-        branchFilters.add(
-            BsonDocument.parse(
-                "{\"_id\": {\"$not\": {\"$type\": [\"int\", \"long\", \"double\", \"decimal\","
-                    + " \"string\", \"objectId\"]}}}"));
-      }
-
-      if (branchFilters.isEmpty()) {
-        filters.add(new BsonDocument());
-      } else if (branchFilters.size() == 1) {
-        filters.add(branchFilters.get(0));
-      } else {
-        filters.add(new BsonDocument("$or", new BsonArray(branchFilters)));
-      }
-    }
-    return filters;
+    return generateIndexSliceFilters(numSplits);
   }
 
   /**
@@ -259,19 +171,104 @@ public class ReadSplitGenerator {
               new BsonString("double"),
               new BsonString("decimal")));
 
-  private static final BsonArray KNOWN_BSON_TYPES =
-      new BsonArray(
+  public static class TypeBucket {
+    private final String name;
+    private final BsonValue typeValue;
+
+    public TypeBucket(String name, BsonValue typeValue) {
+      this.name = name;
+      this.typeValue = typeValue;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public BsonValue getTypeValue() {
+      return typeValue;
+    }
+
+    public BsonDocument query() {
+      return new BsonDocument("_id", new BsonDocument("$type", typeValue));
+    }
+  }
+
+  private static final List<TypeBucket> KNOWN_TYPE_BUCKETS =
+      Collections.unmodifiableList(
           Arrays.asList(
-              new BsonString("string"),
-              new BsonString("objectId"),
-              new BsonString("int"),
-              new BsonString("long"),
-              new BsonString("double"),
-              new BsonString("decimal")));
+              new TypeBucket("number", NUMBER_BSON_TYPES),
+              new TypeBucket("string", new BsonString("string")),
+              new TypeBucket("objectId", new BsonString("objectId")),
+              new TypeBucket("binData", new BsonString("binData")),
+              new TypeBucket("object", new BsonString("object")),
+              new TypeBucket("date", new BsonString("date"))));
+
+  public static class ProbedTypeBounds {
+    private final TypeBucket bucket;
+    private final BsonValue minKey;
+    private final BsonValue maxKey;
+
+    public ProbedTypeBounds(TypeBucket bucket, BsonValue minKey, BsonValue maxKey) {
+      this.bucket = bucket;
+      this.minKey = minKey;
+      this.maxKey = maxKey;
+    }
+
+    public TypeBucket getBucket() {
+      return bucket;
+    }
+
+    public BsonValue getMinKey() {
+      return minKey;
+    }
+
+    public BsonValue getMaxKey() {
+      return maxKey;
+    }
+  }
 
   /**
-   * Detects which _id BSON types are present in a MongoDB collection using lightweight limit(1)
-   * probes.
+   * Performs lightweight covered index seeks (<26ms) to detect all active BSON types and their
+   * min/max boundaries.
+   */
+  public static List<ProbedTypeBounds> probeActiveTypeBounds(MongoCollection<BsonDocument> col) {
+    List<ProbedTypeBounds> activeBounds = new ArrayList<>();
+    for (TypeBucket bucket : KNOWN_TYPE_BUCKETS) {
+      try {
+        BsonDocument minDoc =
+            col.find(bucket.query())
+                .projection(new BsonDocument("_id", new BsonInt32(1)))
+                .sort(new BsonDocument("_id", new BsonInt32(1)))
+                .limit(1)
+                .maxTime(3, TimeUnit.SECONDS)
+                .first();
+        if (minDoc != null && minDoc.containsKey("_id")) {
+          BsonDocument maxDoc =
+              col.find(bucket.query())
+                  .projection(new BsonDocument("_id", new BsonInt32(1)))
+                  .sort(new BsonDocument("_id", new BsonInt32(-1)))
+                  .limit(1)
+                  .maxTime(3, TimeUnit.SECONDS)
+                  .first();
+          BsonValue minVal = minDoc.get("_id");
+          BsonValue maxVal =
+              (maxDoc != null && maxDoc.containsKey("_id")) ? maxDoc.get("_id") : minVal;
+          activeBounds.add(new ProbedTypeBounds(bucket, minVal, maxVal));
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Covered index probe failed for type '{}' on '{}.{}': {}",
+            bucket.getName(),
+            col.getNamespace().getDatabaseName(),
+            col.getNamespace().getCollectionName(),
+            e.getMessage());
+      }
+    }
+    return activeBounds;
+  }
+
+  /**
+   * Detects which _id BSON types are present in a MongoDB collection using lightweight index seeks.
    */
   public static Set<IdType> detectIdTypes(
       MongoClient client, String databaseName, String collectionName) {
@@ -279,126 +276,227 @@ public class ReadSplitGenerator {
     MongoDatabase db = client.getDatabase(databaseName);
     MongoCollection<BsonDocument> col = db.getCollection(collectionName, BsonDocument.class);
 
-    if (col.find(new BsonDocument("_id", new BsonDocument("$type", new BsonString("string"))))
-            .limit(1)
-            .first()
-        != null) {
-      activeTypes.add(IdType.STRING);
+    List<ProbedTypeBounds> bounds = probeActiveTypeBounds(col);
+    for (ProbedTypeBounds b : bounds) {
+      switch (b.getBucket().getName()) {
+        case "number":
+          activeTypes.add(IdType.NUMBER);
+          break;
+        case "string":
+          activeTypes.add(IdType.STRING);
+          break;
+        case "objectId":
+          activeTypes.add(IdType.OBJECT_ID);
+          break;
+        default:
+          activeTypes.add(IdType.OTHER);
+          break;
+      }
     }
-    if (col.find(new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))))
-            .limit(1)
-            .first()
-        != null) {
-      activeTypes.add(IdType.OBJECT_ID);
-    }
-    if (col.find(new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)))
-            .limit(1)
-            .first()
-        != null) {
-      activeTypes.add(IdType.NUMBER);
-    }
-    if (col.find(
-                new BsonDocument(
-                    "_id", new BsonDocument("$not", new BsonDocument("$type", KNOWN_BSON_TYPES))))
-            .limit(1)
-            .first()
-        != null) {
-      activeTypes.add(IdType.OTHER);
-    }
-
     if (activeTypes.isEmpty()) {
       activeTypes.addAll(EnumSet.allOf(IdType.class));
     }
     return activeTypes;
   }
 
-  private static List<BsonDocument> discoverSplitsForType(
-      MongoCollection<BsonDocument> col, int numSplits, BsonDocument typeMatch) {
+  /**
+   * Generates type-isolated splits ensuring filters and keyset resumption never span BSON types.
+   */
+  public static List<BsonDocument> generateTypeIsolatedSplits(
+      MongoCollection<BsonDocument> col, int numSplits) {
     if (numSplits <= 1) {
-      return Collections.singletonList(typeMatch);
+      return Collections.singletonList(new BsonDocument());
     }
 
+    long estimatedDocs = 0;
     try {
-      BsonDocument minDoc =
-          col.find(typeMatch)
-              .projection(new BsonDocument("_id", new BsonInt32(1)))
-              .sort(new BsonDocument("_id", new BsonInt32(1)))
-              .limit(1)
-              .first();
-      BsonDocument maxDoc =
-          col.find(typeMatch)
-              .projection(new BsonDocument("_id", new BsonInt32(1)))
-              .sort(new BsonDocument("_id", new BsonInt32(-1)))
-              .limit(1)
-              .first();
-
-      if (minDoc != null && maxDoc != null && minDoc.containsKey("_id") && maxDoc.containsKey("_id")) {
-        BsonValue minVal = minDoc.get("_id");
-        BsonValue maxVal = maxDoc.get("_id");
-
-        if (minVal.isObjectId() && maxVal.isObjectId()) {
-          String minHex = minVal.asObjectId().getValue().toHexString();
-          String maxHex = maxVal.asObjectId().getValue().toHexString();
-          return generateProbedObjectIdSplits(minHex, maxHex, numSplits);
-        }
-      }
+      estimatedDocs = col.estimatedDocumentCount();
     } catch (Exception e) {
-      LOG.warn("Fast min/max index probe failed in '{}.{}' ({}). Falling back to sample.", col.getNamespace().getDatabaseName(), col.getNamespace().getCollectionName(), e.getMessage());
+      LOG.warn(
+          "Could not estimate document count for '{}.{}': {}",
+          col.getNamespace().getDatabaseName(),
+          col.getNamespace().getCollectionName(),
+          e.getMessage());
     }
 
-    int sampleSize = Math.max(1000, numSplits * 64);
-    List<BsonDocument> pipeline =
+    if (estimatedDocs > 0 && estimatedDocs <= 5000) {
+      return Collections.singletonList(new BsonDocument());
+    }
+
+    List<ProbedTypeBounds> activeTypes = probeActiveTypeBounds(col);
+    if (activeTypes.isEmpty()) {
+      LOG.info(
+          "No active types detected via index probes for '{}.{}'. Using single split.",
+          col.getNamespace().getDatabaseName(),
+          col.getNamespace().getCollectionName());
+      return Collections.singletonList(new BsonDocument());
+    }
+
+    if (activeTypes.size() == 1) {
+      return generateSplitsForTypeBounds(col, activeTypes.get(0), numSplits);
+    }
+
+    // Mixed collection: allocate splits across active types without cross-type queries
+    int splitsPerType = Math.max(1, numSplits / activeTypes.size());
+    List<BsonDocument> combinedFilters = new ArrayList<>();
+    for (ProbedTypeBounds bounds : activeTypes) {
+      combinedFilters.addAll(generateSplitsForTypeBounds(col, bounds, splitsPerType));
+    }
+    return combinedFilters;
+  }
+
+  private static List<BsonDocument> generateSplitsForTypeBounds(
+      MongoCollection<BsonDocument> col, ProbedTypeBounds bounds, int splits) {
+    if (splits <= 1) {
+      return Collections.singletonList(
+          new BsonDocument("_id", new BsonDocument("$type", bounds.getBucket().getTypeValue())));
+    }
+
+    // Try fast unfiltered $sample for quantile boundaries
+    int sampleSize = Math.min(1000, Math.max(256, splits * 32));
+    List<BsonDocument> samplePipeline =
         Arrays.asList(
-            new BsonDocument("$match", typeMatch),
             new BsonDocument("$sample", new BsonDocument("size", new BsonInt32(sampleSize))),
             new BsonDocument("$project", new BsonDocument("_id", new BsonInt32(1))),
             new BsonDocument("$sort", new BsonDocument("_id", new BsonInt32(1))));
 
     List<BsonValue> sampledKeys = new ArrayList<>();
-    for (BsonDocument doc :
-        col.aggregate(pipeline).allowDiskUse(true).maxTime(30, TimeUnit.SECONDS)) {
-      if (doc.containsKey("_id")) {
-        sampledKeys.add(doc.get("_id"));
+    try {
+      for (BsonDocument doc : col.aggregate(samplePipeline).maxTime(5, TimeUnit.SECONDS)) {
+        if (doc.containsKey("_id")) {
+          sampledKeys.add(doc.get("_id"));
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Unfiltered $sample failed for '{}.{}' ({}). Using probed boundary fallback.",
+          col.getNamespace().getDatabaseName(),
+          col.getNamespace().getCollectionName(),
+          e.getMessage());
+    }
+
+    // Filter sampled keys to this specific type
+    List<BsonValue> typeKeys = new ArrayList<>();
+    for (BsonValue k : sampledKeys) {
+      if (matchesType(k, bounds.getBucket())) {
+        typeKeys.add(k);
       }
     }
 
-    if (sampledKeys.size() < numSplits) {
-      throw new IllegalArgumentException(
-          "Insufficient sample size: sampled "
-              + sampledKeys.size()
-              + " keys, required at least "
-              + numSplits);
-    }
-
-    List<BsonValue> boundaries = new ArrayList<>();
-    int step = sampledKeys.size() / numSplits;
-    for (int i = 1; i < numSplits; i++) {
-      BsonValue boundary = sampledKeys.get(i * step);
-      if (!boundaries.isEmpty() && boundary.equals(boundaries.get(boundaries.size() - 1))) {
-        throw new IllegalArgumentException("Sampled quantile boundaries contain duplicates");
-      }
-      boundaries.add(boundary);
-    }
-
-    List<BsonDocument> slices = new ArrayList<>();
-    for (int i = 0; i < numSplits; i++) {
-      BsonDocument idDoc = new BsonDocument();
-      BsonDocument typeMatchId = typeMatch.getDocument("_id");
-      for (String key : typeMatchId.keySet()) {
-        idDoc.append(key, typeMatchId.get(key));
+    if (typeKeys.size() >= splits) {
+      typeKeys.sort(BSON_VALUE_COMPARATOR);
+      List<BsonValue> boundaries = new ArrayList<>();
+      int step = typeKeys.size() / splits;
+      for (int i = 1; i < splits; i++) {
+        BsonValue b = typeKeys.get(i * step);
+        if (boundaries.isEmpty() || !b.equals(boundaries.get(boundaries.size() - 1))) {
+          boundaries.add(b);
+        }
       }
 
-      if (i == 0) {
-        idDoc.append("$lt", boundaries.get(0));
-      } else if (i == numSplits - 1) {
-        idDoc.append("$gte", boundaries.get(boundaries.size() - 1));
-      } else {
-        idDoc.append("$gte", boundaries.get(i - 1)).append("$lt", boundaries.get(i));
+      if (!boundaries.isEmpty()) {
+        List<BsonDocument> partitions = new ArrayList<>();
+        int boundaryCount = boundaries.size();
+        for (int i = 0; i <= boundaryCount; i++) {
+          BsonDocument filter = new BsonDocument();
+          BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
+          if (i == 0) {
+            idDoc.append("$lte", boundaries.get(0));
+          } else if (i == boundaryCount) {
+            idDoc.append("$gt", boundaries.get(boundaryCount - 1));
+          } else {
+            idDoc.append("$gt", boundaries.get(i - 1)).append("$lte", boundaries.get(i));
+          }
+          filter.append("_id", idDoc);
+          partitions.add(filter);
+        }
+        return partitions;
       }
-      slices.add(new BsonDocument("_id", idDoc));
     }
-    return slices;
+
+    // Fallback: If ObjectId, use probed min/max interpolation
+    if ("objectId".equals(bounds.getBucket().getName())
+        && bounds.getMinKey().isObjectId()
+        && bounds.getMaxKey().isObjectId()) {
+      return generateProbedObjectIdSplits(
+          bounds.getMinKey().asObjectId().getValue().toHexString(),
+          bounds.getMaxKey().asObjectId().getValue().toHexString(),
+          splits);
+    }
+
+    // Fallback: If Number, use $mod
+    if ("number".equals(bounds.getBucket().getName())) {
+      return generateNumberFilters(splits);
+    }
+
+    // Fallback: If String, use string bounds
+    if ("string".equals(bounds.getBucket().getName())) {
+      return generateStringFilters(splits);
+    }
+
+    return Collections.singletonList(
+        new BsonDocument("_id", new BsonDocument("$type", bounds.getBucket().getTypeValue())));
   }
+
+  private static boolean matchesType(BsonValue k, TypeBucket bucket) {
+    if (k == null) {
+      return false;
+    }
+    switch (bucket.getName()) {
+      case "number":
+        return k.isInt32() || k.isInt64() || k.isDouble() || k.isDecimal128();
+      case "string":
+        return k.isString();
+      case "objectId":
+        return k.isObjectId();
+      case "binData":
+        return k.isBinary();
+      case "object":
+        return k.isDocument();
+      case "date":
+        return k.isDateTime();
+      default:
+        return false;
+    }
+  }
+
+  public static final Comparator<BsonValue> BSON_VALUE_COMPARATOR =
+      (a, b) -> {
+        if (a == b) {
+          return 0;
+        }
+        if (a == null) {
+          return -1;
+        }
+        if (b == null) {
+          return 1;
+        }
+        if (a.isObjectId() && b.isObjectId()) {
+          return a.asObjectId().compareTo(b.asObjectId());
+        }
+        if (a.isString() && b.isString()) {
+          return a.asString().getValue().compareTo(b.asString().getValue());
+        }
+        if (a.isInt32() && b.isInt32()) {
+          return Integer.compare(a.asInt32().getValue(), b.asInt32().getValue());
+        }
+        if (a.isInt64() && b.isInt64()) {
+          return Long.compare(a.asInt64().getValue(), b.asInt64().getValue());
+        }
+        if (a.isDouble() && b.isDouble()) {
+          return Double.compare(a.asDouble().getValue(), b.asDouble().getValue());
+        }
+        if (a.isDecimal128() && b.isDecimal128()) {
+          return a.asDecimal128().getValue().compareTo(b.asDecimal128().getValue());
+        }
+        if (a.isDateTime() && b.isDateTime()) {
+          return Long.compare(a.asDateTime().getValue(), b.asDateTime().getValue());
+        }
+        if (a.isBinary() && b.isBinary()) {
+          return Arrays.compare(a.asBinary().getData(), b.asBinary().getData());
+        }
+        return a.toString().compareTo(b.toString());
+      };
 
   /**
    * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max hex keys.

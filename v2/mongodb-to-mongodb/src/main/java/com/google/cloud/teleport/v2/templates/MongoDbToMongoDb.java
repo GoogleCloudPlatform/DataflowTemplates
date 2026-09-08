@@ -280,14 +280,14 @@ public class MongoDbToMongoDb {
         enumOptions = {
           @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
           @TemplateParameter.TemplateEnumOption("STREAMING_CDC"),
-          @TemplateParameter.TemplateEnumOption("BATCH")
+          @TemplateParameter.TemplateEnumOption("BACKFILL")
         },
         optional = true,
         description = "Migration Mode",
         helpText =
             "Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in"
                 + " parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only),"
-                + " or 'BATCH' (historical backfill only).")
+                + " or 'BACKFILL' (historical backfill only).")
     @Default.String("BACKFILL_AND_STREAMING")
     String getMigrationMode();
 
@@ -472,7 +472,7 @@ public class MongoDbToMongoDb {
 
     boolean includeBackfill =
         "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
-            || "BATCH".equalsIgnoreCase(migrationMode);
+            || "BACKFILL".equalsIgnoreCase(migrationMode);
     boolean includeCdc =
         "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
             || "STREAMING_CDC".equalsIgnoreCase(migrationMode);
@@ -556,9 +556,10 @@ public class MongoDbToMongoDb {
             } catch (Exception e) {
               LOG.warn(
                   "Could not generate partitioned splits for collection '{}' ({}). Falling back to"
-                      + " single split.",
+                      + " algorithmic splits (splits={}).",
                   inputCollection,
-                  e.getMessage());
+                  e.getMessage(),
+                  numBackfillSplits);
               backfillPartitions.addAll(
                   MongoDbBackfillReader.generatePartitions(
                       null,
@@ -566,7 +567,7 @@ public class MongoDbToMongoDb {
                       options.getSourceDatabase(),
                       inputCollection,
                       targetCollection,
-                      1,
+                      numBackfillSplits,
                       t0));
             }
           }
@@ -682,7 +683,11 @@ public class MongoDbToMongoDb {
           documents.apply(
               "ProcessDocuments",
               new ProcessDocuments(
-                  options, retryableDlqPath, permanentDlqPath, tmpDirectory, isStreamingMode));
+                  options,
+                  retryableDlqPath,
+                  permanentDlqPath,
+                  tmpDirectory,
+                  includeBackfill && includeCdc));
 
       validDocs.apply(
           "WriteDocuments",
@@ -702,19 +707,19 @@ public class MongoDbToMongoDb {
     private final String retryableDlqPath;
     private final String permanentDlqPath;
     private final String tmpDirectory;
-    private final boolean isStreamingMode;
+    private final boolean requiresDeduplication;
 
     public ProcessDocuments(
         Options options,
         String retryableDlqPath,
         String permanentDlqPath,
         String tmpDirectory,
-        boolean isStreamingMode) {
+        boolean requiresDeduplication) {
       this.options = options;
       this.retryableDlqPath = retryableDlqPath;
       this.permanentDlqPath = permanentDlqPath;
       this.tmpDirectory = tmpDirectory;
-      this.isStreamingMode = isStreamingMode;
+      this.requiresDeduplication = requiresDeduplication;
     }
 
     public ProcessDocuments(
@@ -726,8 +731,10 @@ public class MongoDbToMongoDb {
     public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
       PCollection<DocumentWithMetadata> documents = input;
 
-      // Stateful Deduplication Stage
-      if (isStreamingMode) {
+      // Stateful Deduplication Stage: Only needed when reconciling historical backfill records
+      // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
+      // for any given document are already strictly ordered and sequential from the oplog.
+      if (requiresDeduplication) {
         documents = documents.apply("Deduplicate", StatefulDeduplication.of());
       }
 
