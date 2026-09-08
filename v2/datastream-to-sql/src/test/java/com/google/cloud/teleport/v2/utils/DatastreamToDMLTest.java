@@ -1140,6 +1140,41 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a cased rowid filter
+   * with UPPERCASE column casing when destination primaryKeys is empty.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_usesCasedRowIdFallbackWhenNoPK() {
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String json = "{\"_metadata_deleted\": true, \"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("ROWID", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"ROWID\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getValueSql} resolves cased rowid when column is UPPERCASE
+   * and record contains _metadata_row_id.
+   */
+  @Test
+  public void testGetValueSql_supportsCasedRowIdFallback() {
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String json = "{\"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("ROWID", "VARCHAR");
+
+    String valueSql = dml.getValueSql(rowObj, "ROWID", tableSchema);
+    assertEquals("'AAAEARAAEAAAAC9AAS'", valueSql);
+  }
+
+  /**
    * Tests basic numeric type cleansing in Postgres, specifically ensuring empty strings become
    * NULL.
    */
