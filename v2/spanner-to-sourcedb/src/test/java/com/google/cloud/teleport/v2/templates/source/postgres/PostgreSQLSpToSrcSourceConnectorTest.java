@@ -109,7 +109,7 @@ public class PostgreSQLSpToSrcSourceConnectorTest {
     assertEquals(maxConnections, request.getMaxConnections());
     assertEquals("org.postgresql.Driver", request.getDriver());
     assertEquals(null, request.getConnectionInitQuery());
-    assertEquals("jdbc:postgresql://", request.getJdbcUrlPrefix());
+    verify(mockShard).setConnectionUrl(connector.getConnectionUrl(mockShard));
   }
 
   @Test

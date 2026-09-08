@@ -50,7 +50,7 @@ public final class SpannerConnectionHelperTest {
   public void testInit() {
     SpannerShard shard = new SpannerShard("p", "i", "d");
     ConnectionHelperRequest request =
-        new ConnectionHelperRequest(List.of(shard), null, 10, null, null, null);
+        new ConnectionHelperRequest(List.of(shard), null, 10, null, null);
 
     SpannerAccessor mockAccessor = mock(SpannerAccessor.class);
     DatabaseClient mockClient = mock(DatabaseClient.class);
