@@ -1,0 +1,125 @@
+{
+  "SessionName": "SQLServerLimitsSessionPG",
+  "EditorName": "",
+  "DatabaseType": "sqlserver",
+  "DatabaseName": "SP_DATABASE",
+  "Dialect": "postgresql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "LargeKey",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "pk_col1", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "pk_col2", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c2"},
+        "c3": {"Name": "pk_col3", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c3"},
+        "c4": {"Name": "col1", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c4"},
+        "c5": {"Name": "col2", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c5"},
+        "c6": {"Name": "col3", "T": {"Name": "varchar", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c6"},
+        "c7": {"Name": "value_col", "T": {"Name": "varchar", "Len": 2621440, "IsArray": false}, "NotNull": false, "Id": "c7"}
+      },
+      "PrimaryKeys": [
+        {"ColId": "c1", "Desc": false, "Order": 1},
+        {"ColId": "c2", "Desc": false, "Order": 2},
+        {"ColId": "c3", "Desc": false, "Order": 3}
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "LargeCell",
+      "ColIds": ["c1", "c2", "c3"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "bigint", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "max_string_col_to_bytes", "T": {"Name": "bytea", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "max_string_col_to_str", "T": {"Name": "varchar", "Len": 2621440, "IsArray": false}, "NotNull": false, "Id": "c3"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "WideRow",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "bigint", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "col1", "T": {"Name": "varchar", "Len": 2621440, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "col2", "T": {"Name": "varchar", "Len": 2621440, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "col3", "T": {"Name": "varchar", "Len": 2621440, "IsArray": false}, "NotNull": false, "Id": "c4"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t3"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "LargeKey",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
+      "ColDefs": {
+        "c1": {"Name": "pk_col1", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "pk_col2", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c2"},
+        "c3": {"Name": "pk_col3", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": true, "Id": "c3"},
+        "c4": {"Name": "col1", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c4"},
+        "c5": {"Name": "col2", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c5"},
+        "c6": {"Name": "col3", "T": {"Name": "VARCHAR", "Len": 255, "IsArray": false}, "NotNull": false, "Id": "c6"},
+        "c7": {"Name": "value_col", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c7"}
+      },
+      "PrimaryKeys": [
+        {"ColId": "c1", "Desc": false, "Order": 1},
+        {"ColId": "c2", "Desc": false, "Order": 2},
+        {"ColId": "c3", "Desc": false, "Order": 3}
+      ],
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "LargeCell",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3"],
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "max_string_col_to_bytes", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "max_string_col_to_str", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c3"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "WideRow",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "col1", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "col2", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "col3", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c4"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "Id": "t3"
+    }
+  },
+  "SchemaIssues": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "postgresql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false
+}
