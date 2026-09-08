@@ -39,6 +39,8 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
   private static final String DEFAULT_SYSTEM_IDENTIFIER = "xe";
 
   private static final int DEFAULT_ORACLE_PORT = 1521;
+  private static final String DEFAULT_ORACLE_USERNAME = "system";
+  private static final String DEFAULT_ORACLE_PASSWORD = "oracle";
 
   private String systemIdentifier;
 
@@ -110,11 +112,16 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
     }
 
     @Override
+    protected String getDefaultUsername() {
+      return DEFAULT_ORACLE_USERNAME;
+    }
+
+    @Override
     protected void configureUsername() {
       if (System.getProperty("cloudOracleUsername") != null) {
         this.setUsername(System.getProperty("cloudOracleUsername"));
       } else {
-        super.configureUsername();
+        this.setUsername(DEFAULT_ORACLE_USERNAME);
       }
     }
 
@@ -122,9 +129,12 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
     protected void configurePassword() {
       if (System.getProperty("cloudOraclePassword") != null) {
         this.setPassword(System.getProperty("cloudOraclePassword"));
+      } else if (System.getProperty("cloudOracleSysPassword") != null) {
+        this.setPassword(System.getProperty("cloudOracleSysPassword"));
       } else {
-        super.configurePassword();
+        this.setPassword(DEFAULT_ORACLE_PASSWORD);
       }
+      this.useStaticContainer();
     }
 
     public Builder setSystemIdentifier(String systemIdentifier) {
