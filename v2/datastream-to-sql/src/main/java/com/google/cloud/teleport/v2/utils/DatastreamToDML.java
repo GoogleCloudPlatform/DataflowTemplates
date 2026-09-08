@@ -375,10 +375,16 @@ public abstract class DatastreamToDML
     String columnValue;
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
-      if (columnName.equals(this.rowIdColumnName) && rowObj.has("_metadata_row_id")) {
+      String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
+      if ((columnName.equals(this.rowIdColumnName) || columnName.equals(casedRowId))
+          && rowObj.has("_metadata_row_id")) {
         columnObj = rowObj.get("_metadata_row_id");
-      } else if (columnName.equals("_metadata_row_id") && rowObj.has(this.rowIdColumnName)) {
-        columnObj = rowObj.get(this.rowIdColumnName);
+      } else if (columnName.equals("_metadata_row_id")
+          && (rowObj.has(this.rowIdColumnName) || rowObj.has(casedRowId))) {
+        columnObj =
+            rowObj.has(this.rowIdColumnName)
+                ? rowObj.get(this.rowIdColumnName)
+                : rowObj.get(casedRowId);
       } else {
         LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
         return "";

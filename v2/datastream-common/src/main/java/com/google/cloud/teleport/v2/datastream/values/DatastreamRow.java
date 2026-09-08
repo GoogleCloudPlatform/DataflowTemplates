@@ -109,10 +109,9 @@ public class DatastreamRow {
   public List<String> getPrimaryKeys() {
     List<String> primaryKeys = new ArrayList<>();
     if (this.jsonRow != null) {
-      if (jsonRow.has("_metadata_primary_keys")
-          && jsonRow.get("_metadata_primary_keys") != null
-          && jsonRow.get("_metadata_primary_keys").isArray()) {
-        for (JsonNode node : jsonRow.get("_metadata_primary_keys")) {
+      JsonNode pksNode = jsonRow.get("_metadata_primary_keys");
+      if (pksNode != null && pksNode.isArray()) {
+        for (JsonNode node : pksNode) {
           primaryKeys.add(node.asText());
         }
       }
