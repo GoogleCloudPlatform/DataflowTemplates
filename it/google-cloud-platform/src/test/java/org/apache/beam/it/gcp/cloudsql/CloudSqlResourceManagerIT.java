@@ -29,6 +29,7 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableMap;
 import org.apache.parquet.Strings;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -57,6 +58,7 @@ public class CloudSqlResourceManagerIT {
   }
 
   @Test
+  @Ignore("Static Oracle instance 10.128.0.90 is unavailable due to ORA-00257 archiver error")
   public void testDefaultCloudOracleResourceManagerE2E() {
     if (missingProperties("cloudOracleHost")) {
       return;
