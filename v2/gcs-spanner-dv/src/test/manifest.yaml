@@ -11,7 +11,7 @@ scenarios:
   - id: dv-datatypes-pgsql
     type: datatypes
     template: v2/gcs-spanner-dv
-    context: com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationPostgreSQLDataTypesE2EIT
+    context: com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT
     description: "Porting reference PostgreSQL DataTypes validation suite to verify Spanner PG dialect type mappings and validation correctness."
 
 
