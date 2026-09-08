@@ -170,8 +170,9 @@ public class ExportJobPlaceholder {
         groupName = "Source",
         optional = true,
         description = "Bigtable read partial row timeout",
-        helpText = "How long a scan may go without receiving a response, in milliseconds, " +
-            "before it is cancelled and retried.")
+        helpText =
+            "How long a scan may go without receiving a response, in milliseconds, "
+                + "before it is cancelled and retried.")
     ValueProvider<String> getBigtableReadPartialRowTimeoutMs();
 
     @TemplateCreationParameter(value = "false")
