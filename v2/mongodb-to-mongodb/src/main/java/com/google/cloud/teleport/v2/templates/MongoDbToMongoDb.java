@@ -143,20 +143,6 @@ public class MongoDbToMongoDb {
     void setTargetCollection(String value);
 
     @TemplateParameter.Integer(
-        order = 7,
-        groupName = "Source",
-        optional = true,
-        description = "Number of Backfill Read Splits",
-        helpText =
-            "Number of parallel coarse read splits generated per collection during historical"
-                + " backfill (e.g. 1, 4, 8). Each split opens a sequential index-range cursor."
-                + " Default is 1.")
-    @Default.Integer(1)
-    Integer getNumBackfillSplits();
-
-    void setNumBackfillSplits(Integer value);
-
-    @TemplateParameter.Integer(
         order = 8,
         groupName = "Target",
         optional = true,
@@ -372,6 +358,46 @@ public class MongoDbToMongoDb {
     Integer getMaxBufferingDurationMs();
 
     void setMaxBufferingDurationMs(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 25,
+        groupName = "Source",
+        optional = true,
+        description = "Target Backfill Chunk Size",
+        helpText =
+            "Target number of documents per backfill split. Adaptive volume-based splitting uses this"
+                + " to calculate the number of splits per collection based on estimated count. Default is 200000.")
+    @Default.Integer(200000)
+    Integer getTargetBackfillChunkSize();
+
+    void setTargetBackfillChunkSize(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 26,
+        groupName = "Source",
+        optional = true,
+        description = "Max Backfill Splits",
+        helpText =
+            "Maximum number of backfill read splits allowed per collection during adaptive splitting."
+                + " Default is 256.")
+    @Default.Integer(256)
+    Integer getMaxBackfillSplits();
+
+    void setMaxBackfillSplits(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 27,
+        groupName = "Source",
+        optional = true,
+        description = "Max Concurrent Backfill Reads",
+        helpText =
+            "Maximum number of concurrent in-flight backfill cursors allowed across the cluster."
+                + " Partitions are distributed across virtual concurrency slots to strictly bound"
+                + " source database connections and cursor memory. Default is 128.")
+    @Default.Integer(128)
+    Integer getMaxConcurrentBackfillReads();
+
+    void setMaxConcurrentBackfillReads(Integer value);
   }
 
   public static void main(String[] args) {
@@ -453,9 +479,6 @@ public class MongoDbToMongoDb {
     LOG.info("  Target Database:         {}", options.getTargetDatabase());
     LOG.info("  Source Collections:      {}", sourceCollections);
     LOG.info(
-        "  Backfill Configuration:  coarse-split sequential cursor streaming (numBackfillSplits={})",
-        options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 1);
-    LOG.info(
         "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
             + " dlqMaxRetries={}",
         options.getBatchSize(),
@@ -472,6 +495,9 @@ public class MongoDbToMongoDb {
     LOG.info("  Migration Mode:          {}", options.getMigrationMode());
     LOG.info("  Change Stream Splits:    {}", options.getNumChangeStreamSplits());
     LOG.info("  Change Stream Strategy:  {}", options.getChangeStreamFullDocument());
+    LOG.info("  Backfill Chunk Size:     {}", options.getTargetBackfillChunkSize());
+    LOG.info("  Max Backfill Splits:     {}", options.getMaxBackfillSplits());
+    LOG.info("  Max Concurrent Reads:    {}", options.getMaxConcurrentBackfillReads());
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
     LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
     LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
@@ -550,8 +576,12 @@ public class MongoDbToMongoDb {
                   : targetCollectionRaw;
 
           if (includeBackfill) {
-            int numBackfillSplits =
-                options.getNumBackfillSplits() != null ? options.getNumBackfillSplits() : 1;
+            int targetChunkSize =
+                options.getTargetBackfillChunkSize() != null
+                    ? options.getTargetBackfillChunkSize()
+                    : 200000;
+            int maxSplits =
+                options.getMaxBackfillSplits() != null ? options.getMaxBackfillSplits() : 256;
             try {
               backfillPartitions.addAll(
                   MongoDbBackfillReader.generatePartitions(
@@ -560,15 +590,15 @@ public class MongoDbToMongoDb {
                       options.getSourceDatabase(),
                       inputCollection,
                       targetCollection,
-                      numBackfillSplits,
+                      targetChunkSize,
+                      maxSplits,
                       t0));
             } catch (Exception e) {
               LOG.warn(
                   "Could not generate partitioned splits for collection '{}' ({}). Falling back to"
-                      + " algorithmic splits (splits={}).",
+                      + " algorithmic splits.",
                   inputCollection,
-                  e.getMessage(),
-                  numBackfillSplits);
+                  e.getMessage());
               backfillPartitions.addAll(
                   MongoDbBackfillReader.generatePartitions(
                       null,
@@ -576,7 +606,8 @@ public class MongoDbToMongoDb {
                       options.getSourceDatabase(),
                       inputCollection,
                       targetCollection,
-                      numBackfillSplits,
+                      targetChunkSize,
+                      maxSplits,
                       t0));
             }
           }
@@ -658,11 +689,16 @@ public class MongoDbToMongoDb {
       }
 
       if (includeBackfill && !backfillPartitions.isEmpty()) {
+        int maxConcurrentReads =
+            options.getMaxConcurrentBackfillReads() != null
+                ? options.getMaxConcurrentBackfillReads()
+                : MongoDbBackfillReader.ReadPartitions.DEFAULT_MAX_CONCURRENT_READS;
         PCollection<DocumentWithMetadata> backfillDocs =
             pipeline
                 .apply(
                     "ReadBackfill",
-                    new MongoDbBackfillReader.ReadPartitions(backfillPartitions))
+                    new MongoDbBackfillReader.ReadPartitions(
+                        backfillPartitions, maxConcurrentReads))
                 .setCoder(DocumentWithMetadataCoder.of());
         allStreams.add(backfillDocs);
       }

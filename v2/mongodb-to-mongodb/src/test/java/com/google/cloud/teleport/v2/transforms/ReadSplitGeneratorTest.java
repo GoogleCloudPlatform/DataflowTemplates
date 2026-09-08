@@ -254,4 +254,65 @@ public class ReadSplitGeneratorTest {
     assertEquals(1, splits.size());
     assertTrue(splits.get(0).isEmpty());
   }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_calculatesEffectiveSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(1_000_000L);
+
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
+    assertEquals(5, splits.size());
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_clampsToMaxSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(100_000_000L);
+
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
+    assertEquals(256, splits.size());
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_zeroTargetChunkSize_usesNumSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(10_000_000L);
+
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16, 0, 256);
+    assertEquals(16, splits.size());
+  }
+
+  @Test
+  public void testGenerateProbedObjectIdSplits_boundsTailSliceWithMaxHex() {
+    String minHex = "66d000000000000000000000";
+    String maxHex = "66dff0000000000000000000";
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 4);
+    assertEquals(4, splits.size());
+    assertTrue(splits.get(0).toJson().contains("\"$lt\""));
+    assertTrue(splits.get(1).toJson().contains("\"$gte\""));
+    assertTrue(splits.get(1).toJson().contains("\"$lt\""));
+    String tailJson = splits.get(3).toJson();
+    assertTrue(tailJson.contains("\"$gte\""));
+    assertTrue(tailJson.contains("\"$lte\""));
+    assertTrue(tailJson.contains(maxHex));
+  }
+
+  @Test
+  public void testGenerateProbedObjectIdSplits_singleSplitBoundedToMaxHex() {
+    String minHex = "66d000000000000000000000";
+    String maxHex = "66dff0000000000000000000";
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 1);
+    assertEquals(1, splits.size());
+    String json = splits.get(0).toJson();
+    assertTrue(json.contains("\"$lte\""));
+    assertTrue(json.contains(maxHex));
+  }
 }

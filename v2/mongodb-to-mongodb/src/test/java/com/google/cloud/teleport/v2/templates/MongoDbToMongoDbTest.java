@@ -58,7 +58,9 @@ public class MongoDbToMongoDbTest {
     assertEquals(Integer.valueOf(10), options.getMaxConcurrentAsyncWrites());
     assertEquals(Integer.valueOf(3), options.getMaxWriteRetries());
     assertEquals(Integer.valueOf(3), options.getDlqMaxRetries());
-    assertEquals(Integer.valueOf(1), options.getNumBackfillSplits());
+    assertEquals(Integer.valueOf(200000), options.getTargetBackfillChunkSize());
+    assertEquals(Integer.valueOf(256), options.getMaxBackfillSplits());
+    assertEquals(Integer.valueOf(128), options.getMaxConcurrentBackfillReads());
     assertEquals(Integer.valueOf(64), options.getNumWriteShards());
     assertEquals(Integer.valueOf(200), options.getMaxBufferingDurationMs());
     assertEquals(Boolean.FALSE, options.getReadFromDlq());
@@ -77,7 +79,9 @@ public class MongoDbToMongoDbTest {
       "--numChangeStreamSplits=4",
       "--changeStreamFullDocument=whenAvailable",
       "--startAtOperationTime=1700000000",
-      "--numBackfillSplits=8",
+      "--targetBackfillChunkSize=100000",
+      "--maxBackfillSplits=128",
+      "--maxConcurrentBackfillReads=64",
       "--numWriteShards=128",
       "--maxBufferingDurationMs=100",
       "--batchSize=1000",
@@ -97,7 +101,9 @@ public class MongoDbToMongoDbTest {
     assertEquals(Integer.valueOf(4), options.getNumChangeStreamSplits());
     assertEquals("whenAvailable", options.getChangeStreamFullDocument());
     assertEquals("1700000000", options.getStartAtOperationTime());
-    assertEquals(Integer.valueOf(8), options.getNumBackfillSplits());
+    assertEquals(Integer.valueOf(100000), options.getTargetBackfillChunkSize());
+    assertEquals(Integer.valueOf(128), options.getMaxBackfillSplits());
+    assertEquals(Integer.valueOf(64), options.getMaxConcurrentBackfillReads());
     assertEquals(Integer.valueOf(128), options.getNumWriteShards());
     assertEquals(Integer.valueOf(100), options.getMaxBufferingDurationMs());
     assertEquals(Integer.valueOf(1000), options.getBatchSize());

@@ -75,15 +75,34 @@ public final class ReadSplitGenerator {
    */
   public static List<BsonDocument> generateIndexSliceFilters(
       MongoClient client, String databaseName, String collectionName, int numSplits) {
-    if (numSplits <= 1) {
-      return Collections.singletonList(new BsonDocument());
-    }
+    return generateIndexSliceFilters(
+        client, databaseName, collectionName, numSplits, 0, Math.max(numSplits, 256));
+  }
 
+  /**
+   * Generates a list of BsonDocument filter queries with adaptive volume-based split sizing
+   * and bounded upper bounds.
+   *
+   * @param client MongoDB client connection.
+   * @param databaseName Database name.
+   * @param collectionName Collection name.
+   * @param numSplits Number of target parallel read splits (serves as floor/fallback).
+   * @param targetChunkSize Target document count per split (0 to disable adaptive sizing).
+   * @param maxSplits Maximum number of splits allowed.
+   * @return List of BsonDocument filters.
+   */
+  public static List<BsonDocument> generateIndexSliceFilters(
+      MongoClient client,
+      String databaseName,
+      String collectionName,
+      int numSplits,
+      int targetChunkSize,
+      int maxSplits) {
     if (client != null) {
       try {
         MongoDatabase db = client.getDatabase(databaseName);
         MongoCollection<BsonDocument> col = db.getCollection(collectionName, BsonDocument.class);
-        return generateTypeIsolatedSplits(col, numSplits);
+        return generateTypeIsolatedSplits(col, numSplits, targetChunkSize, maxSplits);
       } catch (Exception e) {
         LOG.warn(
             "Failed generating type-isolated splits for '{}.{}' ({})."
@@ -94,7 +113,8 @@ public final class ReadSplitGenerator {
       }
     }
 
-    return generateIndexSliceFilters(numSplits);
+    int effectiveSplits = Math.max(1, Math.min(maxSplits, numSplits));
+    return generateIndexSliceFilters(effectiveSplits);
   }
 
   /**
@@ -307,10 +327,15 @@ public final class ReadSplitGenerator {
    */
   public static List<BsonDocument> generateTypeIsolatedSplits(
       MongoCollection<BsonDocument> col, int numSplits) {
-    if (numSplits <= 1) {
-      return Collections.singletonList(new BsonDocument());
-    }
+    return generateTypeIsolatedSplits(col, numSplits, 0, Math.max(numSplits, 256));
+  }
 
+  /**
+   * Generates type-isolated splits with adaptive volume sizing, ensuring filters and keyset
+   * resumption never span BSON types.
+   */
+  public static List<BsonDocument> generateTypeIsolatedSplits(
+      MongoCollection<BsonDocument> col, int numSplits, int targetChunkSize, int maxSplits) {
     long estimatedDocs = 0;
     try {
       estimatedDocs = col.estimatedDocumentCount();
@@ -326,6 +351,18 @@ public final class ReadSplitGenerator {
       return Collections.singletonList(new BsonDocument());
     }
 
+    int effectiveSplits;
+    if (targetChunkSize > 0 && estimatedDocs > 0) {
+      int calculated = (int) Math.ceil((double) estimatedDocs / targetChunkSize);
+      effectiveSplits = Math.max(1, Math.min(maxSplits, calculated));
+    } else {
+      effectiveSplits = Math.max(1, Math.min(maxSplits, numSplits));
+    }
+
+    if (effectiveSplits <= 1) {
+      return Collections.singletonList(new BsonDocument());
+    }
+
     List<ProbedTypeBounds> activeTypes = probeActiveTypeBounds(col);
     if (activeTypes.isEmpty()) {
       LOG.info(
@@ -333,15 +370,15 @@ public final class ReadSplitGenerator {
               + " Falling back to algorithmic splits.",
           getDbName(col),
           getColName(col));
-      return generateIndexSliceFilters(numSplits);
+      return generateIndexSliceFilters(effectiveSplits);
     }
 
     if (activeTypes.size() == 1) {
-      return generateSplitsForTypeBounds(col, activeTypes.get(0), numSplits);
+      return generateSplitsForTypeBounds(col, activeTypes.get(0), effectiveSplits);
     }
 
     // Mixed collection: allocate splits across active types without cross-type queries
-    int splitsPerType = Math.max(1, numSplits / activeTypes.size());
+    int splitsPerType = Math.max(1, effectiveSplits / activeTypes.size());
     List<BsonDocument> combinedFilters = new ArrayList<>();
     for (ProbedTypeBounds bounds : activeTypes) {
       combinedFilters.addAll(generateSplitsForTypeBounds(col, bounds, splitsPerType));
@@ -352,12 +389,15 @@ public final class ReadSplitGenerator {
   private static List<BsonDocument> generateSplitsForTypeBounds(
       MongoCollection<BsonDocument> col, ProbedTypeBounds bounds, int splits) {
     if (splits <= 1) {
-      return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", bounds.getBucket().getTypeValue())));
+      BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
+      if (bounds.getMaxKey() != null) {
+        idDoc.append("$lte", bounds.getMaxKey());
+      }
+      return Collections.singletonList(new BsonDocument("_id", idDoc));
     }
 
     // Try fast unfiltered $sample for quantile boundaries
-    int sampleSize = Math.min(1000, Math.max(256, splits * 32));
+    int sampleSize = Math.min(5000, Math.max(500, splits * 20));
     List<BsonDocument> samplePipeline =
         Arrays.asList(
             new BsonDocument("$sample", new BsonDocument("size", new BsonInt32(sampleSize))),
@@ -366,7 +406,7 @@ public final class ReadSplitGenerator {
 
     List<BsonValue> sampledKeys = new ArrayList<>();
     try {
-      for (BsonDocument doc : col.aggregate(samplePipeline).maxTime(5, TimeUnit.SECONDS)) {
+      for (BsonDocument doc : col.aggregate(samplePipeline).maxTime(30, TimeUnit.SECONDS)) {
         if (doc.containsKey("_id")) {
           sampledKeys.add(doc.get("_id"));
         }
@@ -387,12 +427,20 @@ public final class ReadSplitGenerator {
       }
     }
 
+    BsonValue maxKey = bounds.getMaxKey();
+
     if (typeKeys.size() >= splits) {
       typeKeys.sort(BSON_VALUE_COMPARATOR);
       List<BsonValue> boundaries = new ArrayList<>();
-      int step = typeKeys.size() / splits;
       for (int i = 1; i < splits; i++) {
-        BsonValue b = typeKeys.get(i * step);
+        int index = (int) Math.round(((double) i * typeKeys.size()) / splits);
+        if (index >= typeKeys.size()) {
+          index = typeKeys.size() - 1;
+        }
+        BsonValue b = typeKeys.get(index);
+        if (maxKey != null && BSON_VALUE_COMPARATOR.compare(b, maxKey) >= 0) {
+          continue;
+        }
         if (boundaries.isEmpty() || !b.equals(boundaries.get(boundaries.size() - 1))) {
           boundaries.add(b);
         }
@@ -408,6 +456,9 @@ public final class ReadSplitGenerator {
             idDoc.append("$lte", boundaries.get(0));
           } else if (i == boundaryCount) {
             idDoc.append("$gt", boundaries.get(boundaryCount - 1));
+            if (maxKey != null) {
+              idDoc.append("$lte", maxKey);
+            }
           } else {
             idDoc.append("$gt", boundaries.get(i - 1)).append("$lte", boundaries.get(i));
           }
@@ -438,8 +489,11 @@ public final class ReadSplitGenerator {
       return generateStringFilters(splits);
     }
 
-    return Collections.singletonList(
-        new BsonDocument("_id", new BsonDocument("$type", bounds.getBucket().getTypeValue())));
+    BsonDocument fallbackId = new BsonDocument("$type", bounds.getBucket().getTypeValue());
+    if (bounds.getMaxKey() != null) {
+      fallbackId.append("$lte", bounds.getMaxKey());
+    }
+    return Collections.singletonList(new BsonDocument("_id", fallbackId));
   }
 
   private static boolean matchesType(BsonValue k, TypeBucket bucket) {
@@ -522,7 +576,10 @@ public final class ReadSplitGenerator {
       String minHex, String maxHex, int numSplits) {
     if (numSplits <= 1 || minHex.equals(maxHex)) {
       return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+          BsonDocument.parse(
+              String.format(
+                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}",
+                  maxHex)));
     }
 
     BigInteger minBig = new BigInteger(minHex, 16);
@@ -532,7 +589,10 @@ public final class ReadSplitGenerator {
 
     if (step.compareTo(BigInteger.ZERO) <= 0) {
       return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", new BsonString("objectId"))));
+          BsonDocument.parse(
+              String.format(
+                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}",
+                  maxHex)));
     }
 
     List<BsonDocument> slices = new ArrayList<>();
@@ -551,8 +611,8 @@ public final class ReadSplitGenerator {
         slices.add(
             BsonDocument.parse(
                 String.format(
-                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}}}",
-                    lowHex)));
+                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}, \"$lte\": {\"$oid\": \"%s\"}}}",
+                    lowHex, maxHex)));
       } else {
         BigInteger low = minBig.add(step.multiply(BigInteger.valueOf(i)));
         BigInteger high = minBig.add(step.multiply(BigInteger.valueOf(i + 1)));
