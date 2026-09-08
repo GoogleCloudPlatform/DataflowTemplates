@@ -102,4 +102,3 @@ public class DatastreamRowTest {
     assertEquals(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY, pks.get(0));
   }
 }
-

@@ -1059,8 +1059,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when
-   * primaryKeys is empty but the record contains a rowid.
+   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when primaryKeys
+   * is empty but the record contains a rowid.
    */
   @Test
   public void testDmlTemplate_supportsDeleteWithRowIdFallbackWhenNoPK() {
@@ -1074,8 +1074,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when
-   * primaryKeys is empty but the record contains _metadata_row_id.
+   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when primaryKeys
+   * is empty but the record contains _metadata_row_id.
    */
   @Test
   public void testDmlTemplate_supportsDeleteWithMetadataRowIdFallbackWhenNoPK() {
@@ -1089,8 +1089,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates the correct
-   * WHERE filter using rowid when primaryKeys contains rowid.
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates the correct WHERE
+   * filter using rowid when primaryKeys contains rowid.
    */
   @Test
   public void testGetPrimaryKeyToValueFilterSql_usesRowIdWhenInPrimaryKeys() {
@@ -1123,8 +1123,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a rowid filter
-   * even when destination primaryKeys list is empty (table without PK).
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a rowid filter even
+   * when destination primaryKeys list is empty (table without PK).
    */
   @Test
   public void testGetPrimaryKeyToValueFilterSql_usesRowIdFallbackWhenNoPK() {
