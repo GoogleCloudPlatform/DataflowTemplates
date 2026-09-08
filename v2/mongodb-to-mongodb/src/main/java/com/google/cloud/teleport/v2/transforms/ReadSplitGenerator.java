@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * Utility class to generate orthogonal BSON filter queries for parallel index-slice reading without
  * requiring MongoDB splitVector or bucketAuto commands.
  */
-public class ReadSplitGenerator {
+public final class ReadSplitGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReadSplitGenerator.class);
 
@@ -64,16 +64,6 @@ public class ReadSplitGenerator {
   }
 
   /**
-   * Generates a list of BsonDocument filter queries using data-driven quantile sampling or
-   * automatic key-type discovery.
-   *
-   * @param client MongoDB client connection.
-   * @param databaseName Database name.
-   * @param collectionName Collection name.
-   * @param numSplits Number of target parallel read splits.
-   * @return List of BsonDocument filters.
-   */
-  /**
    * Generates a list of BsonDocument filter queries using 2-phase covered index type discovery
    * and type-isolated quantile sampling.
    *
@@ -96,7 +86,8 @@ public class ReadSplitGenerator {
         return generateTypeIsolatedSplits(col, numSplits);
       } catch (Exception e) {
         LOG.warn(
-            "Failed generating type-isolated splits for '{}.{}' ({}). Falling back to algorithmic splits.",
+            "Failed generating type-isolated splits for '{}.{}' ({})."
+                + " Falling back to algorithmic splits.",
             databaseName,
             collectionName,
             e.getMessage());
@@ -171,7 +162,7 @@ public class ReadSplitGenerator {
               new BsonString("double"),
               new BsonString("decimal")));
 
-  public static class TypeBucket {
+  public static final class TypeBucket {
     private final String name;
     private final BsonValue typeValue;
 
@@ -203,7 +194,7 @@ public class ReadSplitGenerator {
               new TypeBucket("object", new BsonString("object")),
               new TypeBucket("date", new BsonString("date"))));
 
-  public static class ProbedTypeBounds {
+  public static final class ProbedTypeBounds {
     private final TypeBucket bucket;
     private final BsonValue minKey;
     private final BsonValue maxKey;
@@ -225,6 +216,18 @@ public class ReadSplitGenerator {
     public BsonValue getMaxKey() {
       return maxKey;
     }
+  }
+
+  private static String getDbName(MongoCollection<BsonDocument> col) {
+    return col != null && col.getNamespace() != null
+        ? col.getNamespace().getDatabaseName()
+        : "unknown";
+  }
+
+  private static String getColName(MongoCollection<BsonDocument> col) {
+    return col != null && col.getNamespace() != null
+        ? col.getNamespace().getCollectionName()
+        : "unknown";
   }
 
   /**
@@ -259,8 +262,8 @@ public class ReadSplitGenerator {
         LOG.warn(
             "Covered index probe failed for type '{}' on '{}.{}': {}",
             bucket.getName(),
-            col.getNamespace().getDatabaseName(),
-            col.getNamespace().getCollectionName(),
+            getDbName(col),
+            getColName(col),
             e.getMessage());
       }
     }
@@ -314,8 +317,8 @@ public class ReadSplitGenerator {
     } catch (Exception e) {
       LOG.warn(
           "Could not estimate document count for '{}.{}': {}",
-          col.getNamespace().getDatabaseName(),
-          col.getNamespace().getCollectionName(),
+          getDbName(col),
+          getColName(col),
           e.getMessage());
     }
 
@@ -326,10 +329,11 @@ public class ReadSplitGenerator {
     List<ProbedTypeBounds> activeTypes = probeActiveTypeBounds(col);
     if (activeTypes.isEmpty()) {
       LOG.info(
-          "No active types detected via index probes for '{}.{}'. Using single split.",
-          col.getNamespace().getDatabaseName(),
-          col.getNamespace().getCollectionName());
-      return Collections.singletonList(new BsonDocument());
+          "No active types detected via index probes for '{}.{}'."
+              + " Falling back to algorithmic splits.",
+          getDbName(col),
+          getColName(col));
+      return generateIndexSliceFilters(numSplits);
     }
 
     if (activeTypes.size() == 1) {
@@ -370,8 +374,8 @@ public class ReadSplitGenerator {
     } catch (Exception e) {
       LOG.warn(
           "Unfiltered $sample failed for '{}.{}' ({}). Using probed boundary fallback.",
-          col.getNamespace().getDatabaseName(),
-          col.getNamespace().getCollectionName(),
+          getDbName(col),
+          getColName(col),
           e.getMessage());
     }
 
@@ -460,7 +464,7 @@ public class ReadSplitGenerator {
     }
   }
 
-  public static final Comparator<BsonValue> BSON_VALUE_COMPARATOR =
+  private static final Comparator<BsonValue> BSON_VALUE_COMPARATOR =
       (a, b) -> {
         if (a == b) {
           return 0;
@@ -477,17 +481,8 @@ public class ReadSplitGenerator {
         if (a.isString() && b.isString()) {
           return a.asString().getValue().compareTo(b.asString().getValue());
         }
-        if (a.isInt32() && b.isInt32()) {
-          return Integer.compare(a.asInt32().getValue(), b.asInt32().getValue());
-        }
-        if (a.isInt64() && b.isInt64()) {
-          return Long.compare(a.asInt64().getValue(), b.asInt64().getValue());
-        }
-        if (a.isDouble() && b.isDouble()) {
-          return Double.compare(a.asDouble().getValue(), b.asDouble().getValue());
-        }
-        if (a.isDecimal128() && b.isDecimal128()) {
-          return a.asDecimal128().getValue().compareTo(b.asDecimal128().getValue());
+        if (isNumeric(a) && isNumeric(b)) {
+          return Double.compare(asDouble(a), asDouble(b));
         }
         if (a.isDateTime() && b.isDateTime()) {
           return Long.compare(a.asDateTime().getValue(), b.asDateTime().getValue());
@@ -498,8 +493,30 @@ public class ReadSplitGenerator {
         return a.toString().compareTo(b.toString());
       };
 
+  private static boolean isNumeric(BsonValue val) {
+    return val != null
+        && (val.isInt32() || val.isInt64() || val.isDouble() || val.isDecimal128());
+  }
+
+  private static double asDouble(BsonValue val) {
+    if (val.isInt32()) {
+      return val.asInt32().getValue();
+    }
+    if (val.isInt64()) {
+      return val.asInt64().getValue();
+    }
+    if (val.isDouble()) {
+      return val.asDouble().getValue();
+    }
+    if (val.isDecimal128()) {
+      return val.asDecimal128().getValue().doubleValue();
+    }
+    return 0.0;
+  }
+
   /**
-   * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max hex keys.
+   * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max
+   * hex keys.
    */
   public static List<BsonDocument> generateProbedObjectIdSplits(
       String minHex, String maxHex, int numSplits) {

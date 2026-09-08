@@ -19,20 +19,25 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadataCoder;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader;
 import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader.BackfillPartition;
 import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader;
 import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ChangeStreamPartition;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
+import com.google.cloud.teleport.v2.transforms.MongoDbTransforms.ApplyUdfFn;
+import com.google.cloud.teleport.v2.transforms.MongoDbTransforms.WriteToDlq;
 import com.google.cloud.teleport.v2.transforms.StatefulDeduplication;
 import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -57,7 +62,10 @@ import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Dataflow template which copies data from one MongoDB database to another with CDC streaming support. */
+/**
+ * Dataflow template which copies data from one MongoDB database to another with CDC streaming
+ * support.
+ */
 @Template(
     name = "Mongodb_To_Mongodb",
     category = TemplateCategory.STREAMING,
@@ -69,8 +77,7 @@ public class MongoDbToMongoDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
-  public interface Options
-      extends JavascriptTextTransformer.JavascriptTextTransformerOptions, StreamingOptions {
+  public interface Options extends JavascriptTextTransformerOptions, StreamingOptions {
     @TemplateParameter.Text(
         order = 1,
         groupName = "Source",
@@ -397,7 +404,8 @@ public class MongoDbToMongoDb {
     if ((sourceCollection == null || sourceCollection.isEmpty())
         && (targetCollectionRaw != null && !targetCollectionRaw.isEmpty())) {
       throw new IllegalArgumentException(
-          "targetCollection cannot be specified when migrating an entire database without specifying sourceCollection.");
+          "targetCollection cannot be specified when migrating an entire database without"
+              + " specifying sourceCollection.");
     }
 
     List<String> sourceCollections = new ArrayList<>();
@@ -433,7 +441,8 @@ public class MongoDbToMongoDb {
       dlqDirectory = tmpDirectory;
     }
     String baseDlqPath = dlqDirectory.endsWith("/") ? dlqDirectory : dlqDirectory + "/";
-    String timestampPath = new SimpleDateFormat("yyyy-MM-dd/HH-mm-ss").format(new Date());
+    String timestampPath =
+        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd/HH-mm-ss"));
     String retryableDlqPath = baseDlqPath + timestampPath + "/retryable";
     String permanentDlqPath = baseDlqPath + timestampPath + "/permanent";
 
@@ -505,7 +514,7 @@ public class MongoDbToMongoDb {
           t0.getInc());
     }
 
-    if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
+    if (Boolean.TRUE.equals(options.getReadFromDlq())) {
       String reconsumePath = options.getReconsumeDlqPath();
       if (reconsumePath == null || reconsumePath.isEmpty()) {
         throw new IllegalArgumentException(
@@ -739,20 +748,7 @@ public class MongoDbToMongoDb {
       }
 
       // Metrics Stage
-      documents =
-          documents.apply(
-              "CountTotalProcessed",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
-                    private final Counter totalProcessedDocuments =
-                        Metrics.counter(MongoDbToMongoDb.class, "totalProcessedDocuments");
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      totalProcessedDocuments.inc();
-                      c.output(c.element());
-                    }
-                  }));
+      documents = documents.apply("CountTotalProcessed", ParDo.of(new CountDocumentsFn()));
 
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
@@ -764,7 +760,7 @@ public class MongoDbToMongoDb {
             documents.apply(
                 "ApplyUDF",
                 ParDo.of(
-                        new MongoDbTransforms.ApplyUdfFn(
+                        new ApplyUdfFn(
                             options.getJavascriptTextTransformGcsPath(),
                             options.getJavascriptTextTransformFunctionName(),
                             options.getJavascriptTextTransformReloadIntervalMinutes(),
@@ -776,7 +772,7 @@ public class MongoDbToMongoDb {
             .get(udfFailureTag)
             .apply(
                 "WriteToDlq_UDF",
-                new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+                new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents =
             udfProcessed
@@ -799,7 +795,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+              new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return processed.get(successTag).setCoder(DocumentWithMetadataCoder.of());
     }
@@ -840,11 +836,11 @@ public class MongoDbToMongoDb {
                   .withInitialWriteRatePerWorker(
                       options.getInitialWriteRatePerWorker() != null
                           ? options.getInitialWriteRatePerWorker()
-                          : 100)
+                          : 5000)
                   .withMaxWriteRatePerWorker(
                       options.getMaxWriteRatePerWorker() != null
                           ? options.getMaxWriteRatePerWorker()
-                          : 500)
+                          : 25000)
                   .withWriteRateRampUpMinutes(
                       options.getWriteRateRampUpMinutes() != null
                           ? options.getWriteRateRampUpMinutes()
@@ -856,9 +852,20 @@ public class MongoDbToMongoDb {
 
       writeFailures.apply(
           "WriteToDlq_Write",
-          new MongoDbTransforms.WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+          new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
+    }
+  }
+
+  public static class CountDocumentsFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
+    private final Counter totalProcessedDocuments =
+        Metrics.counter(MongoDbToMongoDb.class, "totalProcessedDocuments");
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      totalProcessedDocuments.inc();
+      c.output(c.element());
     }
   }
 
@@ -875,15 +882,22 @@ public class MongoDbToMongoDb {
       this.failureTag = failureTag;
     }
 
+    private static boolean isValidDocument(DocumentWithMetadata item) {
+      if (item == null) {
+        return false;
+      }
+      if (item.getDocument() != null) {
+        return true;
+      }
+      OperationType opType = item.getOperationType();
+      return opType != null
+          && (opType.isDelete() || opType == OperationType.DROP || opType == OperationType.RENAME);
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) {
       DocumentWithMetadata item = c.element();
-      if (item == null
-          || (item.getDocument() == null
-              && (item.getOperationType() == null
-                  || (!item.getOperationType().isDelete()
-                      && item.getOperationType() != DocumentWithMetadata.OperationType.DROP
-                      && item.getOperationType() != DocumentWithMetadata.OperationType.RENAME)))) {
+      if (!isValidDocument(item)) {
         contextCreationFailures.inc();
         validationFailedNullPayload.inc();
         c.output(
@@ -891,17 +905,17 @@ public class MongoDbToMongoDb {
             item != null
                 ? item.withFailure(
                     "Null document payload",
-                    DocumentWithMetadata.ErrorType.PERMANENT,
-                    DocumentWithMetadata.FailureStage.VALIDATE)
+                    ErrorType.PERMANENT,
+                    FailureStage.VALIDATE)
                 : DocumentWithMetadata.of(
                     null,
                     null,
                     0,
                     "Null element",
-                    DocumentWithMetadata.ErrorType.PERMANENT,
+                    ErrorType.PERMANENT,
                     null,
                     null,
-                    DocumentWithMetadata.FailureStage.VALIDATE));
+                    FailureStage.VALIDATE));
       } else {
         validationPassed.inc();
         c.output(item);

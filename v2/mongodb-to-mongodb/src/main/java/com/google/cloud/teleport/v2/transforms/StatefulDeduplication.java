@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.Counter;
@@ -23,6 +24,10 @@ import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.Element;
+import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
+import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
@@ -49,7 +54,7 @@ import org.slf4j.LoggerFactory;
 public class StatefulDeduplication
     extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(StatefulDeduplication.class);
+  private StatefulDeduplication() {}
 
   public static StatefulDeduplication of() {
     return new StatefulDeduplication();
@@ -83,6 +88,9 @@ public class StatefulDeduplication
   public static class StatefulDeduplicationFn
       extends DoFn<KV<String, DocumentWithMetadata>, DocumentWithMetadata> {
 
+    private static final Logger LOG = LoggerFactory.getLogger(StatefulDeduplicationFn.class);
+    private static final String STATE_ID_LAST_SEEN_KEY = "lastSeenKey";
+
     private final Counter dedupAccepted =
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_accepted");
     private final Counter dedupDropped =
@@ -100,13 +108,13 @@ public class StatefulDeduplication
     private final Counter dedupPassthrough =
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_passthrough");
 
-    @StateId("lastSeenKey")
+    @StateId(STATE_ID_LAST_SEEN_KEY)
     private final StateSpec<ValueState<TimestampSortKey>> lastSeenKeySpec =
         StateSpecs.value(TimestampSortKeyCoder.of());
 
     private void recordAccepted(DocumentWithMetadata element) {
       dedupAccepted.inc();
-      if (element.getOperationType() == DocumentWithMetadata.OperationType.BACKFILL) {
+      if (element.getOperationType() == OperationType.BACKFILL) {
         dedupBackfillAccepted.inc();
       } else {
         dedupCdcAccepted.inc();
@@ -115,7 +123,7 @@ public class StatefulDeduplication
 
     private void recordDropped(DocumentWithMetadata element) {
       dedupDropped.inc();
-      if (element.getOperationType() == DocumentWithMetadata.OperationType.BACKFILL) {
+      if (element.getOperationType() == OperationType.BACKFILL) {
         dedupBackfillDropped.inc();
       } else {
         dedupCdcDropped.inc();
@@ -126,7 +134,7 @@ public class StatefulDeduplication
     public void processElement(
         @Element KV<String, DocumentWithMetadata> kv,
         OutputReceiver<DocumentWithMetadata> receiver,
-        @StateId("lastSeenKey") ValueState<TimestampSortKey> lastSeenState) {
+        @StateId(STATE_ID_LAST_SEEN_KEY) ValueState<TimestampSortKey> lastSeenState) {
 
       DocumentWithMetadata element = kv.getValue();
       if (element == null) {
@@ -157,37 +165,30 @@ public class StatefulDeduplication
 
       int cmp = incomingKey.compareTo(lastSeenKey);
 
-      if (element.isDlqReconsumed()) {
-        // DLQ retry: only apply if no newer event arrived while in DLQ
-        if (cmp >= 0) {
-          lastSeenState.write(incomingKey);
+      if (cmp >= 0) {
+        // Incoming event is newer than or equal to last seen state
+        lastSeenState.write(incomingKey);
+        recordAccepted(element);
+        if (element.isDlqReconsumed()) {
           dedupDlqPassed.inc();
-          recordAccepted(element);
-          receiver.output(element);
-        } else {
-          recordDropped(element);
+        }
+        receiver.output(element);
+      } else {
+        // Stale event arrived out-of-order or stale DLQ retry
+        recordDropped(element);
+        if (element.isDlqReconsumed()) {
           LOG.debug(
               "Dropping stale DLQ retry for key '{}'. Incoming: {}, Last seen: {}",
               kv.getKey(),
               incomingKey,
               lastSeenKey);
+        } else {
+          LOG.debug(
+              "Dropping out-of-order event for key '{}'. Incoming: {}, Last seen: {}",
+              kv.getKey(),
+              incomingKey,
+              lastSeenKey);
         }
-        return;
-      }
-
-      if (cmp >= 0) {
-        // Incoming event is newer than or equal to last seen state
-        lastSeenState.write(incomingKey);
-        recordAccepted(element);
-        receiver.output(element);
-      } else {
-        // Stale event arrived out-of-order (e.g., backfill snapshot arrived after live CDC event)
-        recordDropped(element);
-        LOG.debug(
-            "Dropping out-of-order event for key '{}'. Incoming: {}, Last seen: {}",
-            kv.getKey(),
-            incomingKey,
-            lastSeenKey);
       }
     }
   }

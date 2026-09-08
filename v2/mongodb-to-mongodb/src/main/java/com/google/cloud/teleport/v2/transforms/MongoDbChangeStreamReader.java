@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
@@ -22,6 +23,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.OperationType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,16 +31,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.Element;
 import org.apache.beam.sdk.transforms.DoFn.GetInitialRestriction;
 import org.apache.beam.sdk.transforms.DoFn.GetRestrictionCoder;
 import org.apache.beam.sdk.transforms.DoFn.NewTracker;
+import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContinuation;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
+import org.apache.beam.sdk.transforms.DoFn.Restriction;
+import org.apache.beam.sdk.transforms.DoFn.Teardown;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
@@ -236,9 +244,13 @@ public class MongoDbChangeStreamReader {
       } catch (Exception e) {
         LOG.debug("hello command failed, attempting isMaster: {}", e.getMessage());
         try {
-          helloDoc = db.runCommand(new BsonDocument("isMaster", new BsonInt32(1)), BsonDocument.class);
+          helloDoc =
+              db.runCommand(new BsonDocument("isMaster", new BsonInt32(1)), BsonDocument.class);
         } catch (Exception e2) {
-          LOG.warn("Both hello and isMaster commands failed on database '{}': {}", databaseName, e2.getMessage());
+          LOG.warn(
+              "Both hello and isMaster commands failed on database '{}': {}",
+              databaseName,
+              e2.getMessage());
         }
       }
 
@@ -834,7 +846,7 @@ public class MongoDbChangeStreamReader {
 
           stream
               .batchSize(MAX_EVENTS_PER_SLICE)
-              .maxAwaitTime(250L, java.util.concurrent.TimeUnit.MILLISECONDS);
+              .maxAwaitTime(250L, TimeUnit.MILLISECONDS);
 
           String fullDocStrategy = partition.getFullDocumentStrategy();
           if ("whenAvailable".equalsIgnoreCase(fullDocStrategy)) {
@@ -867,7 +879,7 @@ public class MongoDbChangeStreamReader {
           cursorHolder = new PartitionCursorHolder(activeCursor, currentToken);
           cursorCache.put(partitionKey, cursorHolder);
           changeStreamCursorReconnects.inc();
-        } catch (com.mongodb.MongoCommandException mce) {
+        } catch (MongoCommandException mce) {
           int errCode = mce.getErrorCode();
           String targetDesc =
               partition.isDatabaseLevel()
@@ -951,7 +963,7 @@ public class MongoDbChangeStreamReader {
           eventsInSlice++;
           changeEventsRead.inc();
 
-          com.mongodb.client.model.changestream.OperationType mongoOp = event.getOperationType();
+          OperationType mongoOp = event.getOperationType();
           if (mongoOp != null) {
             switch (mongoOp) {
               case INSERT:
@@ -1008,7 +1020,7 @@ public class MongoDbChangeStreamReader {
           tracker.tryClaim(
               new ChangeStreamRestriction(currentOffset + eventsInSlice, currentResumeTokenJson));
         }
-      } catch (com.mongodb.MongoCommandException mce) {
+      } catch (MongoCommandException mce) {
         int errCode = mce.getErrorCode();
         String targetDesc =
             partition.isDatabaseLevel()
@@ -1018,7 +1030,8 @@ public class MongoDbChangeStreamReader {
             || errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286) {
           changeStreamHistoryLost.inc();
           LOG.error(
-              "FATAL: ChangeStreamHistoryLost (code={}) during streaming on {} partition {}. MongoDB oplog rolled over: {}",
+              "FATAL: ChangeStreamHistoryLost (code={}) during streaming on {} partition {}."
+                  + " MongoDB oplog rolled over: {}",
               errCode,
               targetDesc,
               partition.getPartitionIndex(),
@@ -1111,7 +1124,7 @@ public class MongoDbChangeStreamReader {
             ? targetCollection
             : eventCol;
 
-    com.mongodb.client.model.changestream.OperationType mongoOp = event.getOperationType();
+    OperationType mongoOp = event.getOperationType();
     if (mongoOp == null) {
       return null;
     }
@@ -1142,7 +1155,8 @@ public class MongoDbChangeStreamReader {
     }
 
     BsonTimestamp clusterTime = event.getClusterTime();
-    long epochSeconds = clusterTime != null ? clusterTime.getTime() : (System.currentTimeMillis() / 1000);
+    long epochSeconds =
+        clusterTime != null ? clusterTime.getTime() : (System.currentTimeMillis() / 1000);
     long subSeconds = clusterTime != null ? clusterTime.getInc() : 0L;
     TimestampSortKey sortKey = TimestampSortKey.cdc(epochSeconds, subSeconds);
 

@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.mongodb.MongoCursorNotFoundException;
+import com.mongodb.MongoException;
+import com.mongodb.MongoSocketException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -352,8 +355,8 @@ public class MongoDbBackfillReader {
   }
 
   /**
-   * RestrictionTracker for BackfillRestriction ensuring slice-per-offset claiming, claim-before-output,
-   * and checkpoint splitting.
+   * RestrictionTracker for BackfillRestriction ensuring slice-per-offset claiming,
+   * claim-before-output, and checkpoint splitting.
    */
   public static class BackfillRestrictionTracker
       extends RestrictionTracker<BackfillRestriction, BackfillRestriction> {
@@ -650,15 +653,16 @@ public class MongoDbBackfillReader {
           lastSeenIdJson = nextIdJson;
           cursorHolder.setLastSeenIdJson(lastSeenIdJson);
         }
-      } catch (com.mongodb.MongoCursorNotFoundException | com.mongodb.MongoSocketException mse) {
+      } catch (MongoCursorNotFoundException | MongoSocketException mse) {
         backfillReadErrors.inc();
         LOG.warn(
-            "Cached cursor disconnected/expired for partition {}: {}. Resuming from lastSeenId in 500ms.",
+            "Cached cursor disconnected/expired for partition {}: {}."
+                + " Resuming from lastSeenId in 500ms.",
             partition,
             mse.getMessage());
         closeCursorForPartition(partitionKey);
         return ProcessContinuation.resume().withResumeDelay(Duration.millis(500));
-      } catch (com.mongodb.MongoException me) {
+      } catch (MongoException me) {
         backfillReadErrors.inc();
         LOG.warn(
             "Transient MongoDB exception reading partition {}: {}. Resuming from lastSeenId in 1s.",
@@ -716,7 +720,8 @@ public class MongoDbBackfillReader {
   }
 
   /**
-   * PTransform that reads all backfill partitions sequentially on worker threads using Splittable DoFn.
+   * PTransform that reads all backfill partitions sequentially on worker threads using Splittable
+   * DoFn.
    */
   public static class ReadPartitions
       extends PTransform<PBegin, PCollection<DocumentWithMetadata>> {

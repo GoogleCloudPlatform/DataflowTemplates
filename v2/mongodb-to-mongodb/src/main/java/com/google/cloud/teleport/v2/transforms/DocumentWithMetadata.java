@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.Serializable;
+import java.util.Objects;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.bson.Document;
 import org.bson.json.JsonMode;
@@ -254,10 +255,6 @@ public class DocumentWithMetadata implements Serializable {
 
   /** Returns whether this event is a reconsumed DLQ retry. */
   public boolean isDlqReconsumed() {
-    return isDlqReconsumed;
-  }
-
-  public boolean getIsDlqReconsumed() {
     return isDlqReconsumed;
   }
 
@@ -596,11 +593,14 @@ public class DocumentWithMetadata implements Serializable {
 
       String operationTypeStr = getOrDefault(jsonNode, METADATA_OPERATION_TYPE, null);
       OperationType operationType =
-          operationTypeStr != null ? OperationType.valueOf(operationTypeStr) : OperationType.BACKFILL;
+          operationTypeStr != null
+              ? OperationType.valueOf(operationTypeStr)
+              : OperationType.BACKFILL;
       boolean isDlqReconsumed = getBooleanOrDefault(jsonNode, METADATA_DLQ_RECONSUMED, true);
 
       TimestampSortKey timestampSortKey = null;
-      if (jsonNode.has(METADATA_TIMESTAMP_SECONDS) && !jsonNode.get(METADATA_TIMESTAMP_SECONDS).isNull()) {
+      if (jsonNode.has(METADATA_TIMESTAMP_SECONDS)
+          && !jsonNode.get(METADATA_TIMESTAMP_SECONDS).isNull()) {
         long sec = getLongOrDefault(jsonNode, METADATA_TIMESTAMP_SECONDS, 0L);
         long subSec = getLongOrDefault(jsonNode, METADATA_TIMESTAMP_SUB_SECONDS, 0L);
         boolean isCdc = getBooleanOrDefault(jsonNode, METADATA_IS_CDC, false);
@@ -630,29 +630,28 @@ public class DocumentWithMetadata implements Serializable {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof DocumentWithMetadata)) {
+    if (!(o instanceof DocumentWithMetadata that)) {
       return false;
     }
-    DocumentWithMetadata that = (DocumentWithMetadata) o;
     return isDlqReconsumed == that.isDlqReconsumed
-        && java.util.Objects.equals(document, that.document)
-        && java.util.Objects.equals(getOriginalDocument(), that.getOriginalDocument())
-        && java.util.Objects.equals(retryCount, that.retryCount)
-        && java.util.Objects.equals(errorMessage, that.errorMessage)
+        && Objects.equals(document, that.document)
+        && Objects.equals(originalDocument, that.originalDocument)
+        && Objects.equals(retryCount, that.retryCount)
+        && Objects.equals(errorMessage, that.errorMessage)
         && errorType == that.errorType
-        && java.util.Objects.equals(sourceCollection, that.sourceCollection)
-        && java.util.Objects.equals(targetCollection, that.targetCollection)
+        && Objects.equals(sourceCollection, that.sourceCollection)
+        && Objects.equals(targetCollection, that.targetCollection)
         && failureStage == that.failureStage
         && operationType == that.operationType
-        && java.util.Objects.equals(timestampSortKey, that.timestampSortKey)
-        && java.util.Objects.equals(documentKey, that.documentKey);
+        && Objects.equals(timestampSortKey, that.timestampSortKey)
+        && Objects.equals(documentKey, that.documentKey);
   }
 
   @Override
   public int hashCode() {
-    return java.util.Objects.hash(
+    return Objects.hash(
         document,
-        getOriginalDocument(),
+        originalDocument,
         retryCount,
         errorMessage,
         errorType,

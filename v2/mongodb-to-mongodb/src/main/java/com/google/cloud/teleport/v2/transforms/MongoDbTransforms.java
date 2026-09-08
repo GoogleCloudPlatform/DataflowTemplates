@@ -18,6 +18,10 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.PERMANENT;
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
 
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptRuntime;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.RateLimiter;
 import com.mongodb.ConnectionString;
@@ -27,6 +31,7 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.bulk.BulkWriteError;
+import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -294,6 +299,7 @@ public class MongoDbTransforms {
     private static final Logger LOG = LoggerFactory.getLogger(WriteToDlq.class);
     private final String retryablePath;
     private final String permanentPath;
+    @SuppressWarnings("unused")
     private final String tempLocation;
 
     private final Counter dlqRetryableEmitted =
@@ -316,14 +322,10 @@ public class MongoDbTransforms {
           permanentPath);
 
       PCollection<DocumentWithMetadata> retryable =
-          input.apply(
-              "FilterRetryable",
-              Filter.by(item -> item.getErrorType() == DocumentWithMetadata.ErrorType.RETRYABLE));
+          input.apply("FilterRetryable", Filter.by(item -> item.getErrorType() == RETRYABLE));
 
       PCollection<DocumentWithMetadata> permanent =
-          input.apply(
-              "FilterPermanent",
-              Filter.by(item -> item.getErrorType() == DocumentWithMetadata.ErrorType.PERMANENT));
+          input.apply("FilterPermanent", Filter.by(item -> item.getErrorType() == PERMANENT));
 
       boolean isUnbounded = input.isBounded() == PCollection.IsBounded.UNBOUNDED;
 
@@ -755,11 +757,12 @@ public class MongoDbTransforms {
                 Collections.singletonList(item), "Received DELETE event with null ID");
           }
         } else if (item.getOperationType() != null
-            && (item.getOperationType() == DocumentWithMetadata.OperationType.DROP
-                || item.getOperationType() == DocumentWithMetadata.OperationType.RENAME)) {
+            && (item.getOperationType() == OperationType.DROP
+                || item.getOperationType() == OperationType.RENAME)) {
           writeDropsSkipped.inc();
           LOG.info(
-              "Received collection-level event '{}' for collection '{}'; skipping document-level write.",
+              "Received collection-level event '{}' for collection '{}';"
+                  + " skipping document-level write.",
               item.getOperationType(),
               targetCol);
         } else {
@@ -846,7 +849,7 @@ public class MongoDbTransforms {
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();
-          com.mongodb.bulk.WriteConcernError wcError = e.getWriteConcernError();
+          WriteConcernError wcError = e.getWriteConcernError();
 
           if (wcError != null && (writeErrors == null || writeErrors.isEmpty())) {
             LOG.warn(
@@ -1016,13 +1019,13 @@ public class MongoDbTransforms {
             isPerm
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
-        DocumentWithMetadata.ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
+        ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
 
         failures.add(
             item.withFailure(
                 message,
                 errorType,
-                DocumentWithMetadata.FailureStage.WRITE,
+                FailureStage.WRITE,
                 retryCount));
       }
     }
@@ -1310,15 +1313,16 @@ public class MongoDbTransforms {
         startTimeMs = System.currentTimeMillis();
         lastComputedStep = 0;
         LOG.info(
-            "Enabled linear write rate ramp-up for WriteBatchesFn: initialRate={} docs/s/worker, targetMax={}"
-                + " docs/s/worker, duration={} mins, steps={}",
+            "Enabled linear write rate ramp-up for WriteBatchesFn: initialRate={} docs/s/worker,"
+                + " targetMax={} docs/s/worker, duration={} mins, steps={}",
             initialWriteRatePerWorker,
             maxWriteRatePerWorker,
             writeRateRampUpMinutes,
             writeRateRampUpSteps);
       } else {
         rateLimiter = null;
-        LOG.info("Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
+        LOG.info(
+            "Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
           "Initialized MongoDB WriteBatchesFn worker thread for database '{}' (maxWriteRetries={})",
@@ -1453,11 +1457,12 @@ public class MongoDbTransforms {
                 Collections.singletonList(item), "Received DELETE event with null ID");
           }
         } else if (item.getOperationType() != null
-            && (item.getOperationType() == DocumentWithMetadata.OperationType.DROP
-                || item.getOperationType() == DocumentWithMetadata.OperationType.RENAME)) {
+            && (item.getOperationType() == OperationType.DROP
+                || item.getOperationType() == OperationType.RENAME)) {
           writeDropsSkipped.inc();
           LOG.info(
-              "Received collection-level event '{}' for collection '{}'; skipping document-level write.",
+              "Received collection-level event '{}' for collection '{}';"
+                  + " skipping document-level write.",
               item.getOperationType(),
               targetCol);
         } else {
@@ -1508,7 +1513,8 @@ public class MongoDbTransforms {
         }
 
         LOG.debug(
-            "Flushing coalesced batch of {} documents (from {} input items) across {} target collection(s) to MongoDB",
+            "Flushing coalesced batch of {} documents (from {} input items) across {}"
+                + " target collection(s) to MongoDB",
             totalCoalescedCount,
             items.size(),
             coalescedByCollection.size());
@@ -1558,7 +1564,7 @@ public class MongoDbTransforms {
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();
-          com.mongodb.bulk.WriteConcernError wcError = e.getWriteConcernError();
+          WriteConcernError wcError = e.getWriteConcernError();
 
           if (wcError != null && (writeErrors == null || writeErrors.isEmpty())) {
             LOG.warn(
@@ -1728,13 +1734,13 @@ public class MongoDbTransforms {
             isPerm
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
-        DocumentWithMetadata.ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
+        ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
 
         failures.add(
             item.withFailure(
                 message,
                 errorType,
-                DocumentWithMetadata.FailureStage.WRITE,
+                FailureStage.WRITE,
                 retryCount));
       }
     }
@@ -1785,8 +1791,8 @@ public class MongoDbTransforms {
       long permFail = permanentFailuresCount != null ? permanentFailuresCount.get() : 0;
       if (succ > 0 || memRetries > 0 || dlqRet > 0 || permFail > 0) {
         LOG.info(
-            "Finished WriteBatchesFn bundle: {} successful writes, {} in-memory retries, {} DLQ retries, {}"
-                + " permanent failures",
+            "Finished WriteBatchesFn bundle: {} successful writes, {} in-memory retries,"
+                + " {} DLQ retries, {} permanent failures",
             succ,
             memRetries,
             dlqRet,
@@ -1805,7 +1811,7 @@ public class MongoDbTransforms {
     private final String functionName;
     private final Integer reloadIntervalMinutes;
     private final TupleTag<DocumentWithMetadata> failureTag;
-    private transient JavascriptTextTransformer.JavascriptRuntime javascriptRuntime;
+    private transient JavascriptRuntime javascriptRuntime;
     private final Counter udfProcessingFailures =
         Metrics.counter(ApplyUdfFn.class, "udfProcessingFailures");
 
@@ -1824,7 +1830,7 @@ public class MongoDbTransforms {
     public void setup() {
       if (fileSystemPath != null && functionName != null) {
         javascriptRuntime =
-            JavascriptTextTransformer.JavascriptRuntime.newBuilder()
+            JavascriptRuntime.newBuilder()
                 .setFileSystemPath(fileSystemPath)
                 .setFunctionName(functionName)
                 .setReloadIntervalMinutes(reloadIntervalMinutes)
@@ -1860,8 +1866,8 @@ public class MongoDbTransforms {
                 failureTag,
                 item.withFailure(
                     "UDF returned null",
-                    DocumentWithMetadata.ErrorType.RETRYABLE,
-                    DocumentWithMetadata.FailureStage.UDF));
+                    RETRYABLE,
+                    FailureStage.UDF));
           }
         } catch (Throwable e) {
           LOG.error("Failed to apply UDF: {}", e.getMessage());
@@ -1870,8 +1876,8 @@ public class MongoDbTransforms {
               failureTag,
               item.withFailure(
                   "UDF failed: " + e.getMessage(),
-                  DocumentWithMetadata.ErrorType.RETRYABLE,
-                  DocumentWithMetadata.FailureStage.UDF));
+                  RETRYABLE,
+                  FailureStage.UDF));
         }
       } else {
         c.output(item);
