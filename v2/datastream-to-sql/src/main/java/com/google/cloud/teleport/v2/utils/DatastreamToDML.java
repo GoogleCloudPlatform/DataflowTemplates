@@ -81,7 +81,7 @@ public abstract class DatastreamToDML
   public abstract String getTargetSchemaName(DatastreamRow row);
 
   /* An exception for delete DML without a primary key */
-  private class DeletedWithoutPrimaryKey extends RuntimeException {
+  static class DeletedWithoutPrimaryKey extends RuntimeException {
     public DeletedWithoutPrimaryKey(String errorMessage) {
       super(errorMessage);
     }
@@ -545,6 +545,12 @@ public abstract class DatastreamToDML
 
     if (pkToValueSql.isEmpty() && hasRowId(rowObj)) {
       String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
+      if (!tableSchema.containsKey(casedRowId)) {
+        throw new DeletedWithoutPrimaryKey(
+            String.format(
+                "Cannot replicate DELETE for table without primary keys: target schema lacks '%s' column.",
+                casedRowId));
+      }
       String sourceRowIdField = null;
       if (rowObj.has(this.rowIdColumnName)) {
         sourceRowIdField = this.rowIdColumnName;

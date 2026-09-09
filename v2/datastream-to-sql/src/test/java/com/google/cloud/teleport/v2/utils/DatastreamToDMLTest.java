@@ -1140,6 +1140,25 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} throws {@link
+   * DatastreamToDML.DeletedWithoutPrimaryKey} when destination primaryKeys is empty and target
+   * schema lacks the rowid column.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_throwsWhenTargetSchemaLacksRowId() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String json = "{\"_metadata_deleted\": true, \"rowid\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("name", "VARCHAR");
+
+    assertThrows(
+        DatastreamToDML.DeletedWithoutPrimaryKey.class,
+        () -> dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
+  }
+
+  /**
    * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a cased rowid filter
    * with UPPERCASE column casing when destination primaryKeys is empty.
    */
