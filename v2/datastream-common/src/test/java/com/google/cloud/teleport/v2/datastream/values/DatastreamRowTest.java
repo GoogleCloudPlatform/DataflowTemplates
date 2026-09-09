@@ -93,11 +93,30 @@ public class DatastreamRowTest {
   }
 
   @Test
-  public void testGetPrimaryKeysJsonNode_oracleFallback() throws IOException {
-    JsonNode jsonNode = new ObjectMapper().readTree("{\"_metadata_source_type\": \"oracle\"}");
+  public void testGetPrimaryKeysJsonNode_withPrimaryKeysArray() throws IOException {
+    JsonNode jsonNode =
+        new ObjectMapper()
+            .readTree(
+                "{\"_metadata_source_type\": \"oracle\", \"_metadata_primary_keys\":"
+                    + " [\"id\", \"name\"]}");
     DatastreamRow row = DatastreamRow.of(jsonNode);
     List<String> pks = row.getPrimaryKeys();
 
+    assertEquals(2, pks.size());
+    assertEquals("id", pks.get(0));
+    assertEquals("name", pks.get(1));
+  }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_nonArrayPrimaryKeysNode() throws IOException {
+    JsonNode jsonNode =
+        new ObjectMapper()
+            .readTree(
+                "{\"_metadata_source_type\": \"oracle\", \"_metadata_primary_keys\": \"id\"}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    // Non-array node should not be treated as array, falls back to default oracle PK
     assertEquals(1, pks.size());
     assertEquals(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY, pks.get(0));
   }
