@@ -14,16 +14,18 @@ This is used to add test for the data validation template.
 > [!IMPORTANT]
 > **Initialization Check**: If ANY of the required prompt inputs are missing from the user's prompt, or if the environment config file does not exist, you **MUST HALT EXECUTION IMMEDIATELY**. Ask the user to provide the missing inputs before proceeding.
 
-## Execution Instructions
-Take the following parameters as input.
-1. **Target Source Database Name:** Extract from the user prompt.
-2. **Reference Datatype Mapping Matrix File Path:** Extract from the user prompt.
+Please load and execute the `v2/spanner-common/.agents/skills/add-source-datatype-integ-test/SKILL.md` skill to generate a datatype integration test.
 
 Create tests for the current target similar to the following tests.
 1. com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationMySQLAllDataTypesE2EIT
 2. com.google.cloud.teleport.v2.templates.endtoend.BulkMigrationAndValidationPostgreSQLAllDataTypesE2EIT
 
 Run the tests for the target database and fix any issues encountered in the code.
+
+CRITICAL CONSTRAINTS:
+- Treat the provided Reference Mapping File as your absolute source of truth to derive baseline mapping schemas. You MUST strictly use this matrix to generate testing mappings. Do NOT perform independent type research.
+- Use the `-DdirectRunnerTest` flag for iterative testing.Once the DirectRunner loop passes, you MUST perform a final execution directly against Cloud Dataflow (omitting the flag) and ensure that run completely succeeds before generating your final report.
+- Upon completing your artifact report, ensure `RequestFeedback: false` is set so your status naturally changes back to idle. Do NOT pause waiting for conversational human feedback.
 
 ## Example User Prompt
 ```text
