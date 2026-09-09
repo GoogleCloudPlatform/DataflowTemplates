@@ -422,18 +422,13 @@ public class AvroToValueMapper {
       }
 
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
+        // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
-        try {
-          // Translate hex string to byte array.
-          String hexStr = s.replace("-", "");
-          if (hexStr.length() % 2 == 1) {
-            hexStr = "0" + hexStr;
-          }
-          return ByteArray.copyFrom(Hex.decodeHex(hexStr));
-        } catch (Exception e) {
-          // Translate string to byte array.
-          return ByteArray.copyFrom(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        if (s.length() % 2 == 1) {
+          s = "0" + s;
         }
+        return ByteArray.copyFrom(Hex.decodeHex(s));
       }
       return ByteArray.copyFrom(((ByteBuffer) recordValue).array());
     } catch (Exception e) {

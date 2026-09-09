@@ -33,7 +33,6 @@ import com.google.cloud.teleport.v2.spanner.type.Type.Code;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -944,18 +943,5 @@ public class AvroToValueMapperTest {
     Schema schema = SchemaBuilder.builder().stringType();
     ByteBuffer buf = ByteBuffer.wrap(new byte[] {0x01, 0x0A, (byte) 0xFF});
     assertEquals("010aff", AvroToValueMapper.avroFieldToString(buf, schema));
-  }
-
-  @Test
-  public void testAvroFieldToByteArray_StringHexAndFallback() {
-    Schema stringSchema = SchemaBuilder.builder().stringType();
-
-    // Hex string with dashes and odd length
-    ByteArray oddHexWithDash = AvroToValueMapper.avroFieldToByteArray("1-2-3", stringSchema);
-    assertEquals(ByteArray.copyFrom(new byte[] {0x01, 0x23}), oddHexWithDash);
-
-    // Non-hex string falling back to UTF-8 bytes
-    ByteArray nonHex = AvroToValueMapper.avroFieldToByteArray("hello world", stringSchema);
-    assertEquals(ByteArray.copyFrom("hello world".getBytes(StandardCharsets.UTF_8)), nonHex);
   }
 }
