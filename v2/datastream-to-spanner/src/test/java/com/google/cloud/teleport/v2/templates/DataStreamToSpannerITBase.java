@@ -104,27 +104,39 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
               org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName)
                   .setUsername("sys as sysdba")
                   .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                  .setDatabaseName("XEPDB1")
+                  .setDatabaseName("XE")
                   .setHost(System.getProperty("cloudOracleHost"))
                   .setPort(1521)
                   .build();
 
       String isoUser =
-          "U_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
+          "C##" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
       String isoPassword =
           "P_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
 
-      sysdba.runSQLUpdate(String.format("CREATE USER %s IDENTIFIED BY %s", isoUser, isoPassword));
-      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s", isoUser));
-      sysdba.runSQLUpdate(String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", isoUser, isoPassword));
+      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", isoUser));
       sysdba.runSQLUpdate(String.format("ALTER USER %s QUOTA 50m ON SYSTEM", isoUser));
+      sysdba.runSQLUpdate(String.format("GRANT SET CONTAINER TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(String.format("GRANT LOGMINING TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT SELECT ANY TRANSACTION TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(String.format("GRANT SELECT_CATALOG_ROLE TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(String.format("GRANT EXECUTE_CATALOG_ROLE TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT SELECT ON V_$DATABASE TO %s CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(
+          String.format("GRANT SELECT ON V_$LOGMNR_CONTENTS TO %s CONTAINER=ALL", isoUser));
 
       builder.setPassword(isoPassword);
       builder.setHost(System.getProperty("cloudOracleHost"));
       builder.setPort(1521);
       builder.setUsername(isoUser);
       builder.setSystemIdentifier(System.getProperty("cloudOracleSid", "XE"));
-      builder.setDatabaseName("XEPDB1");
+      builder.setDatabaseName("XE");
     }
     return new com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager(builder);
   }
@@ -733,7 +745,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
       if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
         try (java.sql.Statement stmt = connection.createStatement()) {
-          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = \"" + targetUsername + "\"");
         }
       }
 

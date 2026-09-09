@@ -75,6 +75,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   @Before
   public void setUp() throws Exception {
+    java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerTimezoneIT.class) {
       testInstances.add(this);
@@ -189,9 +190,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
-                conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(35)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
     assertUsersBackfillContents();

@@ -41,7 +41,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -76,7 +75,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
   private static final List<String> COLUMNS =
       List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, LARGE_BLOB_ADDED);
 
-  private static CloudOracleResourceManager oracleResourceManager;
+  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -85,6 +84,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
       testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
+  private static String oracleUser;
 
   static {
     for (int i = 1; i <= NUM_TABLES; i++) {
@@ -95,10 +95,6 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
 
   @Before
   public void setUp() throws Exception {
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT.class) {
       testInstances.add(this);
@@ -111,7 +107,8 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
         String sessionContent = generateBaseSchema();
         sessionContent =
             sessionContent
@@ -153,11 +150,11 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        oracleResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   private void setupSchema() {

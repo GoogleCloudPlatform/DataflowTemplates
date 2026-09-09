@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -38,7 +37,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -74,7 +72,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
   private static final String LARGE_CELL_TABLE = "LargeCell";
   private static final List<String> TABLES = List.of(LARGE_KEY_TABLE, LARGE_CELL_TABLE);
 
-  private static CloudOracleResourceManager oracleResourceManager;
+  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
@@ -82,28 +80,17 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
   private static HashSet<OracleDatastreamToSpannerTableAndIndexLimitsIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static String oracleUser;
 
   @Before
   public void setUp() throws Exception {
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerTableAndIndexLimitsIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         LOG.info("Setting up Oracle resource manager...");
-        oracleResourceManager = setUpOracleResourceManager();
-        LOG.info("Oracle resource manager created with URI: {}", oracleResourceManager.getUri());
-
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
         LOG.info("Setting up Spanner resource manager...");
         spannerResourceManager = setUpSpannerResourceManager();
         LOG.info(
@@ -132,7 +119,9 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         // Pre-insert testing data for LargeCell
         try (Connection conn =
                 DriverManager.getConnection(
-                    oracleResourceManager.getUri(), oracleUser, "TestPassword123");
+                    oracleResourceManager.getUri(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD);
             PreparedStatement pstmt =
                 conn.prepareStatement(
                     "INSERT INTO \"LargeCell\" (\"id\", \"max_string_col_to_bytes\","
@@ -149,20 +138,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         }
 
         // Force a log switch and insert to LargeCell.
-        try (Connection conn =
-                DriverManager.getConnection(
-                    "jdbc:oracle:thin:@"
-                        + oracleResourceManager.getHost()
-                        + ":"
-                        + oracleResourceManager.getPort()
-                        + "XEPDB1",
-                    "system",
-                    "TestPassword123");
-            Statement stmt = conn.createStatement(); ) {
-          flushOracleRedoLogs(null);
-        } catch (Exception e) {
-          LOG.warn("Failed to switch log file natively: ", e);
-        }
+        SharedOracleLiveITInstance.flushRedoLogs();
 
         LOG.info("Generating session file content...");
         String sessionFileContent =
@@ -176,7 +152,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
             OracleSource.builder(
                     oracleResourceManager.getHost(),
                     oracleUser,
-                    "TestPassword123",
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLES))
@@ -209,11 +185,11 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        oracleResourceManager,
         spannerResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test

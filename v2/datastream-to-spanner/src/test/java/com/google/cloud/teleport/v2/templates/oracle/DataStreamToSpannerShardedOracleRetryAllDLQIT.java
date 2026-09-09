@@ -374,7 +374,11 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
   }
 
   private String getCustomShardJarPath() {
-    return "/home/dhwanilpatel_google_com/MyStorage/OracleSupport/DataflowTemplates/v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
+    String userDir = System.getProperty("user.dir");
+    if (userDir.endsWith("v2/datastream-to-spanner")) {
+      return "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
+    }
+    return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
   }
 
   private void insertDataInOracle() throws Exception {

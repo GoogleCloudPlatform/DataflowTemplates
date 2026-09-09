@@ -37,7 +37,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -65,7 +64,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
 
   private static final int NUM_COLUMNS = 16;
   private static final List<String> COLUMNS = new ArrayList<>();
-  private static CloudSqlResourceManager cloudSqlResourceManager;
+  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -74,6 +73,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
   private static DatastreamResourceManager datastreamResourceManager;
+  private static String oracleUser;
 
   static {
     for (int i = 1; i <= NUM_TABLES; i++) {
@@ -86,10 +86,6 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
 
   @Before
   public void setUp() throws Exception {
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT.class) {
       testInstances.add(this);
@@ -102,11 +98,13 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        cloudSqlResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+
         String sessionContent = generateBaseSchema();
         sessionContent =
             sessionContent
-                .replaceAll("SRC_DATABASE", cloudSqlResourceManager.getDatabaseName())
+                .replaceAll("SRC_DATABASE", oracleResourceManager.getDatabaseName())
                 .replaceAll("SP_DATABASE", spannerResourceManager.getDatabaseId());
         for (int i = 1; i <= NUM_TABLES; i++) {
           sessionContent = sessionContent.replaceAll("TABLE" + i, TABLE_NAMES.get(i - 1));
@@ -131,11 +129,11 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                 datastreamResourceManager,
                 sessionContent,
                 OracleSource.builder(
-                        cloudSqlResourceManager.getHost(),
+                        oracleResourceManager.getHost(),
                         oracleUser,
-                        "TestPassword123",
-                        cloudSqlResourceManager.getPort(),
-                        cloudSqlResourceManager.getDatabaseName())
+                        SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                        oracleResourceManager.getPort(),
+                        oracleResourceManager.getDatabaseName())
                     .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLE_NAMES))
                     .build());
       }
@@ -148,16 +146,22 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        cloudSqlResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   private void setupSchema() {
     TABLE_NAMES.forEach(
-        tableName -> cloudSqlResourceManager.runSQLUpdate(getJDBCSchema(tableName)));
+        tableName -> {
+          try {
+            executeOracleSql(oracleResourceManager, getJDBCSchema(tableName), oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
     createSpannerTables();
   }
 
@@ -354,36 +358,9 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
           }
 
           cdcEvents.put(tableName, rows);
-          success &= cloudSqlResourceManager.write(tableName, rows);
+          success &= oracleResourceManager.write(tableName, rows);
 
-          try {
-            String dynamicHost = cloudSqlResourceManager.getHost();
-            int dynamicPort = cloudSqlResourceManager.getPort();
-
-            // Set system property because the builder internally relies on it!
-            System.setProperty("cloudOracleHost", dynamicHost);
-
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager sysBuilder =
-                (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                    SharedOracleLiveITInstance.getInstance();
-            // // // sysBuilder.setUsername("sys as sysdba");
-            // // // sysBuilder.setPassword("TestPassword123");
-            // // // sysBuilder.setHost(dynamicHost);
-            // // // sysBuilder.setPort(dynamicPort);
-            // // // sysBuilder.setDatabaseName("XE");
-
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager cloudOracleSysUser =
-                (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                    (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
-            flushOracleRedoLogs(cloudOracleSysUser);
-            cloudOracleSysUser.cleanupAll();
-          } catch (Throwable e) {
-            org.slf4j.LoggerFactory.getLogger(
-                    OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT.class)
-                .error("FAILED TO EXECUTE SYSDBA SWITCH LOGFILE", e);
-            e.printStackTrace();
-          }
-
+          SharedOracleLiveITInstance.flushRedoLogs();
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
         }
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");

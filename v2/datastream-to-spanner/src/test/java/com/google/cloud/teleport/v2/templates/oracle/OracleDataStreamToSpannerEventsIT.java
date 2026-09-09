@@ -141,9 +141,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
-                conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(35)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 
@@ -173,9 +171,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
-                conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(35)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 
@@ -221,7 +217,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(18)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(35)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 

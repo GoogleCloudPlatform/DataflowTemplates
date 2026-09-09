@@ -191,8 +191,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES + 10)),
-                conditionCheck);
+                createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 

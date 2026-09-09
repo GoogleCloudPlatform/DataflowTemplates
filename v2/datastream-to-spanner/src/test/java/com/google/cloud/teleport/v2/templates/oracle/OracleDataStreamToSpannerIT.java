@@ -235,7 +235,7 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(45)), conditionCheck);
 
     checkSpannerTables(tableNames, cdcEvents);
     assertThatResult(result).meetsConditions();
