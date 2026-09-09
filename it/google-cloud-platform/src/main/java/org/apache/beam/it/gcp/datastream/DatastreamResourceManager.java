@@ -55,6 +55,8 @@ import com.google.cloud.datastream.v1.PostgresqlProfile;
 import com.google.cloud.datastream.v1.PostgresqlSourceConfig;
 import com.google.cloud.datastream.v1.PrivateConnectivity;
 import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.SqlServerProfile;
+import com.google.cloud.datastream.v1.SqlServerSourceConfig;
 import com.google.cloud.datastream.v1.StaticServiceIpConnectivity;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.datastream.v1.StreamName;
@@ -256,6 +258,16 @@ public final class DatastreamResourceManager implements ResourceManager {
             .setDatabase(((PostgresqlSource) source).database());
         connectionProfileBuilder.setPostgresqlProfile(postgresqlProfileBuilder);
         break;
+      case SQLSERVER:
+        SqlServerProfile.Builder sqlServerProfileBuilder = SqlServerProfile.newBuilder();
+        sqlServerProfileBuilder
+            .setHostname(source.hostname())
+            .setUsername(source.username())
+            .setPassword(source.password())
+            .setPort(source.port())
+            .setDatabase(((SqlServerSource) source).database());
+        connectionProfileBuilder.setSqlServerProfile(sqlServerProfileBuilder);
+        break;
       default:
         throw new DatastreamResourceManagerException(
             "Could not recognize JDBC source type " + source.type().name());
@@ -280,8 +292,8 @@ public final class DatastreamResourceManager implements ResourceManager {
   }
 
   /**
-   * Creates a Source Configuration for a JDBC server. Supported JDBC types are - MySql, Postgres
-   * and Oracle.
+   * Creates a Source Configuration for a JDBC server. Supported JDBC types are - MySql, Postgres,
+   * Oracle and SqlServer.
    *
    * @param sourceConnectionProfileId The ID of the connection profile.
    * @param source An object representing the JDBC source.
@@ -307,11 +319,14 @@ public final class DatastreamResourceManager implements ResourceManager {
       case ORACLE:
         sourceConfigBuilder.setOracleSourceConfig((OracleSourceConfig) source.config());
         break;
+      case SQLSERVER:
+        sourceConfigBuilder.setSqlServerSourceConfig((SqlServerSourceConfig) source.config());
+        break;
       default:
         throw new DatastreamResourceManagerException(
             "Invalid JDBC source type "
                 + source.type().name()
-                + ". Must be one of MySQL, Postgres or Oracle.");
+                + ". Must be one of MySQL, Postgres, Oracle or SqlServer.");
     }
 
     return sourceConfigBuilder.build();
