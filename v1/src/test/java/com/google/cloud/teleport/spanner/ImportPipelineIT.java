@@ -154,7 +154,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .getPath());
     gcsClient.uploadArtifact(
         "input/pg_multiply.avro-00000-of-00001",
-        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_add.avro").getPath());
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_multiply.avro").getPath());
     gcsClient.uploadArtifact(
         "input/pg_multiply-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_multiply-manifest.json")

@@ -283,5 +283,10 @@ public class InformationSchemaScannerTest {
     assertEquals("a + b", udf.definition());
     assertEquals(Udf.SqlSecurity.INVOKER, udf.security());
     assertEquals("DETERMINISTIC", udf.spannerDeterminism());
+    assertEquals(Dialect.POSTGRESQL, udf.dialect());
+    assertThat(
+        udf.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"pg_add\"() RETURNS integer IMMUTABLE LANGUAGE SQL SECURITY INVOKER RETURN a + b"));
   }
 }

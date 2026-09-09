@@ -860,25 +860,25 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
           assertThat(
               udf2.parameters(),
               hasItems(
-                  UdfParameter.builder()
+                  UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
                       .name("A")
                       .type("text")
                       .defaultExpression(null)
                       .autoBuild(),
-                  UdfParameter.builder()
+                  UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
                       .name("B")
                       .type("text")
                       .defaultExpression("NULL")
                       .autoBuild(),
-                  UdfParameter.builder()
+                  UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
                       .name("C")
                       .type("text")
                       .defaultExpression("'NULL'")
                       .autoBuild(),
-                  UdfParameter.builder()
+                  UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
                       .name("D")
                       .type("text")
