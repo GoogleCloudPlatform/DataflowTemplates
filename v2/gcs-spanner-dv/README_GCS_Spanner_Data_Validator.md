@@ -17,20 +17,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
+* **gcsInputDirectory**: This directory is used to read the AVRO files of the records read from source. For example, `gs://your-bucket/your-path`.
+* **projectId**: This is the name of the Cloud Spanner project.
 * **instanceId**: The destination Cloud Spanner instance.
 * **databaseId**: The destination Cloud Spanner database.
 * **bigQueryDataset**: The BigQuery dataset ID where the validation results will be stored. For example, `validation_report_dataset`.
 
 ### Optional parameters
 
-* **gcsInputDirectory**: This directory is used to read the AVRO files of the records read from source. For example, `gs://your-bucket/your-path`.
-* **projectId**: This is the name of the Cloud Spanner project.
 * **spannerHost**: The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
 * **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
 * **tableOverrides**: These are the table name overrides from source to spanner. They are written in the following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}] This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
-* **columnOverrides**: These are the column name overrides from source to spanner. They are written in the following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from source to spanner. They are written in the following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]. Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
 * **runId**: A unique identifier for the validation run. If not provided, the Dataflow Job Name will be used. For example, `run_20230101_120000`.
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
@@ -127,13 +127,13 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_Spanner_Data_Validator"
 
 ### Required
+export GCS_INPUT_DIRECTORY=<gcsInputDirectory>
+export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export BIG_QUERY_DATASET=<bigQueryDataset>
 
 ### Optional
-export GCS_INPUT_DIRECTORY=<gcsInputDirectory>
-export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export SPANNER_PRIORITY=HIGH
 export SESSION_FILE_PATH=""
@@ -182,13 +182,13 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export GCS_INPUT_DIRECTORY=<gcsInputDirectory>
+export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export BIG_QUERY_DATASET=<bigQueryDataset>
 
 ### Optional
-export GCS_INPUT_DIRECTORY=<gcsInputDirectory>
-export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export SPANNER_PRIORITY=HIGH
 export SESSION_FILE_PATH=""
@@ -252,11 +252,11 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_data_validator" {
   name              = "gcs-spanner-data-validator"
   region            = var.region
   parameters        = {
+    gcsInputDirectory = "<gcsInputDirectory>"
+    projectId = "<projectId>"
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     bigQueryDataset = "<bigQueryDataset>"
-    # gcsInputDirectory = "<gcsInputDirectory>"
-    # projectId = "<projectId>"
     # spannerHost = "https://batch-spanner.googleapis.com"
     # spannerPriority = "HIGH"
     # sessionFilePath = ""
@@ -270,5 +270,3 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_data_validator" {
   }
 }
 ```
-
-For more advanced end-to-end deployment examples using Terraform, please refer to the [Terraform samples directory](terraform/samples/).
