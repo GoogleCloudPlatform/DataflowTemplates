@@ -77,7 +77,8 @@ func main() {
 		flags.UnifiedWorkerHarnessContainerImage(),
 		flags.CloudProxyPassword(),
 		mvnFlags.SpecificTest(flags.TestToRun()),
-		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""),
+		flags.DirectRunnerTest())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
