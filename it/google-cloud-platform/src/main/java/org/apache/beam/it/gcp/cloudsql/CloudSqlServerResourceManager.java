@@ -17,7 +17,6 @@
  */
 package org.apache.beam.it.gcp.cloudsql;
 
-import com.google.auth.oauth2.GoogleCredentials;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +33,6 @@ import org.slf4j.LoggerFactory;
 public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudSqlServerResourceManager.class);
-
-  public static final int DEFAULT_SQLSERVER_PORT = 1433;
-  public static final String DEFAULT_SQLSERVER_USERNAME = "sqlserver";
 
   private CloudSqlServerResourceManager(Builder builder) {
     super(builder);
@@ -72,15 +68,13 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
     LOG.info("Enabling CDC on database '{}'.", databaseName);
     try {
       runSQLUpdate(String.format("EXEC msdb.dbo.gcloudsql_cdc_enable_db '%s'", databaseName));
-      LOG.info(
-          "Successfully enabled CDC on database {} using gcloudsql_cdc_enable_db.", databaseName);
     } catch (Exception e) {
       LOG.warn(
           "gcloudsql_cdc_enable_db failed ({}), falling back to sys.sp_cdc_enable_db...",
           e.getMessage());
       runSQLUpdate(String.format("USE [%s]; EXEC sys.sp_cdc_enable_db;", databaseName));
-      LOG.info("Successfully enabled CDC on database {} using sys.sp_cdc_enable_db.", databaseName);
     }
+    LOG.info("Successfully enabled CDC on database {}", databaseName);
   }
 
   @Override
@@ -107,11 +101,6 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
     public Builder(String testId) {
       super(testId);
-    }
-
-    @Override
-    protected String getDefaultUsername() {
-      return DEFAULT_SQLSERVER_USERNAME;
     }
 
     @Override
@@ -145,21 +134,6 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
     @Override
     public Builder maybeUseStaticInstance(String host, int port, String userName, String password) {
       super.maybeUseStaticInstance(host, port, userName, password);
-      return this;
-    }
-
-    public Builder setProjectId(String projectId) {
-      this.projectId = projectId;
-      return this;
-    }
-
-    public Builder setRegion(String region) {
-      this.region = region;
-      return this;
-    }
-
-    public Builder setCredentials(GoogleCredentials credentials) {
-      this.credentials = credentials;
       return this;
     }
 

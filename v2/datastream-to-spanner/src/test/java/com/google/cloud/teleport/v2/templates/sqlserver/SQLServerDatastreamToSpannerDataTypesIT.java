@@ -759,9 +759,9 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
         createMultiColumnRows(
             Arrays.asList(
                 Arrays.asList(
-                    new Pair<>("first_name_col", "AA"),
-                    new Pair<>("last_name_col", "BB"),
-                    new Pair<>("generated_column_col", "AA BB")))));
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC CC")))));
     expectedData.put(
         "generated_non_pk_column",
         createMultiColumnRows(
@@ -797,10 +797,10 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
         createMultiColumnRows(
             Arrays.asList(
                 Arrays.asList(
-                    new Pair<>("first_name_col", "AA"),
-                    new Pair<>("last_name_col", "BB"),
-                    new Pair<>("generated_column_col", "AA "),
-                    new Pair<>("generated_column_pk_col", "AA BB")))));
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC "),
+                    new Pair<>("generated_column_pk_col", "CC CC")))));
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedDataPGDialect() {

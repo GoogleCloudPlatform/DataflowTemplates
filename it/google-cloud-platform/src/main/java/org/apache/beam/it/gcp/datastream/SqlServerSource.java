@@ -49,7 +49,7 @@ public class SqlServerSource extends JDBCSource {
   @Override
   public SqlServerSourceConfig config() {
     SqlServerSourceConfig.Builder configBuilder = SqlServerSourceConfig.newBuilder();
-    if (this.allowedTables().size() > 0) {
+    if (!this.allowedTables().isEmpty()) {
       SqlServerRdbms.Builder rdbmsBuilder = SqlServerRdbms.newBuilder();
       for (String schema : this.allowedTables().keySet()) {
         SqlServerSchema.Builder schemaBuilder = SqlServerSchema.newBuilder().setSchema(schema);
@@ -74,33 +74,8 @@ public class SqlServerSource extends JDBCSource {
     private final String database;
 
     public Builder(String hostname, String username, String password, int port, String database) {
-      super(resolveHost(hostname), username, password, port);
+      super(hostname, username, password, port);
       this.database = database;
-    }
-
-    private static String resolveHost(String hostname) {
-      if ("localhost".equalsIgnoreCase(hostname) || "127.0.0.1".equals(hostname)) {
-        try {
-          java.util.Enumeration<java.net.NetworkInterface> interfaces =
-              java.net.NetworkInterface.getNetworkInterfaces();
-          while (interfaces.hasMoreElements()) {
-            java.net.NetworkInterface iface = interfaces.nextElement();
-            if (iface.isLoopback() || !iface.isUp() || iface.getName().startsWith("docker")) {
-              continue;
-            }
-            java.util.Enumeration<java.net.InetAddress> addresses = iface.getInetAddresses();
-            while (addresses.hasMoreElements()) {
-              java.net.InetAddress addr = addresses.nextElement();
-              if (addr instanceof java.net.Inet4Address) {
-                return addr.getHostAddress();
-              }
-            }
-          }
-        } catch (Exception e) {
-          // ignore and fallback
-        }
-      }
-      return hostname;
     }
 
     @Override

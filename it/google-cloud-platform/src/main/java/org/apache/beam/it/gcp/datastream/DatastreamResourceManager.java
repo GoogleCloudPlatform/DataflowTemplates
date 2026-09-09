@@ -175,12 +175,6 @@ public final class DatastreamResourceManager implements ResourceManager {
       throws ExecutionException, InterruptedException {
     connectionProfileBuilder.setDisplayName(connectionProfileId);
 
-    LOG.info(
-        "Creating Connection Profile {} with privateConnectivity={}",
-        connectionProfileId,
-        privateConnectivity != null
-            ? privateConnectivity.getPrivateConnection()
-            : "null (static service IP)");
     if (privateConnectivity != null) {
       connectionProfileBuilder.setPrivateConnectivity(privateConnectivity);
     } else {
@@ -272,13 +266,6 @@ public final class DatastreamResourceManager implements ResourceManager {
             .setPassword(source.password())
             .setPort(source.port())
             .setDatabase(((SqlServerSource) source).database());
-        LOG.info(
-            "SqlServerProfile details: host={}, port={}, user={}, db={}, passLength={}",
-            source.hostname(),
-            source.port(),
-            source.username(),
-            ((SqlServerSource) source).database(),
-            source.password() != null ? source.password().length() : 0);
         connectionProfileBuilder.setSqlServerProfile(sqlServerProfileBuilder);
         break;
       default:
