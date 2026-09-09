@@ -28,6 +28,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,6 +49,7 @@ public class SQLServerInformationSchemaScannerTest {
   public void setUp() throws SQLException {
     MockitoAnnotations.openMocks(this);
     when(mockConnection.getMetaData()).thenReturn(mockMetaData);
+    when(mockConnection.getSchema()).thenReturn("dbo");
   }
 
   @Test
@@ -68,6 +70,7 @@ public class SQLServerInformationSchemaScannerTest {
     when(mockMetaData.getPrimaryKeys(any(), eq("dbo"), eq("Users"))).thenReturn(mockPkRs);
     when(mockPkRs.next()).thenReturn(true, false);
     when(mockPkRs.getString("COLUMN_NAME")).thenReturn("UserId");
+    when(mockPkRs.getInt("KEY_SEQ")).thenReturn(1);
 
     SQLServerInformationSchemaScanner scanner =
         new SQLServerInformationSchemaScanner(mockConnection, "testdb");
@@ -109,18 +112,41 @@ public class SQLServerInformationSchemaScannerTest {
   }
 
   @Test
-  public void testScanIgnoresInternalTables() throws SQLException {
+  public void testScanPrimaryKeysOutOfOrder() throws SQLException {
     when(mockMetaData.getTables(any(), eq("dbo"), eq("%"), eq(new String[] {"TABLE"})))
         .thenReturn(mockTablesRs);
-    when(mockTablesRs.next()).thenReturn(true, true, false);
-    when(mockTablesRs.getString("TABLE_NAME")).thenReturn("trace_xe_action_map", "spt_values");
+    when(mockTablesRs.next()).thenReturn(true, false);
+    when(mockTablesRs.getString("TABLE_NAME")).thenReturn("Orders");
+
+    when(mockMetaData.getColumns(any(), eq("dbo"), eq("Orders"), eq("%"))).thenReturn(mockColsRs);
+    when(mockColsRs.next()).thenReturn(true, true, true, false);
+    when(mockColsRs.getString("COLUMN_NAME")).thenReturn("ItemId", "TenantId", "OrderId");
+    when(mockColsRs.getString("TYPE_NAME")).thenReturn("int", "int", "int");
+    when(mockColsRs.getString("IS_NULLABLE")).thenReturn("NO", "NO", "NO");
+    when(mockColsRs.getString("IS_AUTOINCREMENT")).thenReturn("NO", "NO", "NO");
+    when(mockColsRs.getString("IS_GENERATEDCOLUMN")).thenReturn("NO", "NO", "NO");
+
+    when(mockMetaData.getPrimaryKeys(any(), eq("dbo"), eq("Orders"))).thenReturn(mockPkRs);
+    when(mockPkRs.next()).thenReturn(true, true, true, false);
+    when(mockPkRs.getString("COLUMN_NAME")).thenReturn("ItemId", "TenantId", "OrderId");
+    when(mockPkRs.getInt("KEY_SEQ")).thenReturn(3, 1, 2);
 
     SQLServerInformationSchemaScanner scanner =
         new SQLServerInformationSchemaScanner(mockConnection, "testdb");
     SourceSchema schema = scanner.scan();
 
     assertNotNull(schema);
-    assertEquals(0, schema.tables().size());
+    SourceTable table = schema.table("Orders");
+    assertNotNull(table);
+    assertEquals(3, table.primaryKeyColumns().size());
+    assertEquals("TenantId", table.primaryKeyColumns().get(0));
+    assertEquals("OrderId", table.primaryKeyColumns().get(1));
+    assertEquals("ItemId", table.primaryKeyColumns().get(2));
+    assertEquals(List.of("TenantId", "OrderId", "ItemId"), table.primaryKeyColumns());
+
+    for (SourceColumn col : table.columns()) {
+      assertTrue(col.isPrimaryKey());
+    }
   }
 
   @Test

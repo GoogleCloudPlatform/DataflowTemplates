@@ -208,19 +208,16 @@ public class SQLServerSpToSrcSourceConnectorTest {
 
     RuntimeException exception =
         assertThrows(RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
-    assertTrue(exception.getMessage().contains("Error checking SQL Server read-only status"));
-    assertTrue(exception.getCause().getMessage().contains("read-only mode for shard: shard1"));
+    assertTrue(exception.getMessage().contains("read-only mode for shard: shard1"));
   }
 
   @Test
   public void testValidateConnectionErrorThrowsException() throws Exception {
     SQLServerSpToSrcSourceConnector spyConnector = spy(connector);
     doThrow(new SQLException("Connection failed")).when(spyConnector).createConnection(mockShard);
-    when(mockShard.getLogicalShardId()).thenReturn("shard1");
-
-    RuntimeException exception =
-        assertThrows(RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
-    assertTrue(exception.getMessage().contains("Error checking SQL Server read-only status"));
+    SQLException exception =
+        assertThrows(SQLException.class, () -> spyConnector.validate(List.of(mockShard), null));
+    assertTrue(exception.getMessage().contains("Connection failed"));
   }
 
   @Test

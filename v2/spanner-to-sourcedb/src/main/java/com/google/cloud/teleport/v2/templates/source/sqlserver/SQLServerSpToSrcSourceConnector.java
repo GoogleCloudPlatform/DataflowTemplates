@@ -134,24 +134,16 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
     for (Shard shard : shards) {
       try (Connection conn = createConnection(shard)) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs =
-                  stmt.executeQuery(
-                      "SELECT CASE WHEN DATABASEPROPERTYEX(DB_NAME(), 'Updateability') = 'READ_ONLY' THEN 1 ELSE 0 END")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "SQL Server destination is in read-only mode for shard: "
-                      + shard.getLogicalShardId());
-            }
+        try (Statement stmt = conn.createStatement();
+            ResultSet rs =
+                stmt.executeQuery(
+                    "SELECT CASE WHEN DATABASEPROPERTYEX(DB_NAME(), 'Updateability') = 'READ_ONLY' THEN 1 ELSE 0 END")) {
+          if (rs.next() && rs.getInt(1) == 1) {
+            throw new RuntimeException(
+                "SQL Server destination is in read-only mode for shard: "
+                    + shard.getLogicalShardId());
           }
         }
-      } catch (Exception e) {
-        LOG.error(
-            "Error checking SQL Server read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking SQL Server read-only status", e);
       }
     }
   }

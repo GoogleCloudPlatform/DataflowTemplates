@@ -21,8 +21,10 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,12 +37,6 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
     this.databaseName = databaseName;
   }
 
-  /**
-   * TODO: Analyze if it is needed to populate Indexes and Foreign Keys. Also, how to support other
-   * schemas.
-   *
-   * @return SourceSchema
-   */
   @Override
   public SourceSchema scan() {
     Map<String, SourceTable> tablesMap = new HashMap<>();
@@ -48,16 +44,11 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
         SourceSchema.builder(SourceDatabaseType.SQLSERVER).databaseName(databaseName);
     try {
       DatabaseMetaData metaData = connection.getMetaData();
-      String schemaPattern = "dbo";
+      String schemaPattern = connection.getSchema();
 
       try (ResultSet rs = metaData.getTables(null, schemaPattern, "%", new String[] {"TABLE"})) {
         while (rs.next()) {
           String tableName = rs.getString("TABLE_NAME");
-          if (tableName == null
-              || tableName.startsWith("trace_xe_")
-              || tableName.startsWith("spt_")) {
-            continue;
-          }
           SourceTable table = scanTable(metaData, schemaPattern, tableName);
           tablesMap.put(tableName, table);
         }
@@ -75,12 +66,20 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
 
     ImmutableList.Builder<String> pksBuilder = ImmutableList.builder();
     Set<String> pkSet = new HashSet<>();
+    List<Map.Entry<Integer, String>> pkList = new ArrayList<>();
     try (ResultSet pkResultSet = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
       while (pkResultSet.next()) {
         String pkCol = pkResultSet.getString("COLUMN_NAME");
-        pksBuilder.add(pkCol);
-        pkSet.add(pkCol);
+        if (pkCol != null) {
+          int keySeq = pkResultSet.getInt("KEY_SEQ");
+          pkList.add(Map.entry(keySeq, pkCol));
+          pkSet.add(pkCol);
+        }
       }
+    }
+    pkList.sort(Map.Entry.comparingByKey());
+    for (Map.Entry<Integer, String> entry : pkList) {
+      pksBuilder.add(entry.getValue());
     }
 
     ImmutableList.Builder<SourceColumn> columnsBuilder = ImmutableList.builder();
