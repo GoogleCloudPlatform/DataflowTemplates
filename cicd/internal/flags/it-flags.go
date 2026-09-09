@@ -36,6 +36,8 @@ var (
 	dCloudProxyHost                     string
 	dCloudProxyMySqlPort                string
 	dCloudProxyPostgresPort             string
+	dCloudProxySqlServerPort            string
+	dCloudProxySqlServerUsername        string
 	dCloudProxyPassword                 string
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
@@ -58,6 +60,8 @@ func RegisterItFlags() {
 	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "33134", "MySql port number on static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgres-port", "33136", "Postgres port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxySqlServerPort, "it-cloud-proxy-sql-server-port", "33138", "Sql Server port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxySqlServerUsername, "it-cloud-proxy-sql-server-username", "sqlserver", "Sql Server username on static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
@@ -131,6 +135,14 @@ func CloudProxyHost() string {
 
 func CloudProxyMySqlPort() string {
 	return "-DcloudProxyMySqlPort=" + dCloudProxyMySqlPort
+}
+
+func CloudProxySqlServerPort() string {
+	return "-DcloudProxySqlServerPort=" + dCloudProxySqlServerPort
+}
+
+func CloudProxySqlServerUsername() string {
+	return "-DcloudSqlServerUsername=" + dCloudProxySqlServerUsername
 }
 
 func CloudProxyPostgresPort() string {
