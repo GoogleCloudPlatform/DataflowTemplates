@@ -209,6 +209,8 @@ public class DdlToAvroSchemaConverterTest {
                         + " REFERENCES `AllowedNames` (`first_name`)",
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
                         + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE",
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`)"
+                        + " REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL",
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
                         + " FOREIGN KEY (`last_name`) REFERENCES "
                         + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED",
@@ -396,10 +398,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "2"),
         equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL"));
+    assertThat(
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "3"),
+        equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"));
     assertThat(
-        avroSchema.getProp(SPANNER_FOREIGN_KEY + "3"),
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "4"),
         equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ENFORCED"));
