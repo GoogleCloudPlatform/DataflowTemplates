@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
@@ -44,7 +45,7 @@ class SqlServerChangeEventSequence extends ChangeEventSequence {
   private final String lsn;
 
   SqlServerChangeEventSequence(Long timestamp, String lsn) {
-    super("sqlserver");
+    super(SourceConstants.SQLSERVER_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.lsn = lsn;
   }
@@ -53,7 +54,7 @@ class SqlServerChangeEventSequence extends ChangeEventSequence {
    * Creates SqlServerChangeEventSequence from change event
    */
   public static SqlServerChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+      throws ChangeEventConvertorException {
 
     /* Backfill events from SqlServer "can" have only timestamp metadata filled in.
      * Set LSN to a smaller value than any real value

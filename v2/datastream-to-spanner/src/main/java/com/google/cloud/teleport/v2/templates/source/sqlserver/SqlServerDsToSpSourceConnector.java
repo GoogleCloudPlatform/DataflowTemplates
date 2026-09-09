@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
@@ -62,7 +63,7 @@ public class SqlServerDsToSpSourceConnector implements IDsToSpSourceConnector {
 
   @Override
   public String getSourceType() {
-    return "sqlserver";
+    return SourceConstants.SQLSERVER_SOURCE_TYPE;
   }
 
   @Override

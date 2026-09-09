@@ -51,10 +51,6 @@ public class SqlServerChangeEventContext extends ChangeEventContext {
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
 
-    Table dataTable = ddl.table(this.dataTable);
-    Set<String> primaryKeyColNames =
-        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
-
     convertChangeEventToMutation(ddl, shadowTableDdl);
   }
 
