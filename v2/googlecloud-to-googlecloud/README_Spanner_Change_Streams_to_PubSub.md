@@ -56,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputMessageMetadata**: The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
 * **useSpannerEmulatorHost**: Whether to use the Spanner host configured in getSpannerHost() as the Emulator host. Defaults to: false.
 * **spannerChangeStreamTvfNameList**: Semicolon-separated list of Spanner Change Stream TVF names to query and union. Defaults to empty.
-* **spannerDirectedReadOptions**: Directed read options for Cloud Spanner reads. The value must be a JSON string format of DirectedReadOptions (e.g. {"includeReplicas":{"replicaSelections":[{"location":"us-central1","type":"READ_ONLY"}]}}). Defaults to empty.
+* **spannerDirectedReadOptions**: Directed read options for Cloud Spanner reads. The value must be a JSON string format of DirectedReadOptions (e.g. {"includeReplicas":{"replicaSelections":[{"location":"us-central1","type":"READ_ONLY"}]}}). For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads). Defaults to empty.
 
 
 

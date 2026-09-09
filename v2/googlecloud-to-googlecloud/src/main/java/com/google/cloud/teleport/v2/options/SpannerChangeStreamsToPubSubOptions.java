@@ -270,7 +270,8 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       description = "Cloud Spanner directed read options",
       helpText =
           "Directed read options for Cloud Spanner reads. The value must be a JSON string format of"
-              + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}).")
+              + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}})."
+              + " For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads).")
   @Default.String("")
   String getSpannerDirectedReadOptions();
 
