@@ -61,6 +61,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **windowDuration**: The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). For example, `5m`.
 * **rpcPriority**: The request priority for Spanner calls. The value must be `HIGH`, `MEDIUM`, or `LOW`. Defaults to `HIGH`.
 * **spannerChangeStreamTvfNameList**: Semicolon-separated list of Spanner Change Stream TVF names to query and union. Defaults to empty.
+* **spannerDirectedReadOptions**: Directed read options for Cloud Spanner reads. The value must be a JSON string format of DirectedReadOptions (e.g. {"includeReplicas":{"replicaSelections":[{"location":"us-central1","type":"READ_ONLY"}]}}). Defaults to empty.
 * **outputFilenamePrefix**: The prefix to place on each windowed file. For example, `output-`. Defaults to: output.
 * **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
 
@@ -173,6 +174,7 @@ export OUTPUT_FILE_FORMAT=AVRO
 export WINDOW_DURATION=5m
 export RPC_PRIORITY=HIGH
 export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
+export SPANNER_DIRECTED_READ_OPTIONS=""
 export OUTPUT_FILENAME_PREFIX=output
 export NUM_SHARDS=20
 
@@ -195,6 +197,7 @@ gcloud dataflow flex-template run "spanner-change-streams-to-google-cloud-storag
   --parameters "windowDuration=$WINDOW_DURATION" \
   --parameters "rpcPriority=$RPC_PRIORITY" \
   --parameters "spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST" \
+  --parameters "spannerDirectedReadOptions=$SPANNER_DIRECTED_READ_OPTIONS" \
   --parameters "gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY" \
   --parameters "outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX" \
   --parameters "numShards=$NUM_SHARDS"
@@ -234,6 +237,7 @@ export OUTPUT_FILE_FORMAT=AVRO
 export WINDOW_DURATION=5m
 export RPC_PRIORITY=HIGH
 export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
+export SPANNER_DIRECTED_READ_OPTIONS=""
 export OUTPUT_FILENAME_PREFIX=output
 export NUM_SHARDS=20
 
@@ -244,7 +248,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-google-cloud-storage-job" \
 -DtemplateName="Spanner_Change_Streams_to_Google_Cloud_Storage" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,rpcPriority=$RPC_PRIORITY,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,rpcPriority=$RPC_PRIORITY,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST,spannerDirectedReadOptions=$SPANNER_DIRECTED_READ_OPTIONS,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -305,6 +309,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_google_c
     # windowDuration = "5m"
     # rpcPriority = "HIGH"
     # spannerChangeStreamTvfNameList = ""
+    # spannerDirectedReadOptions = ""
     # outputFilenamePrefix = "output"
     # numShards = "20"
   }
