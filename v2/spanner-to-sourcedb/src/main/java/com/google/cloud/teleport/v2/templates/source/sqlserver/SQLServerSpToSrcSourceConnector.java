@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfi
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SQLServerInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
@@ -34,6 +35,10 @@ import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLDataException;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -68,18 +73,30 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   }
 
   String getConnectionUrl(Shard shard) {
-    String url =
-        JDBC_URL_PREFIX
-            + shard.getHost()
-            + ":"
-            + shard.getPort()
-            + ";databaseName="
-            + shard.getDbName()
-            + ";trustServerCertificate=true;encrypt=false";
-    if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
-      url += ";" + shard.getConnectionProperties();
+    StringBuilder url =
+        new StringBuilder(
+            JDBC_URL_PREFIX
+                + shard.getHost()
+                + ":"
+                + shard.getPort()
+                + ";databaseName="
+                + shard.getDbName());
+    String connectionProperties = shard.getConnectionProperties();
+    String propsLower = (connectionProperties != null) ? connectionProperties.toLowerCase() : "";
+    if (!propsLower.contains("trustservercertificate")) {
+      url.append(";trustServerCertificate=true");
     }
-    return url;
+    if (!propsLower.contains("encrypt")) {
+      url.append(";encrypt=false");
+    }
+    if (connectionProperties != null && !connectionProperties.trim().isEmpty()) {
+      String props = connectionProperties.trim();
+      if (!props.startsWith(";")) {
+        url.append(";");
+      }
+      url.append(props);
+    }
+    return url.toString();
   }
 
   @Override
@@ -142,9 +159,7 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
   @Override
   public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
     try (Connection connection = createConnection(shards.get(0))) {
-      return new com.google.cloud.teleport.v2.spanner.sourceddl.SQLServerInformationSchemaScanner(
-              connection, shards.get(0).getDbName())
-          .scan();
+      return new SQLServerInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
     }
   }
 
@@ -167,12 +182,42 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
 
   @Override
   public TupleTag<String> classifyException(Throwable cause) {
-    if (cause instanceof java.sql.SQLSyntaxErrorException
-        || cause instanceof java.sql.SQLDataException) {
+    if (cause instanceof SQLSyntaxErrorException || cause instanceof SQLDataException) {
       return Constants.PERMANENT_ERROR_TAG;
     }
-    if (cause instanceof java.sql.SQLNonTransientConnectionException) {
+    if (cause instanceof SQLNonTransientConnectionException) {
       return Constants.PERMANENT_ERROR_TAG;
+    }
+    if (cause instanceof SQLException sqlEx) {
+      int errorCode = sqlEx.getErrorCode();
+      String sqlState = sqlEx.getSQLState();
+      // Permanent error codes in SQL Server:
+      // 102: Incorrect syntax near '...'
+      // 207: Invalid column name '...'
+      // 208: Invalid object name '...'
+      // 245: Conversion failed when converting the varchar value '...' to data type ...
+      // 547: The INSERT/UPDATE/DELETE statement conflicted with the CHECK/FOREIGN KEY constraint
+      // 2601: Cannot insert duplicate key row in object '...' with unique index '...'
+      // 2627: Violation of PRIMARY KEY constraint '...'
+      // 8114: Error converting data type varchar to ...
+      // 8152: String or binary data would be truncated
+      if (errorCode == 102
+          || errorCode == 207
+          || errorCode == 208
+          || errorCode == 245
+          || errorCode == 547
+          || errorCode == 2601
+          || errorCode == 2627
+          || errorCode == 8114
+          || errorCode == 8152) {
+        return Constants.PERMANENT_ERROR_TAG;
+      }
+      if (sqlState != null
+          && (sqlState.startsWith("42")
+              || sqlState.startsWith("22")
+              || sqlState.startsWith("23"))) {
+        return Constants.PERMANENT_ERROR_TAG;
+      }
     }
     return null;
   }

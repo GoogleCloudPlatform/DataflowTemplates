@@ -22,7 +22,9 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
   private final Connection connection;
@@ -71,6 +73,16 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
     SourceTable.Builder tableBuilder =
         SourceTable.builder(SourceDatabaseType.SQLSERVER).name(tableName).schema(schemaPattern);
 
+    ImmutableList.Builder<String> pksBuilder = ImmutableList.builder();
+    Set<String> pkSet = new HashSet<>();
+    try (ResultSet pkResultSet = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
+      while (pkResultSet.next()) {
+        String pkCol = pkResultSet.getString("COLUMN_NAME");
+        pksBuilder.add(pkCol);
+        pkSet.add(pkCol);
+      }
+    }
+
     ImmutableList.Builder<SourceColumn> columnsBuilder = ImmutableList.builder();
     try (ResultSet colsRs = metaData.getColumns(null, schemaPattern, tableName, "%")) {
       while (colsRs.next()) {
@@ -81,18 +93,12 @@ public class SQLServerInformationSchemaScanner implements SourceSchemaScanner {
             SourceColumn.builder(SourceDatabaseType.SQLSERVER)
                 .name(columnName)
                 .type(dataType)
-                .isNullable("YES".equalsIgnoreCase(colsRs.getString("IS_NULLABLE")));
+                .isNullable("YES".equalsIgnoreCase(colsRs.getString("IS_NULLABLE")))
+                .isPrimaryKey(pkSet.contains(columnName));
 
         boolean isGenerated = "YES".equalsIgnoreCase(colsRs.getString("IS_GENERATEDCOLUMN"));
         colBuilder.isGenerated(isGenerated);
         columnsBuilder.add(colBuilder.build());
-      }
-    }
-
-    ImmutableList.Builder<String> pksBuilder = ImmutableList.builder();
-    try (ResultSet pkResultSet = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
-      while (pkResultSet.next()) {
-        pksBuilder.add(pkResultSet.getString("COLUMN_NAME"));
       }
     }
 

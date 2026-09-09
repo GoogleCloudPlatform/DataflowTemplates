@@ -1,1 +1,0 @@
-CREATE TABLE large_data (id VARCHAR(36) NOT NULL PRIMARY KEY, large_blob VARBINARY(MAX));

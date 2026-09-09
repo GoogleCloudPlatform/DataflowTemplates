@@ -15,19 +15,39 @@
  */
 package com.google.cloud.teleport.v2.templates.source.sqlserver;
 
+import static com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import java.io.File;
+import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLDataException;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLSyntaxErrorException;
+import java.sql.SQLTransientConnectionException;
+import java.sql.Statement;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -107,6 +127,33 @@ public class SQLServerSpToSrcSourceConnectorTest {
   }
 
   @Test
+  public void testGetConnectionUrlWithCustomEncryptionProperties() {
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("1433");
+    when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getConnectionProperties())
+        .thenReturn("encrypt=true;trustServerCertificate=false;loginTimeout=30");
+
+    String url = connector.getConnectionUrl(mockShard);
+    assertEquals(
+        "jdbc:sqlserver://localhost:1433;databaseName=testdb;encrypt=true;trustServerCertificate=false;loginTimeout=30",
+        url);
+  }
+
+  @Test
+  public void testGetConnectionUrlWithLeadingSemicolonInProperties() {
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("1433");
+    when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getConnectionProperties()).thenReturn(";encrypt=true");
+
+    String url = connector.getConnectionUrl(mockShard);
+    assertEquals(
+        "jdbc:sqlserver://localhost:1433;databaseName=testdb;trustServerCertificate=true;encrypt=true",
+        url);
+  }
+
+  @Test
   public void testDefaultConstructor() {
     SQLServerSpToSrcSourceConnector defaultConnector = new SQLServerSpToSrcSourceConnector();
     assertNotNull(defaultConnector.getConnectionHelper());
@@ -118,8 +165,7 @@ public class SQLServerSpToSrcSourceConnectorTest {
 
     connector.initConnectionHelper(List.of(mockShard), 10);
 
-    org.mockito.Mockito.verify(mockConnectionHelper, org.mockito.Mockito.never())
-        .init(any(ConnectionHelperRequest.class));
+    verify(mockConnectionHelper, never()).init(any(ConnectionHelperRequest.class));
   }
 
   @Test
@@ -130,12 +176,12 @@ public class SQLServerSpToSrcSourceConnectorTest {
 
   @Test
   public void testValidateSuccess() throws Exception {
-    java.sql.Connection mockConn = org.mockito.Mockito.mock(java.sql.Connection.class);
-    java.sql.Statement mockStmt = org.mockito.Mockito.mock(java.sql.Statement.class);
-    java.sql.ResultSet mockRs = org.mockito.Mockito.mock(java.sql.ResultSet.class);
+    Connection mockConn = mock(Connection.class);
+    Statement mockStmt = mock(Statement.class);
+    ResultSet mockRs = mock(ResultSet.class);
 
-    SQLServerSpToSrcSourceConnector spyConnector = org.mockito.Mockito.spy(connector);
-    org.mockito.Mockito.doReturn(mockConn).when(spyConnector).createConnection(mockShard);
+    SQLServerSpToSrcSourceConnector spyConnector = spy(connector);
+    doReturn(mockConn).when(spyConnector).createConnection(mockShard);
     when(mockConn.createStatement()).thenReturn(mockStmt);
     when(mockStmt.executeQuery(any())).thenReturn(mockRs);
     when(mockRs.next()).thenReturn(true);
@@ -148,12 +194,12 @@ public class SQLServerSpToSrcSourceConnectorTest {
 
   @Test
   public void testValidateReadOnlyThrowsException() throws Exception {
-    java.sql.Connection mockConn = org.mockito.Mockito.mock(java.sql.Connection.class);
-    java.sql.Statement mockStmt = org.mockito.Mockito.mock(java.sql.Statement.class);
-    java.sql.ResultSet mockRs = org.mockito.Mockito.mock(java.sql.ResultSet.class);
+    Connection mockConn = mock(Connection.class);
+    Statement mockStmt = mock(Statement.class);
+    ResultSet mockRs = mock(ResultSet.class);
 
-    SQLServerSpToSrcSourceConnector spyConnector = org.mockito.Mockito.spy(connector);
-    org.mockito.Mockito.doReturn(mockConn).when(spyConnector).createConnection(mockShard);
+    SQLServerSpToSrcSourceConnector spyConnector = spy(connector);
+    doReturn(mockConn).when(spyConnector).createConnection(mockShard);
     when(mockConn.createStatement()).thenReturn(mockStmt);
     when(mockStmt.executeQuery(any())).thenReturn(mockRs);
     when(mockRs.next()).thenReturn(true);
@@ -161,41 +207,36 @@ public class SQLServerSpToSrcSourceConnectorTest {
     when(mockShard.getLogicalShardId()).thenReturn("shard1");
 
     RuntimeException exception =
-        org.junit.Assert.assertThrows(
-            RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
+        assertThrows(RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
     assertTrue(exception.getMessage().contains("Error checking SQL Server read-only status"));
     assertTrue(exception.getCause().getMessage().contains("read-only mode for shard: shard1"));
   }
 
   @Test
   public void testValidateConnectionErrorThrowsException() throws Exception {
-    SQLServerSpToSrcSourceConnector spyConnector = org.mockito.Mockito.spy(connector);
-    org.mockito.Mockito.doThrow(new java.sql.SQLException("Connection failed"))
-        .when(spyConnector)
-        .createConnection(mockShard);
+    SQLServerSpToSrcSourceConnector spyConnector = spy(connector);
+    doThrow(new SQLException("Connection failed")).when(spyConnector).createConnection(mockShard);
     when(mockShard.getLogicalShardId()).thenReturn("shard1");
 
     RuntimeException exception =
-        org.junit.Assert.assertThrows(
-            RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
+        assertThrows(RuntimeException.class, () -> spyConnector.validate(List.of(mockShard), null));
     assertTrue(exception.getMessage().contains("Error checking SQL Server read-only status"));
   }
 
   @Test
   public void testGetInformationSchema() throws Exception {
-    java.sql.Connection mockConn = org.mockito.Mockito.mock(java.sql.Connection.class);
-    java.sql.DatabaseMetaData mockMeta = org.mockito.Mockito.mock(java.sql.DatabaseMetaData.class);
-    java.sql.ResultSet mockTablesRs = org.mockito.Mockito.mock(java.sql.ResultSet.class);
+    Connection mockConn = mock(Connection.class);
+    DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    ResultSet mockTablesRs = mock(ResultSet.class);
 
-    SQLServerSpToSrcSourceConnector spyConnector = org.mockito.Mockito.spy(connector);
-    org.mockito.Mockito.doReturn(mockConn).when(spyConnector).createConnection(mockShard);
+    SQLServerSpToSrcSourceConnector spyConnector = spy(connector);
+    doReturn(mockConn).when(spyConnector).createConnection(mockShard);
     when(mockConn.getMetaData()).thenReturn(mockMeta);
     when(mockMeta.getTables(any(), any(), any(), any())).thenReturn(mockTablesRs);
     when(mockTablesRs.next()).thenReturn(false);
     when(mockShard.getDbName()).thenReturn("testdb");
 
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema schema =
-        spyConnector.getInformationSchema(List.of(mockShard));
+    SourceSchema schema = spyConnector.getInformationSchema(List.of(mockShard));
 
     assertNotNull(schema);
     assertEquals("testdb", schema.databaseName());
@@ -204,26 +245,59 @@ public class SQLServerSpToSrcSourceConnectorTest {
   @Test
   public void testClassifyException() {
     assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(new java.sql.SQLSyntaxErrorException("syntax error")));
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLSyntaxErrorException("syntax error")));
     assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(new java.sql.SQLDataException("data error")));
+        PERMANENT_ERROR_TAG, connector.classifyException(new SQLDataException("data error")));
     assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(new java.sql.SQLNonTransientConnectionException("conn error")));
-    org.junit.Assert.assertNull(
-        connector.classifyException(new java.sql.SQLTransientConnectionException("transient")));
-    org.junit.Assert.assertNull(connector.classifyException(new RuntimeException("generic")));
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLNonTransientConnectionException("conn error")));
+    assertNull(connector.classifyException(new SQLTransientConnectionException("transient")));
+    assertNull(connector.classifyException(new RuntimeException("generic")));
+
+    // SQL Server specific error codes
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Incorrect syntax", "42000", 102)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Invalid column name", "S0002", 207)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Invalid object name", "S0002", 208)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Constraint conflict", "23000", 547)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Duplicate key", "23000", 2627)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("String truncation", "22001", 8152)));
+
+    // SQL Server SQLState classes
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Syntax error", "42S02", 0)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Data error", "22003", 0)));
+    assertEquals(
+        PERMANENT_ERROR_TAG,
+        connector.classifyException(new SQLException("Integrity error", "23505", 0)));
+
+    // Transient / other SQL Server error codes (e.g. deadlock 1205)
+    assertNull(
+        connector.classifyException(new SQLException("Transaction deadlock", "40001", 1205)));
   }
 
   @Test
   public void testParseShardConfig() throws Exception {
-    java.io.File tempFile = java.io.File.createTempFile("shard-config", ".json");
+    File tempFile = File.createTempFile("shard-config", ".json");
     tempFile.deleteOnExit();
     String json =
         "{\"shardConfigs\":[{\"logicalShardId\":\"shard1\",\"host\":\"localhost\",\"user\":\"sa\",\"password\":\"password\",\"port\":\"1433\",\"dbName\":\"testdb\"}]}";
-    java.nio.file.Files.writeString(tempFile.toPath(), json);
+    Files.writeString(tempFile.toPath(), json);
 
     List<Shard> shards = connector.parseShardConfig(tempFile.getAbsolutePath());
     assertNotNull(shards);
@@ -240,6 +314,6 @@ public class SQLServerSpToSrcSourceConnectorTest {
     when(mockShard.getPassword()).thenReturn("password");
     when(mockShard.getConnectionProperties()).thenReturn("loginTimeout=1");
 
-    org.junit.Assert.assertThrows(Exception.class, () -> connector.createConnection(mockShard));
+    assertThrows(Exception.class, () -> connector.createConnection(mockShard));
   }
 }

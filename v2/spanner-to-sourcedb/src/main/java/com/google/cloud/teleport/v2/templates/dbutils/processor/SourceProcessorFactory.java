@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSpToSrcSourceCon
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.sqlserver.SQLServerSpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.HashMap;
 import java.util.List;
@@ -41,10 +42,7 @@ public class SourceProcessorFactory {
     sourceMap.put(Constants.SOURCE_CASSANDRA, new CassandraSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_SPANNER, new SpannerSpToSrcSourceConnector());
     sourceMap.put(Constants.SOURCE_ORACLE, new OracleSpToSrcSourceConnector());
-    sourceMap.put(
-        Constants.SOURCE_SQLSERVER,
-        new com.google.cloud.teleport.v2.templates.source.sqlserver
-            .SQLServerSpToSrcSourceConnector());
+    sourceMap.put(Constants.SOURCE_SQLSERVER, new SQLServerSpToSrcSourceConnector());
   }
 
   public static void registerSource(String sourceName, ISpToSrcSourceConnector source) {

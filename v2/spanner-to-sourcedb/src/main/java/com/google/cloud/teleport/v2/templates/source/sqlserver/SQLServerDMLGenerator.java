@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -154,12 +155,12 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       }
       // ON Condition: target.[col_name] = col_value or target.[col_name] IS NULL
       if (entry.getValue() == null) {
-        onCondition.append("target.[").append(entry.getKey()).append("] IS NULL");
+        onCondition.append("target.").append(quoteIdentifier(entry.getKey())).append(" IS NULL");
       } else {
         onCondition
-            .append("target.[")
-            .append(entry.getKey())
-            .append("] = ")
+            .append("target.")
+            .append(quoteIdentifier(entry.getKey()))
+            .append(" = ")
             .append(entry.getValue());
       }
       pkIndex++;
@@ -175,7 +176,7 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
         insertValues.append(", ");
       }
       // [col_name]
-      insertColumns.append("[").append(colName).append("]");
+      insertColumns.append(quoteIdentifier(colName));
       insertValues.append(sqlValue);
 
       if (!primaryKeyColumns.contains(colName)) {
@@ -183,7 +184,11 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
           updateValues.append(", ");
         }
         // target.[col_name] = col_value
-        updateValues.append("target.[").append(colName).append("] = ").append(sqlValue);
+        updateValues
+            .append("target.")
+            .append(quoteIdentifier(colName))
+            .append(" = ")
+            .append(sqlValue);
       }
     }
 
@@ -198,9 +203,9 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
     //    INSERT (Id, Name, Age)
     //    VALUES (source.Id, source.Name, source.Age);
     String returnVal =
-        "MERGE INTO ["
-            + tableName
-            + "] AS target "
+        "MERGE INTO "
+            + quoteIdentifier(tableName)
+            + " AS target "
             + "USING (SELECT 1 AS dummy) AS source "
             + "ON ("
             + onCondition
@@ -219,7 +224,16 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
     return new DMLGeneratorResponse(returnVal);
   }
 
-  private static DMLGeneratorResponse getDeleteStatement(
+  @VisibleForTesting
+  static String quoteIdentifier(String identifier) {
+    if (identifier == null) {
+      return "";
+    }
+    return "[" + identifier.replace("]", "]]") + "]";
+  }
+
+  @VisibleForTesting
+  static DMLGeneratorResponse getDeleteStatement(
       String tableName, Map<String, String> pkColumnNameValues) {
     StringBuilder deleteValues = new StringBuilder();
 
@@ -233,13 +247,13 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
 
       // [col_name] = col_value or [col_name] IS NULL
       if (colValue == null) {
-        deleteValues.append(" [").append(colName).append("] IS NULL");
+        deleteValues.append(" ").append(quoteIdentifier(colName)).append(" IS NULL");
       } else {
-        deleteValues.append(" [").append(colName).append("] = ").append(colValue);
+        deleteValues.append(" ").append(quoteIdentifier(colName)).append(" = ").append(colValue);
       }
       index++;
     }
-    String returnVal = "DELETE FROM [" + tableName + "] WHERE " + deleteValues;
+    String returnVal = "DELETE FROM " + quoteIdentifier(tableName) + " WHERE " + deleteValues;
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -260,7 +274,7 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getCustomTransformationResponse(),
             SQLServerDMLGenerator::getMappedColumnValue,
             new ArrayList<>());
-    Map<String, String> allColumnNameValues = new java.util.LinkedHashMap<>();
+    Map<String, String> allColumnNameValues = new LinkedHashMap<>();
     allColumnNameValues.putAll(pkcolumnNameValues);
     allColumnNameValues.putAll(columnNameValues);
     return getUpsertStatement(
@@ -320,19 +334,21 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
     switch (columnType.toLowerCase()) {
-      case "varchar":
-      case "char":
-      case "text":
       case "nvarchar":
       case "nchar":
       case "ntext":
+        response = getQuotedEscapedString(colValue, spannerColType, true);
+        break;
+      case "varchar":
+      case "char":
+      case "text":
       case "sysname":
       case "xml":
       case "json":
       case "vector":
       case "date":
       case "time":
-        response = getQuotedEscapedString(colValue, spannerColType);
+        response = getQuotedEscapedString(colValue, spannerColType, false);
         break;
       case "datetimeoffset":
       case "datetime2":
@@ -380,7 +396,11 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
         }
         break;
       case "bit":
-        response = colValue.equals("true") || colValue.equals("1") ? "1" : "0";
+        if (colValue == null || "null".equalsIgnoreCase(colValue)) {
+          response = "NULL";
+        } else {
+          response = "true".equalsIgnoreCase(colValue) || "1".equals(colValue) ? "1" : "0";
+        }
         break;
       default:
         response = colValue;
@@ -390,19 +410,22 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
 
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
-    return cleanedNullBytes;
+    return StringUtils.replace(cleanedNullBytes, "'", "''");
   }
 
   private static String getQuotedEscapedString(String input, String spannerColType) {
+    return getQuotedEscapedString(input, spannerColType, false);
+  }
+
+  private static String getQuotedEscapedString(
+      String input, String spannerColType, boolean isNational) {
+    if (input == null || "null".equalsIgnoreCase(input)) {
+      return "NULL";
+    }
     if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
-      if (input == null || "null".equalsIgnoreCase(input)) {
-        return "NULL";
-      }
-      return "CAST(" + input + " AS VARCHAR(MAX))";
+      return "CAST(" + input + " AS " + (isNational ? "NVARCHAR(MAX)" : "VARCHAR(MAX)") + ")";
     }
     String cleanedString = escapeString(input);
-    return "\'" + cleanedString + "\'";
+    return (isNational ? "N'" : "'") + cleanedString + "'";
   }
 }

@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
@@ -84,7 +86,7 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     checkAndInitTargetDdl(spannerShard);
     return new SpannerTargetDao(
         SpannerConnectionHelper.connectionKey(spannerShard),
-        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper(),
+        (IConnectionHelper<DatabaseClient>) getConnectionHelper(),
         targetDdl);
   }
 
@@ -104,9 +106,7 @@ public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     // SpannerConnectionHelper does not need complex initialization in the same way as JDBC,
     if (!connectionHelper.isConnectionPoolInitialized()) {
-      connectionHelper.init(
-          new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(
-              shards, null, maxConnections, null, null));
+      connectionHelper.init(new ConnectionHelperRequest(shards, null, maxConnections, null, null));
     }
   }
 

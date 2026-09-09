@@ -91,18 +91,21 @@ public class SQLServerInformationSchemaScannerTest {
     assertEquals("bigint", col1.type());
     assertFalse(col1.isNullable());
     assertFalse(col1.isGenerated());
+    assertTrue(col1.isPrimaryKey());
 
     SourceColumn col2 = table.columns().get(1);
     assertEquals("Name", col2.name());
     assertEquals("nvarchar", col2.type());
     assertTrue(col2.isNullable());
     assertFalse(col2.isGenerated());
+    assertFalse(col2.isPrimaryKey());
 
     SourceColumn col3 = table.columns().get(2);
     assertEquals("FullName", col3.name());
     assertEquals("nvarchar", col3.type());
     assertTrue(col3.isNullable());
     assertTrue(col3.isGenerated());
+    assertFalse(col3.isPrimaryKey());
   }
 
   @Test

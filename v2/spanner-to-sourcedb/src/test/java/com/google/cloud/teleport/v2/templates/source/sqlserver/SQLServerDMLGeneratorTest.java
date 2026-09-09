@@ -20,9 +20,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -40,6 +43,8 @@ import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -149,6 +154,11 @@ public final class SQLServerDMLGeneratorTest {
     assertEquals("1", valTrue);
     assertEquals("0", valFalse);
     assertEquals("1", valOne);
+    assertEquals("NULL", SQLServerDMLGenerator.getColumnValueByType("bit", null, "+00:00", "BOOL"));
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("bit", "null", "+00:00", "BOOL"));
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("bit", "NULL", "+00:00", "BOOL"));
   }
 
   @Test
@@ -170,7 +180,67 @@ public final class SQLServerDMLGeneratorTest {
   public void testStringEscaping() {
     String escaped =
         SQLServerDMLGenerator.getColumnValueByType("nvarchar", "O'Connor\0", "+00:00", "STRING");
-    assertEquals("'O''Connor'", escaped);
+    assertEquals("N'O''Connor'", escaped);
+
+    String escapedVarchar =
+        SQLServerDMLGenerator.getColumnValueByType("varchar", "O'Connor\0", "+00:00", "STRING");
+    assertEquals("'O''Connor'", escapedVarchar);
+
+    String escapedNchar =
+        SQLServerDMLGenerator.getColumnValueByType("nchar", "test", "+00:00", "STRING");
+    assertEquals("N'test'", escapedNchar);
+
+    String escapedNtext =
+        SQLServerDMLGenerator.getColumnValueByType("ntext", "text", "+00:00", "STRING");
+    assertEquals("N'text'", escapedNtext);
+
+    String pathWithBackslashes =
+        SQLServerDMLGenerator.getColumnValueByType(
+            "varchar", "C:\\Program Files\\App", "+00:00", "STRING");
+    assertEquals("'C:\\Program Files\\App'", pathWithBackslashes);
+
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("varchar", null, "+00:00", "STRING"));
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("varchar", "null", "+00:00", "STRING"));
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("date", null, "+00:00", "DATE"));
+    assertEquals(
+        "NULL", SQLServerDMLGenerator.getColumnValueByType("time", null, "+00:00", "TIME"));
+  }
+
+  @Test
+  public void testQuoteIdentifier() {
+    assertEquals("[Users]", SQLServerDMLGenerator.quoteIdentifier("Users"));
+    assertEquals("[col]]name]", SQLServerDMLGenerator.quoteIdentifier("col]name"));
+    assertEquals("[a]]b]]c]", SQLServerDMLGenerator.quoteIdentifier("a]b]c"));
+    assertEquals("", SQLServerDMLGenerator.quoteIdentifier(null));
+  }
+
+  @Test
+  public void testUpsertStatementWithSpecialIdentifierCharacters() {
+    Map<String, String> allColValues = ImmutableMap.of("col]1", "'val1'", "col2", "'val2'");
+    Map<String, String> onCondition = ImmutableMap.of("col]1", "'val1'");
+
+    DMLGeneratorResponse response =
+        SQLServerDMLGenerator.getUpsertStatement(
+            "my]table", allColValues, onCondition, Set.of("col]1"));
+
+    String sql = response.getDmlStatement();
+    assertTrue(sql.startsWith("MERGE INTO [my]]table] AS target"));
+    assertTrue(sql.contains("target.[col]]1] = 'val1'"));
+    assertTrue(sql.contains("[col]]1]"));
+    assertTrue(sql.contains("target.[col2] = 'val2'"));
+  }
+
+  @Test
+  public void testDeleteStatementWithSpecialIdentifierCharacters() {
+    Map<String, String> pkValues = ImmutableMap.of("col]1", "'val1'");
+
+    DMLGeneratorResponse response = SQLServerDMLGenerator.getDeleteStatement("my]table", pkValues);
+
+    String sql = response.getDmlStatement();
+    assertEquals("DELETE FROM [my]]table] WHERE  [col]]1] = 'val1'", sql);
   }
 
   @Test
@@ -496,9 +566,9 @@ public final class SQLServerDMLGeneratorTest {
                     .build()));
 
     // 4. SchemaMapper throws NoSuchElementException
-    ISchemaMapper throwingMapper = org.mockito.Mockito.mock(ISchemaMapper.class);
-    org.mockito.Mockito.when(throwingMapper.getSourceTableName("", "Singers"))
-        .thenThrow(new java.util.NoSuchElementException("missing"));
+    ISchemaMapper throwingMapper = mock(ISchemaMapper.class);
+    when(throwingMapper.getSourceTableName("", "Singers"))
+        .thenThrow(new NoSuchElementException("missing"));
     assertThrows(
         InvalidDMLGenerationException.class,
         () ->
@@ -629,7 +699,7 @@ public final class SQLServerDMLGeneratorTest {
             .end()
             .endTable()
             .build();
-    com.google.cloud.teleport.v2.spanner.ddl.Table table = ddl.table("types_table");
+    Table table = ddl.table("types_table");
 
     Column floatCol = table.column("f_col");
     SourceColumn srcFloatCol =
@@ -737,7 +807,7 @@ public final class SQLServerDMLGeneratorTest {
     // Tests line 215: when insertColumns is empty -> WHEN NOT MATCHED THEN INSERT DEFAULT VALUES;
     DMLGeneratorResponse defaultInsertResp =
         SQLServerDMLGenerator.getUpsertStatement(
-            "null_pk_table", Map.of(), Map.of("id_col", "10"), java.util.Set.of("id_col"));
+            "null_pk_table", Map.of(), Map.of("id_col", "10"), Set.of("id_col"));
     assertTrue(
         defaultInsertResp
             .getDmlStatement()
