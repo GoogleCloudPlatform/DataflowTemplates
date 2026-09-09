@@ -41,17 +41,20 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlServerResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
+import org.apache.beam.it.gcp.datastream.SqlServerSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +91,28 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     return SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
         .maybeUseStaticInstance()
         .build();
+  }
+
+  public MSSQLResourceManager setUpMSSQLResourceManager() {
+    return MSSQLResourceManager.builder(testName).build();
+  }
+
+  public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
+    return CloudSqlServerResourceManager.builder(testName).build();
+  }
+
+  public CloudSqlServerResourceManager setUpSqlServerResourceManager(String testId) {
+    return CloudSqlServerResourceManager.builder(testId).build();
+  }
+
+  public DatastreamResourceManager setUpDatastreamResourceManager() throws IOException {
+    DatastreamResourceManager.Builder datastreamBuilder =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider);
+    if (System.getProperty("privateConnectivity") != null) {
+      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
+    }
+    return datastreamBuilder.build();
   }
 
   public String generateSessionFile(
@@ -354,12 +379,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
     }
     params.put("inputFileFormat", "avro");
+    params.put("workerMachineType", "n2-standard-4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {
         params.put("datastreamSourceType", "postgresql");
       } else if (jdbcSource instanceof OracleSource) {
         params.put("datastreamSourceType", "oracle");
+      } else if (jdbcSource instanceof SqlServerSource) {
+        params.put("datastreamSourceType", "sqlserver");
       } else {
         params.put("datastreamSourceType", "mysql");
       }
@@ -594,6 +622,48 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
           throw e;
         }
       }
+    }
+
+    if (resourceManager instanceof CloudSqlServerResourceManager) {
+      enableCdcForUntrackedSqlServerTables((CloudSqlServerResourceManager) resourceManager);
+    }
+  }
+
+  protected void enableCdcForUntrackedSqlServerTables(
+      CloudSqlServerResourceManager resourceManager) {
+    String enableCdcQuery =
+        "DECLARE @table_name NVARCHAR(128); "
+            + "DECLARE table_cursor CURSOR FOR "
+            + "SELECT name FROM sys.tables WHERE is_ms_shipped = 0 AND is_tracked_by_cdc = 0; "
+            + "OPEN table_cursor; "
+            + "FETCH NEXT FROM table_cursor INTO @table_name; "
+            + "WHILE @@FETCH_STATUS = 0 "
+            + "BEGIN "
+            + "    EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1; "
+            + "    FETCH NEXT FROM table_cursor INTO @table_name; "
+            + "END; "
+            + "CLOSE table_cursor; "
+            + "DEALLOCATE table_cursor;";
+    resourceManager.runSQLUpdate(enableCdcQuery);
+    try {
+      String startJobQuery =
+          "DECLARE @job_id UNIQUEIDENTIFIER; "
+              + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs WHERE database_id = DB_ID() AND job_type = N'capture'; "
+              + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
+              + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
+              + "    WHERE job_id = @job_id "
+              + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
+              + "      AND start_execution_date IS NOT NULL "
+              + "      AND stop_execution_date IS NULL "
+              + ") "
+              + "BEGIN "
+              + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
+              + "END;";
+      resourceManager.runSQLUpdate(startJobQuery);
+    } catch (Exception e) {
+      LOG.info(
+          "Capture job start check encountered an issue (job is likely already running): {}",
+          e.getMessage());
     }
   }
 
