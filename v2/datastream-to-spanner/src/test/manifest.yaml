@@ -174,3 +174,54 @@ scenarios:
     context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMaxTableNameIT
     description: "Validates live streaming replication when table names hit the maximum allowed length."
 
+  # ==================================================================
+  # SQL Server Live CDC Replication (v2/datastream-to-spanner)
+  # ==================================================================
+  - id: live-it-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDataStreamToSpannerIT
+    description: "Main functional integration test for standard datastream-to-spanner live streaming CDC migrations with SQL Server."
+
+  - id: live-datatypes-sqlserver
+    type: datatypes
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDatastreamToSpannerDataTypesIT
+    description: "Validates streaming replication of standard SQL Server data types and expression mappings into Spanner (GoogleSQL and PostgreSQL dialect)."
+
+  - id: live-tableindex-limits-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDatastreamToSpannerTableAndIndexLimitsIT
+    description: "Validates live replication table and index propagation limits under heavy schema load for SQL Server."
+
+  - id: live-tableindex-limits-pg-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDatastreamToPGDialectSpannerTableAndIndexLimitsIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates live replication table and index propagation limits targeting a PostgreSQL-dialect Spanner database for SQL Server."
+
+  - id: live-reservedkeywords-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.DatastreamToSpannerReservedKeywordsSqlServerIT
+    description: "Validates CDC live replication when dealing with SQL Server reserved keywords as column or table names."
+
+  - id: live-dlq-all-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.DataStreamToSpannerSqlServerRetryAllDLQIT
+    description: "Validates standard SQL Server live replication DLQ retry operations under message parsing or constraint failures."
+
+  - id: live-dlq-single-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.DataStreamToSpannerSqlServerRetryDLQIT
+    description: "Validates DLQ processing and single-message retry delivery for non-sharded SQL Server live replication pipelines."
+
+  - id: live-sharded-dlq-all-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.DataStreamToSpannerShardedSqlServerRetryAllDLQIT
+    description: "Validates DLQ retry and dead-letter queue recovery behavior for sharded SQL Server live replication databases."
+
+  - id: live-sharded-dlq-single-sqlserver
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.DataStreamToSpannerShardedSqlServerRetryDLQIT
+    description: "Validates DLQ processing and single-message retry delivery for sharded SQL Server live replication pipelines."
+
+

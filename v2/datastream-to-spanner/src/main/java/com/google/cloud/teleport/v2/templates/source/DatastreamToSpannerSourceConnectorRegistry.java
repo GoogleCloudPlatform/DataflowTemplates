@@ -19,6 +19,7 @@ import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgresql.PostgresqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.sqlserver.SqlServerDsToSpSourceConnector;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ public class DatastreamToSpannerSourceConnectorRegistry {
     register(new MySqlDsToSpSourceConnector());
     register(new PostgresqlDsToSpSourceConnector());
     register(new OracleDsToSpSourceConnector());
+    register(new SqlServerDsToSpSourceConnector());
   }
 
   private static void register(IDsToSpSourceConnector connector) {
