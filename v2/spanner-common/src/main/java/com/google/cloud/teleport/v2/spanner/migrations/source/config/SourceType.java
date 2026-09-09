@@ -30,7 +30,10 @@ public enum SourceType {
   PG(new String[] {"postgresql"}),
 
   /** Oracle source database type. */
-  ORACLE(new String[] {"oracle"});
+  ORACLE(new String[] {"oracle"}),
+
+  /** SQL Server source database type. */
+  SQLSERVER(new String[] {"sqlserver"});
 
   private final String[] sourceTypeStringValues;
 
