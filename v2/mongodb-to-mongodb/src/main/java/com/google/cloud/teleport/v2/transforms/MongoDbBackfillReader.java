@@ -587,7 +587,12 @@ public class MongoDbBackfillReader {
 
     @Override
     public void checkDone() throws IllegalStateException {
-      // Bounded stream completion check
+      if (!shouldStop && (currentRestriction == null || !currentRestriction.isDone())) {
+        throw new IllegalStateException(
+            String.format(
+                "Last claimed restriction %s is not marked as done, but execution finished without a split.",
+                currentRestriction));
+      }
     }
 
     @Override
@@ -1039,7 +1044,12 @@ public class MongoDbBackfillReader {
 
     @Override
     public void checkDone() throws IllegalStateException {
-      // Bounded stream completion check
+      if (!shouldStop && (currentRestriction == null || !currentRestriction.isDone())) {
+        throw new IllegalStateException(
+            String.format(
+                "Last claimed slot restriction %s is not marked as done, but execution finished without a split.",
+                currentRestriction));
+      }
     }
 
     @Override

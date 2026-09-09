@@ -844,38 +844,47 @@ public class MongoDbChangeStreamReader {
             stream = collection.watch(pipeline);
           }
 
-          stream
-              .batchSize(MAX_EVENTS_PER_SLICE)
-              .maxAwaitTime(250L, TimeUnit.MILLISECONDS);
-
-          String fullDocStrategy = partition.getFullDocumentStrategy();
-          if ("whenAvailable".equalsIgnoreCase(fullDocStrategy)) {
-            try {
-              stream.fullDocument(FullDocument.WHEN_AVAILABLE);
-            } catch (Exception e) {
-              LOG.warn("whenAvailable not supported, falling back to updateLookup");
-              stream.fullDocument(FullDocument.UPDATE_LOOKUP);
-            }
-          } else if ("required".equalsIgnoreCase(fullDocStrategy)) {
-            try {
-              stream.fullDocument(FullDocument.REQUIRED);
-            } catch (Exception e) {
-              stream.fullDocument(FullDocument.UPDATE_LOOKUP);
-            }
-          } else if (!"default".equalsIgnoreCase(fullDocStrategy)) {
-            stream.fullDocument(FullDocument.UPDATE_LOOKUP);
-          }
+          stream =
+              stream
+                  .batchSize(MAX_EVENTS_PER_SLICE)
+                  .maxAwaitTime(250L, TimeUnit.MILLISECONDS);
 
           if (currentToken != null) {
-            stream.resumeAfter(currentToken);
+            stream = stream.resumeAfter(currentToken);
           } else if (partition.getStartAtOperationTimeSeconds() > 0) {
-            stream.startAtOperationTime(
-                new BsonTimestamp(
-                    (int) partition.getStartAtOperationTimeSeconds(),
-                    partition.getStartAtOperationTimeInc()));
+            stream =
+                stream.startAtOperationTime(
+                    new BsonTimestamp(
+                        (int) partition.getStartAtOperationTimeSeconds(),
+                        partition.getStartAtOperationTimeInc()));
           }
 
-          MongoChangeStreamCursor<ChangeStreamDocument<Document>> activeCursor = stream.cursor();
+          String fullDocStrategy = partition.getFullDocumentStrategy();
+          ChangeStreamIterable<Document> configuredStream = stream;
+          if ("whenAvailable".equalsIgnoreCase(fullDocStrategy)) {
+            configuredStream = stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+          } else if ("required".equalsIgnoreCase(fullDocStrategy)) {
+            configuredStream = stream.fullDocument(FullDocument.REQUIRED);
+          } else if (!"default".equalsIgnoreCase(fullDocStrategy)) {
+            configuredStream = stream.fullDocument(FullDocument.UPDATE_LOOKUP);
+          }
+
+          MongoChangeStreamCursor<ChangeStreamDocument<Document>> activeCursor;
+          try {
+            activeCursor = configuredStream.cursor();
+          } catch (MongoCommandException mce) {
+            if (mce.getErrorMessage() != null
+                && mce.getErrorMessage().contains("fullDocument")
+                && !"updateLookup".equalsIgnoreCase(fullDocStrategy)) {
+              LOG.warn(
+                  "Configured fullDocument strategy '{}' is not supported by the server."
+                      + " Falling back to 'updateLookup'.",
+                  fullDocStrategy);
+              activeCursor = stream.fullDocument(FullDocument.UPDATE_LOOKUP).cursor();
+            } else {
+              throw mce;
+            }
+          }
           cursorHolder = new PartitionCursorHolder(activeCursor, currentToken);
           cursorCache.put(partitionKey, cursorHolder);
           changeStreamCursorReconnects.inc();

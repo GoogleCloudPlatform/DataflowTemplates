@@ -26,6 +26,9 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -251,43 +254,76 @@ public final class ReadSplitGenerator {
   }
 
   /**
-   * Performs lightweight covered index seeks (<26ms) to detect all active BSON types and their
-   * min/max boundaries.
+   * Performs lightweight covered index seeks (<26ms) in parallel using a dedicated ExecutorService
+   * to detect all active BSON types and their min/max boundaries without blocking sequentially.
    */
   public static List<ProbedTypeBounds> probeActiveTypeBounds(MongoCollection<BsonDocument> col) {
     List<ProbedTypeBounds> activeBounds = new ArrayList<>();
-    for (TypeBucket bucket : KNOWN_TYPE_BUCKETS) {
-      try {
-        BsonDocument minDoc =
+    ExecutorService executor =
+        Executors.newFixedThreadPool(
+            Math.min(KNOWN_TYPE_BUCKETS.size(), 6),
+            r -> {
+              Thread t = new Thread(r);
+              t.setDaemon(true);
+              return t;
+            });
+    try {
+      List<Future<ProbedTypeBounds>> futures = new ArrayList<>();
+      for (TypeBucket bucket : KNOWN_TYPE_BUCKETS) {
+        futures.add(executor.submit(() -> probeBucket(col, bucket)));
+      }
+      for (Future<ProbedTypeBounds> future : futures) {
+        try {
+          ProbedTypeBounds bounds = future.get(5, TimeUnit.SECONDS);
+          if (bounds != null) {
+            activeBounds.add(bounds);
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Covered index probe future failed on '{}.{}': {}",
+              getDbName(col),
+              getColName(col),
+              e.getMessage());
+        }
+      }
+    } finally {
+      executor.shutdown();
+    }
+    return activeBounds;
+  }
+
+  private static ProbedTypeBounds probeBucket(
+      MongoCollection<BsonDocument> col, TypeBucket bucket) {
+    try {
+      BsonDocument minDoc =
+          col.find(bucket.query())
+              .projection(new BsonDocument("_id", new BsonInt32(1)))
+              .sort(new BsonDocument("_id", new BsonInt32(1)))
+              .limit(1)
+              .maxTime(3, TimeUnit.SECONDS)
+              .first();
+      if (minDoc != null && minDoc.containsKey("_id")) {
+        BsonDocument maxDoc =
             col.find(bucket.query())
                 .projection(new BsonDocument("_id", new BsonInt32(1)))
-                .sort(new BsonDocument("_id", new BsonInt32(1)))
+                .sort(new BsonDocument("_id", new BsonInt32(-1)))
                 .limit(1)
                 .maxTime(3, TimeUnit.SECONDS)
                 .first();
-        if (minDoc != null && minDoc.containsKey("_id")) {
-          BsonDocument maxDoc =
-              col.find(bucket.query())
-                  .projection(new BsonDocument("_id", new BsonInt32(1)))
-                  .sort(new BsonDocument("_id", new BsonInt32(-1)))
-                  .limit(1)
-                  .maxTime(3, TimeUnit.SECONDS)
-                  .first();
-          BsonValue minVal = minDoc.get("_id");
-          BsonValue maxVal =
-              (maxDoc != null && maxDoc.containsKey("_id")) ? maxDoc.get("_id") : minVal;
-          activeBounds.add(new ProbedTypeBounds(bucket, minVal, maxVal));
-        }
-      } catch (Exception e) {
-        LOG.warn(
-            "Covered index probe failed for type '{}' on '{}.{}': {}",
-            bucket.getName(),
-            getDbName(col),
-            getColName(col),
-            e.getMessage());
+        BsonValue minVal = minDoc.get("_id");
+        BsonValue maxVal =
+            (maxDoc != null && maxDoc.containsKey("_id")) ? maxDoc.get("_id") : minVal;
+        return new ProbedTypeBounds(bucket, minVal, maxVal);
       }
+    } catch (Exception e) {
+      LOG.warn(
+          "Covered index probe failed for type '{}' on '{}.{}': {}",
+          bucket.getName(),
+          getDbName(col),
+          getColName(col),
+          e.getMessage());
     }
-    return activeBounds;
+    return null;
   }
 
   /**
