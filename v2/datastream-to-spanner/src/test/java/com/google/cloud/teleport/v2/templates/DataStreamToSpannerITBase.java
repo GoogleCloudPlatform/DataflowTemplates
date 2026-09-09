@@ -61,6 +61,9 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
+  protected String oracleUser;
+  protected static final String ORACLE_PASSWORD = "TestPassword123";
+
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
@@ -111,13 +114,10 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       String isoPassword =
           "P_" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(5).toUpperCase();
 
-      sysdba.runSQLUpdate(
-          String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", isoUser, isoPassword));
-      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", isoUser));
-      sysdba.runSQLUpdate(
-          String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", isoUser));
-      sysdba.runSQLUpdate(
-          String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", isoUser));
+      sysdba.runSQLUpdate(String.format("CREATE USER %s IDENTIFIED BY %s", isoUser, isoPassword));
+      sysdba.runSQLUpdate(String.format("GRANT DBA TO %s", isoUser));
+      sysdba.runSQLUpdate(String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s", isoUser));
+      sysdba.runSQLUpdate(String.format("ALTER USER %s QUOTA 50m ON SYSTEM", isoUser));
 
       builder.setPassword(isoPassword);
       builder.setHost(System.getProperty("cloudOracleHost"));
@@ -684,6 +684,100 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         org.slf4j.LoggerFactory.getLogger(DataStreamToSpannerITBase.class)
             .error("Raw JDBC fallback log flush also failed.", ex);
       }
+    }
+  }
+
+  protected String setupOracleIsolatedUser(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
+    String testUsername =
+        "LIVE_"
+            + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    LOG.info("Creating isolated Oracle user: {}", testUsername);
+    jdbcResourceManager.runSQLUpdate(
+        "CREATE USER " + testUsername + " IDENTIFIED BY TestPassword123");
+    jdbcResourceManager.runSQLUpdate("GRANT DBA TO " + testUsername + "");
+    jdbcResourceManager.runSQLUpdate("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO " + testUsername + "");
+    jdbcResourceManager.runSQLUpdate("ALTER USER " + testUsername + " QUOTA 50m ON SYSTEM");
+    return testUsername;
+  }
+
+  protected void executeOracleSqlFileScript(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String resourceName,
+      String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            org.testcontainers.shaded.com.google.common.io.Resources.readLines(
+                org.testcontainers.shaded.com.google.common.io.Resources.getResource(resourceName),
+                java.nio.charset.StandardCharsets.UTF_8));
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    executeOracleSql(jdbcResourceManager, sql, targetUsername);
+  }
+
+  protected void executeOracleSql(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String sqlString,
+      String targetUsername)
+      throws Exception {
+    String sql = sqlString;
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    String[] statements = sql.split(";");
+
+    try (java.sql.Connection connection =
+        java.sql.DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (java.sql.Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+        }
+      }
+
+      try (java.sql.Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isBlank()) {
+            if (stmt.toLowerCase().trim().startsWith("select")) {
+              statement.executeQuery(stmt);
+            } else {
+              statement.executeUpdate(stmt);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> runIsolatedOracleQuery(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String testUsername,
+      String query)
+      throws Exception {
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        java.sql.Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
+      java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+      try (java.sql.ResultSet rs = stmt.executeQuery(query)) {
+        java.sql.ResultSetMetaData md = rs.getMetaData();
+        int columns = md.getColumnCount();
+        while (rs.next()) {
+          java.util.Map<String, Object> row = new java.util.HashMap<>(columns);
+          for (int i = 1; i <= columns; ++i) {
+            row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
+          }
+          result.add(row);
+        }
+      }
+      return result;
     }
   }
 }

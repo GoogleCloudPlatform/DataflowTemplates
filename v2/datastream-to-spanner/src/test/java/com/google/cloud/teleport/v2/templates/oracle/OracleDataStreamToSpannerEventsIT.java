@@ -72,7 +72,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
   public static GcsResourceManager gcsResourceManager;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerEventsIT.class) {
       testInstances.add(this);
@@ -92,6 +92,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("workerMachineType", "n1-standard-4");
                     put("datastreamSourceType", "oracle");
                   }
                 },

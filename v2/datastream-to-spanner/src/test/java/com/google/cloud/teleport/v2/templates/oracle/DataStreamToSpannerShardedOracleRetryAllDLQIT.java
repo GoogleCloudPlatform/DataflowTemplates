@@ -33,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -71,13 +70,14 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
-  public static CloudOracleResourceManager jdbcResourceManagerShardA;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   private static String streamNameA;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerShardedOracleRetryAllDLQIT.class) {
       testInstances.add(this);
@@ -85,19 +85,9 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        jdbcResourceManagerShardA = setUpOracleResourceManager();
-        String oracleUser = jdbcResourceManagerShardA.getUsername();
-        String oraclePassword = jdbcResourceManagerShardA.getPassword();
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -111,12 +101,13 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
                     System.getProperty("cloudOracleHost"),
                     oracleUser,
-                    oraclePassword,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     1521,
-                    "XEPDB1")
+                    oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     java.util.Map.of(
-                        oracleUser, java.util.List.of("Customers", "Orders", "AllDataTypes")))
+                        oracleUser.toUpperCase(),
+                        java.util.List.of("Customers", "Orders", "AllDataTypes")))
                 .build();
 
         com.google.cloud.datastream.v1.SourceConfig sourceConfig =
@@ -203,10 +194,8 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManagerShardA,
-        gcsResourceManager,
-        datastreamResourceManager);
+        spannerResourceManager, gcsResourceManager, datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -388,24 +377,37 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
     return "/home/dhwanilpatel_google_com/MyStorage/OracleSupport/DataflowTemplates/v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
   }
 
-  private void insertDataInOracle() {
+  private void insertDataInOracle() throws Exception {
     LOG.info("Inserting data in Oracle");
-    jdbcResourceManagerShardA.runSQLUpdate(
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
-            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (3, 101, 1000, 'Website')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " VALUES (3, 101, 1000, 'Website')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (2, 102, 1000, 'AppStore')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " VALUES (2, 102, 1000, 'AppStore')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (4, 103, 1000, 'AppStore')");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')");
+            + " VALUES (4, 103, 1000, 'AppStore')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')",
+        oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
   }
 
   private String generateSourceConfig(

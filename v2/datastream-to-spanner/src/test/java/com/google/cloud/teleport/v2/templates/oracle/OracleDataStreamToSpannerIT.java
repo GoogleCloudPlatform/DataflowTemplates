@@ -44,7 +44,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -82,16 +81,15 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
   private SubscriptionName dlqSubscription;
 
   private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
-
-  private CloudOracleResourceManager cloudOracleSysUser;
-  private CloudOracleResourceManager cloudSqlResourceManager;
+  private SpannerOracleResourceManager oracleResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private GcsResourceManager gcsResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
@@ -110,12 +108,11 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        cloudOracleSysUser,
-        cloudSqlResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -142,47 +139,13 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
         Function.identity());
   }
 
-  private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
-  }
-
   private void simpleOracleToSpannerTest(
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
-
-    cloudOracleSysUser =
-        (CloudOracleResourceManager)
-            new SpannerOracleResourceManager(
-                (CloudOracleResourceManager.Builder)
-                    CloudOracleResourceManager.builder(testName)
-                        .setUsername("sys as sysdba")
-                        .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                        .setDatabaseName("XE")
-                        .setHost(System.getProperty("cloudOracleHost"))
-                        .setPort(1521));
-    String oracleUser = System.getProperty("cloudOracleUsername", "system");
-    String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
-    // setUpOracleUser(oracleUser, oraclePassword);
-    //     setUpOracleUser(oracleUser, oraclePassword);
-
-    cloudSqlResourceManager =
-        (CloudOracleResourceManager)
-            new SpannerOracleResourceManager(
-                (CloudOracleResourceManager.Builder)
-                    CloudOracleResourceManager.builder(testName)
-                        .setUsername(oracleUser)
-                        .setPassword(oraclePassword)
-                        .setDatabaseName("XEPDB1")
-                        .setHost(System.getProperty("cloudOracleHost"))
-                        .setPort(1521));
+    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
@@ -198,20 +161,18 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
 
     tableNames.forEach(
         tableName -> {
-          cloudSqlResourceManager.createTable(tableName, createJdbcSchema());
+          oracleResourceManager.createTable(tableName, createJdbcSchema());
         });
 
     OracleSource jdbcSource =
         OracleSource.builder(
-                cloudSqlResourceManager.getHost(),
-                cloudSqlResourceManager.getUsername(),
-                cloudSqlResourceManager.getPassword(),
-                cloudSqlResourceManager.getPort(),
-                cloudSqlResourceManager.getDatabaseName())
+                oracleResourceManager.getHost(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                oracleResourceManager.getPort(),
+                oracleResourceManager.getDatabaseName())
             .setAllowedTables(
-                Map.of(
-                    cloudSqlResourceManager.getUsername().toUpperCase(),
-                    List.of(tableNames.get(0), tableNames.get(1))))
+                Map.of(oracleUser.toUpperCase(), List.of(tableNames.get(0), tableNames.get(1))))
             .build();
 
     createSpannerTables(tableNames, spannerDialect);
@@ -416,11 +377,11 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
           }
           cdcEvents.put(tableName, cdcRows);
 
-          success &= cloudSqlResourceManager.write(tableName, rows);
+          success &= oracleResourceManager.write(tableName, rows);
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
         }
 
-        cloudOracleSysUser.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        SharedOracleLiveITInstance.flushRedoLogs();
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }
     };
@@ -471,10 +432,10 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                       + ROW_ID
                       + " = "
                       + i;
-              cloudSqlResourceManager.runSQLUpdate(updateSql);
+              oracleResourceManager.runSQLUpdate(updateSql);
               newCdcEvents.add(values);
             } else {
-              cloudSqlResourceManager.runSQLUpdate(
+              oracleResourceManager.runSQLUpdate(
                   "DELETE FROM " + tableName + " WHERE " + ROW_ID + "=" + i);
             }
           }
@@ -482,8 +443,8 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
           messages.add(String.format("%d changes to %s", newCdcEvents.size(), tableName));
         }
 
-        cloudSqlResourceManager.runSQLUpdate("COMMIT");
-        cloudOracleSysUser.runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
+        oracleResourceManager.runSQLUpdate("COMMIT");
+        SharedOracleLiveITInstance.flushRedoLogs();
         return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
       }
     };

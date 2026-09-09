@@ -84,7 +84,11 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerTableAndIndexLimitsIT.class) {
       testInstances.add(this);
@@ -120,7 +124,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         LOG.info("Datastream resource manager created");
 
         LOG.info("Executing Oracle DDL script...");
-        executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
 
         LOG.info("Creating Spanner DDL...");
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
@@ -128,9 +132,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         // Pre-insert testing data for LargeCell
         try (Connection conn =
                 DriverManager.getConnection(
-                    oracleResourceManager.getUri(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword());
+                    oracleResourceManager.getUri(), oracleUser, "TestPassword123");
             PreparedStatement pstmt =
                 conn.prepareStatement(
                     "INSERT INTO \"LargeCell\" (\"id\", \"max_string_col_to_bytes\","
@@ -173,11 +175,11 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
         OracleSource oracleSource =
             OracleSource.builder(
                     oracleResourceManager.getHost(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword(),
+                    oracleUser,
+                    "TestPassword123",
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
-                .setAllowedTables(Map.of(oracleResourceManager.getUsername().toUpperCase(), TABLES))
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLES))
                 .build();
 
         LOG.info("Launching Dataflow job...");

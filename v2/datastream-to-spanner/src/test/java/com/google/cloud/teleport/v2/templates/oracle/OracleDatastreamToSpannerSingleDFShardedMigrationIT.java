@@ -33,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -78,12 +77,13 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static CloudOracleResourceManager jdbcResourceManagerShardA;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   private static String streamNameA;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerSingleDFShardedMigrationIT.class) {
       testInstances.add(this);
@@ -103,21 +103,10 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         String oracleUser = System.getProperty("cloudOracleUsername", "system");
         String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
 
-        jdbcResourceManagerShardA =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(
-                    (CloudOracleResourceManager.Builder)
-                        CloudOracleResourceManager.builder(testName)
-                            .setUsername(oracleUser)
-                            .setPassword(oraclePassword)
-                            .setDatabaseName("XEPDB1")
-                            .setHost(System.getProperty("cloudOracleHost"))
-                            .setPort(1521));
-        try {
-        } catch (Exception e) {
-        }
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
-        executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
 
         datastreamResourceManager =
             org.apache.beam.it.gcp.datastream.DatastreamResourceManager.builder(
@@ -125,18 +114,19 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 .setCredentialsProvider(credentialsProvider)
                 .setPrivateConnectivity("datastream-connect-2")
                 .build();
-        org.apache.beam.it.gcp.datastream.OracleSource jdbcSource =
+        org.apache.beam.it.gcp.datastream.OracleSource oracleSource =
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    System.getProperty("cloudOracleHost"),
+                    oracleResourceManager.getHost(),
                     oracleUser,
                     oraclePassword,
-                    1521,
-                    "XEPDB1")
-                .setAllowedTables(java.util.Map.of(oracleUser, java.util.List.of("Users")))
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
+                .setAllowedTables(
+                    java.util.Map.of(oracleUser.toUpperCase(), java.util.List.of("Users")))
                 .build();
 
         com.google.cloud.datastream.v1.SourceConfig sourceConfig =
-            datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
+            datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", oracleSource);
 
         com.google.cloud.datastream.v1.DestinationConfig destinationConfig =
             datastreamResourceManager.buildGCSDestinationConfig(
@@ -169,6 +159,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
             "inputFilePattern",
             "gs://" + gcsResourceManager.getBucket() + "/oracle-shard-cdc/cdc/");
         jobParams.put("datastreamSourceType", "oracle");
+        jobParams.put("workerMachineType", "n1-standard-4");
         jobParams.put(
             "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
 
@@ -197,7 +188,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 gcsResourceManager,
                 datastreamResourceManager,
                 sessionFileContent,
-                null);
+                oracleSource);
       }
     }
   }
@@ -211,7 +202,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        jdbcResourceManagerShardA,
+        oracleResourceManager,
         datastreamResourceManager);
   }
 
@@ -246,51 +237,57 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
     assertUsersTableContents();
   }
 
-  private void insertDataInOracle() {
+  private void insertDataInOracle() throws Exception {
     LOG.info("Inserting rows into Users table in Oracle");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)");
-
-    LOG.info("Wait, executing Hard-boot raw JDBC switch logfile...");
-    // Force log file archive - needed so Datastream can see changes which are read from archived
-    // log files.
-    // Explicit constraint: Hard-boot raw JDBC strictly mapping to FREE at " +
-    // System.getProperty("cloudOracleHost") + ":1521 (User: system, Pass: TestPassword123) calling
-    // ALTER
-    // SYSTEM SWITCH LOGFILE.
-    try (java.sql.Connection conn =
-            java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@" + System.getProperty("cloudOracleHost") + ":1521/XEPDB1",
-                "system",
-                "TestPassword123");
-        java.sql.Statement stmt = conn.createStatement()) {
-      flushOracleRedoLogs(null);
-    } catch (Exception e) {
-      LOG.warn("Error while executing ALTER SYSTEM SWITCH LOGFILE. Using framework fallback...", e);
-      flushOracleRedoLogs(jdbcResourceManagerShardA);
-    }
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)",
+        oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
   }
 
   private void assertUsersTableContents() {

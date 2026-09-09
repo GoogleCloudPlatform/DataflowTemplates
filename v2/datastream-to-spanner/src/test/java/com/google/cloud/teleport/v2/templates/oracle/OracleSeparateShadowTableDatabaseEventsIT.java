@@ -37,7 +37,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -45,7 +44,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,11 +71,11 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
   public static SpannerResourceManager shadowSpannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static CloudOracleResourceManager cloudOracleSysUser;
-  public static CloudOracleResourceManager cloudSqlResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleSeparateShadowTableDatabaseEventsIT.class) {
       testInstances.add(this);
@@ -85,7 +83,7 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity(System.getProperty("privateConnectivity"))
+                .setPrivateConnectivity("datastream-connect-2")
                 .build();
 
         spannerResourceManager = setUpSpannerResourceManager();
@@ -94,44 +92,24 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        // SYSTEM AUTHORIZATIONS
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        builder.setUsername("sys as sysdba");
-        builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-        builder.setHost(System.getProperty("cloudOracleHost"));
-        builder.setPort(1521);
-        builder.setSystemIdentifier("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
-        String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
-        String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
-        setUpOracleUser(oracleUser, oraclePassword);
-
-        cloudSqlResourceManager =
-            (CloudOracleResourceManager)
-                CloudOracleResourceManager.builder(testName)
-                    .setUsername(oracleUser)
-                    .setPassword(oraclePassword)
-                    .setDatabaseName("XEPDB1")
-                    .setHost(System.getProperty("cloudOracleHost"))
-                    .setPort(1521)
-                    .build();
-
-        executeSqlScript(
-            cloudSqlResourceManager,
-            "oracle/OracleSeparateShadowTableDatabaseEventsIT/oracle-schema.sql");
+        executeOracleSqlFileScript(
+            oracleResourceManager,
+            "oracle/OracleSeparateShadowTableDatabaseEventsIT/oracle-schema.sql",
+            oracleUser);
 
         OracleSource jdbcSource =
             OracleSource.builder(
-                    cloudSqlResourceManager.getHost(),
-                    cloudSqlResourceManager.getUsername(),
-                    cloudSqlResourceManager.getPassword(),
-                    cloudSqlResourceManager.getPort(),
-                    cloudSqlResourceManager.getDatabaseName())
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     Map.of(
-                        cloudSqlResourceManager.getUsername().toUpperCase(),
+                        oracleUser.toUpperCase(),
                         List.of("Movie", "Users", "Authors", "Articles", "Books")))
                 .build();
 
@@ -152,6 +130,7 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
                         "shadowTableSpannerDatabaseId",
                         shadowSpannerResourceManager.getDatabaseId());
                     put("inputFileFormat", "avro");
+                    put("workerMachineType", "n1-standard-4");
                     put("datastreamSourceType", "oracle");
                   }
                 },
@@ -165,19 +144,6 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
     }
   }
 
-  private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
-
-    // Supplement logging requirement
-
-  }
-
   @AfterClass
   public static void cleanUp() throws IOException {
     for (OracleSeparateShadowTableDatabaseEventsIT instance : testInstances) {
@@ -188,9 +154,8 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
         pubsubResourceManager,
         shadowSpannerResourceManager,
         gcsResourceManager,
-        datastreamResourceManager,
-        cloudOracleSysUser,
-        cloudSqlResourceManager);
+        datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -286,14 +251,22 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       @Override
       protected CheckResult check() {
         if (!executed) {
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                  + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                  + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
-          cloudSqlResourceManager.runSQLUpdate("COMMIT");
-          executed = true;
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                    + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                    + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))",
+                oracleUser);
+            SharedOracleLiveITInstance.flushRedoLogs();
+            executed = true;
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         return new CheckResult(true, "Sent initial Users data");
       }
@@ -312,11 +285,17 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       @Override
       protected CheckResult check() {
         if (!executed) {
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                  + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
-          cloudSqlResourceManager.runSQLUpdate("COMMIT");
-          executed = true;
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
+                    + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))",
+                oracleUser);
+            SharedOracleLiveITInstance.flushRedoLogs();
+            executed = true;
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         return new CheckResult(true, "Sent next Users data");
       }
@@ -335,14 +314,22 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       @Override
       protected CheckResult check() {
         if (!executed) {
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (1, 'movie1',"
-                  + " TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (2, 'movie2',"
-                  + " TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)");
-          cloudSqlResourceManager.runSQLUpdate("COMMIT");
-          executed = true;
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (1, 'movie1',"
+                    + " TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (2, 'movie2',"
+                    + " TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)",
+                oracleUser);
+            SharedOracleLiveITInstance.flushRedoLogs();
+            executed = true;
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         return new CheckResult(true, "Sent Movie data");
       }
@@ -361,38 +348,66 @@ public class OracleSeparateShadowTableDatabaseEventsIT extends DataStreamToSpann
       @Override
       protected CheckResult check() {
         if (!executed) {
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (1, 'a1')");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (2, 'a2')");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (3, 'a3')");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (4, 'a4')");
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (1, 'a1')",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (2, 'a2')",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (3, 'a3')",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (4, 'a4')",
+                oracleUser);
 
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                  + " (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                  + " (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                  + " (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                  + " (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)");
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                    + " (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                    + " (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                    + " (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
+                    + " (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)",
+                oracleUser);
 
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (1, 'Book005', 3)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (2, 'Book002', 3)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (3, 'Book004', 4)");
-          cloudSqlResourceManager.runSQLUpdate(
-              "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (4, 'Book005', 2)");
-          cloudSqlResourceManager.runSQLUpdate("COMMIT");
-          executed = true;
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (1, 'Book005', 3)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (2, 'Book002', 3)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (3, 'Book004', 4)",
+                oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (4, 'Book005', 2)",
+                oracleUser);
+            SharedOracleLiveITInstance.flushRedoLogs();
+            executed = true;
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         return new CheckResult(true, "Sent Articles data");
       }

@@ -35,7 +35,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -43,7 +42,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -107,12 +105,12 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
           "T_SPRG_R70_OBJECT_TYP");
 
   private static boolean initialized = false;
-  private static CloudOracleResourceManager oracleSysUser;
-  private static CloudOracleResourceManager oracleResourceManager;
+  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static DatastreamResourceManager datastreamResourceManager;
+  private static String oracleUser;
 
   private static HashSet<OracleDatastreamToSpannerDataTypesIT> testInstances = new HashSet<>();
   private static final String[] ORACLE_DDL_COMMANDS =
@@ -336,55 +334,14 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         "INSERT INTO T_SPRG_R70_OBJECT_TYP (ID, DUMMY) VALUES (1, 'test')"
       };
 
-  private void setUpOracleUser(String user, String password) {
-    oracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    oracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON USERS CONTAINER=ALL", user));
-  }
-
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerDataTypesIT.class) {
       testInstances.add(this);
       if (!initialized) {
-        LOG.info("Setting up Oracle sys resource manager...");
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("cloudOracleHost") != null) {
-          sysBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-          sysBuilder.setHost(System.getProperty("cloudOracleHost"));
-          sysBuilder.setPort(1521);
-          sysBuilder.setUsername("sys as sysdba");
-          sysBuilder.setDatabaseName("XE");
-        }
-        oracleSysUser =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(sysBuilder);
-
-        String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
-        String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
-
-        LOG.info("Provisioning isolated user: " + oracleUser);
-        setUpOracleUser(oracleUser, oraclePassword);
-
-        // Build isolated RM
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("cloudOracleHost") != null) {
-          builder.setPassword(oraclePassword);
-          builder.setHost(System.getProperty("cloudOracleHost"));
-          builder.setPort(1521);
-          builder.setUsername(oracleUser);
-          builder.setDatabaseName("XEPDB1");
-        }
-        oracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(builder);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         LOG.info("Setting up Spanner resource manager...");
         spannerResourceManager = setUpSpannerResourceManager();
@@ -406,8 +363,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         try (java.sql.Connection conn =
                 java.sql.DriverManager.getConnection(
                     oracleResourceManager.getUri(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword());
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD);
             java.sql.Statement stmt = conn.createStatement()) {
           for (String cmd : ORACLE_DDL_COMMANDS) {
             stmt.execute(cmd);
@@ -429,11 +386,11 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        oracleResourceManager,
         spannerResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -445,14 +402,11 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
     OracleSource oracleSource =
         OracleSource.builder(
                 oracleResourceManager.getHost(),
-                oracleResourceManager.getUsername(),
-                oracleResourceManager.getPassword(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
                 oracleResourceManager.getPort(),
                 oracleResourceManager.getDatabaseName())
-            .setAllowedTables(
-                Map.of(
-                    oracleResourceManager.getUsername().toUpperCase(),
-                    getAllowedTables(expectedData)))
+            .setAllowedTables(Map.of(oracleUser.toUpperCase(), getAllowedTables(expectedData)))
             .build();
 
     LOG.info("Launching Dataflow job...");

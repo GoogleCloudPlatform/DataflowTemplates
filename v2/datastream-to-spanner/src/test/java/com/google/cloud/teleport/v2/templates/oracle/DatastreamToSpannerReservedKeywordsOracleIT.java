@@ -24,7 +24,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +31,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -64,16 +62,18 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
   private static final String SESSION_FILE =
       "oracle/DatastreamToSpannerReservedKeywordsOracleIT/session.json";
 
-  private CloudOracleResourceManager oracleResourceManager;
+  private SpannerOracleResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private GcsResourceManager gcsResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     LOG.info("Setting up Oracle resource manager...");
-    oracleResourceManager = setUpOracleResourceManager();
+    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
     LOG.info("Setting up Spanner resource manager...");
     spannerResourceManager = setUpSpannerResourceManager();
@@ -102,23 +102,18 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
   public void cleanUp() {
     LOG.info("Cleaning up resources...");
     ResourceManagerUtils.cleanResources(
-        oracleResourceManager,
         spannerResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
   public void testOracleReservedKeywords() throws Exception {
     LOG.info("Executing Oracle DDL script...");
-    try {
-    } catch (Exception e) {
-      LOG.info("Table true does not exist or could not be dropped: " + e.getMessage());
-    }
-    executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
-
-    flushOracleRedoLogs(oracleResourceManager);
+    executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
 
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
@@ -135,16 +130,16 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     OracleSource oracleSource =
         OracleSource.builder(
                 oracleResourceManager.getHost(),
-                oracleResourceManager.getUsername(),
-                oracleResourceManager.getPassword(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
                 oracleResourceManager.getPort(),
                 oracleResourceManager.getDatabaseName())
-            .setAllowedTables(
-                Map.of(oracleResourceManager.getUsername().toUpperCase(), List.of("true")))
+            .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("true")))
             .build();
 
     Map<String, String> jobParams = new HashMap<>();
     jobParams.put("inputFileFormat", "avro");
+    jobParams.put("workerMachineType", "n1-standard-4");
 
     LOG.info("Launching Dataflow job...");
     PipelineLauncher.LaunchInfo jobInfo =

@@ -33,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -74,9 +73,9 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
   public static SpannerResourceManager shadowSpannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static CloudOracleResourceManager cloudOracleSysUser;
-  public static CloudOracleResourceManager jdbcResourceManagerShardA;
+  public static SpannerOracleResourceManager oracleResourceManager;
   private static String streamNameA;
+  private static String oracleUser;
 
   @Before
   public void setUp() throws Exception {
@@ -97,46 +96,21 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        builder.setUsername("sys as sysdba");
-        builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-        builder.setHost(System.getProperty("cloudOracleHost"));
-        builder.setPort(1521);
-        builder.setDatabaseName("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
-
-        jdbcResourceManagerShardA =
-            (CloudOracleResourceManager)
-                CloudOracleResourceManager.builder(testName)
-                    .setUsername(System.getProperty("cloudOracleUsername", "system"))
-                    .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                    .setDatabaseName("XEPDB1")
-                    .setHost(System.getProperty("cloudOracleHost"))
-                    .setPort(1521)
-                    .build();
-
-        try {
-        } catch (Exception e) {
-        }
-
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(
-            jdbcResourceManagerShardA,
-            "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-schema.sql");
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        executeOracleSqlFileScript(
+            oracleResourceManager,
+            "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-schema.sql",
+            oracleUser);
 
         OracleSource jdbcSource =
             OracleSource.builder(
-                    jdbcResourceManagerShardA.getHost(),
-                    jdbcResourceManagerShardA.getUsername(),
-                    jdbcResourceManagerShardA.getPassword(),
-                    jdbcResourceManagerShardA.getPort(),
-                    jdbcResourceManagerShardA.getDatabaseName())
-                .setAllowedTables(
-                    Map.of(jdbcResourceManagerShardA.getUsername().toUpperCase(), List.of("Users")))
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("Users")))
                 .build();
 
         com.google.cloud.datastream.v1.SourceConfig sourceConfig =
@@ -200,16 +174,6 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
     }
   }
 
-  private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
-  }
-
   @AfterClass
   public static void cleanUp() throws IOException {
     for (OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT instance : testInstances) {
@@ -220,9 +184,8 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         shadowSpannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        jdbcResourceManagerShardA,
-        datastreamResourceManager,
-        cloudOracleSysUser);
+        datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -243,8 +206,12 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
                       @Override
                       protected CheckResult check() {
                         if (!executed) {
-                          insertDataInOracle();
-                          executed = true;
+                          try {
+                            insertDataInOracle();
+                            executed = true;
+                          } catch (Exception e) {
+                            return new CheckResult(false, e.getMessage());
+                          }
                         }
                         return new CheckResult(true, "Inserted successfully");
                       }
@@ -264,46 +231,58 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
     assertUsersTableContents();
   }
 
-  private void insertDataInOracle() {
+  private void insertDataInOracle() throws Exception {
     LOG.info("Inserting rows into Users table in Oracle");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)");
-    jdbcResourceManagerShardA.runSQLUpdate("COMMIT");
-
-    try (java.sql.Connection conn =
-            java.sql.DriverManager.getConnection(
-                "jdbc:oracle:thin:@"
-                    + System.getProperty("cloudOracleHost", "localhost")
-                    + ":1521/XEPDB1",
-                "system",
-                "TestPassword123");
-        java.sql.Statement stmt = conn.createStatement()) {
-      flushOracleRedoLogs(null);
-    } catch (Exception e) {
-      flushOracleRedoLogs(jdbcResourceManagerShardA);
-    }
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)",
+        oracleUser);
+    executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
   }
 
   private void assertUsersTableContents() {

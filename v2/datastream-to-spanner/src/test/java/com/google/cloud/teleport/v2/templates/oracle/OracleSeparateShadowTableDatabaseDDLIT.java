@@ -34,7 +34,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.conditions.ConditionCheck.CheckResult;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -79,17 +78,19 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager oracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
       datastreamResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleSeparateShadowTableDatabaseDDLIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -120,21 +121,12 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
           "Singers",
           "Books"
         };
-        for (String table : tables) {
-          try {
-          } catch (Exception e) {
-            // Ignore if doesn't exist
-          }
-        }
 
-        // Also drop sequences
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(
+        executeOracleSqlFileScript(
             oracleResourceManager,
-            "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-schema.sql");
-        flushOracleRedoLogs(oracleResourceManager);
+            "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-schema.sql",
+            oracleUser);
+        SharedOracleLiveITInstance.flushRedoLogs();
 
         jobInfo =
             launchDataflowJob(
@@ -162,14 +154,13 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
                 null, // sessionResourceContent
                 org.apache.beam.it.gcp.datastream.OracleSource.builder(
                         oracleResourceManager.getHost(),
-                        oracleResourceManager
-                            .getUsername(), // Explicit Datastream logminer user instead of 'system'
-                        oracleResourceManager.getPassword(), // Datastream user password
+                        oracleUser, // Explicit Datastream logminer user instead of 'system'
+                        SharedOracleLiveITInstance.ORACLE_PASSWORD, // Datastream user password
                         oracleResourceManager.getPort(),
-                        "XEPDB1")
+                        oracleResourceManager.getDatabaseName())
                     .setAllowedTables(
                         java.util.Map.of(
-                            oracleResourceManager.getUsername().toUpperCase(),
+                            oracleUser.toUpperCase(),
                             java.util.Arrays.asList(
                                 TABLE1, TABLE2, TABLE3, TABLE4, TABLE5, TABLE6, TABLE7, TABLE8)))
                     .build());
@@ -192,6 +183,7 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
         pubsubResourceManager,
         shadowSpannerResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -211,11 +203,12 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
                       protected CheckResult check() {
                         if (!executed) {
                           try {
-                            executeSqlScript(
+                            executeOracleSqlFileScript(
                                 oracleResourceManager,
-                                "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-inserts.sql");
+                                "oracle/OracleSeparateShadowTableDatabaseDDLIT/oracle-inserts.sql",
+                                oracleUser);
                             executed = true; // Repositioned ABOVE flushOracleLogs
-                            flushOracleRedoLogs(oracleResourceManager);
+                            SharedOracleLiveITInstance.flushRedoLogs();
                           } catch (Exception e) {
                             return new CheckResult(false, e.getMessage());
                           }

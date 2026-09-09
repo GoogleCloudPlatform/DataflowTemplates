@@ -32,7 +32,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -66,12 +65,12 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static CloudOracleResourceManager cloudOracleSysUser;
-  public static CloudOracleResourceManager cloudSqlResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleSeparateShadowTableDatabaseStringOverridesIT.class) {
       testInstances.add(this);
@@ -90,41 +89,21 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        builder.setUsername("sys as sysdba");
-        builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-        builder.setHost(System.getProperty("cloudOracleHost"));
-        builder.setPort(1521);
-        builder.setDatabaseName("XE");
-        cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
-
-        cloudSqlResourceManager =
-            (CloudOracleResourceManager)
-                CloudOracleResourceManager.builder(testName)
-                    .setUsername(System.getProperty("cloudOracleUsername", "system"))
-                    .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                    .setDatabaseName("XE")
-                    .setHost(System.getProperty("cloudOracleHost"))
-                    .setPort(1521)
-                    .build();
-
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(
-            cloudSqlResourceManager,
-            "oracle/OracleSeparateShadowTableDatabaseStringOverridesIT/oracle-schema.sql");
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        executeOracleSqlFileScript(
+            oracleResourceManager,
+            "oracle/OracleSeparateShadowTableDatabaseStringOverridesIT/oracle-schema.sql",
+            oracleUser);
 
         OracleSource jdbcSource =
             OracleSource.builder(
-                    cloudSqlResourceManager.getHost(),
-                    cloudSqlResourceManager.getUsername(),
-                    cloudSqlResourceManager.getPassword(),
-                    cloudSqlResourceManager.getPort(),
-                    cloudSqlResourceManager.getDatabaseName())
-                .setAllowedTables(
-                    Map.of(cloudSqlResourceManager.getUsername().toUpperCase(), List.of("person1")))
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("person1")))
                 .build();
 
         Map<String, String> overridesMap = new HashMap<>();
@@ -156,16 +135,6 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
     }
   }
 
-  private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
-  }
-
   @AfterClass
   public static void cleanUp() throws IOException {
     for (OracleSeparateShadowTableDatabaseStringOverridesIT instance : testInstances) {
@@ -176,9 +145,8 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
         pubsubResourceManager,
         shadowSpannerResourceManager,
         gcsResourceManager,
-        datastreamResourceManager,
-        cloudOracleSysUser,
-        cloudSqlResourceManager);
+        datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -197,15 +165,23 @@ public class OracleSeparateShadowTableDatabaseStringOverridesIT extends DataStre
                       @Override
                       protected CheckResult check() {
                         if (!executed) {
-                          cloudSqlResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
-                                  + " ('John', 'Doe')");
-                          cloudSqlResourceManager.runSQLUpdate(
-                              "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
-                                  + " ('Alice', 'Johnson')");
-                          cloudSqlResourceManager.runSQLUpdate("COMMIT");
-                          flushOracleRedoLogs(cloudOracleSysUser);
-                          executed = true;
+                          try {
+                            executeOracleSql(
+                                oracleResourceManager,
+                                "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                    + " ('John', 'Doe')",
+                                oracleUser);
+                            executeOracleSql(
+                                oracleResourceManager,
+                                "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
+                                    + " ('Alice', 'Johnson')",
+                                oracleUser);
+                            executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+                            SharedOracleLiveITInstance.flushRedoLogs();
+                            executed = true;
+                          } catch (Exception e) {
+                            return new CheckResult(false, e.getMessage());
+                          }
                         }
                         return new CheckResult(true, "Inserted successfully");
                       }

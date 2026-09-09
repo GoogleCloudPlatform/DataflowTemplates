@@ -85,7 +85,11 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
   }
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT.class) {
       testInstances.add(this);
@@ -128,12 +132,11 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                 sessionContent,
                 OracleSource.builder(
                         cloudSqlResourceManager.getHost(),
-                        cloudSqlResourceManager.getUsername(),
-                        cloudSqlResourceManager.getPassword(),
+                        oracleUser,
+                        "TestPassword123",
                         cloudSqlResourceManager.getPort(),
                         cloudSqlResourceManager.getDatabaseName())
-                    .setAllowedTables(
-                        Map.of(cloudSqlResourceManager.getUsername().toUpperCase(), TABLE_NAMES))
+                    .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLE_NAMES))
                     .build());
       }
     }
@@ -360,17 +363,18 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
             // Set system property because the builder internally relies on it!
             System.setProperty("cloudOracleHost", dynamicHost);
 
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
-                org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder("oracle_sys");
-            sysBuilder.setUsername("sys as sysdba");
-            sysBuilder.setPassword("TestPassword123");
-            sysBuilder.setHost(dynamicHost);
-            sysBuilder.setPort(dynamicPort);
-            sysBuilder.setDatabaseName("XE");
+            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager sysBuilder =
+                (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
+                    SharedOracleLiveITInstance.getInstance();
+            // // // sysBuilder.setUsername("sys as sysdba");
+            // // // sysBuilder.setPassword("TestPassword123");
+            // // // sysBuilder.setHost(dynamicHost);
+            // // // sysBuilder.setPort(dynamicPort);
+            // // // sysBuilder.setDatabaseName("XE");
 
             org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager cloudOracleSysUser =
                 (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                    new SpannerOracleResourceManager(sysBuilder);
+                    (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
             flushOracleRedoLogs(cloudOracleSysUser);
             cloudOracleSysUser.cleanupAll();
           } catch (Throwable e) {

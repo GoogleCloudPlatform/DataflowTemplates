@@ -34,7 +34,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -42,7 +41,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,68 +68,27 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
   private static final String ORACLE_TABLE_ALLTYPES = "ALLTYPES";
   private static final String SPANNER_TABLE_MY_TABLE = "MY_TABLE";
   private static final String SPANNER_TABLE_ALLTYPES = "ALLTYPES";
-
-  private static CloudOracleResourceManager oracleSysUser;
-  private static CloudOracleResourceManager oracleResourceManager;
+  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager shadowSpannerResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static DatastreamResourceManager datastreamResourceManager;
   private static boolean initialized = false;
+  private static String oracleUser;
 
   private static HashSet<OracleSeparateShadowTableDatabasePKFocusedIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  private void setUpOracleUser(String user, String password) {
-    oracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    oracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    oracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON USERS CONTAINER=ALL", user));
-  }
-
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleSeparateShadowTableDatabasePKFocusedIT.class) {
       testInstances.add(this);
       if (!initialized) {
-        LOG.info("Setting up Oracle sys resource manager...");
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("cloudOracleHost") != null) {
-          sysBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-          sysBuilder.setHost(System.getProperty("cloudOracleHost"));
-          sysBuilder.setPort(1521);
-          sysBuilder.setUsername("sys as sysdba");
-          sysBuilder.setDatabaseName("XE");
-        }
-        oracleSysUser =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(sysBuilder);
-
-        String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
-        String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
-
-        LOG.info("Provisioning isolated user: " + oracleUser);
-        setUpOracleUser(oracleUser, oraclePassword);
-
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-        if (System.getProperty("cloudOracleHost") != null) {
-          builder.setPassword(oraclePassword);
-          builder.setHost(System.getProperty("cloudOracleHost"));
-          builder.setPort(1521);
-          builder.setUsername(oracleUser);
-          builder.setDatabaseName("XEPDB1");
-        }
-        oracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(builder);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
@@ -143,19 +100,19 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                 .setPrivateConnectivity("datastream-connect-2")
                 .build();
 
-        executeSqlScript(oracleResourceManager, ORACLE_SCHEMA);
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA, oracleUser);
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
         OracleSource oracleSource =
             OracleSource.builder(
                     oracleResourceManager.getHost(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     Map.of(
-                        oracleResourceManager.getUsername().toUpperCase(),
+                        oracleUser.toUpperCase(),
                         List.of(ORACLE_TABLE_MY_TABLE, ORACLE_TABLE_ALLTYPES)))
                 .build();
 
@@ -194,12 +151,12 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        oracleResourceManager,
         spannerResourceManager,
         shadowSpannerResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -217,10 +174,19 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (1, 10)");
-                oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (2, 20)");
-                oracleResourceManager.runSQLUpdate("INSERT INTO MY_TABLE (ID, VAL) VALUES (3, 30)");
-                flushOracleRedoLogs(oracleResourceManager);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (1, 10)",
+                    oracleUser);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (2, 20)",
+                    oracleUser);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (3, 30)",
+                    oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -243,9 +209,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                oracleResourceManager.runSQLUpdate("UPDATE MY_TABLE SET VAL = 10 WHERE ID = 2");
-                oracleResourceManager.runSQLUpdate("DELETE FROM MY_TABLE WHERE ID = 1");
-                flushOracleRedoLogs(oracleResourceManager);
+                executeOracleSql(
+                    oracleResourceManager, "UPDATE MY_TABLE SET VAL = 10 WHERE ID = 2", oracleUser);
+                executeOracleSql(
+                    oracleResourceManager, "DELETE FROM MY_TABLE WHERE ID = 1", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -268,8 +236,9 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                oracleResourceManager.runSQLUpdate("UPDATE MY_TABLE SET ID = 10 WHERE ID = 3");
-                flushOracleRedoLogs(oracleResourceManager);
+                executeOracleSql(
+                    oracleResourceManager, "UPDATE MY_TABLE SET ID = 10 WHERE ID = 3", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -357,27 +326,33 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
             if (!executed) {
               try {
                 // 1
-                oracleResourceManager.runSQLUpdate(
+                executeOracleSql(
+                    oracleResourceManager,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 1, 3.14, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 10)");
+                        + " 'YYYY-MM-DD'), 12345.1234, 10)",
+                    oracleUser);
                 // 2
-                oracleResourceManager.runSQLUpdate(
+                executeOracleSql(
+                    oracleResourceManager,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 2, 3.1415, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 20)");
+                        + " 'YYYY-MM-DD'), 12345.1234, 20)",
+                    oracleUser);
                 // 3
-                oracleResourceManager.runSQLUpdate(
+                executeOracleSql(
+                    oracleResourceManager,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 30)");
-                flushOracleRedoLogs(oracleResourceManager);
+                        + " 'YYYY-MM-DD'), 12345.1234, 30)",
+                    oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -400,10 +375,15 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                oracleResourceManager.runSQLUpdate("DELETE FROM ALLTYPES WHERE INT64_FIELD = 1");
-                oracleResourceManager.runSQLUpdate(
-                    "UPDATE ALLTYPES SET VAL = 10 WHERE INT64_FIELD = 2");
-                flushOracleRedoLogs(oracleResourceManager);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "DELETE FROM ALLTYPES WHERE INT64_FIELD = 1",
+                    oracleUser);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "UPDATE ALLTYPES SET VAL = 10 WHERE INT64_FIELD = 2",
+                    oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -426,9 +406,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                oracleResourceManager.runSQLUpdate(
-                    "UPDATE ALLTYPES SET INT64_FIELD = 10 WHERE INT64_FIELD = 3");
-                flushOracleRedoLogs(oracleResourceManager);
+                executeOracleSql(
+                    oracleResourceManager,
+                    "UPDATE ALLTYPES SET INT64_FIELD = 10 WHERE INT64_FIELD = 3",
+                    oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());

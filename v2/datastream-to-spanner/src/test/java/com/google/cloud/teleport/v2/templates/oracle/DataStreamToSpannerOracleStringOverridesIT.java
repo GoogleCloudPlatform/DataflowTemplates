@@ -32,7 +32,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -52,7 +51,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpannerITBase {
 
-  private static final String ORACLE_TABLE = "person1";
   private static final String SPANNER_TABLE = "human1";
 
   private static final String SPANNER_DDL_RESOURCE =
@@ -68,12 +66,13 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static CloudOracleResourceManager oracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   public static String gcsPrefix;
+  public static String oracleUser;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleStringOverridesIT.class) {
       testInstances.add(this);
@@ -81,7 +80,9 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
@@ -93,33 +94,25 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
             getGcsPath(testName + "/cdc/", gcsResourceManager)
                 .replace("gs://" + gcsResourceManager.getBucket(), "");
 
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
-
-        try {
-        } catch (Exception e) {
-          // Might exist or fail if we are not SYS, ignore wrapper
-        }
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
         OracleSource oracleSource =
             OracleSource.builder(
                     oracleResourceManager.getHost(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
-                .setAllowedTables(
-                    Map.of(oracleResourceManager.getUsername().toUpperCase(), List.of("person1")))
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("person1")))
                 .build();
 
         Map<String, String> overridesMap = new HashMap<>();
         overridesMap.put("inputFileFormat", "avro");
         overridesMap.put("tableOverrides", "[{person1, human1}]");
         overridesMap.put("columnOverrides", "[{person1.first_name1, person1.name1}]");
+        overridesMap.put("workerMachineType", "n1-standard-4");
 
         jobInfo =
             launchDataflowJob(
@@ -149,8 +142,8 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        oracleResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -167,12 +160,17 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
                       @Override
                       protected CheckResult check() {
                         try {
-                          oracleResourceManager.runSQLUpdate(
+                          executeOracleSql(
+                              oracleResourceManager,
                               "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
-                                  + " ('John', 'Doe')");
-                          oracleResourceManager.runSQLUpdate(
+                                  + " ('John', 'Doe')",
+                              oracleUser);
+                          executeOracleSql(
+                              oracleResourceManager,
                               "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
-                                  + " ('Alice', 'Johnson')");
+                                  + " ('Alice', 'Johnson')",
+                              oracleUser);
+                          SharedOracleLiveITInstance.flushRedoLogs();
                           return new CheckResult(true, "Inserted successfully");
                         } catch (Exception e) {
                           return new CheckResult(false, "Failed to insert");

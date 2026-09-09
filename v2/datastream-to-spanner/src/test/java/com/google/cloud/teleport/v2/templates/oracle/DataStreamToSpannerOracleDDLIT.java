@@ -34,7 +34,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.conditions.ConditionCheck.CheckResult;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -77,17 +76,21 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager oracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
       datastreamResourceManager;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleDDLIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -117,19 +120,11 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
           "Singers",
           "Books"
         };
-        for (String table : tables) {
-          try {
-          } catch (Exception e) {
-            // Ignore if doesn't exist
-          }
-        }
 
-        // Also drop sequences
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(
-            oracleResourceManager, "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql");
+        executeOracleSqlFileScript(
+            oracleResourceManager,
+            "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql",
+            oracleUser);
         flushOracleRedoLogs(oracleResourceManager);
 
         jobInfo =
@@ -152,14 +147,13 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
                 null, // sessionResourceContent
                 org.apache.beam.it.gcp.datastream.OracleSource.builder(
                         oracleResourceManager.getHost(),
-                        oracleResourceManager
-                            .getUsername(), // Explicit Datastream logminer user instead of 'system'
-                        oracleResourceManager.getPassword(), // Datastream user password
+                        oracleUser, // Explicit Datastream logminer user instead of 'system'
+                        SharedOracleLiveITInstance.ORACLE_PASSWORD, // Datastream user password
                         oracleResourceManager.getPort(),
-                        "XEPDB1")
+                        oracleResourceManager.getDatabaseName())
                     .setAllowedTables(
                         java.util.Map.of(
-                            oracleResourceManager.getUsername().toUpperCase(),
+                            oracleUser.toUpperCase(),
                             java.util.Arrays.asList(
                                 TABLE1, TABLE2, TABLE3, TABLE4, TABLE5, TABLE6, TABLE7, TABLE8)))
                     .build());
@@ -179,6 +173,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -195,10 +190,11 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
                       @Override
                       protected CheckResult check() {
                         try {
-                          executeSqlScript(
+                          executeOracleSqlFileScript(
                               oracleResourceManager,
-                              "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql");
-                          flushOracleRedoLogs(oracleResourceManager);
+                              "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql",
+                              oracleUser);
+                          SharedOracleLiveITInstance.flushRedoLogs();
                           return new CheckResult(true, "Success");
                         } catch (Exception e) {
                           return new CheckResult(false, e.getMessage());

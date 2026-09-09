@@ -92,7 +92,11 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
   }
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT.class) {
       testInstances.add(this);
@@ -106,23 +110,23 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
+        // builder removed;
         if (System.getProperty("cloudOracleHost") != null) {
-          builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-          builder.setHost(System.getProperty("cloudOracleHost"));
-          builder.setPort(1521);
-          builder.setUsername(System.getProperty("cloudOracleUsername", "system"));
-          builder.setDatabaseName("XEPDB1");
+          // // // builder.setPassword(System.getProperty("cloudOraclePassword",
+          // "TestPassword123"));
+          // // // builder.setHost(System.getProperty("cloudOracleHost"));
+          // // // builder.setPort(1521);
+          // // // builder.setUsername(System.getProperty("cloudOracleUsername", "system"));
+          // // // builder.setDatabaseName("XEPDB1");
         }
         cloudOracleResourceManager =
             (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                new SpannerOracleResourceManager(builder);
+                (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
 
         String sessionContent = generateBaseSchema();
         sessionContent =
             sessionContent
-                .replaceAll("SRC_DATABASE", cloudOracleResourceManager.getUsername().toUpperCase())
+                .replaceAll("SRC_DATABASE", oracleUser.toUpperCase())
                 .replaceAll("SP_DATABASE", spannerResourceManager.getDatabaseId())
                 .replaceAll("\"mysql\"", "\"oracle\"");
         for (int i = 1; i <= NUM_TABLES; i++) {
@@ -140,6 +144,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("workerMachineType", "n1-standard-4");
                   }
                 },
                 null,
@@ -149,12 +154,11 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
                 sessionContent,
                 OracleSource.builder(
                         cloudOracleResourceManager.getHost(),
-                        cloudOracleResourceManager.getUsername(),
-                        cloudOracleResourceManager.getPassword(),
+                        oracleUser,
+                        "TestPassword123",
                         cloudOracleResourceManager.getPort(),
                         cloudOracleResourceManager.getDatabaseName())
-                    .setAllowedTables(
-                        Map.of(cloudOracleResourceManager.getUsername().toUpperCase(), TABLE_NAMES))
+                    .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLE_NAMES))
                     .build());
       }
     }
@@ -176,7 +180,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
   private void setupSchema() {
     TABLE_NAMES.forEach(
         tableName -> {
-          cloudOracleResourceManager.runSQLUpdate(getJDBCSchema(tableName));
+          cloudOracleResourceManager.runSQLUpdate(getJDBCSchema(oracleUser + "." + tableName));
         });
     createSpannerTables();
   }
@@ -356,8 +360,12 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
             rows.add(values);
           }
           cdcEvents.put(tableName, rows);
-          success &= cloudOracleResourceManager.write(tableName, rows);
+          success &= cloudOracleResourceManager.write(oracleUser + "." + tableName, rows);
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
+        }
+        try {
+          SharedOracleLiveITInstance.flushRedoLogs();
+        } catch (Exception e) {
         }
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }

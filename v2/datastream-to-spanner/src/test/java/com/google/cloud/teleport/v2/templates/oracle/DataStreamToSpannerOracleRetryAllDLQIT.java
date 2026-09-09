@@ -34,7 +34,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
@@ -70,47 +69,26 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
-  public static CloudOracleResourceManager jdbcResourceManager;
+  public static SpannerOracleResourceManager cloudOracleResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
+  public static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleRetryAllDLQIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
+        cloudOracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        // Setup Oracle Source
-        CloudOracleResourceManager sysUser = setUpOracleResourceManager();
-
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder sysBuilder =
-            CloudOracleResourceManager.builder(testName);
-        sysBuilder.setHost(sysUser.getHost());
-        sysBuilder.setPort(sysUser.getPort());
-        sysBuilder.setUsername("sys as sysdba");
-        sysBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-        sysBuilder.setDatabaseName(sysUser.getDatabaseName());
-        CloudOracleResourceManager trueSysUser =
-            (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
-
-        String oracleUser = sysUser.getUsername();
-        String oraclePassword = sysUser.getPassword();
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-            CloudOracleResourceManager.builder(testName);
-        builder.setHost(sysUser.getHost());
-        builder.setPort(sysUser.getPort());
-        builder.setUsername(oracleUser);
-        builder.setPassword(oraclePassword);
-        builder.setDatabaseName("XEPDB1");
-
-        jdbcResourceManager =
-            (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
-
         // Create Oracle Schema using helper
-        executeSqlScript(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE);
+        executeOracleSqlFileScript(
+            cloudOracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
 
         // Add Supplemental Log Data required by Datastream CDC
         List.of("Customers", "Orders", "AllDataTypes").forEach(tableName -> {});
@@ -143,15 +121,14 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
 
         OracleSource oracleSource =
             OracleSource.builder(
-                    jdbcResourceManager.getHost(),
-                    jdbcResourceManager.getUsername(),
-                    jdbcResourceManager.getPassword(),
-                    jdbcResourceManager.getPort(),
-                    jdbcResourceManager.getDatabaseName())
+                    cloudOracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    cloudOracleResourceManager.getPort(),
+                    cloudOracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     Map.of(
-                        jdbcResourceManager.getUsername().toUpperCase(),
-                        List.of("Customers", "Orders", "AllDataTypes")))
+                        oracleUser.toUpperCase(), List.of("Customers", "Orders", "AllDataTypes")))
                 .build();
 
         // Launch regular pipeline using ITBase method
@@ -180,7 +157,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, jdbcResourceManager, gcsResourceManager, datastreamResourceManager);
+        spannerResourceManager, gcsResourceManager, datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -345,23 +323,35 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
     return false;
   }
 
-  private void insertDataInOracle() {
-    jdbcResourceManager.runSQLUpdate(
+  private void insertDataInOracle() throws Exception {
+    executeOracleSql(
+        cloudOracleResourceManager,
         "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
-            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
-    jdbcResourceManager.runSQLUpdate(
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')",
+        oracleUser);
+    executeOracleSql(
+        cloudOracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (3, 101, 1000, 'Website')");
-    jdbcResourceManager.runSQLUpdate(
+            + " VALUES (3, 101, 1000, 'Website')",
+        oracleUser);
+    executeOracleSql(
+        cloudOracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (2, 102, 1000, 'AppStore')");
-    jdbcResourceManager.runSQLUpdate(
+            + " VALUES (2, 102, 1000, 'AppStore')",
+        oracleUser);
+    executeOracleSql(
+        cloudOracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (4, 103, 1000, 'AppStore')");
-    jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (1, 'test1')");
-    jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (999, 'test999')");
+            + " VALUES (4, 103, 1000, 'AppStore')",
+        oracleUser);
+    executeOracleSql(
+        cloudOracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (1, 'test1')",
+        oracleUser);
+    executeOracleSql(
+        cloudOracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (999, 'test999')",
+        oracleUser);
   }
 
   private Map<String, Object> createExpectedRowFor999() {

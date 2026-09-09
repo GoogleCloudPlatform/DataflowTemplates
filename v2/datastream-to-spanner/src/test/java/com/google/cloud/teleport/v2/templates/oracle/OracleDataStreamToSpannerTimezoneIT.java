@@ -33,7 +33,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -70,12 +69,12 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static CloudOracleResourceManager oracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static CloudOracleResourceManager cloudOracleSysUser;
+  private static String oracleUser;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerTimezoneIT.class) {
       testInstances.add(this);
@@ -84,16 +83,8 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
-        oracleResourceManager = setUpOracleResourceManager();
-        CloudOracleResourceManager.Builder sysBuilder =
-            CloudOracleResourceManager.builder(testName);
-        sysBuilder.setPassword("TestPassword123");
-        sysBuilder.setHost("" + System.getProperty("cloudOracleHost") + "");
-        sysBuilder.setPort(1521);
-        sysBuilder.setUsername("system");
-        sysBuilder.setDatabaseName("XEPDB1");
-        cloudOracleSysUser =
-            (CloudOracleResourceManager) new SpannerOracleResourceManager(sysBuilder);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -103,25 +94,17 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        try {
-        } catch (Exception e) {
-          // ignore
-        }
-
-        executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
-
-        // Explicit Log flush
-        flushOracleRedoLogs(cloudOracleSysUser);
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
+        SharedOracleLiveITInstance.flushRedoLogs();
 
         OracleSource oracleSource =
             OracleSource.builder(
                     oracleResourceManager.getHost(),
-                    oracleResourceManager.getUsername(),
-                    oracleResourceManager.getPassword(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
-                .setAllowedTables(
-                    Map.of(oracleResourceManager.getUsername().toUpperCase(), List.of("DateData")))
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("DateData")))
                 .build();
 
         jobInfo =
@@ -135,6 +118,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("workerMachineType", "n1-standard-4");
                   }
                 },
                 null,
@@ -156,9 +140,8 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        oracleResourceManager,
-        cloudOracleSysUser,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -173,16 +156,19 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
           @Override
           protected CheckResult check() {
             try {
-              oracleResourceManager.runSQLUpdate(
+              executeOracleSql(
+                  oracleResourceManager,
                   "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
                       + " VALUES (1, TIMESTAMP '2024-02-02 10:00:00.000000', TIMESTAMP '2024-02-02"
-                      + " 20:00:00.000000')");
-              oracleResourceManager.runSQLUpdate(
+                      + " 20:00:00.000000')",
+                  oracleUser);
+              executeOracleSql(
+                  oracleResourceManager,
                   "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
                       + " VALUES (2, TIMESTAMP '2024-02-02 20:00:00.000000', TIMESTAMP '2024-02-03"
-                      + " 06:00:00.000000')");
-
-              flushOracleRedoLogs(cloudOracleSysUser);
+                      + " 06:00:00.000000')",
+                  oracleUser);
+              SharedOracleLiveITInstance.flushRedoLogs();
               return new CheckResult(true, "Data inserted successfully");
             } catch (Exception e) {
               LOG.error("Failed to insert data into Oracle", e);

@@ -34,9 +34,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -68,7 +66,8 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static CloudOracleResourceManager oracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
+  private static String oracleUser;
 
   private static final String SPANNER_DDL_RESOURCE =
       "oracle/OracleDataStreamToSpannerSessionIT/oracle-google_standard_sql-spanner-schema.sql";
@@ -83,7 +82,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerSessionIT.class) {
       testInstances.add(this);
@@ -91,57 +90,60 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        oracleResourceManager = setUpOracleResourceManager();
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(oracleResourceManager, ORACLE_DDL_RESOURCE);
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
 
         // Pre-insert books
-        oracleResourceManager.runSQLUpdate(
+        executeOracleSql(
+            oracleResourceManager,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the"
-                + " Rings', 1)");
-        oracleResourceManager.runSQLUpdate(
+                + " Rings', 1)",
+            oracleUser);
+        executeOracleSql(
+            oracleResourceManager,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and"
-                + " Prejudice', 2)");
-        oracleResourceManager.runSQLUpdate(
+                + " Prejudice', 2)",
+            oracleUser);
+        executeOracleSql(
+            oracleResourceManager,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers"
-                + " Guide to the Galaxy', 3)");
+                + " Guide to the Galaxy', 3)",
+            oracleUser);
 
         // Pre-insert categories
-        oracleResourceManager.runSQLUpdate(
+        executeOracleSql(
+            oracleResourceManager,
             "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz',"
-                + " CURRENT_TIMESTAMP)");
-        oracleResourceManager.runSQLUpdate(
+                + " CURRENT_TIMESTAMP)",
+            oracleUser);
+        executeOracleSql(
+            oracleResourceManager,
             "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
-                + " CURRENT_TIMESTAMP)");
+                + " CURRENT_TIMESTAMP)",
+            oracleUser);
 
-        flushOracleRedoLogs(oracleResourceManager);
+        SharedOracleLiveITInstance.flushRedoLogs();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity(System.getProperty("privateConnectivity"))
+                .setPrivateConnectivity("datastream-connect-2")
                 .build();
 
-        JDBCSource jdbcSource =
+        OracleSource oracleSource =
             OracleSource.builder(
-                    System.getProperty("cloudOracleHost"),
-                    System.getProperty("cloudOracleUsername", "system"),
-                    System.getProperty("cloudOraclePassword", "TestPassword123"),
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     1521,
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     new HashMap<>() {
                       {
-                        put(
-                            oracleResourceManager.getUsername().toUpperCase(),
-                            Arrays.asList("Category", "Books"));
+                        put(oracleUser.toUpperCase(), Arrays.asList("Category", "Books"));
                       }
                     })
                 .build();
@@ -157,6 +159,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("workerMachineType", "n1-standard-4");
                   }
                 },
                 null,
@@ -164,7 +167,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                 gcsResourceManager,
                 datastreamResourceManager,
                 null,
-                jdbcSource);
+                oracleSource);
       }
     }
   }
@@ -178,12 +181,12 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        datastreamResourceManager,
-        oracleResourceManager);
+        datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
-  public void migrationTestWithRenameAndDrops() {
+  public void migrationTestWithRenameAndDrops() throws Exception {
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
@@ -203,17 +206,24 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
 
     assertCategoryTableBackfillContents();
 
-    oracleResourceManager.runSQLUpdate(
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(3, 'def',"
-            + " CURRENT_TIMESTAMP)");
-    oracleResourceManager.runSQLUpdate(
+            + " CURRENT_TIMESTAMP)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(4, 'ghi',"
-            + " CURRENT_TIMESTAMP)");
-    oracleResourceManager.runSQLUpdate(
-        "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2");
-    oracleResourceManager.runSQLUpdate("DELETE FROM \"Category\" WHERE \"category_id\"=1");
+            + " CURRENT_TIMESTAMP)",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager, "DELETE FROM \"Category\" WHERE \"category_id\"=1", oracleUser);
 
-    flushOracleRedoLogs(oracleResourceManager);
+    SharedOracleLiveITInstance.flushRedoLogs();
 
     conditionCheck =
         ChainedConditionCheck.builder(

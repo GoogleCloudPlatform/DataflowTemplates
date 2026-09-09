@@ -39,6 +39,8 @@ public class SpannerOracleResourceManager extends CloudOracleResourceManager {
         getJDBCPrefix(), this.getHost(), this.getPort(getJDBCPort()), this.getDatabaseName());
   }
 
+  public void runSQLUpdate(String sql, String user) {}
+
   @Override
   public void cleanupAll() {
     super.cleanupAll();
@@ -49,28 +51,13 @@ public class SpannerOracleResourceManager extends CloudOracleResourceManager {
         && !userToDrop.contains("sysdba")) {
       LOG.info("Attempting to dynamically drop isolated Oracle user: {}", userToDrop);
       try {
-        CloudOracleResourceManager sysdba =
-            (CloudOracleResourceManager)
-                CloudOracleResourceManager.builder(this.getDatabaseName() + "_cleanup")
-                    .setUsername("sys as sysdba")
-                    .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                    .setDatabaseName("XEPDB1")
-                    .setHost(System.getProperty("cloudOracleHost", this.getHost()))
-                    .setPort(1521)
-                    .build();
-
-        // Oracle Spanner implementation requires specific URI
-        sysdba =
-            new SpannerOracleResourceManager(
-                (CloudOracleResourceManager.Builder)
-                    CloudOracleResourceManager.builder(this.getDatabaseName() + "_cleanup")
-                        .setUsername("sys as sysdba")
-                        .setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"))
-                        .setDatabaseName("XEPDB1")
-                        .setHost(System.getProperty("cloudOracleHost", this.getHost()))
-                        .setPort(1521));
-
-        sysdba.runSQLUpdate("DROP USER " + userToDrop + " CASCADE");
+        if (userToDrop.toUpperCase().startsWith("C##")) {
+          SharedOracleLiveITInstance.getInstance()
+              .runSQLUpdate("DROP USER " + userToDrop + " CASCADE");
+        } else {
+          SharedOracleLiveITInstance.getInstance()
+              .runSQLUpdate("DROP USER " + userToDrop + " CASCADE");
+        }
         LOG.info("Successfully dropped Oracle schema: {}", userToDrop);
       } catch (Exception e) {
         LOG.warn("Failed to drop schema: " + userToDrop, e);

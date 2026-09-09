@@ -34,7 +34,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -66,13 +65,12 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
       new HashSet<>();
 
   public static DatastreamResourceManager datastreamResourceManager;
-  public static CloudOracleResourceManager cloudOracleSysUser;
-  public static CloudOracleResourceManager cloudOracleResourceManager;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static String oracleUser;
+  private static String oracleUser;
 
   private static final String SPANNER_DDL_RESOURCE =
       "oracle/OracleSeparateShadowTableDatabaseSessionIT/spanner-schema.sql";
@@ -82,7 +80,7 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
       "oracle/OracleSeparateShadowTableDatabaseSessionIT/oracle-session.json";
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleSeparateShadowTableDatabaseSessionIT.class) {
       testInstances.add(this);
@@ -94,18 +92,9 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
                     System.getProperty("privateConnectivity", "datastream-connect-2"))
                 .build();
 
-        cloudOracleResourceManager = setUpOracleResourceManager();
-        try {
-          cloudOracleResourceManager.runSQLUpdate(
-              String.format("DROP TABLE \"%s\" CASCADE CONSTRAINTS", TABLE1));
-        } catch (Exception e) {
-        }
-        try {
-          cloudOracleResourceManager.runSQLUpdate(
-              String.format("DROP TABLE \"%s\" CASCADE CONSTRAINTS", TABLE2));
-        } catch (Exception e) {
-        }
-        executeSqlScript(cloudOracleResourceManager, ORACLE_DDL_RESOURCE);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
 
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
@@ -116,15 +105,12 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
 
         OracleSource jdbcSource =
             OracleSource.builder(
-                    cloudOracleResourceManager.getHost(),
-                    cloudOracleResourceManager.getUsername(),
-                    cloudOracleResourceManager.getPassword(),
-                    cloudOracleResourceManager.getPort(),
-                    cloudOracleResourceManager.getDatabaseName())
-                .setAllowedTables(
-                    Map.of(
-                        cloudOracleResourceManager.getUsername().toUpperCase(),
-                        List.of(TABLE1, TABLE2)))
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
+                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of(TABLE1, TABLE2)))
                 .build();
 
         Map<String, String> jobParams = new HashMap<>();
@@ -150,18 +136,6 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
     }
   }
 
-  public static void setUpOracleUser(
-      CloudOracleResourceManager sysUser, String user, String password) {
-    sysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    sysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    sysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    sysUser.runSQLUpdate(String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
-
-    // Add c##datastream grants based on requirements
-  }
-
   @AfterClass
   public static void cleanUp() throws IOException {
     for (OracleSeparateShadowTableDatabaseSessionIT instance : testInstances) {
@@ -175,10 +149,9 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
         spannerResourceManager,
         pubsubResourceManager,
         shadowSpannerResourceManager,
-        cloudOracleSysUser,
-        cloudOracleResourceManager,
         datastreamResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -258,14 +231,18 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
           return new CheckResult(true, "Sent category initial");
         }
         try {
-          cloudOracleResourceManager.runSQLUpdate(
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
-                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (1, 'xyz')", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate(
+                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (1, 'xyz')", TABLE1),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
-                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (2, 'abc')", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate("COMMIT");
-          flushOracleRedoLogs(cloudOracleSysUser);
+                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (2, 'abc')", TABLE1),
+              oracleUser);
+          executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+          SharedOracleLiveITInstance.flushRedoLogs();
           executed = true;
           return new CheckResult(true, "Sent category initial");
         } catch (Exception e) {
@@ -290,19 +267,27 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
           return new CheckResult(true, "Sent category cdc");
         }
         try {
-          cloudOracleResourceManager.runSQLUpdate(
-              String.format("DELETE FROM \"%s\" WHERE \"category_id\" = 1", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate(
+          executeOracleSql(
+              oracleResourceManager,
+              String.format("DELETE FROM \"%s\" WHERE \"category_id\" = 1", TABLE1),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
-                  "UPDATE \"%s\" SET \"full_name\" = 'abc1' WHERE \"category_id\" = 2", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate(
+                  "UPDATE \"%s\" SET \"full_name\" = 'abc1' WHERE \"category_id\" = 2", TABLE1),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
-                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (3, 'def')", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate(
+                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (3, 'def')", TABLE1),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
-                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (4, 'ghi')", TABLE1));
-          cloudOracleResourceManager.runSQLUpdate("COMMIT");
-          flushOracleRedoLogs(cloudOracleSysUser);
+                  "INSERT INTO \"%s\" (\"category_id\", \"full_name\") VALUES (4, 'ghi')", TABLE1),
+              oracleUser);
+          executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+          SharedOracleLiveITInstance.flushRedoLogs();
           executed = true;
           return new CheckResult(true, "Sent category cdc");
         } catch (Exception e) {
@@ -327,23 +312,29 @@ public class OracleSeparateShadowTableDatabaseSessionIT extends DataStreamToSpan
           return new CheckResult(true, "Sent books");
         }
         try {
-          cloudOracleResourceManager.runSQLUpdate(
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
                   "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (1, 'The Lord of"
                       + " the Rings', 1)",
-                  TABLE2));
-          cloudOracleResourceManager.runSQLUpdate(
+                  TABLE2),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
                   "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (2, 'Pride and"
                       + " Prejudice', 2)",
-                  TABLE2));
-          cloudOracleResourceManager.runSQLUpdate(
+                  TABLE2),
+              oracleUser);
+          executeOracleSql(
+              oracleResourceManager,
               String.format(
                   "INSERT INTO \"%s\" (\"id\", \"title\", \"author_id\") VALUES (3, 'The"
                       + " Hitchhikers Guide to the Galaxy', 3)",
-                  TABLE2));
-          cloudOracleResourceManager.runSQLUpdate("COMMIT");
-          flushOracleRedoLogs(cloudOracleSysUser);
+                  TABLE2),
+              oracleUser);
+          executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+          SharedOracleLiveITInstance.flushRedoLogs();
           executed = true;
           return new CheckResult(true, "Sent books");
         } catch (Exception e) {

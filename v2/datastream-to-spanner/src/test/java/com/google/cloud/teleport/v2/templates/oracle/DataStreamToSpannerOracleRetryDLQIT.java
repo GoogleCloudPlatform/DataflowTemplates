@@ -37,7 +37,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.OracleSource;
@@ -73,32 +72,16 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
   private static final HashSet<DataStreamToSpannerOracleRetryDLQIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
-  public static CloudOracleResourceManager jdbcResourceManagerShardA;
+  public static SpannerOracleResourceManager oracleResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   public static PubsubResourceManager pubsubResourceManager;
+  public static String oracleUser;
 
   private static String streamNameA;
 
-  private CloudOracleResourceManager setUpOracleResourceManagerForShard(String shardName) {
-    if (System.getProperty("cloudOracleHost") != null) {
-      CloudOracleResourceManager.Builder shardBuilder =
-          CloudOracleResourceManager.builder(testName + shardName);
-      shardBuilder.setUsername(System.getProperty("cloudOracleUsername", "system"));
-      shardBuilder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-      shardBuilder.setHost(System.getProperty("cloudOracleHost"));
-      shardBuilder.setPort(1521);
-      shardBuilder.setDatabaseName("XEPDB1");
-      return new SpannerOracleResourceManager(shardBuilder);
-    } else {
-      return new SpannerOracleResourceManager(
-          (CloudOracleResourceManager.Builder)
-              CloudOracleResourceManager.builder(testName + shardName));
-    }
-  }
-
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleRetryDLQIT.class) {
       testInstances.add(this);
@@ -106,17 +89,10 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        jdbcResourceManagerShardA = setUpOracleResourceManagerForShard("A");
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-        try {
-        } catch (Exception e) {
-        }
-        executeSqlScript(jdbcResourceManagerShardA, ORACLE_SCHEMA_FILE_RESOURCE);
+        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+
+        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -140,14 +116,14 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
 
         OracleSource oracleSourceA =
             OracleSource.builder(
-                    jdbcResourceManagerShardA.getHost(),
-                    jdbcResourceManagerShardA.getUsername(),
-                    jdbcResourceManagerShardA.getPassword(),
-                    jdbcResourceManagerShardA.getPort(),
-                    "XEPDB1")
+                    oracleResourceManager.getHost(),
+                    oracleUser,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                    oracleResourceManager.getPort(),
+                    oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     Map.of(
-                        jdbcResourceManagerShardA.getUsername().toUpperCase(),
+                        oracleUser.toUpperCase(),
                         List.of(
                             "Customers",
                             "Orders",
@@ -171,7 +147,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         String shardConfig =
             generateSourceConfig(
                 streamNameA,
-                jdbcResourceManagerShardA.getUsername().toUpperCase(),
+                oracleUser.toUpperCase(),
                 "shard1",
                 streamNameA,
                 "DUMMY_DB_B",
@@ -221,11 +197,10 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardA,
         gcsResourceManager,
         datastreamResourceManager,
         pubsubResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -398,40 +373,43 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     return false;
   }
 
-  private void insertDataInOracle() {
+  private void insertDataInOracle() throws Exception {
     LOG.info("Inserting data in Oracle Shard A");
-    jdbcResourceManagerShardA.runSQLUpdate(
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
-            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (3, 101, 1000, 'Website')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " VALUES (3, 101, 1000, 'Website')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (2, 102, 1000, 'AppStore')");
-    jdbcResourceManagerShardA.runSQLUpdate(
+            + " VALUES (2, 102, 1000, 'AppStore')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (4, 103, 1000, 'AppStore')");
+            + " VALUES (4, 103, 1000, 'AppStore')",
+        oracleUser);
 
     LOG.info("Inserting data in Oracle Shard B");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
-    jdbcResourceManagerShardA.runSQLUpdate(
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')");
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')",
+        oracleUser);
+    executeOracleSql(
+        oracleResourceManager,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')",
+        oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
   }
 
   private String getCustomShardJarPath() {
     return "/home/dhwanilpatel_google_com/MyStorage/OracleSupport/DataflowTemplates/v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
-  }
-
-  private void executeSqlScript(CloudOracleResourceManager resourceManager, String resourceName)
-      throws IOException {
-    String sql = Resources.toString(Resources.getResource(resourceName), StandardCharsets.UTF_8);
-    for (String statement : sql.split(";")) {
-      if (!statement.trim().isEmpty()) {
-        resourceManager.runSQLUpdate(statement);
-      }
-    }
   }
 
   private String generateSourceConfig(

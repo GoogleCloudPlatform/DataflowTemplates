@@ -94,7 +94,11 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
   }
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT.class) {
       testInstances.add(this);
@@ -111,7 +115,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
         String sessionContent = generateBaseSchema();
         sessionContent =
             sessionContent
-                .replaceAll("SRC_DATABASE", oracleResourceManager.getUsername().toUpperCase())
+                .replaceAll("SRC_DATABASE", oracleUser.toUpperCase())
                 .replaceAll("SP_DATABASE", spannerResourceManager.getDatabaseId());
         for (int i = 1; i <= NUM_TABLES; i++) {
           sessionContent = sessionContent.replaceAll("TABLE" + i, TABLE_NAMES.get(i - 1));
@@ -133,12 +137,11 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
                 sessionContent,
                 OracleSource.builder(
                         oracleResourceManager.getHost(),
-                        oracleResourceManager.getUsername(),
-                        oracleResourceManager.getPassword(),
+                        oracleUser,
+                        "TestPassword123",
                         oracleResourceManager.getPort(),
                         oracleResourceManager.getDatabaseName())
-                    .setAllowedTables(
-                        Map.of(oracleResourceManager.getUsername().toUpperCase(), TABLE_NAMES))
+                    .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLE_NAMES))
                     .build());
       }
     }
@@ -313,9 +316,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
 
           try (java.sql.Connection conn =
                   java.sql.DriverManager.getConnection(
-                      oracleResourceManager.getUri(),
-                      oracleResourceManager.getUsername(),
-                      oracleResourceManager.getPassword());
+                      oracleResourceManager.getUri(), oracleUser, "TestPassword123");
               java.sql.PreparedStatement pstmt =
                   conn.prepareStatement(
                       "INSERT INTO "

@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,7 +38,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -63,20 +61,20 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
   private String gcsPrefix;
   private SubscriptionName subscription;
   private SubscriptionName dlqSubscription;
-
-  private CloudOracleResourceManager cloudOracleSysUser;
-  private CloudOracleResourceManager cloudSqlResourceManager;
+  private SpannerOracleResourceManager oracleResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private GcsResourceManager gcsResourceManager;
 
+  private static String oracleUser;
+
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity(System.getProperty("privateConnectivity"))
+            .setPrivateConnectivity("datastream-connect-2")
             .build();
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     gcsPrefix =
@@ -87,67 +85,37 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        cloudOracleSysUser,
-        cloudSqlResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
-  }
-
-  private void setUpOracleUser(String user, String password) {
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("CREATE USER %s IDENTIFIED BY %s CONTAINER=ALL", user, password));
-    cloudOracleSysUser.runSQLUpdate(String.format("GRANT DBA TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO %s CONTAINER=ALL", user));
-    cloudOracleSysUser.runSQLUpdate(
-        String.format("ALTER USER %s QUOTA 50m ON SYSTEM CONTAINER=ALL", user));
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
-  public void mixedMigrationTest() throws IOException {
+  public void mixedMigrationTest() throws Exception {
     spannerResourceManager = setUpSpannerResourceManager();
     createSpannerDDL(
         spannerResourceManager,
         "oracle/OracleDataStreamToSpannerMixedIT/oracle-google_standard_sql-spanner-schema.sql");
 
-    org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.Builder builder =
-        org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager.builder(testName);
-    builder.setUsername("sys as sysdba");
-    builder.setPassword(System.getProperty("cloudOraclePassword", "TestPassword123"));
-    builder.setHost(System.getProperty("cloudOracleHost"));
-    builder.setPort(1521);
-    builder.setSystemIdentifier("XE");
-    cloudOracleSysUser = (CloudOracleResourceManager) new SpannerOracleResourceManager(builder);
-    String oracleUser = "C##U" + RandomStringUtils.randomAlphanumeric(10).toUpperCase();
-    String oraclePassword = "A" + RandomStringUtils.randomAlphanumeric(10);
-    setUpOracleUser(oracleUser, oraclePassword);
+    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
-    cloudSqlResourceManager =
-        (CloudOracleResourceManager)
-            CloudOracleResourceManager.builder(testName)
-                .setUsername(oracleUser)
-                .setPassword(oraclePassword)
-                .setDatabaseName("XEPDB1")
-                .setHost(System.getProperty("cloudOracleHost"))
-                .setPort(1521)
-                .build();
-
-    executeSqlScript(
-        cloudSqlResourceManager, "oracle/OracleDataStreamToSpannerMixedIT/oracle-schema.sql");
+    executeOracleSqlFileScript(
+        oracleResourceManager,
+        "oracle/OracleDataStreamToSpannerMixedIT/oracle-schema.sql",
+        oracleUser);
 
     OracleSource jdbcSource =
         OracleSource.builder(
-                cloudSqlResourceManager.getHost(),
-                cloudSqlResourceManager.getUsername(),
-                cloudSqlResourceManager.getPassword(),
-                cloudSqlResourceManager.getPort(),
-                cloudSqlResourceManager.getDatabaseName())
+                oracleResourceManager.getHost(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                oracleResourceManager.getPort(),
+                oracleResourceManager.getDatabaseName())
             .setAllowedTables(
-                Map.of(
-                    cloudSqlResourceManager.getUsername().toUpperCase(),
-                    List.of("Authors", "Books", "Genre")))
+                Map.of(oracleUser.toUpperCase(), List.of("Authors", "Books", "Genre")))
             .build();
 
     SourceConfig sourceConfig =
@@ -184,7 +152,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
     jobParams.put("databaseId", spannerResourceManager.getDatabaseId());
     jobParams.put("projectId", PROJECT);
     jobParams.put("deadLetterQueueDirectory", getGcsPath(testName, gcsResourceManager) + "/dlq/");
-    jobParams.put("workerMachineType", "n2-standard-4");
+    jobParams.put("workerMachineType", "n1-standard-4");
     jobParams.put("datastreamSourceType", "oracle");
 
     PipelineLauncher.LaunchConfig.Builder options =
@@ -256,27 +224,42 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
         genreRows.add(Map.of("genre_id", 1, "name", "Fiction"));
 
         for (Map<String, Object> r : authorRows) {
-          cloudSqlResourceManager.runSQLUpdate(
-              String.format(
-                  "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (%d, '%s')",
-                  r.get("author_id"), r.get("full_name")));
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                String.format(
+                    "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (%d, '%s')",
+                    r.get("author_id"), r.get("full_name")),
+                oracleUser);
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         for (Map<String, Object> r : bookRows) {
-          cloudSqlResourceManager.runSQLUpdate(
-              String.format(
-                  "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (%d, '%s', %d)",
-                  r.get("id"), r.get("title"), r.get("author_id")));
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                String.format(
+                    "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (%d, '%s', %d)",
+                    r.get("id"), r.get("title"), r.get("author_id")),
+                oracleUser);
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
         for (Map<String, Object> r : genreRows) {
-          cloudSqlResourceManager.runSQLUpdate(
-              String.format(
-                  "INSERT INTO \"Genre\"(\"genre_id\",\"name\") VALUES (%d, '%s')",
-                  r.get("genre_id"), r.get("name")));
+          try {
+            executeOracleSql(
+                oracleResourceManager,
+                String.format(
+                    "INSERT INTO \"Genre\"(\"genre_id\",\"name\") VALUES (%d, '%s')",
+                    r.get("genre_id"), r.get("name")),
+                oracleUser);
+          } catch (Exception e) {
+            return new CheckResult(false, e.getMessage());
+          }
         }
-
-        cloudOracleSysUser.runSQLUpdate("COMMIT");
-        flushOracleRedoLogs(cloudOracleSysUser);
-
+        SharedOracleLiveITInstance.flushRedoLogs();
         return new CheckResult(true, "Sent to Oracle.");
       }
     };

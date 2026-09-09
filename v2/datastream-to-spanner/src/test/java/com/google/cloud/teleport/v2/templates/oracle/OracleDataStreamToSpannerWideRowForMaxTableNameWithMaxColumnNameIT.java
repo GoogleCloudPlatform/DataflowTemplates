@@ -87,7 +87,11 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   }
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
+    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
+
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT.class) {
       testInstances.add(this);
@@ -138,8 +142,8 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
                 sessionContent,
                 org.apache.beam.it.gcp.datastream.OracleSource.builder(
                         cloudSqlResourceManager.getHost(),
-                        cloudSqlResourceManager.getUsername(),
-                        cloudSqlResourceManager.getPassword(),
+                        oracleUser,
+                        "TestPassword123",
                         cloudSqlResourceManager.getPort(),
                         cloudSqlResourceManager.getDatabaseName())
                     .setAllowedTables(Map.of(oracleSchema, TABLE_NAMES))
