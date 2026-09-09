@@ -917,4 +917,31 @@ public class AvroToValueMapperTest {
     // Null
     assertThat(getPgMap().get(Type.pgFloat4()).apply(null, schema)).isEqualTo(Value.float32(null));
   }
+
+  @Test
+  public void testAvroFieldToLong_BooleanAndByteBuffer() {
+    Schema schema = SchemaBuilder.builder().longType();
+
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong(Boolean.TRUE, schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong(Boolean.FALSE, schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("true", schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("TRUE", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("false", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("FALSE", schema));
+
+    ByteBuffer buf8 = ByteBuffer.allocate(8);
+    buf8.putLong(123456789L);
+    buf8.flip();
+    assertEquals(Long.valueOf(123456789L), AvroToValueMapper.avroFieldToLong(buf8, schema));
+
+    ByteBuffer buf4 = ByteBuffer.wrap(new byte[] {0, 0, 1, 0});
+    assertEquals(Long.valueOf(256L), AvroToValueMapper.avroFieldToLong(buf4, schema));
+  }
+
+  @Test
+  public void testAvroFieldToString_ByteBuffer() {
+    Schema schema = SchemaBuilder.builder().stringType();
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0x01, 0x0A, (byte) 0xFF});
+    assertEquals("010aff", AvroToValueMapper.avroFieldToString(buf, schema));
+  }
 }
