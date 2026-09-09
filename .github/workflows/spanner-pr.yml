@@ -187,7 +187,7 @@ jobs:
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
-    name: Dataflow Templates Integration Tests (${{ matrix.module }})
+    name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
     # Continue if previous workflows is skipped.
     if: |
@@ -198,18 +198,6 @@ jobs:
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, spanner-it]
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - v2/datastream-to-spanner
-          - v2/spanner-change-streams-to-sharded-file-sink
-          - v2/gcs-to-sourcedb
-          - v2/sourcedb-to-spanner
-          - v2/spanner-to-sourcedb
-          - v2/spanner-custom-shard
-          - v2/gcs-spanner-dv
-          - plugins/templates-maven-plugin
     steps:
     - name: Checkout Code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -223,7 +211,7 @@ jobs:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
         ./cicd/run-it-tests \
-        --modules-to-build="${{ matrix.module }}" \
+        --modules-to-build="SPANNER" \
         --it-region="us-central1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
