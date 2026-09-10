@@ -26,7 +26,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableEx
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 
 /**
  * SqlServer implementation of ChangeEventContext that provides implementation of the
@@ -43,9 +42,7 @@ public class SqlServerChangeEventContext extends ChangeEventContext {
         ddl.dialect() == Dialect.POSTGRESQL
             ? SqlServerDsToSpSourceConnector.SQLSERVER_SORT_ORDER_PG_DIALECT
             : SqlServerDsToSpSourceConnector.SQLSERVER_SORT_ORDER);
-    this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
-    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
 
     convertChangeEventToMutation(ddl, shadowTableDdl);

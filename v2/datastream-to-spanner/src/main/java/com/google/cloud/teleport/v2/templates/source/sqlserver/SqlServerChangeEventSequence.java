@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -91,7 +92,7 @@ class SqlServerChangeEventSequence extends ChangeEventSequence {
       Key primaryKey = context.getPrimaryKey();
       // Read columns from shadow table
       List<String> readColumnList =
-          java.util.Arrays.asList(
+          Arrays.asList(
               context.getSafeShadowColumn(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY),
               context.getSafeShadowColumn(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY));
       Struct row;
