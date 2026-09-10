@@ -359,4 +359,32 @@ public class IcebergResourceManagerTest {
     testManager.catalog();
     catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
   }
+
+  @Test
+  public void testCleanupAllClosesCatalogEvenWhenDropNamespaceFails() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    doThrow(new RuntimeException("Drop failed"))
+        .when((SupportsNamespaces) closeableCatalog)
+        .dropNamespace(any(Namespace.class));
+    doReturn(true)
+        .when((SupportsNamespaces) closeableCatalog)
+        .namespaceExists(any(Namespace.class));
+
+    testManager.createNamespace(NAMESPACE_NAME);
+
+    assertThrows(RuntimeException.class, () -> testManager.cleanupAll());
+
+    verify((AutoCloseable) closeableCatalog).close();
+
+    // Verify cache was cleared
+    testManager.catalog();
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
+  }
 }
