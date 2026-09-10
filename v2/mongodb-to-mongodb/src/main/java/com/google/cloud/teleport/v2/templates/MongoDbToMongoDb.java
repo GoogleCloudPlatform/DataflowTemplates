@@ -76,6 +76,12 @@ import org.slf4j.LoggerFactory;
 public class MongoDbToMongoDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToMongoDb.class);
+  public static final int DEFAULT_TARGET_BACKFILL_CHUNK_SIZE = 200000;
+  public static final int DEFAULT_MAX_BACKFILL_SPLITS = 256;
+  public static final int DEFAULT_INITIAL_WRITE_RATE_PER_WORKER = 5000;
+  public static final int DEFAULT_MAX_WRITE_RATE_PER_WORKER = 25000;
+  public static final int DEFAULT_WRITE_RATE_RAMP_UP_MINUTES = 5;
+  public static final int DEFAULT_WRITE_RATE_RAMP_UP_STEPS = 5;
 
   public interface Options extends JavascriptTextTransformerOptions, StreamingOptions {
     @TemplateParameter.Text(
@@ -411,15 +417,6 @@ public class MongoDbToMongoDb {
       migrationMode = "BACKFILL_AND_STREAMING";
     }
 
-    boolean isStreamingMode =
-        "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
-            || "STREAMING_CDC".equalsIgnoreCase(migrationMode);
-
-    if (isStreamingMode) {
-      options.setStreaming(true);
-      options.as(DataflowPipelineOptions.class).setEnableStreamingEngine(true);
-    }
-
     Pipeline pipeline = Pipeline.create(options);
 
     String sourceUri = options.getSourceUri();
@@ -492,25 +489,29 @@ public class MongoDbToMongoDb {
         options.getMaxWriteRatePerWorker(),
         options.getWriteRateRampUpMinutes(),
         options.getWriteRateRampUpSteps());
-    LOG.info("  Migration Mode:          {}", options.getMigrationMode());
-    LOG.info("  Change Stream Splits:    {}", options.getNumChangeStreamSplits());
-    LOG.info("  Change Stream Strategy:  {}", options.getChangeStreamFullDocument());
-    LOG.info("  Backfill Chunk Size:     {}", options.getTargetBackfillChunkSize());
-    LOG.info("  Max Backfill Splits:     {}", options.getMaxBackfillSplits());
-    LOG.info("  Max Concurrent Reads:    {}", options.getMaxConcurrentBackfillReads());
-    LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
-    LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
-    LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
-    LOG.info(
-        "  DLQ Inspection Command:  gcloud storage cat \"{}/**/output-*\" | head -n 5",
-        permanentDlqPath);
-
     boolean includeBackfill =
         "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
             || "BACKFILL".equalsIgnoreCase(migrationMode);
     boolean includeCdc =
         "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
             || "STREAMING_CDC".equalsIgnoreCase(migrationMode);
+
+    LOG.info("  Migration Mode:          {}", options.getMigrationMode());
+    if (includeCdc) {
+      LOG.info("  Change Stream Splits:    {}", options.getNumChangeStreamSplits());
+      LOG.info("  Change Stream Strategy:  {}", options.getChangeStreamFullDocument());
+    }
+    if (includeBackfill) {
+      LOG.info("  Backfill Chunk Size:     {}", options.getTargetBackfillChunkSize());
+      LOG.info("  Max Backfill Splits:     {}", options.getMaxBackfillSplits());
+      LOG.info("  Max Concurrent Reads:    {}", options.getMaxConcurrentBackfillReads());
+    }
+    LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
+    LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
+    LOG.info("  DLQ Permanent Directory: {}", permanentDlqPath);
+    LOG.info(
+        "  DLQ Inspection Command:  gcloud storage cat \"{}/**/output-*\" | head -n 5",
+        permanentDlqPath);
 
     BsonTimestamp t0 = null;
     if (includeCdc) {
@@ -550,7 +551,12 @@ public class MongoDbToMongoDb {
       PCollection<DocumentWithMetadata> validDocs =
           documents.apply(
               "ProcessDlq",
-              new ProcessDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory, true));
+              new ProcessDocuments(
+                  options,
+                  retryableDlqPath,
+                  permanentDlqPath,
+                  tmpDirectory,
+                  /* requiresDeduplication= */ true));
       validDocs.apply(
           "WriteDlq",
           new WriteDocuments(options, retryableDlqPath, permanentDlqPath, tmpDirectory));
@@ -579,9 +585,11 @@ public class MongoDbToMongoDb {
             int targetChunkSize =
                 options.getTargetBackfillChunkSize() != null
                     ? options.getTargetBackfillChunkSize()
-                    : 200000;
+                    : DEFAULT_TARGET_BACKFILL_CHUNK_SIZE;
             int maxSplits =
-                options.getMaxBackfillSplits() != null ? options.getMaxBackfillSplits() : 256;
+                options.getMaxBackfillSplits() != null
+                    ? options.getMaxBackfillSplits()
+                    : DEFAULT_MAX_BACKFILL_SPLITS;
             try {
               backfillPartitions.addAll(
                   MongoDbBackfillReader.generatePartitions(
@@ -636,12 +644,12 @@ public class MongoDbToMongoDb {
                   e.getMessage());
               cdcPartitions.addAll(
                   MongoDbChangeStreamReader.generatePartitions(
-                      null,
+                      /* client= */ null,
                       options.getSourceUri(),
                       options.getSourceDatabase(),
                       inputCollection,
                       targetCollection,
-                      1,
+                      /* numSplits= */ 1,
                       t0,
                       options.getChangeStreamFullDocument()));
             }
@@ -671,10 +679,10 @@ public class MongoDbToMongoDb {
                 e.getMessage());
             cdcPartitions.addAll(
                 MongoDbChangeStreamReader.generateDatabasePartitions(
-                    null,
+                    /* client= */ null,
                     options.getSourceUri(),
                     options.getSourceDatabase(),
-                    1,
+                    /* numSplits= */ 1,
                     t0,
                     options.getChangeStreamFullDocument()));
           }
@@ -782,10 +790,6 @@ public class MongoDbToMongoDb {
       if (requiresDeduplication) {
         documents = documents.apply("Deduplicate", StatefulDeduplication.of());
       }
-
-      // Metrics Stage
-      documents = documents.apply("CountTotalProcessed", ParDo.of(new CountDocumentsFn()));
-
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
           && !options.getJavascriptTextTransformGcsPath().isEmpty()) {
@@ -872,36 +876,25 @@ public class MongoDbToMongoDb {
                   .withInitialWriteRatePerWorker(
                       options.getInitialWriteRatePerWorker() != null
                           ? options.getInitialWriteRatePerWorker()
-                          : 5000)
+                          : DEFAULT_INITIAL_WRITE_RATE_PER_WORKER)
                   .withMaxWriteRatePerWorker(
                       options.getMaxWriteRatePerWorker() != null
                           ? options.getMaxWriteRatePerWorker()
-                          : 25000)
+                          : DEFAULT_MAX_WRITE_RATE_PER_WORKER)
                   .withWriteRateRampUpMinutes(
                       options.getWriteRateRampUpMinutes() != null
                           ? options.getWriteRateRampUpMinutes()
-                          : 5)
+                          : DEFAULT_WRITE_RATE_RAMP_UP_MINUTES)
                   .withWriteRateRampUpSteps(
                       options.getWriteRateRampUpSteps() != null
                           ? options.getWriteRateRampUpSteps()
-                          : 5));
+                          : DEFAULT_WRITE_RATE_RAMP_UP_STEPS));
 
       writeFailures.apply(
           "WriteToDlq_Write",
           new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
-    }
-  }
-
-  public static class CountDocumentsFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
-    private final Counter totalProcessedDocuments =
-        Metrics.counter(MongoDbToMongoDb.class, "totalProcessedDocuments");
-
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-      totalProcessedDocuments.inc();
-      c.output(c.element());
     }
   }
 

@@ -79,6 +79,7 @@ public class MongoDbBackfillReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbBackfillReader.class);
   public static final int DEFAULT_CURSOR_BATCH_SIZE = 2000;
+  public static final int DEFAULT_MAX_SPLITS = 10000;
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
@@ -365,7 +366,7 @@ public class MongoDbBackfillReader {
         targetCollection,
         numSplits,
         0,
-        Math.max(numSplits, 256),
+        Math.max(numSplits, DEFAULT_MAX_SPLITS),
         t0);
   }
 
@@ -446,7 +447,7 @@ public class MongoDbBackfillReader {
         targetCollection,
         numSplits,
         0,
-        Math.max(numSplits, 256),
+        Math.max(numSplits, DEFAULT_MAX_SPLITS),
         t0);
   }
 
