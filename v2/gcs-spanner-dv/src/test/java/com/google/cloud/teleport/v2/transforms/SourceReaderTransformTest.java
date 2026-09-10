@@ -20,9 +20,9 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -276,7 +276,7 @@ public class SourceReaderTransformTest implements Serializable {
     createAvroFile(new File(skippedDir, "data.avro"), "SkippedTable", "2");
 
     // 3. Configure TableConfiguration to only allow "AllowedTable"
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("AllowedTable");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
@@ -361,7 +361,7 @@ public class SourceReaderTransformTest implements Serializable {
 
   @Test
   public void testGetFilePatternsWithTables() {
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("Table1,Table2");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 

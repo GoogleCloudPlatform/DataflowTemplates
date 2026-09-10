@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -42,7 +43,7 @@ public class TableConfiguration implements Serializable {
   private final Set<String> configuredSourceTables;
 
   private TableConfiguration(Set<String> configuredSourceTables) {
-    this.configuredSourceTables = configuredSourceTables;
+    this.configuredSourceTables = Collections.unmodifiableSet(configuredSourceTables);
   }
 
   /** Creates an empty configuration with no filters. Useful for testing. */

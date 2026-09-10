@@ -21,10 +21,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.config.TableConfiguration;
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -120,7 +120,7 @@ public class CreateSpannerReadOpsFnTest {
         .thenReturn(ImmutableList.of("TableA", "TableB", "TableC"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("TableA,TableC");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
@@ -153,7 +153,7 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA", "TableB"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("TableA,TableC");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
@@ -182,7 +182,7 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("TableA"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("TableB");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
@@ -207,7 +207,7 @@ public class CreateSpannerReadOpsFnTest {
     when(ddl.getTablesOrderedByReference()).thenReturn(ImmutableList.of("spanner_table"));
     when(context.sideInput(ddlView)).thenReturn(ddl);
 
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("source_table");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 

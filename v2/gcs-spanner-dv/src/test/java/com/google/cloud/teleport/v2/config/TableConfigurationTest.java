@@ -23,8 +23,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -39,12 +39,12 @@ public class TableConfigurationTest {
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
-  private GCSSpannerDV.Options options;
+  private GCSSpannerDVOptions options;
   private ISchemaMapper mockSchemaMapper;
 
   @Before
   public void setUp() {
-    options = PipelineOptionsFactory.create().as(GCSSpannerDV.Options.class);
+    options = PipelineOptionsFactory.create().as(GCSSpannerDVOptions.class);
     mockSchemaMapper = mock(ISchemaMapper.class);
   }
 

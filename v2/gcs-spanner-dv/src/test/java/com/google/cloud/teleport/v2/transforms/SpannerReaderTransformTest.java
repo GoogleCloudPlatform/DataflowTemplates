@@ -22,9 +22,9 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import java.io.Serializable;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -278,7 +278,7 @@ public class SpannerReaderTransformTest implements Serializable {
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
     // 2. Setup TableConfiguration with only one table
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("AllowedTable");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
@@ -354,7 +354,7 @@ public class SpannerReaderTransformTest implements Serializable {
         pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
     // 2. Setup TableConfiguration with the Source name
-    GCSSpannerDV.Options options = PipelineOptionsFactory.as(GCSSpannerDV.Options.class);
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
     options.setTables("source_mapped_table");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
