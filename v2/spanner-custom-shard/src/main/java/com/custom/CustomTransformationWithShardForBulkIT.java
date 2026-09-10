@@ -62,12 +62,16 @@ public class CustomTransformationWithShardForBulkIT implements ISpannerMigration
       }
       // In case of backfill update the values for all the columns in all the rows except the
       // filtered row.
-      responseRow.put("tinyint_column", (Long) row.get("tinyint_column") + 1);
+      responseRow.put(
+          "tinyint_column", Long.parseLong(String.valueOf(row.get("tinyint_column"))) + 1);
       responseRow.put("text_column", row.get("text_column") + " append");
-      responseRow.put("int_column", (Long) row.get("int_column") + 1);
-      responseRow.put("bigint_column", (Long) row.get("bigint_column") + 1);
-      responseRow.put("float_column", (double) row.get("float_column") + 1);
-      responseRow.put("double_column", (double) row.get("double_column") + 1);
+      responseRow.put("int_column", Long.parseLong(String.valueOf(row.get("int_column"))) + 1);
+      responseRow.put(
+          "bigint_column", Long.parseLong(String.valueOf(row.get("bigint_column"))) + 1);
+      responseRow.put(
+          "float_column", Double.parseDouble(String.valueOf(row.get("float_column"))) + 1);
+      responseRow.put(
+          "double_column", Double.parseDouble(String.valueOf(row.get("double_column"))) + 1);
       Double value = Double.parseDouble((String) row.get("decimal_column"));
       responseRow.put("decimal_column", String.valueOf(value + 1));
       responseRow.put("bool_column", 1);
@@ -75,15 +79,27 @@ public class CustomTransformationWithShardForBulkIT implements ISpannerMigration
       responseRow.put("blob_column", "576f726d64");
       responseRow.put("binary_column", "0102030405060708090A0B0C0D0E0F1011121314");
       responseRow.put("bit_column", 13);
-      responseRow.put("year_column", (Long) row.get("year_column") + 1);
+      responseRow.put("year_column", Long.parseLong(String.valueOf(row.get("year_column"))) + 1);
       try {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
-        Date date = dateFormat.parse((String) row.get("date_column"));
+        String origDate = (String) row.get("date_column");
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        calendar.add(Calendar.DAY_OF_MONTH, 1);
-        responseRow.put("date_column", dateFormat.format(calendar.getTime()));
+        if (origDate != null && origDate.contains("T")) {
+          SimpleDateFormat tsFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+          Date date = tsFormat.parse(origDate);
+          calendar.setTime(date);
+          calendar.add(Calendar.DAY_OF_MONTH, 1);
+          // Append Z if it had Z
+          String out = tsFormat.format(calendar.getTime()) + (origDate.endsWith("Z") ? "Z" : "");
+          responseRow.put("date_column", out);
+        } else {
+          SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+          Date date = dateFormat.parse(origDate);
+          calendar.setTime(date);
+          calendar.add(Calendar.DAY_OF_MONTH, 1);
+          responseRow.put("date_column", dateFormat.format(calendar.getTime()));
+        }
+
+        SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
         Date dateTime = dateTimeFormat.parse((String) row.get("datetime_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
@@ -118,7 +134,8 @@ public class CustomTransformationWithShardForBulkIT implements ISpannerMigration
         responseRow.put("mediumblob_column", "576f726d64");
       }
       if (row.containsKey("mediumint_column")) {
-        responseRow.put("mediumint_column", (Long) row.get("mediumint_column") + 1);
+        responseRow.put(
+            "mediumint_column", Long.parseLong(String.valueOf(row.get("mediumint_column"))) + 1);
       }
       if (row.containsKey("mediumtext_column")) {
         responseRow.put("mediumtext_column", row.get("mediumtext_column") + " append");
@@ -127,7 +144,8 @@ public class CustomTransformationWithShardForBulkIT implements ISpannerMigration
         responseRow.put("set_column", "v3");
       }
       if (row.containsKey("smallint_column")) {
-        responseRow.put("smallint_column", (Long) row.get("smallint_column") + 1);
+        responseRow.put(
+            "smallint_column", Long.parseLong(String.valueOf(row.get("smallint_column"))) + 1);
       }
       if (row.containsKey("tinyblob_column")) {
         responseRow.put("tinyblob_column", "576f726d64");

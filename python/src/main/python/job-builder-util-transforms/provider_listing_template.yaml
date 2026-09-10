@@ -5,3 +5,4 @@
   transforms:
     CopyFilesToGCS: "copy_files_to_gcs.CopyFilesToGCS"
     ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
+    WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"

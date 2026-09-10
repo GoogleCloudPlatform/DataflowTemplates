@@ -135,6 +135,7 @@ def generate_java_interface(yaml_path, java_path):
 
     # Build the parameters code
     parameters_code = []
+    has_defaults = False
     for i, param in enumerate(flat_parameters):
         param_name = param['name']
         java_type = JAVA_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'), 'String')
@@ -160,8 +161,10 @@ def generate_java_interface(yaml_path, java_path):
 
         # default param
         if 'default' in param:
+            has_defaults = True
             if java_type == 'String':
-                param_code += f'  @Default.String("{param["default"]}")\n'
+                escaped_default = str(param["default"]).replace('"', '\\"')
+                param_code += f'  @Default.String("{escaped_default}")\n'
             else:        
                 param_code += f"  @Default.{java_type}({param['default']})\n"
 
@@ -169,6 +172,16 @@ def generate_java_interface(yaml_path, java_path):
         param_code += f"  {java_type} {getter_name}();"
         
         parameters_code.append(param_code)
+
+    imports = [
+        "import com.google.cloud.teleport.metadata.Template;",
+        "import com.google.cloud.teleport.metadata.TemplateCategory;",
+        "import com.google.cloud.teleport.metadata.TemplateParameter;",
+    ]
+    if has_defaults:
+        imports.append("import org.apache.beam.sdk.options.Default;")
+    imports.append("import org.apache.beam.sdk.options.Validation;")
+    imports_code = "\n".join(imports)
 
     # Format requirements for Java array
     reqs = template_info.get('requirements', [])
@@ -187,8 +200,16 @@ def generate_java_interface(yaml_path, java_path):
 
     description = template_info.get('description', '').strip()
 
+    extra_imports = []
+    if any('default' in param for param in flat_parameters):
+        extra_imports.append("import org.apache.beam.sdk.options.Default;")
+    if any(param.get('required', False) for param in flat_parameters):
+        extra_imports.append("import org.apache.beam.sdk.options.Validation;")
+    extra_imports_code = ("\n" + "\n".join(extra_imports)) if extra_imports else ""
+
     # Replace placeholders in the template
     java_code = java_template.format(
+        extra_imports=extra_imports_code,
         template_info_name=template_info.get('name', ''),
         template_info_category=template_info.get('category', 'STREAMING'),
         template_info_display_name=template_info.get('display_name', ''),
@@ -203,6 +224,7 @@ def generate_java_interface(yaml_path, java_path):
         template_info_streaming=str(template_info.get('streaming', False)).lower(),
         template_info_hidden=str(template_info.get('hidden', False)).lower(),
         class_name=class_name,
+        imports=imports_code,
         parameters='\n'.join(parameters_code),
     )
 

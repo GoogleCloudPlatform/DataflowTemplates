@@ -1,0 +1,82 @@
+template:
+  name: "DeltaLake_To_Lakehouse_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Delta Lake to Lakehouse"
+  description: >
+    The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table
+    and outputs the records to a Lakehouse table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "DeltaLakeToLakehouse.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/lakehouse_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Delta Lake table must exist and be accessible.",
+     "The Output Lakehouse table must exist or be created, and the warehouse must be accessible."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "deltalake_options"
+    - "lakehouse_options"
+
+  parameters:
+    - deltalake_read_options
+    - lakehouse_common_options
+    - lakehouse_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromDeltaLake
+      name: ReadFromDeltaLake
+      config:
+        table: "{{ deltaLakeTable }}"
+        {% if deltaLakeVersion is defined and deltaLakeVersion != '' %}
+        version: {{ deltaLakeVersion }}
+        {% endif %}
+        {% if deltaLakeTimestamp is defined and deltaLakeTimestamp != '' %}
+        timestamp: "{{ deltaLakeTimestamp }}"
+        {% endif %}
+        {% if deltaLakeHadoopConfig %}
+        hadoop_config: {{ deltaLakeHadoopConfig }}
+        {% endif %}
+
+    - type: WriteToLakehouse
+      name: WriteToLakehouse
+      config:
+        table: "{{ lakehouseTable }}"
+        catalog_name: "{{ lakehouseCatalogName }}"
+        catalog_properties: {{ lakehouseCatalogProperties }}
+        {% if lakehouseConfigProperties %}
+        config_properties: {{ lakehouseConfigProperties }}
+        {% endif %}
+        {% if lakehouseDrop %}
+        drop: {{ lakehouseDrop }}
+        {% endif %}
+        {% if lakehouseKeep %}
+        keep: {{ lakehouseKeep }}
+        {% endif %}
+        {% if lakehouseOnly %}
+        only: {{ lakehouseOnly }}
+        {% endif %}
+        {% if lakehousePartitionFields %}
+        partition_fields: {{ lakehousePartitionFields }}
+        {% endif %}
+        {% if lakehouseTableProperties %}
+        table_properties: {{ lakehouseTableProperties }}
+        {% endif %}
+
+providers:
+  - type: pythonPackage
+    config:
+      packages:
+        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-30/job_builder_util_transforms-0.3.1.tar.gz
+    transforms:
+      ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
+      WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
+
+options:
+  streaming: false

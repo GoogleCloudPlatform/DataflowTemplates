@@ -46,9 +46,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PubsubToIcebergYaml.class)
+@TemplateIntegrationTest(PubSubToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class PubsubToIcebergYamlIT extends TemplateTestBase {
+public class PubSubToIcebergYamlIT extends TemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
   private IcebergResourceManager icebergResourceManager;

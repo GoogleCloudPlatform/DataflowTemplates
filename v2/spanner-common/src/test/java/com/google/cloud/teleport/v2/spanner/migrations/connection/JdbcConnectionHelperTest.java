@@ -96,6 +96,7 @@ public class JdbcConnectionHelperTest {
     when(mockShard.getHost()).thenReturn("localhost");
     when(mockShard.getPort()).thenReturn("3306");
     when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getConnectionUrl()).thenReturn("jdbc:mysql://localhost:3306/testdb");
     when(mockShard.getUserName()).thenReturn("testuser");
     when(mockShard.getPassword()).thenReturn("testpassword");
     when(mockShard.getConnectionProperties()).thenReturn("useSSL=false");
@@ -105,7 +106,6 @@ public class JdbcConnectionHelperTest {
     when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
     when(mockRequest.getMaxConnections()).thenReturn(10);
     when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
-    when(mockRequest.getJdbcUrlPrefix()).thenReturn("jdbc:mysql://");
 
     try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(
@@ -142,6 +142,7 @@ public class JdbcConnectionHelperTest {
     when(mockShard.getHost()).thenReturn("localhost");
     when(mockShard.getPort()).thenReturn("3306");
     when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getConnectionUrl()).thenReturn("jdbc:mysql://localhost:3306/testdb");
     when(mockShard.getUserName()).thenReturn("testuser");
     when(mockShard.getPassword()).thenReturn("testpassword");
     // Test URL-encoded connection properties with & and URL-encoded characters
@@ -153,7 +154,6 @@ public class JdbcConnectionHelperTest {
     when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
     when(mockRequest.getMaxConnections()).thenReturn(10);
     when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
-    when(mockRequest.getJdbcUrlPrefix()).thenReturn("jdbc:mysql://");
 
     try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(

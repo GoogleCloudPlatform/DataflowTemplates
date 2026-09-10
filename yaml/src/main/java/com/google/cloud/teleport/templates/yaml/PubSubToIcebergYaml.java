@@ -22,14 +22,14 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Pubsub_To_Iceberg_Yaml",
+    name = "PubSub_To_Iceberg_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
     displayName = "Pub/Sub to Iceberg (YAML)",
     description =
         "The Pub/Sub to Iceberg template is a streaming pipeline that ingests data from a Pub/Sub topic or subscription and writes the records to an Apache Iceberg table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubsubToIceberg.yaml",
+    yamlTemplateFile = "PubSubToIceberg.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
@@ -44,7 +44,7 @@ import org.apache.beam.sdk.options.Validation;
     },
     streaming = true,
     hidden = false)
-public interface PubsubToIcebergYaml {
+public interface PubSubToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,

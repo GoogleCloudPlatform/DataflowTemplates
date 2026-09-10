@@ -1,5 +1,5 @@
 
-SQLServer to Iceberg (YAML) template
+SQL Server to Iceberg (YAML) template
 ---
 The SQLServer to Iceberg template is a batch pipeline executes the user provided
 SQL query to read data from SQLServer table and outputs the records to Iceberg
