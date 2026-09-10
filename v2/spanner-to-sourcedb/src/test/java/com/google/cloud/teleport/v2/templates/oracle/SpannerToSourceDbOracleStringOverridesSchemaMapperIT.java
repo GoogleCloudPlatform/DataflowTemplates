@@ -85,7 +85,9 @@ public class SpannerToSourceDbOracleStringOverridesSchemaMapperIT extends Spanne
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        oracleResourceManager = OracleResourceManager.builder(testName).build();
+        oracleResourceManager = SharedOracleReverseITContainer.getInstance();
+        testUsername = setupOracleIsolatedUser(oracleResourceManager);
+
         createOracleSchema(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, testUsername);
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, oracleResourceManager);
@@ -135,7 +137,6 @@ public class SpannerToSourceDbOracleStringOverridesSchemaMapperIT extends Spanne
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        oracleResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
