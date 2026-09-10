@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.config;
 
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import com.google.gson.Gson;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -56,7 +56,7 @@ public class TableConfiguration implements Serializable {
    * @param options The pipeline options.
    * @return A TableConfiguration instance containing the configured source tables.
    */
-  public static TableConfiguration parseFromOptions(GCSSpannerDV.Options options) {
+  public static TableConfiguration parseFromOptions(GCSSpannerDVOptions options) {
     String tablesConfig = options.getTables();
     String tableConfigurationFilePath = options.getTableConfigurationFilePath();
     boolean hasTablesConfig = tablesConfig != null && !tablesConfig.trim().isEmpty();

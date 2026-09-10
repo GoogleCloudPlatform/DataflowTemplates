@@ -15,27 +15,36 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link GCSSpannerDV} table configuration flows. */
+@RunWith(JUnit4.class)
 public class GCSSpannerDVTest {
 
-  private GCSSpannerDV.Options options;
+  private GCSSpannerDVOptions options;
 
   @Before
   public void setUp() {
-    options = PipelineOptionsFactory.create().as(GCSSpannerDV.Options.class);
+    options = PipelineOptionsFactory.create().as(GCSSpannerDVOptions.class);
     // Set required options to bypass early validation (if any)
     options.setGcsInputDirectory("gs://dummy/input");
     options.setProjectId("test-project");
     options.setInstanceId("test-instance");
     options.setDatabaseId("test-database");
     options.setBigQueryDataset("test_dataset");
+  }
+
+  @Test
+  public void testCreateSpannerConfig() {
+    assertNotNull(GCSSpannerDV.createSpannerConfig(options));
   }
 
   @Test
@@ -53,9 +62,7 @@ public class GCSSpannerDVTest {
   @Test
   public void testRunThrowsExceptionWhenTableConfigurationFileFailsToRead() {
     options.setTableConfigurationFilePath("non_existent_file.json");
-
     RuntimeException thrown = assertThrows(RuntimeException.class, () -> GCSSpannerDV.run(options));
-
     assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
   }
 }
