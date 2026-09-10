@@ -172,16 +172,17 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     if (shardId.equals("Shard1") && testUsername != null) {
       shard.setNamespace(testUsername);
       shard.setUser(testUsername);
-      shard.setPassword("password");
+      shard.setPassword("TestPassword123");
     } else if (shardId.equals("shardA") && testUsernameShardA != null) {
       shard.setNamespace(testUsernameShardA);
       shard.setUser(testUsernameShardA);
-      shard.setPassword("password");
+      shard.setPassword("TestPassword123");
     } else if (shardId.equals("shardB") && testUsernameShardB != null) {
       shard.setNamespace(testUsernameShardB);
       shard.setUser(testUsernameShardB);
-      shard.setPassword("password");
-    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      shard.setPassword("TestPassword123");
+    } else if (jdbcResourceManager
+        instanceof com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager) {
       shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
@@ -194,7 +195,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setDbName(mySqlRm.getDatabaseName());
 
     } else if (jdbcResourceManager
-        instanceof org.apache.beam.it.jdbc.OracleResourceManager oracleRm) {
+        instanceof
+        com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
+        oracleRm) {
       shard.setHost(oracleRm.getHost());
       shard.setPort(String.valueOf(oracleRm.getPort()));
       shard.setDbName(oracleRm.getDatabaseName());
@@ -591,10 +594,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected static String setupOracleIsolatedUser(
       org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
     String username =
-        "REV_"
+        "C##REV_"
             + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     LOG.info("Creating isolated Oracle user: {}", username);
-    jdbcResourceManager.runSQLUpdate("CREATE USER " + username + " IDENTIFIED BY password");
+    jdbcResourceManager.runSQLUpdate(
+        "CREATE USER " + username + " IDENTIFIED BY \"TestPassword123\"");
     jdbcResourceManager.runSQLUpdate("GRANT ALL PRIVILEGES TO " + username);
     jdbcResourceManager.runSQLUpdate("GRANT UNLIMITED TABLESPACE TO " + username);
     jdbcResourceManager.runSQLUpdate("GRANT DBA TO " + username);
@@ -619,10 +623,12 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String query) {
     try (java.sql.Connection connection =
             java.sql.DriverManager.getConnection(
-                jdbcResourceManager.getUri(), testUsername, "password");
+                jdbcResourceManager.getUri(), testUsername, "TestPassword123");
         java.sql.Statement stmt = connection.createStatement()) {
       if (!"SYSTEM".equalsIgnoreCase(testUsername)
-          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+          && jdbcResourceManager
+              instanceof
+              com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager) {
         stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
       }
       java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
@@ -644,7 +650,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createOracleSchema(
-      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager,
+      com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
+          jdbcResourceManager,
       String mySqlSchemaFile,
       String targetUsername)
       throws java.io.IOException {
@@ -658,7 +665,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String[] ddls = ddl.split(";");
     try (java.sql.Connection connection =
             java.sql.DriverManager.getConnection(
-                jdbcResourceManager.getUri(), targetUsername, "password");
+                jdbcResourceManager.getUri(), targetUsername, "TestPassword123");
         java.sql.Statement stmt = connection.createStatement()) {
       if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
         stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
@@ -678,7 +685,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createOracleTableWithNColumns(
-      org.apache.beam.it.jdbc.OracleResourceManager jdbcResourceManager,
+      com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
+          jdbcResourceManager,
       String arg1,
       int arg2,
       String arg3) {}

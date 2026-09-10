@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,30 +15,32 @@
  */
 package com.google.cloud.teleport.v2.templates.oracle;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-import org.apache.beam.it.jdbc.OracleResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SharedOracleReverseITContainer {
   private static final Logger LOG = LoggerFactory.getLogger(SharedOracleReverseITContainer.class);
+  private static final Object lock = new Object();
 
-  private static OracleResourceManager instance;
+  private static SpannerOracleResourceManager instance;
 
-  public static synchronized OracleResourceManager getInstance() {
+  public static SpannerOracleResourceManager getInstance() {
     if (instance == null) {
-      instance = OracleResourceManager.builder("oracle-rev-bulk-db").build();
-      try {
-        try (Connection systemConn =
-                DriverManager.getConnection(instance.getUri(), "SYSTEM", instance.getPassword());
-            Statement stmt = systemConn.createStatement()) {
-          stmt.execute("GRANT DBA TO " + instance.getUsername());
-          LOG.info("Successfully granted DBA to Testcontainers Oracle app user!");
+      synchronized (lock) {
+        if (instance == null) {
+          LOG.info("Initializing global Singleton Static Oracle pool.");
+          String host = System.getProperty("oracleStaticHost", "10.128.0.108");
+          String password = System.getProperty("oracleStaticPassword", "TestPassword123");
+          CloudOracleResourceManager.Builder builder =
+              CloudOracleResourceManager.builder("oracle_static");
+          builder.setUsername("system");
+          builder.setPassword(password);
+          builder.setDatabaseName("XE");
+          builder.setHost(host);
+          builder.setPort(1521);
+          instance = new SpannerOracleResourceManager(builder);
         }
-      } catch (Exception e) {
-        LOG.warn("Failed to grant DBA using SYSTEM. CREATE USER might fail.", e);
       }
     }
     return instance;

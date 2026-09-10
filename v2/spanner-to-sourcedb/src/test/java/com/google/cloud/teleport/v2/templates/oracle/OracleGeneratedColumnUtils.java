@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -39,7 +38,7 @@ public class OracleGeneratedColumnUtils {
 
   public static ConditionCheck buildConditionCheck(
       Map<String, List<Map<String, Value>>> spannerTableData,
-      OracleResourceManager jdbcResourceManager,
+      SpannerOracleResourceManager jdbcResourceManager,
       String testUsername) {
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
@@ -74,7 +73,7 @@ public class OracleGeneratedColumnUtils {
 
   public static void assertRowInOracle(
       Map<String, List<Map<String, Object>>> expectedData,
-      OracleResourceManager jdbcResourceManager,
+      SpannerOracleResourceManager jdbcResourceManager,
       String testUsername) {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String type = expectedTableData.getKey();

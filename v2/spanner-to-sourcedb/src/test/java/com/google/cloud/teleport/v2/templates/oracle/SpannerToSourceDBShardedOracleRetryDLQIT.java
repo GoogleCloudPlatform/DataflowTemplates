@@ -39,7 +39,6 @@ import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -69,8 +68,8 @@ public class SpannerToSourceDBShardedOracleRetryDLQIT extends SpannerToSourceDbI
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager spannerMetadataResourceManager;
-  public static OracleResourceManager jdbcResourceManagerShardA;
-  public static OracleResourceManager jdbcResourceManagerShardB;
+  public static SpannerOracleResourceManager jdbcResourceManagerShardA;
+  public static SpannerOracleResourceManager jdbcResourceManagerShardB;
   public static GcsResourceManager gcsResourceManager;
   public static PubsubResourceManager pubsubResourceManager;
 
