@@ -305,4 +305,58 @@ public class IcebergResourceManagerTest {
     verify(catalog, never()).listTables(any(Namespace.class));
     verify((SupportsNamespaces) catalog, never()).dropNamespace(any(Namespace.class));
   }
+
+  @Test
+  public void testCleanupAllClosesCatalogWhenAutoCloseable() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    verify((AutoCloseable) closeableCatalog).close();
+  }
+
+  @Test
+  public void testCleanupAllClearsCachedCatalog() {
+    testManager.catalog();
+    testManager.cleanupAll();
+    testManager.catalog();
+
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
+  }
+
+  @Test
+  public void testCleanupAllHandlesCloseExceptionGracefully() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    doThrow(new RuntimeException("Error closing catalog"))
+        .when((AutoCloseable) closeableCatalog)
+        .close();
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    verify((AutoCloseable) closeableCatalog).close();
+  }
+
+  @Test
+  public void testCleanupAllWhenCatalogNotAutoCloseable() {
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    // Verify cleanup completes and cache was cleared
+    testManager.catalog();
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
+  }
 }

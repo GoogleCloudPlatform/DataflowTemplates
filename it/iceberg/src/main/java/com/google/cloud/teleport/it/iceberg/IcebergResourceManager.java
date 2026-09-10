@@ -300,6 +300,14 @@ public class IcebergResourceManager implements ResourceManager {
       dropNamespace(namespace, true);
     }
     createdNamespaces.clear();
+    if (cachedCatalog instanceof AutoCloseable) {
+      try {
+        ((AutoCloseable) cachedCatalog).close();
+      } catch (Exception e) {
+        LOG.warn("Error closing Iceberg catalog", e);
+      }
+    }
+    cachedCatalog = null;
     LOG.info("Cleaned up all resources for test ID: {}.", testId);
   }
 
