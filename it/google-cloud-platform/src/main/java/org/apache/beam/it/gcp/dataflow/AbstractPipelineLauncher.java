@@ -31,6 +31,7 @@ import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.JobMessage;
 import com.google.api.services.dataflow.model.ListJobMessagesResponse;
 import com.google.api.services.dataflow.model.MetricUpdate;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import dev.failsafe.Failsafe;
@@ -338,7 +339,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
         logOnce = true;
       }
       try {
-        TimeUnit.SECONDS.sleep(CHECK_DELAY_SECONDS);
+        sleep(CHECK_DELAY_SECONDS);
       } catch (InterruptedException e) {
         LOG.warn("Wait interrupted. Checking now.");
       }
@@ -353,6 +354,11 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
               region, jobId, project));
     }
     return state;
+  }
+
+  @VisibleForTesting
+  protected void sleep(long seconds) throws InterruptedException {
+    TimeUnit.SECONDS.sleep(seconds);
   }
 
   @Override
