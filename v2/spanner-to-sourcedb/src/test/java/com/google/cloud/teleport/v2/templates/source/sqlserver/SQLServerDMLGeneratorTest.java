@@ -674,6 +674,12 @@ public final class SQLServerDMLGeneratorTest {
         "CAST(0x48656c6c6f AS VARCHAR(MAX))",
         SQLServerDMLGenerator.getColumnValueByType("varchar", "0x48656c6c6f", "+00:00", "BYTES"));
     assertEquals(
+        "CAST(CAST(0x48656c6c6f AS VARCHAR(MAX)) AS NVARCHAR(MAX))",
+        SQLServerDMLGenerator.getColumnValueByType("nvarchar", "0x48656c6c6f", "+00:00", "BYTES"));
+    assertEquals(
+        "CAST(CAST(0x48656c6c6f AS VARCHAR(MAX)) AS NVARCHAR(MAX))",
+        SQLServerDMLGenerator.getColumnValueByType("nchar", "0x48656c6c6f", "+00:00", "PG_BYTEA"));
+    assertEquals(
         "NULL", SQLServerDMLGenerator.getColumnValueByType("varchar", null, "+00:00", "PG_BYTEA"));
   }
 
