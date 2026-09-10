@@ -210,15 +210,8 @@ jobs:
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
-        if [ "${{ github.event_name }}" == "pull_request" ] && [ "${{ matrix.module }}" != "plugins/templates-maven-plugin" ]; then
-          RUNNER_FLAG="--direct-runner-test=true"
-        else
-          RUNNER_FLAG=""
-        fi
-
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
-        $RUNNER_FLAG \
         --it-region="us-central1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \

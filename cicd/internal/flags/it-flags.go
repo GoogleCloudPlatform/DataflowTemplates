@@ -42,7 +42,6 @@ var (
 	dUnifiedWorkerHarnessContainerImage string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
-	dDirectRunnerTest                   bool
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -65,7 +64,6 @@ func RegisterItFlags() {
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
-	flag.BoolVar(&dDirectRunnerTest, "direct-runner-test", false, "Use DirectRunner for IT tests")
 }
 
 func Region() string {
@@ -168,11 +166,4 @@ func ThreadCount() int {
 	i := 4
 	fmt.Sscan(dThreadCount, &i)
 	return i
-}
-
-func DirectRunnerTest() string {
-	if dDirectRunnerTest {
-		return "-DdirectRunnerTest=true"
-	}
-	return ""
 }
