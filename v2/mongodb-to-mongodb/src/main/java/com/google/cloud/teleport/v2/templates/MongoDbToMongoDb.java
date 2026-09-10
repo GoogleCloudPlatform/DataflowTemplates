@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.transforms.StatefulDeduplication;
 import com.google.cloud.teleport.v2.transforms.UriSanitizer;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -518,11 +519,16 @@ public class MongoDbToMongoDb {
       if (options.getStartAtOperationTime() != null
           && !options.getStartAtOperationTime().isEmpty()) {
         try {
-          long sec = Long.parseLong(options.getStartAtOperationTime());
+          long sec;
+          try {
+            sec = Long.parseLong(options.getStartAtOperationTime());
+          } catch (NumberFormatException nfe) {
+            sec = Instant.parse(options.getStartAtOperationTime()).getEpochSecond();
+          }
           t0 = new BsonTimestamp((int) sec, 0);
-        } catch (NumberFormatException nfe) {
+        } catch (Exception e) {
           LOG.warn(
-              "Could not parse startAtOperationTime '{}' as epoch seconds. Capturing current"
+              "Could not parse startAtOperationTime '{}' as epoch seconds or ISO-8601. Capturing current"
                   + " cluster time.",
               options.getStartAtOperationTime());
           t0 = MongoDbChangeStreamReader.captureCurrentClusterTime(sourceUri, sourceDatabase);

@@ -193,4 +193,18 @@ public class DocumentWithMetadataTest {
     assertEquals("sourceCol", updated.getSourceCollection());
     assertEquals("targetCol", updated.getTargetCollection());
   }
+
+  @Test
+  public void getDedupKey_withoutId_producesDeterministicKey() {
+    Document docWithoutId = new Document("name", "no_id_test").append("num", 42);
+    DocumentWithMetadata item1 =
+        DocumentWithMetadata.of(
+            docWithoutId, docWithoutId.toJson(), 0, null, null, "sourceCol", "targetCol");
+    DocumentWithMetadata item2 =
+        DocumentWithMetadata.of(
+            docWithoutId, docWithoutId.toJson(), 0, null, null, "sourceCol", "targetCol");
+
+    assertEquals(item1.getDedupKey(), item2.getDedupKey());
+    assertTrue(item1.getDedupKey().startsWith("targetCol#"));
+  }
 }

@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.UUID;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.bson.Document;
 import org.bson.json.JsonMode;
@@ -192,7 +194,11 @@ public class DocumentWithMetadata implements Serializable {
     if (id != null) {
       return col + "#" + id;
     }
-    return col + "#" + System.identityHashCode(this);
+    String raw =
+        (originalDocument != null ? originalDocument : "")
+            + (sourceCollection != null ? sourceCollection : "")
+            + (targetCollection != null ? targetCollection : "");
+    return col + "#" + UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8)).toString();
   }
 
   /** Returns the original document string. */

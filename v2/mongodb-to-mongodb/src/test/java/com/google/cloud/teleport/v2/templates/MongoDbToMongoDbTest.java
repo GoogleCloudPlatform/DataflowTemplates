@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.TimestampSortKey;
+import java.time.Instant;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -123,6 +124,25 @@ public class MongoDbToMongoDbTest {
         PipelineOptionsFactory.fromArgs(args).as(MongoDbToMongoDb.Options.class);
 
     assertEquals("BATCH", options.getMigrationMode());
+  }
+
+  @Test
+  public void options_iso8601Timestamp_parsedSuccessfully() {
+    String iso = "2026-09-10T12:00:00Z";
+    String[] args = {
+      "--sourceUri=mongodb://localhost:27017",
+      "--targetUri=mongodb://localhost:27018",
+      "--sourceDatabase=srcDb",
+      "--targetDatabase=tgtDb",
+      "--startAtOperationTime=" + iso
+    };
+
+    MongoDbToMongoDb.Options options =
+        PipelineOptionsFactory.fromArgs(args).as(MongoDbToMongoDb.Options.class);
+
+    assertEquals(iso, options.getStartAtOperationTime());
+    long expectedEpochSec = Instant.parse(iso).getEpochSecond();
+    assertEquals(1789041600L, expectedEpochSec);
   }
 
   @Test

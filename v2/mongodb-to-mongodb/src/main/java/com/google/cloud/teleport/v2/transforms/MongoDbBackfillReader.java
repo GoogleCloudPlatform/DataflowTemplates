@@ -889,6 +889,12 @@ public class MongoDbBackfillReader {
         cursorCache.clear();
       }
       if (clientCache != null) {
+        for (MongoClient client : clientCache.values()) {
+          try {
+            client.close();
+          } catch (Exception ignored) {
+          }
+        }
         clientCache.clear();
       }
     }
@@ -1322,6 +1328,12 @@ public class MongoDbBackfillReader {
         cursorCache.clear();
       }
       if (clientCache != null) {
+        for (MongoClient client : clientCache.values()) {
+          try {
+            client.close();
+          } catch (Exception ignored) {
+          }
+        }
         clientCache.clear();
       }
     }

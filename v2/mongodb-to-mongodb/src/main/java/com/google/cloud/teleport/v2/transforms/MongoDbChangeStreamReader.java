@@ -1091,6 +1091,12 @@ public class MongoDbChangeStreamReader {
         cursorCache.clear();
       }
       if (clientCache != null) {
+        for (MongoClient client : clientCache.values()) {
+          try {
+            client.close();
+          } catch (Exception ignored) {
+          }
+        }
         clientCache.clear();
       }
     }
