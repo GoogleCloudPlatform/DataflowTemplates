@@ -525,14 +525,10 @@ public class MongoDbToMongoDb {
               "Could not parse startAtOperationTime '{}' as epoch seconds. Capturing current"
                   + " cluster time.",
               options.getStartAtOperationTime());
-          t0 =
-              MongoDbChangeStreamReader.captureCurrentClusterTime(
-                  sourceUri, sourceDatabase);
+          t0 = MongoDbChangeStreamReader.captureCurrentClusterTime(sourceUri, sourceDatabase);
         }
       } else {
-        t0 =
-            MongoDbChangeStreamReader.captureCurrentClusterTime(
-                sourceUri, sourceDatabase);
+        t0 = MongoDbChangeStreamReader.captureCurrentClusterTime(sourceUri, sourceDatabase);
       }
       LOG.info(
           "Captured initial cluster time T0: {} (seconds={}, inc={})",
@@ -622,9 +618,7 @@ public class MongoDbToMongoDb {
 
           if (includeCdc && (sourceCollection != null && !sourceCollection.isEmpty())) {
             int numCdcSplits =
-                options.getNumChangeStreamSplits() != null
-                    ? options.getNumChangeStreamSplits()
-                    : 1;
+                options.getNumChangeStreamSplits() != null ? options.getNumChangeStreamSplits() : 1;
             try {
               cdcPartitions.addAll(
                   MongoDbChangeStreamReader.generatePartitions(
@@ -714,9 +708,7 @@ public class MongoDbToMongoDb {
       if (includeCdc && !cdcPartitions.isEmpty()) {
         PCollection<DocumentWithMetadata> cdcDocs =
             pipeline
-                .apply(
-                    "ReadCDC",
-                    new MongoDbChangeStreamReader.ReadPartitions(cdcPartitions))
+                .apply("ReadCDC", new MongoDbChangeStreamReader.ReadPartitions(cdcPartitions))
                 .setCoder(DocumentWithMetadataCoder.of());
         allStreams.add(cdcDocs);
       }
@@ -725,9 +717,7 @@ public class MongoDbToMongoDb {
       if (allStreams.size() == 1) {
         documents = allStreams.get(0);
       } else if (allStreams.size() > 1) {
-        documents =
-            PCollectionList.of(allStreams)
-                .apply("MergeStreams", Flatten.pCollections());
+        documents = PCollectionList.of(allStreams).apply("MergeStreams", Flatten.pCollections());
       } else {
         throw new IllegalStateException("No streams configured to read.");
       }
@@ -751,8 +741,8 @@ public class MongoDbToMongoDb {
   }
 
   /**
-   * PTransform that processes documents: stateful deduplication, metric counting,
-   * UDF transformation, and validation, routing process failures to DLQ.
+   * PTransform that processes documents: stateful deduplication, metric counting, UDF
+   * transformation, and validation, routing process failures to DLQ.
    */
   public static class ProcessDocuments
       extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
@@ -811,13 +801,9 @@ public class MongoDbToMongoDb {
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteToDlq_UDF",
-                new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+                "WriteToDlq_UDF", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
-        documents =
-            udfProcessed
-                .get(udfSuccessTag)
-                .setCoder(DocumentWithMetadataCoder.of());
+        documents = udfProcessed.get(udfSuccessTag).setCoder(DocumentWithMetadataCoder.of());
       }
 
       // Validation Stage with DLQ
@@ -842,10 +828,10 @@ public class MongoDbToMongoDb {
   }
 
   /**
-   * PTransform that writes valid documents in bulk to target MongoDB, routing write failures to DLQ.
+   * PTransform that writes valid documents in bulk to target MongoDB, routing write failures to
+   * DLQ.
    */
-  public static class WriteDocuments
-      extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+  public static class WriteDocuments extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
     private final transient Options options;
     private final String retryableDlqPath;
     private final String permanentDlqPath;
@@ -891,8 +877,7 @@ public class MongoDbToMongoDb {
                           : DEFAULT_WRITE_RATE_RAMP_UP_STEPS));
 
       writeFailures.apply(
-          "WriteToDlq_Write",
-          new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+          "WriteToDlq_Write", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
     }
@@ -933,9 +918,7 @@ public class MongoDbToMongoDb {
             failureTag,
             item != null
                 ? item.withFailure(
-                    "Null document payload",
-                    ErrorType.PERMANENT,
-                    FailureStage.VALIDATE)
+                    "Null document payload", ErrorType.PERMANENT, FailureStage.VALIDATE)
                 : DocumentWithMetadata.of(
                     null,
                     null,

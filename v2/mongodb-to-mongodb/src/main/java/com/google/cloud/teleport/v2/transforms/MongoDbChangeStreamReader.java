@@ -74,11 +74,15 @@ import org.slf4j.LoggerFactory;
  * Streaming reader that consumes MongoDB Change Streams across partitioned cursors.
  *
  * <p>Features:
+ *
  * <ul>
- *   <li>Multi-cursor partitioning per collection using orthogonal match filters on {@code documentKey._id}.
+ *   <li>Multi-cursor partitioning per collection using orthogonal match filters on {@code
+ *       documentKey._id}.
  *   <li>Capture-before-read starting timestamp support ({@code startAtOperationTime}).
- *   <li>Configurable {@link FullDocument} strategy (e.g. {@code updateLookup} or {@code whenAvailable}).
- *   <li>Automatic resume-token tracking (including post-batch tokens) and retry with exponential backoff on transient disconnects.
+ *   <li>Configurable {@link FullDocument} strategy (e.g. {@code updateLookup} or {@code
+ *       whenAvailable}).
+ *   <li>Automatic resume-token tracking (including post-batch tokens) and retry with exponential
+ *       backoff on transient disconnects.
  *   <li>Multi-cursor caching per partition with idle cursor auto-eviction.
  *   <li>Continuous watermark progression on idle polls via resume tokens and bounded wall clock.
  * </ul>
@@ -273,8 +277,8 @@ public class MongoDbChangeStreamReader {
   }
 
   /**
-   * Generates a MongoDB Change Stream $match filter that uniformly partitions events across
-   * {@code numSplits} parallel cursors using server-side keyset hashing ($toHashedIndexKey).
+   * Generates a MongoDB Change Stream $match filter that uniformly partitions events across {@code
+   * numSplits} parallel cursors using server-side keyset hashing ($toHashedIndexKey).
    *
    * @param numSplits Total number of parallel change stream partitions.
    * @param splitIndex 0-based partition index.
@@ -303,15 +307,12 @@ public class MongoDbChangeStreamReader {
 
     BsonDocument exprDoc =
         new BsonDocument(
-            "$expr",
-            new BsonDocument("$in", new BsonArray(Arrays.asList(modDoc, matchingValues))));
+            "$expr", new BsonDocument("$in", new BsonArray(Arrays.asList(modDoc, matchingValues))));
 
     return new BsonDocument("$match", exprDoc);
   }
 
-  /**
-   * Generates partition descriptors for a collection using server-side keyset hashing.
-   */
+  /** Generates partition descriptors for a collection using server-side keyset hashing. */
   public static List<ChangeStreamPartition> generatePartitions(
       MongoClient client,
       String sourceUri,
@@ -362,9 +363,7 @@ public class MongoDbChangeStreamReader {
     return partitions;
   }
 
-  /**
-   * Generates partition descriptors for a collection based on the requested split count.
-   */
+  /** Generates partition descriptors for a collection based on the requested split count. */
   public static List<ChangeStreamPartition> generatePartitions(
       String sourceUri,
       String sourceDatabase,
@@ -384,9 +383,7 @@ public class MongoDbChangeStreamReader {
         fullDocumentStrategy);
   }
 
-  /**
-   * Generates database-level change stream partition descriptors for an entire database.
-   */
+  /** Generates database-level change stream partition descriptors for an entire database. */
   public static List<ChangeStreamPartition> generateDatabasePartitions(
       MongoClient client,
       String sourceUri,
@@ -435,9 +432,7 @@ public class MongoDbChangeStreamReader {
     return partitions;
   }
 
-  /**
-   * Generates database-level change stream partition descriptors for an entire database.
-   */
+  /** Generates database-level change stream partition descriptors for an entire database. */
   public static List<ChangeStreamPartition> generateDatabasePartitions(
       String sourceUri,
       String sourceDatabase,
@@ -445,17 +440,12 @@ public class MongoDbChangeStreamReader {
       BsonTimestamp startAtOperationTime,
       String fullDocumentStrategy) {
     return generateDatabasePartitions(
-        null,
-        sourceUri,
-        sourceDatabase,
-        numSplits,
-        startAtOperationTime,
-        fullDocumentStrategy);
+        null, sourceUri, sourceDatabase, numSplits, startAtOperationTime, fullDocumentStrategy);
   }
 
   /**
-   * Recursively rewrites {@code "_id"} field references in query filters to {@code "documentKey._id"}
-   * for Change Stream {@code $match} pipeline stages.
+   * Recursively rewrites {@code "_id"} field references in query filters to {@code
+   * "documentKey._id"} for Change Stream {@code $match} pipeline stages.
    */
   public static BsonValue rewriteIdToDocumentKey(BsonValue value) {
     if (value == null) {
@@ -610,11 +600,8 @@ public class MongoDbChangeStreamReader {
     }
   }
 
-  /**
-   * PTransform that reads unbounded MongoDB Change Streams for a list of partition descriptors.
-   */
-  public static class ReadPartitions
-      extends PTransform<PBegin, PCollection<DocumentWithMetadata>> {
+  /** PTransform that reads unbounded MongoDB Change Streams for a list of partition descriptors. */
+  public static class ReadPartitions extends PTransform<PBegin, PCollection<DocumentWithMetadata>> {
 
     private final List<ChangeStreamPartition> partitions;
     private final SerializableFunction<String, MongoClient> clientFactory;
@@ -649,15 +636,14 @@ public class MongoDbChangeStreamReader {
               "CreateCDCPartitions",
               Create.of(partitions).withCoder(SerializableCoder.of(ChangeStreamPartition.class)))
           .apply("ReshuffleCDCPartitions", Reshuffle.viaRandomKey())
-          .apply(
-              "StreamChangeEvents",
-              ParDo.of(new ProcessChangeStreamPartitionFn(clientFactory)))
+          .apply("StreamChangeEvents", ParDo.of(new ProcessChangeStreamPartitionFn(clientFactory)))
           .setCoder(DocumentWithMetadataCoder.of());
     }
   }
 
   /**
-   * Splittable DoFn that maintains high-throughput streaming Change Stream cursors cached per partition.
+   * Splittable DoFn that maintains high-throughput streaming Change Stream cursors cached per
+   * partition.
    */
   public static class ProcessChangeStreamPartitionFn
       extends DoFn<ChangeStreamPartition, DocumentWithMetadata> {
@@ -675,8 +661,8 @@ public class MongoDbChangeStreamReader {
      * during the inner polling loop. Serializing toJson() on all 10,000 events per slice causes
      * heavy CPU and heap contention on reader threads. Reusing the serialized token string across
      * this stride eliminates 99.5% of serialization overhead while still satisfying Beam's
-     * claim-before-output requirement on every single element. The exact final resume token is always
-     * serialized and committed at slice completion.
+     * claim-before-output requirement on every single element. The exact final resume token is
+     * always serialized and committed at slice completion.
      */
     public static final int RESUME_TOKEN_SERIALIZATION_STRIDE = 200;
 
@@ -763,8 +749,7 @@ public class MongoDbChangeStreamReader {
       this(MongoDbTransforms::getOrCreateMongoClient);
     }
 
-    public ProcessChangeStreamPartitionFn(
-        SerializableFunction<String, MongoClient> clientFactory) {
+    public ProcessChangeStreamPartitionFn(SerializableFunction<String, MongoClient> clientFactory) {
       this.clientFactory = clientFactory;
     }
 
@@ -840,14 +825,12 @@ public class MongoDbChangeStreamReader {
           if (partition.isDatabaseLevel()) {
             stream = db.watch(pipeline);
           } else {
-            MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
+            MongoCollection<Document> collection =
+                db.getCollection(partition.getSourceCollection());
             stream = collection.watch(pipeline);
           }
 
-          stream =
-              stream
-                  .batchSize(MAX_EVENTS_PER_SLICE)
-                  .maxAwaitTime(250L, TimeUnit.MILLISECONDS);
+          stream = stream.batchSize(MAX_EVENTS_PER_SLICE).maxAwaitTime(250L, TimeUnit.MILLISECONDS);
 
           if (currentToken != null) {
             stream = stream.resumeAfter(currentToken);
@@ -1071,20 +1054,22 @@ public class MongoDbChangeStreamReader {
         return ProcessContinuation.resume(); // 0ms immediate resume for high-throughput burst
       } else {
         changeStreamEmptyPolls.inc();
-        return ProcessContinuation.resume()
-            .withResumeDelay(Duration.millis(IDLE_RESUME_DELAY_MS));
+        return ProcessContinuation.resume().withResumeDelay(Duration.millis(IDLE_RESUME_DELAY_MS));
       }
     }
 
     private void evictExpiredCursors() {
       if (cursorCache != null) {
-        cursorCache.entrySet().removeIf(entry -> {
-          if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
-            entry.getValue().close();
-            return true;
-          }
-          return false;
-        });
+        cursorCache
+            .entrySet()
+            .removeIf(
+                entry -> {
+                  if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
+                    entry.getValue().close();
+                    return true;
+                  }
+                  return false;
+                });
       }
     }
 
@@ -1111,9 +1096,7 @@ public class MongoDbChangeStreamReader {
     }
   }
 
-  /**
-   * Maps a MongoDB {@link ChangeStreamDocument} to {@link DocumentWithMetadata}.
-   */
+  /** Maps a MongoDB {@link ChangeStreamDocument} to {@link DocumentWithMetadata}. */
   public static DocumentWithMetadata mapChangeStreamEvent(
       ChangeStreamDocument<Document> event, String sourceCollection, String targetCollection) {
     if (event == null) {
@@ -1129,9 +1112,7 @@ public class MongoDbChangeStreamReader {
     }
 
     String targetCol =
-        (targetCollection != null && !targetCollection.isEmpty())
-            ? targetCollection
-            : eventCol;
+        (targetCollection != null && !targetCollection.isEmpty()) ? targetCollection : eventCol;
 
     OperationType mongoOp = event.getOperationType();
     if (mongoOp == null) {

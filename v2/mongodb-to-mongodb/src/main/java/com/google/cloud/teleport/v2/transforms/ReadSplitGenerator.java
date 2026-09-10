@@ -67,8 +67,8 @@ public final class ReadSplitGenerator {
   }
 
   /**
-   * Generates a list of BsonDocument filter queries using 2-phase covered index type discovery
-   * and type-isolated quantile sampling.
+   * Generates a list of BsonDocument filter queries using 2-phase covered index type discovery and
+   * type-isolated quantile sampling.
    *
    * @param client MongoDB client connection.
    * @param databaseName Database name.
@@ -83,8 +83,8 @@ public final class ReadSplitGenerator {
   }
 
   /**
-   * Generates a list of BsonDocument filter queries with adaptive volume-based split sizing
-   * and bounded upper bounds.
+   * Generates a list of BsonDocument filter queries with adaptive volume-based split sizing and
+   * bounded upper bounds.
    *
    * @param client MongoDB client connection.
    * @param databaseName Database name.
@@ -584,8 +584,7 @@ public final class ReadSplitGenerator {
       };
 
   private static boolean isNumeric(BsonValue val) {
-    return val != null
-        && (val.isInt32() || val.isInt64() || val.isDouble() || val.isDecimal128());
+    return val != null && (val.isInt32() || val.isInt64() || val.isDouble() || val.isDecimal128());
   }
 
   private static double asDouble(BsonValue val) {
@@ -605,8 +604,8 @@ public final class ReadSplitGenerator {
   }
 
   /**
-   * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max
-   * hex keys.
+   * Generates contiguous, uniform ObjectId splits interpolated between actual probed min/max hex
+   * keys.
    */
   public static List<BsonDocument> generateProbedObjectIdSplits(
       String minHex, String maxHex, int numSplits) {
@@ -614,8 +613,7 @@ public final class ReadSplitGenerator {
       return Collections.singletonList(
           BsonDocument.parse(
               String.format(
-                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}",
-                  maxHex)));
+                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}", maxHex)));
     }
 
     BigInteger minBig = new BigInteger(minHex, 16);
@@ -627,8 +625,7 @@ public final class ReadSplitGenerator {
       return Collections.singletonList(
           BsonDocument.parse(
               String.format(
-                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}",
-                  maxHex)));
+                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}", maxHex)));
     }
 
     List<BsonDocument> slices = new ArrayList<>();
@@ -639,8 +636,7 @@ public final class ReadSplitGenerator {
         slices.add(
             BsonDocument.parse(
                 String.format(
-                    "{\"_id\": {\"$type\": \"objectId\", \"$lt\": {\"$oid\": \"%s\"}}}",
-                    highHex)));
+                    "{\"_id\": {\"$type\": \"objectId\", \"$lt\": {\"$oid\": \"%s\"}}}", highHex)));
       } else if (i == numSplits - 1) {
         BigInteger low = minBig.add(step.multiply(BigInteger.valueOf(i)));
         String lowHex = String.format("%024x", low);

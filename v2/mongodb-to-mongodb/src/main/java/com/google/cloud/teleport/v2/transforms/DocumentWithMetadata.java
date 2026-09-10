@@ -168,9 +168,7 @@ public class DocumentWithMetadata implements Serializable {
     return null;
   }
 
-  /**
-   * Returns a unique deduplication key scoped by collection and document identifier.
-   */
+  /** Returns a unique deduplication key scoped by collection and document identifier. */
   public String getDedupKey() {
     String col;
     if (targetCollection != null && !targetCollection.isEmpty()) {
@@ -338,8 +336,7 @@ public class DocumentWithMetadata implements Serializable {
         isDlqReconsumed);
   }
 
-  public DocumentWithMetadata withFailure(
-      String errorMsg, ErrorType errType, FailureStage stage) {
+  public DocumentWithMetadata withFailure(String errorMsg, ErrorType errType, FailureStage stage) {
     return new DocumentWithMetadata(
         document,
         originalDocument,
@@ -412,14 +409,7 @@ public class DocumentWithMetadata implements Serializable {
   public static DocumentWithMetadata of(
       Document document, String sourceCollection, String targetCollection) {
     return new DocumentWithMetadata(
-        document,
-        null,
-        0,
-        null,
-        null,
-        sourceCollection,
-        targetCollection,
-        null);
+        document, null, 0, null, null, sourceCollection, targetCollection, null);
   }
 
   public static DocumentWithMetadata of(

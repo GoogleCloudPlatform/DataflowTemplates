@@ -178,7 +178,8 @@ public class ReadSplitGeneratorTest {
                 getClass().getClassLoader(),
                 new Class<?>[] {com.mongodb.client.AggregateIterable.class},
                 (proxy, method, args) -> {
-                  if (method.getName().equals("allowDiskUse") || method.getName().equals("maxTime")) {
+                  if (method.getName().equals("allowDiskUse")
+                      || method.getName().equals("maxTime")) {
                     return proxy;
                   }
                   if (method.getName().equals("iterator")) {
@@ -283,8 +284,7 @@ public class ReadSplitGeneratorTest {
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
     when(mockCol.estimatedDocumentCount()).thenReturn(10_000_000L);
 
-    List<BsonDocument> splits =
-        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16, 0, 256);
+    List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16, 0, 256);
     assertEquals(16, splits.size());
   }
 
@@ -292,8 +292,7 @@ public class ReadSplitGeneratorTest {
   public void testGenerateProbedObjectIdSplits_boundsTailSliceWithMaxHex() {
     String minHex = "66d000000000000000000000";
     String maxHex = "66dff0000000000000000000";
-    List<BsonDocument> splits =
-        ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 4);
+    List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 4);
     assertEquals(4, splits.size());
     assertTrue(splits.get(0).toJson().contains("\"$lt\""));
     assertTrue(splits.get(1).toJson().contains("\"$gte\""));
@@ -308,8 +307,7 @@ public class ReadSplitGeneratorTest {
   public void testGenerateProbedObjectIdSplits_singleSplitBoundedToMaxHex() {
     String minHex = "66d000000000000000000000";
     String maxHex = "66dff0000000000000000000";
-    List<BsonDocument> splits =
-        ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 1);
+    List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 1);
     assertEquals(1, splits.size());
     String json = splits.get(0).toJson();
     assertTrue(json.contains("\"$lte\""));

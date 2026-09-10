@@ -228,8 +228,8 @@ public class MongoDbBackfillReader {
     }
 
     /**
-     * Distributes a list of backfill partitions across virtual concurrency slots using
-     * round-robin interleaving.
+     * Distributes a list of backfill partitions across virtual concurrency slots using round-robin
+     * interleaving.
      */
     public static List<BackfillSlotTask> distribute(
         List<BackfillPartition> partitions, int maxConcurrentSlots) {
@@ -419,14 +419,7 @@ public class MongoDbBackfillReader {
       int maxSplits,
       BsonTimestamp t0) {
     return generatePartitions(
-        uri,
-        database,
-        sourceCollection,
-        targetCollection,
-        1,
-        targetChunkSize,
-        maxSplits,
-        t0);
+        uri, database, sourceCollection, targetCollection, 1, targetChunkSize, maxSplits, t0);
   }
 
   /**
@@ -451,9 +444,7 @@ public class MongoDbBackfillReader {
         t0);
   }
 
-  /**
-   * Convenience overload generating a single root partition for a collection.
-   */
+  /** Convenience overload generating a single root partition for a collection. */
   public static List<BackfillPartition> generatePartitions(
       String uri,
       String database,
@@ -683,8 +674,7 @@ public class MongoDbBackfillReader {
 
     @NewTracker
     public BackfillRestrictionTracker newTracker(
-        @Element BackfillPartition partition,
-        @Restriction BackfillRestriction restriction) {
+        @Element BackfillPartition partition, @Restriction BackfillRestriction restriction) {
       return new BackfillRestrictionTracker(restriction);
     }
 
@@ -735,8 +725,7 @@ public class MongoDbBackfillReader {
           MongoClient client =
               clientCache.computeIfAbsent(partition.getUri(), clientFactory::apply);
           MongoDatabase db = client.getDatabase(partition.getDatabase());
-          MongoCollection<Document> collection =
-              db.getCollection(partition.getSourceCollection());
+          MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
 
           Bson baseFilter =
               partition.hasFilter()
@@ -746,16 +735,13 @@ public class MongoDbBackfillReader {
           BsonValue lastSeenId = currentRestriction.getLastSeenId();
           Bson queryFilter;
           if (lastSeenId != null) {
-            BsonDocument gtFilter =
-                new BsonDocument("_id", new BsonDocument("$gt", lastSeenId));
+            BsonDocument gtFilter = new BsonDocument("_id", new BsonDocument("$gt", lastSeenId));
             if (partition.hasFilter()) {
               queryFilter =
                   new BsonDocument(
                       "$and",
                       new BsonArray(
-                          Arrays.asList(
-                              BsonDocument.parse(partition.getFilterJson()),
-                              gtFilter)));
+                          Arrays.asList(BsonDocument.parse(partition.getFilterJson()), gtFilter)));
             } else {
               queryFilter = gtFilter;
             }
@@ -814,9 +800,7 @@ public class MongoDbBackfillReader {
           Document doc = cursor.next();
           BsonValue docId = doc.toBsonDocument().get("_id");
           String nextIdJson =
-              docId != null
-                  ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS)
-                  : null;
+              docId != null ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS) : null;
 
           // Claim document position BEFORE emitting (claim-before-output)
           if (!tracker.tryClaim(
@@ -833,9 +817,7 @@ public class MongoDbBackfillReader {
                       partition.getTargetCollection(),
                       partition.getTimestampSortKey())
                   : DocumentWithMetadata.of(
-                      doc,
-                      partition.getSourceCollection(),
-                      partition.getTargetCollection());
+                      doc, partition.getSourceCollection(), partition.getTargetCollection());
 
           receiver.output(item);
           backfillDocumentsRead.inc();
@@ -876,13 +858,16 @@ public class MongoDbBackfillReader {
 
     private void evictExpiredCursors() {
       if (cursorCache != null) {
-        cursorCache.entrySet().removeIf(entry -> {
-          if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
-            entry.getValue().close();
-            return true;
-          }
-          return false;
-        });
+        cursorCache
+            .entrySet()
+            .removeIf(
+                entry -> {
+                  if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
+                    entry.getValue().close();
+                    return true;
+                  }
+                  return false;
+                });
       }
     }
 
@@ -911,7 +896,8 @@ public class MongoDbBackfillReader {
 
   /**
    * SDF restriction for slot-based backfill tracking current partition index within the slot,
-   * document offset within the active partition, last seen canonical BSON _id, and completion state.
+   * document offset within the active partition, last seen canonical BSON _id, and completion
+   * state.
    */
   public static class BackfillSlotRestriction implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -998,9 +984,7 @@ public class MongoDbBackfillReader {
     }
   }
 
-  /**
-   * SDF restriction tracker for slot-based backfill partitions.
-   */
+  /** SDF restriction tracker for slot-based backfill partitions. */
   public static class BackfillSlotRestrictionTracker
       extends RestrictionTracker<BackfillSlotRestriction, BackfillSlotRestriction> {
 
@@ -1060,11 +1044,10 @@ public class MongoDbBackfillReader {
   }
 
   /**
-   * Splittable DoFn executing sequential backfill partitions assigned to a concurrency slot.
-   * Caps maximum active cursors against MongoDB to the total number of slots cluster-wide.
+   * Splittable DoFn executing sequential backfill partitions assigned to a concurrency slot. Caps
+   * maximum active cursors against MongoDB to the total number of slots cluster-wide.
    */
-  public static class ProcessBackfillSlotFn
-      extends DoFn<BackfillSlotTask, DocumentWithMetadata> {
+  public static class ProcessBackfillSlotFn extends DoFn<BackfillSlotTask, DocumentWithMetadata> {
 
     public static final int MAX_DOCS_PER_SLICE = 2000;
     public static final long MAX_SLICE_DURATION_MS = 10000L;
@@ -1073,7 +1056,8 @@ public class MongoDbBackfillReader {
     private final SerializableFunction<String, MongoClient> clientFactory;
 
     private transient ConcurrentHashMap<String, MongoClient> clientCache;
-    private transient ConcurrentHashMap<String, ProcessBackfillPartitionFn.PartitionCursorHolder> cursorCache;
+    private transient ConcurrentHashMap<String, ProcessBackfillPartitionFn.PartitionCursorHolder>
+        cursorCache;
 
     private final Counter backfillDocumentsRead =
         Metrics.counter(MongoDbBackfillReader.class, "backfillDocumentsRead");
@@ -1099,8 +1083,7 @@ public class MongoDbBackfillReader {
 
     @NewTracker
     public BackfillSlotRestrictionTracker newTracker(
-        @Element BackfillSlotTask slotTask,
-        @Restriction BackfillSlotRestriction restriction) {
+        @Element BackfillSlotTask slotTask, @Restriction BackfillSlotRestriction restriction) {
       return new BackfillSlotRestrictionTracker(restriction);
     }
 
@@ -1162,8 +1145,7 @@ public class MongoDbBackfillReader {
           MongoClient client =
               clientCache.computeIfAbsent(partition.getUri(), clientFactory::apply);
           MongoDatabase db = client.getDatabase(partition.getDatabase());
-          MongoCollection<Document> collection =
-              db.getCollection(partition.getSourceCollection());
+          MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
 
           Bson baseFilter =
               partition.hasFilter()
@@ -1173,16 +1155,13 @@ public class MongoDbBackfillReader {
           BsonValue lastSeenId = currentRestriction.getLastSeenId();
           Bson queryFilter;
           if (lastSeenId != null) {
-            BsonDocument gtFilter =
-                new BsonDocument("_id", new BsonDocument("$gt", lastSeenId));
+            BsonDocument gtFilter = new BsonDocument("_id", new BsonDocument("$gt", lastSeenId));
             if (partition.hasFilter()) {
               queryFilter =
                   new BsonDocument(
                       "$and",
                       new BsonArray(
-                          Arrays.asList(
-                              BsonDocument.parse(partition.getFilterJson()),
-                              gtFilter)));
+                          Arrays.asList(BsonDocument.parse(partition.getFilterJson()), gtFilter)));
             } else {
               queryFilter = gtFilter;
             }
@@ -1251,9 +1230,7 @@ public class MongoDbBackfillReader {
           Document doc = cursor.next();
           BsonValue docId = doc.toBsonDocument().get("_id");
           String nextIdJson =
-              docId != null
-                  ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS)
-                  : null;
+              docId != null ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS) : null;
 
           if (!tracker.tryClaim(
               new BackfillSlotRestriction(
@@ -1270,9 +1247,7 @@ public class MongoDbBackfillReader {
                       partition.getTargetCollection(),
                       partition.getTimestampSortKey())
                   : DocumentWithMetadata.of(
-                      doc,
-                      partition.getSourceCollection(),
-                      partition.getTargetCollection());
+                      doc, partition.getSourceCollection(), partition.getTargetCollection());
 
           receiver.output(item);
           backfillDocumentsRead.inc();
@@ -1316,13 +1291,16 @@ public class MongoDbBackfillReader {
 
     private void evictExpiredCursors() {
       if (cursorCache != null) {
-        cursorCache.entrySet().removeIf(entry -> {
-          if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
-            entry.getValue().close();
-            return true;
-          }
-          return false;
-        });
+        cursorCache
+            .entrySet()
+            .removeIf(
+                entry -> {
+                  if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
+                    entry.getValue().close();
+                    return true;
+                  }
+                  return false;
+                });
       }
     }
 
@@ -1353,8 +1331,7 @@ public class MongoDbBackfillReader {
    * PTransform that reads backfill partitions using virtual concurrency slot sharding to strictly
    * bound the number of active cursors against the source database.
    */
-  public static class ReadPartitions
-      extends PTransform<PBegin, PCollection<DocumentWithMetadata>> {
+  public static class ReadPartitions extends PTransform<PBegin, PCollection<DocumentWithMetadata>> {
 
     public static final int DEFAULT_MAX_CONCURRENT_READS = 128;
 

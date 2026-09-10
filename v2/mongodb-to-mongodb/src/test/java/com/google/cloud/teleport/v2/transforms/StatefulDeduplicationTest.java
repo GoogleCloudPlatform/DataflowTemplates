@@ -72,6 +72,7 @@ public class StatefulDeduplicationTest implements Serializable {
     final StatefulDeduplicationFn fn = new StatefulDeduplicationFn();
     final TestValueState<TimestampSortKey> state = new TestValueState<>();
     final List<DocumentWithMetadata> outputs = new ArrayList<>();
+
     @SuppressWarnings("unchecked")
     final OutputReceiver<DocumentWithMetadata> receiver = mock(OutputReceiver.class);
 
@@ -227,9 +228,7 @@ public class StatefulDeduplicationTest implements Serializable {
     DocumentWithMetadata o1 = createCdc("1", "Order1", 1000L, 1L, "orders");
 
     PCollection<DocumentWithMetadata> output =
-        pipeline
-            .apply(Create.of(u1, u2, o1))
-            .apply(StatefulDeduplication.of());
+        pipeline.apply(Create.of(u1, u2, o1)).apply(StatefulDeduplication.of());
 
     PAssert.that(output)
         .satisfies(

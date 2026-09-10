@@ -106,9 +106,7 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     String targetCollection = STRING_CODER.decode(inStream);
     String failureStageStr = STRING_CODER.decode(inStream);
     DocumentWithMetadata.FailureStage failureStage =
-        failureStageStr != null
-            ? DocumentWithMetadata.FailureStage.valueOf(failureStageStr)
-            : null;
+        failureStageStr != null ? DocumentWithMetadata.FailureStage.valueOf(failureStageStr) : null;
     String opTypeStr = STRING_CODER.decode(inStream);
     DocumentWithMetadata.OperationType opType =
         opTypeStr != null

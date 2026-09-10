@@ -48,8 +48,7 @@ public class MongoDbToMongoDbTest {
 
   @Test
   public void options_defaultValues() {
-    MongoDbToMongoDb.Options options =
-        PipelineOptionsFactory.as(MongoDbToMongoDb.Options.class);
+    MongoDbToMongoDb.Options options = PipelineOptionsFactory.as(MongoDbToMongoDb.Options.class);
 
     assertEquals("BACKFILL_AND_STREAMING", options.getMigrationMode());
     assertEquals(Integer.valueOf(1), options.getNumChangeStreamSplits());
@@ -135,8 +134,7 @@ public class MongoDbToMongoDbTest {
     DoFn<DocumentWithMetadata, DocumentWithMetadata>.ProcessContext context =
         mock(DoFn.ProcessContext.class);
 
-    DocumentWithMetadata doc =
-        DocumentWithMetadata.of(new Document("_id", 1), "src", "tgt");
+    DocumentWithMetadata doc = DocumentWithMetadata.of(new Document("_id", 1), "src", "tgt");
     when(context.element()).thenReturn(doc);
 
     fn.processElement(context);
@@ -207,8 +205,7 @@ public class MongoDbToMongoDbTest {
     DoFn<DocumentWithMetadata, DocumentWithMetadata>.ProcessContext context =
         mock(DoFn.ProcessContext.class);
 
-    DocumentWithMetadata invalidDoc =
-        DocumentWithMetadata.of(null, "src", "tgt");
+    DocumentWithMetadata invalidDoc = DocumentWithMetadata.of(null, "src", "tgt");
     when(context.element()).thenReturn(invalidDoc);
 
     fn.processElement(context);
@@ -250,12 +247,10 @@ public class MongoDbToMongoDbTest {
   public void parseDlqFn_validJson_outputsDocumentWithMetadata() {
     MongoDbToMongoDb.ParseDlqFn fn = new MongoDbToMongoDb.ParseDlqFn();
 
-    DoFn<String, DocumentWithMetadata>.ProcessContext context =
-        mock(DoFn.ProcessContext.class);
+    DoFn<String, DocumentWithMetadata>.ProcessContext context = mock(DoFn.ProcessContext.class);
 
     Document doc = new Document("_id", 42).append("key", "val");
-    DocumentWithMetadata original =
-        DocumentWithMetadata.of(doc, "src", "tgt");
+    DocumentWithMetadata original = DocumentWithMetadata.of(doc, "src", "tgt");
     String dlqJson = original.toDlqJson("test error", ErrorType.RETRYABLE, 1);
 
     when(context.element()).thenReturn(dlqJson);
@@ -277,8 +272,7 @@ public class MongoDbToMongoDbTest {
   public void parseDlqFn_invalidJson_handlesGracefully() {
     MongoDbToMongoDb.ParseDlqFn fn = new MongoDbToMongoDb.ParseDlqFn();
 
-    DoFn<String, DocumentWithMetadata>.ProcessContext context =
-        mock(DoFn.ProcessContext.class);
+    DoFn<String, DocumentWithMetadata>.ProcessContext context = mock(DoFn.ProcessContext.class);
 
     when(context.element()).thenReturn("invalid json {{{");
 

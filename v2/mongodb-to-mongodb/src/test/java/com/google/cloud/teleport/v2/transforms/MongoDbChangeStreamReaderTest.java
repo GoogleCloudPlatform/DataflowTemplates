@@ -76,8 +76,8 @@ public class MongoDbChangeStreamReaderTest {
         null, // lsid
         null, // wallTime
         null, // splitEvent
-        null  // extraElements
-    );
+        null // extraElements
+        );
   }
 
   @Test
@@ -105,7 +105,8 @@ public class MongoDbChangeStreamReaderTest {
                 + "  {\"$and\": [{\"_id\": {\"$gte\": 200}}, {\"_id\": {\"$lt\": 300}}]}"
                 + "]}");
 
-    BsonDocument changeFilter = MongoDbChangeStreamReader.transformToChangeStreamFilter(compoundFilter);
+    BsonDocument changeFilter =
+        MongoDbChangeStreamReader.transformToChangeStreamFilter(compoundFilter);
 
     assertNotNull(changeFilter);
     assertTrue(changeFilter.containsKey("$match"));
@@ -206,12 +207,7 @@ public class MongoDbChangeStreamReaderTest {
         for (int i = 0; i < n; i++) {
           BsonDocument filter = MongoDbChangeStreamReader.generateHashedMatchFilter(n, i);
           org.bson.BsonArray matchingValues =
-              filter
-                  .getDocument("$match")
-                  .getDocument("$expr")
-                  .getArray("$in")
-                  .get(1)
-                  .asArray();
+              filter.getDocument("$match").getDocument("$expr").getArray("$in").get(1).asArray();
 
           int val1 = matchingValues.get(0).asInt32().getValue();
           int val2 = matchingValues.get(1).asInt32().getValue();
@@ -360,17 +356,20 @@ public class MongoDbChangeStreamReaderTest {
     // Update with null fullDocument (document was deleted before updateLookup) should return null
     ChangeStreamDocument<Document> updateEventNullDoc =
         createEvent(OperationType.UPDATE, null, docKey, timestamp);
-    assertNull(MongoDbChangeStreamReader.mapChangeStreamEvent(updateEventNullDoc, "srcCol", "tgtCol"));
+    assertNull(
+        MongoDbChangeStreamReader.mapChangeStreamEvent(updateEventNullDoc, "srcCol", "tgtCol"));
 
     // Insert with null fullDocument should return null
     ChangeStreamDocument<Document> insertEventNullDoc =
         createEvent(OperationType.INSERT, null, docKey, timestamp);
-    assertNull(MongoDbChangeStreamReader.mapChangeStreamEvent(insertEventNullDoc, "srcCol", "tgtCol"));
+    assertNull(
+        MongoDbChangeStreamReader.mapChangeStreamEvent(insertEventNullDoc, "srcCol", "tgtCol"));
 
     // Replace with null fullDocument should return null
     ChangeStreamDocument<Document> replaceEventNullDoc =
         createEvent(OperationType.REPLACE, null, docKey, timestamp);
-    assertNull(MongoDbChangeStreamReader.mapChangeStreamEvent(replaceEventNullDoc, "srcCol", "tgtCol"));
+    assertNull(
+        MongoDbChangeStreamReader.mapChangeStreamEvent(replaceEventNullDoc, "srcCol", "tgtCol"));
   }
 
   @Test
@@ -412,8 +411,7 @@ public class MongoDbChangeStreamReaderTest {
     assertTrue(tracker.tryClaim(initial));
 
     BsonDocument token = new BsonDocument("_data", new BsonString("token123"));
-    ChangeStreamRestriction nextRestriction =
-        new ChangeStreamRestriction(6L, token.toJson());
+    ChangeStreamRestriction nextRestriction = new ChangeStreamRestriction(6L, token.toJson());
     assertTrue(tracker.tryClaim(nextRestriction));
 
     assertEquals(6L, tracker.currentRestriction().getOffset());
@@ -423,10 +421,13 @@ public class MongoDbChangeStreamReaderTest {
     assertNotNull(split);
     assertNotNull(split.getPrimary());
     assertEquals(6L, split.getPrimary().getOffset());
-    assertEquals(tracker.currentRestriction().getResumeTokenJson(), split.getPrimary().getResumeTokenJson());
+    assertEquals(
+        tracker.currentRestriction().getResumeTokenJson(), split.getPrimary().getResumeTokenJson());
     assertNotNull(split.getResidual());
     assertEquals(6L, split.getResidual().getOffset());
-    assertEquals(tracker.currentRestriction().getResumeTokenJson(), split.getResidual().getResumeTokenJson());
+    assertEquals(
+        tracker.currentRestriction().getResumeTokenJson(),
+        split.getResidual().getResumeTokenJson());
     assertFalse(tracker.tryClaim(new ChangeStreamRestriction(7L, null)));
   }
 
@@ -465,7 +466,8 @@ public class MongoDbChangeStreamReaderTest {
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
@@ -496,7 +498,8 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "updateLookup");
 
-    ChangeStreamRestrictionTracker tracker = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker tracker =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
 
     ProcessContinuation continuation = fn.processElement(partition, tracker, mockReceiver);
@@ -513,7 +516,8 @@ public class MongoDbChangeStreamReaderTest {
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
@@ -526,8 +530,9 @@ public class MongoDbChangeStreamReaderTest {
     // Idle cursor returns null on tryNext
     when(mockCursor.tryNext()).thenReturn(null);
     // 0x66D57F9B = 1725267867 (Sep 2, 2024)
-    when(mockCursor.getResumeToken()).thenReturn(
-        new BsonDocument("_data", new BsonString("8266D57F9B000000012B022C0100296E5A1004")));
+    when(mockCursor.getResumeToken())
+        .thenReturn(
+            new BsonDocument("_data", new BsonString("8266D57F9B000000012B022C0100296E5A1004")));
 
     ProcessChangeStreamPartitionFn fn = new ProcessChangeStreamPartitionFn(uri -> mockClient);
     ChangeStreamPartition partition =
@@ -543,7 +548,8 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "updateLookup");
 
-    ChangeStreamRestrictionTracker tracker = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker tracker =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
 
     ProcessContinuation continuation = fn.processElement(partition, tracker, mockReceiver);
@@ -564,8 +570,10 @@ public class MongoDbChangeStreamReaderTest {
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor0 = mock(MongoChangeStreamCursor.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor1 = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor0 =
+        mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor1 =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
@@ -580,18 +588,40 @@ public class MongoDbChangeStreamReaderTest {
 
     ProcessChangeStreamPartitionFn fn = new ProcessChangeStreamPartitionFn(uri -> mockClient);
     ChangeStreamPartition partition0 =
-        new ChangeStreamPartition("mongodb://localhost:27017", "testDb", "users", "users", 0, 2, null, 0, 0, "updateLookup");
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            "users",
+            "users",
+            0,
+            2,
+            null,
+            0,
+            0,
+            "updateLookup");
     ChangeStreamPartition partition1 =
-        new ChangeStreamPartition("mongodb://localhost:27017", "testDb", "users", "users", 1, 2, null, 0, 0, "updateLookup");
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            "users",
+            "users",
+            1,
+            2,
+            null,
+            0,
+            0,
+            "updateLookup");
 
     OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
 
     // Slice 1: Partition 0 (creates cursor0)
-    ChangeStreamRestrictionTracker tracker0 = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker tracker0 =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     fn.processElement(partition0, tracker0, mockReceiver);
 
     // Slice 2: Partition 1 (creates cursor1)
-    ChangeStreamRestrictionTracker tracker1 = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker tracker1 =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     fn.processElement(partition1, tracker1, mockReceiver);
 
     // Slice 3: Partition 0 AGAIN (should REUSE cursor0 without recreating cursor)
@@ -612,7 +642,8 @@ public class MongoDbChangeStreamReaderTest {
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
@@ -638,7 +669,8 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "updateLookup");
 
-    ChangeStreamRestrictionTracker tracker = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker tracker =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
 
     ProcessContinuation continuation = fn.processElement(partition, tracker, mockReceiver);
@@ -650,13 +682,15 @@ public class MongoDbChangeStreamReaderTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  public void testProcessChangeStreamPartitionFn_wrappedInRestrictionTrackerObserver_doesNotThrowClassCastException() {
+  public void
+      testProcessChangeStreamPartitionFn_wrappedInRestrictionTrackerObserver_doesNotThrowClassCastException() {
     // Simulates Beam's RestrictionTrackerObserver wrapping the delegate RestrictionTracker
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
@@ -682,7 +716,8 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "updateLookup");
 
-    ChangeStreamRestrictionTracker delegate = new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    ChangeStreamRestrictionTracker delegate =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
     RestrictionTracker<ChangeStreamRestriction, ChangeStreamRestriction> observerWrapper =
         new RestrictionTracker<ChangeStreamRestriction, ChangeStreamRestriction>() {
           @Override
@@ -790,8 +825,7 @@ public class MongoDbChangeStreamReaderTest {
             null);
 
     // Database-level partition (sourceCollection = null, targetCollection = null)
-    DocumentWithMetadata result =
-        MongoDbChangeStreamReader.mapChangeStreamEvent(event, null, null);
+    DocumentWithMetadata result = MongoDbChangeStreamReader.mapChangeStreamEvent(event, null, null);
 
     assertNotNull(result);
     assertEquals("orders", result.getSourceCollection());
@@ -805,7 +839,8 @@ public class MongoDbChangeStreamReaderTest {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
     ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
-    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor = mock(MongoChangeStreamCursor.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
 
     when(mockClient.getDatabase("testDb")).thenReturn(mockDb);
     when(mockDb.watch(anyList())).thenReturn(mockStream);
@@ -818,16 +853,7 @@ public class MongoDbChangeStreamReaderTest {
     ProcessChangeStreamPartitionFn fn = new ProcessChangeStreamPartitionFn(uri -> mockClient);
     ChangeStreamPartition partition =
         new ChangeStreamPartition(
-            "mongodb://localhost:27017",
-            "testDb",
-            null,
-            null,
-            0,
-            1,
-            null,
-            0,
-            0,
-            "updateLookup");
+            "mongodb://localhost:27017", "testDb", null, null, 0, 1, null, 0, 0, "updateLookup");
 
     assertTrue(partition.isDatabaseLevel());
 

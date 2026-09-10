@@ -93,9 +93,7 @@ public class MongoDbTransforms {
   private static final ConcurrentHashMap<String, MongoClient> CLIENT_CACHE =
       new ConcurrentHashMap<>();
 
-  /**
-   * Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent.
-   */
+  /** Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent. */
   public static MongoClient getOrCreateMongoClient(String uri) {
     return CLIENT_CACHE.computeIfAbsent(uri, MongoDbTransforms::createMongoClient);
   }
@@ -265,9 +263,7 @@ public class MongoDbTransforms {
                           }
                           String dedupKey = item.getDedupKey();
                           int shard =
-                              dedupKey != null
-                                  ? Math.floorMod(dedupKey.hashCode(), shards)
-                                  : 0;
+                              dedupKey != null ? Math.floorMod(dedupKey.hashCode(), shards) : 0;
                           c.output(KV.of(col + "#" + shard, item));
                         }
                       }))
@@ -299,6 +295,7 @@ public class MongoDbTransforms {
     private static final Logger LOG = LoggerFactory.getLogger(WriteToDlq.class);
     private final String retryablePath;
     private final String permanentPath;
+
     @SuppressWarnings("unused")
     private final String tempLocation;
 
@@ -356,8 +353,7 @@ public class MongoDbTransforms {
                     .withNumShards(1));
       } else {
         retryableJson.apply(
-            "WriteDlq_Retryable",
-            TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
+            "WriteDlq_Retryable", TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
       }
 
       PCollection<String> permanentJson =
@@ -387,8 +383,7 @@ public class MongoDbTransforms {
                     .withNumShards(1));
       } else {
         permanentJson.apply(
-            "WriteDlq_Permanent",
-            TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
+            "WriteDlq_Permanent", TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
       }
 
       return PDone.in(input.getPipeline());
@@ -430,12 +425,10 @@ public class MongoDbTransforms {
     private final Counter dlqRetries = Metrics.counter(WriteWithDlq.class, "dlqRetries");
     private final Counter permanentFailures =
         Metrics.counter(WriteWithDlq.class, "permanentFailures");
-    private final Counter batchesFlushed =
-        Metrics.counter(WriteWithDlq.class, "batchesFlushed");
+    private final Counter batchesFlushed = Metrics.counter(WriteWithDlq.class, "batchesFlushed");
     private final Counter writeInsertsUpserts =
         Metrics.counter(WriteWithDlq.class, "writeInsertsUpserts");
-    private final Counter writeDeletes =
-        Metrics.counter(WriteWithDlq.class, "writeDeletes");
+    private final Counter writeDeletes = Metrics.counter(WriteWithDlq.class, "writeDeletes");
     private final Counter writeDropsSkipped =
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
 
@@ -1013,20 +1006,14 @@ public class MongoDbTransforms {
       }
       for (DocumentWithMetadata item : itemList) {
         int nextRetryCount = (item.getRetryCount() != null ? item.getRetryCount() : 0) + 1;
-        boolean isPerm =
-            isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
+        boolean isPerm = isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
         int retryCount =
             isPerm
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
         ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
 
-        failures.add(
-            item.withFailure(
-                message,
-                errorType,
-                FailureStage.WRITE,
-                retryCount));
+        failures.add(item.withFailure(message, errorType, FailureStage.WRITE, retryCount));
       }
     }
 
@@ -1129,12 +1116,10 @@ public class MongoDbTransforms {
     private final Counter dlqRetries = Metrics.counter(WriteWithDlq.class, "dlqRetries");
     private final Counter permanentFailures =
         Metrics.counter(WriteWithDlq.class, "permanentFailures");
-    private final Counter batchesFlushed =
-        Metrics.counter(WriteWithDlq.class, "batchesFlushed");
+    private final Counter batchesFlushed = Metrics.counter(WriteWithDlq.class, "batchesFlushed");
     private final Counter writeInsertsUpserts =
         Metrics.counter(WriteWithDlq.class, "writeInsertsUpserts");
-    private final Counter writeDeletes =
-        Metrics.counter(WriteWithDlq.class, "writeDeletes");
+    private final Counter writeDeletes = Metrics.counter(WriteWithDlq.class, "writeDeletes");
     private final Counter writeDropsSkipped =
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
     private final Counter writeBatchesCoalesced =
@@ -1445,9 +1430,7 @@ public class MongoDbTransforms {
                 coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
             CoalescedOp prev =
                 colMap.put(
-                    id,
-                    new CoalescedOp(
-                        new DeleteOneModel<>(new Document("_id", id)), item, true));
+                    id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
             if (prev != null) {
               writeBatchesCoalesced.inc();
             }
@@ -1537,8 +1520,7 @@ public class MongoDbTransforms {
             }
           }
 
-          MongoCollection<Document> col =
-              mongoClient.getDatabase(database).getCollection(colName);
+          MongoCollection<Document> col = mongoClient.getDatabase(database).getCollection(colName);
 
           writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
         }
@@ -1728,20 +1710,14 @@ public class MongoDbTransforms {
       }
       for (DocumentWithMetadata item : itemList) {
         int nextRetryCount = (item.getRetryCount() != null ? item.getRetryCount() : 0) + 1;
-        boolean isPerm =
-            isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
+        boolean isPerm = isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
         int retryCount =
             isPerm
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
         ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
 
-        failures.add(
-            item.withFailure(
-                message,
-                errorType,
-                FailureStage.WRITE,
-                retryCount));
+        failures.add(item.withFailure(message, errorType, FailureStage.WRITE, retryCount));
       }
     }
 
@@ -1863,21 +1839,14 @@ public class MongoDbTransforms {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
             udfProcessingFailures.inc();
             c.output(
-                failureTag,
-                item.withFailure(
-                    "UDF returned null",
-                    RETRYABLE,
-                    FailureStage.UDF));
+                failureTag, item.withFailure("UDF returned null", RETRYABLE, FailureStage.UDF));
           }
         } catch (Throwable e) {
           LOG.error("Failed to apply UDF: {}", e.getMessage());
           udfProcessingFailures.inc();
           c.output(
               failureTag,
-              item.withFailure(
-                  "UDF failed: " + e.getMessage(),
-                  RETRYABLE,
-                  FailureStage.UDF));
+              item.withFailure("UDF failed: " + e.getMessage(), RETRYABLE, FailureStage.UDF));
         }
       } else {
         c.output(item);

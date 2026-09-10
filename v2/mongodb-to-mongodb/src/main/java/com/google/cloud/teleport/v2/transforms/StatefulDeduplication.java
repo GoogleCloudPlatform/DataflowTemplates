@@ -38,13 +38,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Stateful deduplication PTransform that enforces monotonic ordering per document key
- * across concurrent backfill and change streams.
+ * Stateful deduplication PTransform that enforces monotonic ordering per document key across
+ * concurrent backfill and change streams.
  *
- * <p>Uses Beam {@link ValueState} to track the highest {@link TimestampSortKey} observed
- * for each document (keyed by {@code collection#{_id}}).
+ * <p>Uses Beam {@link ValueState} to track the highest {@link TimestampSortKey} observed for each
+ * document (keyed by {@code collection#{_id}}).
  *
  * <p>3-Tier Comparison Rules:
+ *
  * <ol>
  *   <li>Epoch seconds: Higher timestamp wins.
  *   <li>Stream precedence: At identical epoch second $T_0$, live CDC wins over Backfill.
@@ -82,9 +83,7 @@ public class StatefulDeduplication
         .apply("DeduplicateStateful", ParDo.of(new StatefulDeduplicationFn()));
   }
 
-  /**
-   * Stateful DoFn maintaining the latest observed timestamp per document key.
-   */
+  /** Stateful DoFn maintaining the latest observed timestamp per document key. */
   public static class StatefulDeduplicationFn
       extends DoFn<KV<String, DocumentWithMetadata>, DocumentWithMetadata> {
 

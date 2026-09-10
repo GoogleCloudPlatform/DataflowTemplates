@@ -135,11 +135,14 @@ public class MongoDbBackfillReaderTest {
   @Test
   public void backfillPartition_equalsAndHashCode() {
     BackfillPartition p1 =
-        new BackfillPartition("uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
+        new BackfillPartition(
+            "uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
     BackfillPartition p2 =
-        new BackfillPartition("uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
+        new BackfillPartition(
+            "uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
     BackfillPartition p3 =
-        new BackfillPartition("uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 1, 2);
+        new BackfillPartition(
+            "uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 1, 2);
 
     assertEquals(p1, p2);
     assertEquals(p1.hashCode(), p2.hashCode());
@@ -149,7 +152,8 @@ public class MongoDbBackfillReaderTest {
   @Test
   public void backfillPartition_toString_containsDetails() {
     BackfillPartition p =
-        new BackfillPartition("uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
+        new BackfillPartition(
+            "uri", "db", "src", "tgt", "{}", TimestampSortKey.backfill(100), 0, 2);
     String str = p.toString();
     assertTrue(str.contains("src"));
     assertTrue(str.contains("0/2"));
@@ -184,18 +188,23 @@ public class MongoDbBackfillReaderTest {
         new MongoDbBackfillReader.BackfillRestrictionTracker(initial);
 
     assertEquals(initial, tracker.currentRestriction());
-    assertTrue(tracker.tryClaim(new MongoDbBackfillReader.BackfillRestriction(1L, "{\"_id\": 1}", false)));
+    assertTrue(
+        tracker.tryClaim(new MongoDbBackfillReader.BackfillRestriction(1L, "{\"_id\": 1}", false)));
     assertEquals(1L, tracker.currentRestriction().getOffset());
 
-    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<MongoDbBackfillReader.BackfillRestriction> split =
-        tracker.trySplit(0.0);
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillRestriction>
+        split = tracker.trySplit(0.0);
     assertNotNull(split);
     assertEquals(1L, split.getPrimary().getOffset());
     assertEquals(1L, split.getResidual().getOffset());
 
     // After stop, claiming returns false
-    assertFalse(tracker.tryClaim(new MongoDbBackfillReader.BackfillRestriction(2L, "{\"_id\": 2}", false)));
-    assertEquals(org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker.IsBounded.BOUNDED, tracker.isBounded());
+    assertFalse(
+        tracker.tryClaim(new MongoDbBackfillReader.BackfillRestriction(2L, "{\"_id\": 2}", false)));
+    assertEquals(
+        org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker.IsBounded.BOUNDED,
+        tracker.isBounded());
   }
 
   @Test
@@ -235,17 +244,14 @@ public class MongoDbBackfillReaderTest {
     MongoDbBackfillReader.ProcessBackfillPartitionFn fn =
         new MongoDbBackfillReader.ProcessBackfillPartitionFn(uri -> mockClient);
 
-    MongoDbBackfillReader.BackfillRestriction restriction =
-        fn.getInitialRestriction(partition);
+    MongoDbBackfillReader.BackfillRestriction restriction = fn.getInitialRestriction(partition);
     MongoDbBackfillReader.BackfillRestrictionTracker tracker =
         fn.newTracker(partition, restriction);
     assertNotNull(fn.getRestrictionCoder());
 
-    DoFn.OutputReceiver<DocumentWithMetadata> receiver =
-        mock(DoFn.OutputReceiver.class);
+    DoFn.OutputReceiver<DocumentWithMetadata> receiver = mock(DoFn.OutputReceiver.class);
 
-    DoFn.ProcessContinuation continuation =
-        fn.processElement(partition, tracker, receiver);
+    DoFn.ProcessContinuation continuation = fn.processElement(partition, tracker, receiver);
 
     assertEquals(DoFn.ProcessContinuation.stop(), continuation);
 
@@ -304,11 +310,9 @@ public class MongoDbBackfillReaderTest {
     MongoDbBackfillReader.BackfillRestrictionTracker tracker =
         fn.newTracker(partition, resumedRestriction);
 
-    DoFn.OutputReceiver<DocumentWithMetadata> receiver =
-        mock(DoFn.OutputReceiver.class);
+    DoFn.OutputReceiver<DocumentWithMetadata> receiver = mock(DoFn.OutputReceiver.class);
 
-    DoFn.ProcessContinuation continuation =
-        fn.processElement(partition, tracker, receiver);
+    DoFn.ProcessContinuation continuation = fn.processElement(partition, tracker, receiver);
 
     assertEquals(DoFn.ProcessContinuation.stop(), continuation);
     verify(receiver, org.mockito.Mockito.times(1)).output(any());
@@ -323,7 +327,9 @@ public class MongoDbBackfillReaderTest {
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
-    when(mockCol.find(any(Bson.class))).thenThrow(new com.mongodb.MongoSocketException("Socket error", new com.mongodb.ServerAddress()));
+    when(mockCol.find(any(Bson.class)))
+        .thenThrow(
+            new com.mongodb.MongoSocketException("Socket error", new com.mongodb.ServerAddress()));
 
     BackfillPartition partition =
         new BackfillPartition(
@@ -339,16 +345,13 @@ public class MongoDbBackfillReaderTest {
     MongoDbBackfillReader.ProcessBackfillPartitionFn fn =
         new MongoDbBackfillReader.ProcessBackfillPartitionFn(uri -> mockClient);
 
-    MongoDbBackfillReader.BackfillRestriction restriction =
-        fn.getInitialRestriction(partition);
+    MongoDbBackfillReader.BackfillRestriction restriction = fn.getInitialRestriction(partition);
     MongoDbBackfillReader.BackfillRestrictionTracker tracker =
         fn.newTracker(partition, restriction);
 
-    DoFn.OutputReceiver<DocumentWithMetadata> receiver =
-        mock(DoFn.OutputReceiver.class);
+    DoFn.OutputReceiver<DocumentWithMetadata> receiver = mock(DoFn.OutputReceiver.class);
 
-    DoFn.ProcessContinuation continuation =
-        fn.processElement(partition, tracker, receiver);
+    DoFn.ProcessContinuation continuation = fn.processElement(partition, tracker, receiver);
 
     assertNotNull(continuation);
     assertTrue(continuation.shouldResume());
@@ -358,9 +361,7 @@ public class MongoDbBackfillReaderTest {
   public void readPartitions_emptyPartitions_expandsSuccessfully() {
     Pipeline p = Pipeline.create();
     PCollection<DocumentWithMetadata> docs =
-        p.apply(
-            "ReadEmpty",
-            new MongoDbBackfillReader.ReadPartitions(Collections.emptyList()));
+        p.apply("ReadEmpty", new MongoDbBackfillReader.ReadPartitions(Collections.emptyList()));
     assertNotNull(docs);
   }
 
@@ -433,14 +434,7 @@ public class MongoDbBackfillReaderTest {
     for (int i = 0; i < 3; i++) {
       partitions.add(
           new BackfillPartition(
-              "mongodb://localhost:27017",
-              "testDb",
-              "col",
-              "col_tgt",
-              null,
-              null,
-              i,
-              3));
+              "mongodb://localhost:27017", "testDb", "col", "col_tgt", null, null, i, 3));
     }
 
     List<MongoDbBackfillReader.BackfillSlotTask> tasks =
@@ -496,7 +490,8 @@ public class MongoDbBackfillReaderTest {
     tracker.checkDone();
 
     // After done, tryClaim returns false
-    assertFalse(tracker.tryClaim(new MongoDbBackfillReader.BackfillSlotRestriction(3, 0L, null, true)));
+    assertFalse(
+        tracker.tryClaim(new MongoDbBackfillReader.BackfillSlotRestriction(3, 0L, null, true)));
   }
 
   @Test
@@ -506,7 +501,8 @@ public class MongoDbBackfillReaderTest {
     MongoDbBackfillReader.BackfillSlotRestrictionTracker tracker =
         new MongoDbBackfillReader.BackfillSlotRestrictionTracker(restriction);
 
-    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<MongoDbBackfillReader.BackfillSlotRestriction>
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillSlotRestriction>
         split = tracker.trySplit(0.0);
     assertNotNull(split);
     assertEquals(0, split.getPrimary().getPartitionIndexInSlot());
@@ -611,7 +607,8 @@ public class MongoDbBackfillReaderTest {
     assertFalse(tracker.currentRestriction().isDone());
 
     // Split checkpoint produces residual with partitionIndex=1, done=false
-    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<MongoDbBackfillReader.BackfillSlotRestriction>
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillSlotRestriction>
         split = tracker.trySplit(0.0);
     assertNotNull(split);
     assertEquals(1, split.getResidual().getPartitionIndexInSlot());

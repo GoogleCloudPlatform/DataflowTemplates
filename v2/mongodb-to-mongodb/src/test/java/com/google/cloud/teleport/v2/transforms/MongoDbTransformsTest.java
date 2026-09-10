@@ -340,7 +340,8 @@ public class MongoDbTransformsTest {
               failures.forEach(list::add);
               assertEquals(1, list.size());
               DocumentWithMetadata failedItem = list.get(0);
-              assertEquals(DocumentWithMetadata.OperationType.DELETE, failedItem.getOperationType());
+              assertEquals(
+                  DocumentWithMetadata.OperationType.DELETE, failedItem.getOperationType());
               assertEquals("{\"_id\": \"d99\"}", failedItem.getDocumentKey());
               assertEquals(TimestampSortKey.cdc(1000L, 5L), failedItem.getTimestampSortKey());
               assertEquals(DocumentWithMetadata.ErrorType.PERMANENT, failedItem.getErrorType());
@@ -917,7 +918,8 @@ public class MongoDbTransformsTest {
     // 5 unique items
     for (int i = 1; i <= 5; i++) {
       batchItems.add(
-          DocumentWithMetadata.of(new Document("_id", i).append("name", "name" + i), "items", "items"));
+          DocumentWithMetadata.of(
+              new Document("_id", i).append("name", "name" + i), "items", "items"));
     }
     // Update to id=1 and id=2
     batchItems.add(
