@@ -149,18 +149,18 @@ public class MongoDbToMongoDb {
     void setTargetCollection(String value);
 
     @TemplateParameter.Integer(
-        order = 8,
+        order = 7,
         groupName = "Target",
         optional = true,
-        description = "Batch Size",
+        description = "Write Batch Size",
         helpText = "Number of documents in a bulk write.")
     @Default.Integer(5000)
-    Integer getBatchSize();
+    Integer getWriteBatchSize();
 
-    void setBatchSize(Integer value);
+    void setWriteBatchSize(Integer value);
 
     @TemplateParameter.Integer(
-        order = 9,
+        order = 8,
         groupName = "Target",
         optional = true,
         description = "Max Concurrent Async Writes",
@@ -171,7 +171,7 @@ public class MongoDbToMongoDb {
     void setMaxConcurrentAsyncWrites(Integer value);
 
     @TemplateParameter.Integer(
-        order = 10,
+        order = 9,
         groupName = "Target",
         optional = true,
         description = "Max Write Retries",
@@ -182,7 +182,7 @@ public class MongoDbToMongoDb {
     void setMaxWriteRetries(Integer value);
 
     @TemplateParameter.Integer(
-        order = 11,
+        order = 10,
         groupName = "Target",
         optional = true,
         description = "Initial Write Rate Per Worker",
@@ -195,7 +195,7 @@ public class MongoDbToMongoDb {
     void setInitialWriteRatePerWorker(Integer value);
 
     @TemplateParameter.Integer(
-        order = 12,
+        order = 11,
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Minutes",
@@ -207,7 +207,7 @@ public class MongoDbToMongoDb {
     void setWriteRateRampUpMinutes(Integer value);
 
     @TemplateParameter.Integer(
-        order = 13,
+        order = 12,
         groupName = "Target",
         optional = true,
         description = "Max Write Rate Per Worker",
@@ -219,7 +219,7 @@ public class MongoDbToMongoDb {
     void setMaxWriteRatePerWorker(Integer value);
 
     @TemplateParameter.Integer(
-        order = 14,
+        order = 13,
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Steps",
@@ -230,7 +230,7 @@ public class MongoDbToMongoDb {
     void setWriteRateRampUpSteps(Integer value);
 
     @TemplateParameter.Text(
-        order = 15,
+        order = 14,
         optional = true,
         description = "DLQ Directory",
         helpText =
@@ -241,7 +241,7 @@ public class MongoDbToMongoDb {
     void setDlqDirectory(String value);
 
     @TemplateParameter.Integer(
-        order = 16,
+        order = 15,
         optional = true,
         description = "DLQ Max Retries",
         helpText = "Maximum number of times to retry events from DLQ.")
@@ -251,7 +251,7 @@ public class MongoDbToMongoDb {
     void setDlqMaxRetries(Integer value);
 
     @TemplateParameter.Text(
-        order = 17,
+        order = 16,
         groupName = "Source",
         optional = true,
         description = "Reconsume DLQ Path",
@@ -263,7 +263,7 @@ public class MongoDbToMongoDb {
     void setReconsumeDlqPath(String value);
 
     @TemplateParameter.Boolean(
-        order = 18,
+        order = 17,
         groupName = "Source",
         optional = true,
         description = "Read from DLQ",
@@ -274,7 +274,7 @@ public class MongoDbToMongoDb {
     void setReadFromDlq(Boolean value);
 
     @TemplateParameter.Enum(
-        order = 19,
+        order = 18,
         groupName = "Source",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
@@ -293,7 +293,7 @@ public class MongoDbToMongoDb {
     void setMigrationMode(String value);
 
     @TemplateParameter.Integer(
-        order = 20,
+        order = 19,
         groupName = "Source",
         optional = true,
         description = "Number of Change Stream Splits",
@@ -306,7 +306,7 @@ public class MongoDbToMongoDb {
     void setNumChangeStreamSplits(Integer value);
 
     @TemplateParameter.Enum(
-        order = 21,
+        order = 20,
         groupName = "Source",
         enumOptions = {
           @TemplateParameter.TemplateEnumOption("updateLookup"),
@@ -327,7 +327,7 @@ public class MongoDbToMongoDb {
     void setChangeStreamFullDocument(String value);
 
     @TemplateParameter.Text(
-        order = 22,
+        order = 21,
         groupName = "Source",
         optional = true,
         description = "Start At Operation Time",
@@ -340,7 +340,7 @@ public class MongoDbToMongoDb {
     void setStartAtOperationTime(String value);
 
     @TemplateParameter.Integer(
-        order = 23,
+        order = 22,
         groupName = "Target",
         optional = true,
         description = "Number of Write Shards",
@@ -353,7 +353,7 @@ public class MongoDbToMongoDb {
     void setNumWriteShards(Integer value);
 
     @TemplateParameter.Integer(
-        order = 24,
+        order = 23,
         groupName = "Target",
         optional = true,
         description = "Max Buffering Duration Milliseconds",
@@ -366,7 +366,7 @@ public class MongoDbToMongoDb {
     void setMaxBufferingDurationMs(Integer value);
 
     @TemplateParameter.Integer(
-        order = 25,
+        order = 24,
         groupName = "Source",
         optional = true,
         description = "Target Backfill Chunk Size",
@@ -379,7 +379,7 @@ public class MongoDbToMongoDb {
     void setTargetBackfillChunkSize(Integer value);
 
     @TemplateParameter.Integer(
-        order = 26,
+        order = 25,
         groupName = "Source",
         optional = true,
         description = "Max Backfill Splits",
@@ -392,7 +392,7 @@ public class MongoDbToMongoDb {
     void setMaxBackfillSplits(Integer value);
 
     @TemplateParameter.Integer(
-        order = 27,
+        order = 26,
         groupName = "Source",
         optional = true,
         description = "Max Concurrent Backfill Reads",
@@ -476,9 +476,9 @@ public class MongoDbToMongoDb {
     LOG.info("  Target Database:         {}", options.getTargetDatabase());
     LOG.info("  Source Collections:      {}", sourceCollections);
     LOG.info(
-        "  Write Configuration:     batchSize={}, maxConcurrentAsyncWrites={}, maxWriteRetries={},"
-            + " dlqMaxRetries={}",
-        options.getBatchSize(),
+        "  Write Configuration:     writeBatchSize={}, maxConcurrentAsyncWrites={},"
+            + " maxWriteRetries={}, dlqMaxRetries={}",
+        options.getWriteBatchSize(),
         options.getMaxConcurrentAsyncWrites(),
         options.getMaxWriteRetries(),
         options.getDlqMaxRetries());
@@ -853,7 +853,7 @@ public class MongoDbToMongoDb {
               MongoDbTransforms.writeWithDlq()
                   .withUri(options.getTargetUri())
                   .withDatabase(options.getTargetDatabase())
-                  .withBatchSize(options.getBatchSize())
+                  .withBatchSize(options.getWriteBatchSize())
                   .withNumWriteShards(options.getNumWriteShards())
                   .withMaxBufferingDurationMs(options.getMaxBufferingDurationMs())
                   .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())

@@ -53,7 +53,7 @@ public class MongoDbToMongoDbTest {
     assertEquals("BACKFILL_AND_STREAMING", options.getMigrationMode());
     assertEquals(Integer.valueOf(1), options.getNumChangeStreamSplits());
     assertEquals("updateLookup", options.getChangeStreamFullDocument());
-    assertEquals(Integer.valueOf(5000), options.getBatchSize());
+    assertEquals(Integer.valueOf(5000), options.getWriteBatchSize());
     assertEquals(Integer.valueOf(10), options.getMaxConcurrentAsyncWrites());
     assertEquals(Integer.valueOf(3), options.getMaxWriteRetries());
     assertEquals(Integer.valueOf(3), options.getDlqMaxRetries());
@@ -83,7 +83,7 @@ public class MongoDbToMongoDbTest {
       "--maxConcurrentBackfillReads=64",
       "--numWriteShards=128",
       "--maxBufferingDurationMs=100",
-      "--batchSize=1000",
+      "--writeBatchSize=1000",
       "--maxConcurrentAsyncWrites=20"
     };
 
@@ -105,7 +105,7 @@ public class MongoDbToMongoDbTest {
     assertEquals(Integer.valueOf(64), options.getMaxConcurrentBackfillReads());
     assertEquals(Integer.valueOf(128), options.getNumWriteShards());
     assertEquals(Integer.valueOf(100), options.getMaxBufferingDurationMs());
-    assertEquals(Integer.valueOf(1000), options.getBatchSize());
+    assertEquals(Integer.valueOf(1000), options.getWriteBatchSize());
     assertEquals(Integer.valueOf(20), options.getMaxConcurrentAsyncWrites());
   }
 
