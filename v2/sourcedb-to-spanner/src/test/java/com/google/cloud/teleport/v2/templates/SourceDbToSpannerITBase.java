@@ -370,6 +370,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (!params.containsKey("outputDirectory")) {
       params.put("outputDirectory", "gs://" + artifactBucketName);
     }
+    if (System.getProperty("directRunnerTest") != null) {
+      params.put("resourceHints", "cpu_count=4");
+    }
 
     if (sessionFileResourceName != null) {
       String sessionPath = gcsPathPrefix + "/session.json";

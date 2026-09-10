@@ -8,6 +8,11 @@ CREATE TABLE IF NOT EXISTS tinyint_to_string_table (
   tinyint_to_string_col STRING(MAX),
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS tinyint_to_float_table (
+  id INT64 NOT NULL,
+  tinyint_to_float_col FLOAT64,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS tinyint_pk_table (
   id INT64 NOT NULL,
   tinyint_pk_col INT64 NOT NULL,
@@ -21,6 +26,11 @@ CREATE TABLE IF NOT EXISTS smallint_table (
 CREATE TABLE IF NOT EXISTS smallint_to_string_table (
   id INT64 NOT NULL,
   smallint_to_string_col STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS smallint_to_float_table (
+  id INT64 NOT NULL,
+  smallint_to_float_col FLOAT64,
 ) PRIMARY KEY(id);
 
 CREATE TABLE IF NOT EXISTS smallint_pk_table (
@@ -38,6 +48,11 @@ CREATE TABLE IF NOT EXISTS int_to_string_table (
   int_to_string_col STRING(MAX),
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS int_to_float_table (
+  id INT64 NOT NULL,
+  int_to_float_col FLOAT64,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS int_pk_table (
   id INT64 NOT NULL,
   int_pk_col INT64 NOT NULL,
@@ -51,6 +66,11 @@ CREATE TABLE IF NOT EXISTS bigint_table (
 CREATE TABLE IF NOT EXISTS bigint_to_string_table (
   id INT64 NOT NULL,
   bigint_to_string_col STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS bigint_to_float_table (
+  id INT64 NOT NULL,
+  bigint_to_float_col FLOAT64,
 ) PRIMARY KEY(id);
 
 CREATE TABLE IF NOT EXISTS bigint_pk_table (
@@ -151,6 +171,11 @@ CREATE TABLE IF NOT EXISTS float_table (
 CREATE TABLE IF NOT EXISTS float_to_string_table (
   id INT64 NOT NULL,
   float_to_string_col STRING(MAX),
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS float_to_numeric_table (
+  id INT64 NOT NULL,
+  float_to_numeric_col NUMERIC,
 ) PRIMARY KEY(id);
 
 CREATE TABLE IF NOT EXISTS real_table (

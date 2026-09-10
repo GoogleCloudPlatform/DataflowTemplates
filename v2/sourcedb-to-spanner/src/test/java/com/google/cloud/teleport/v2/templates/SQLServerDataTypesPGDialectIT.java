@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SQLServerDataTypesPGDialectIT.class);
-  protected PipelineLauncher.LaunchInfo jobInfo;
+  protected LaunchInfo jobInfo;
 
   protected MSSQLResourceManager msSqlResourceManager;
   protected SpannerResourceManager spannerResourceManager;
@@ -86,7 +86,7 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             spannerResourceManager,
             Map.of("maxConnections", "4"),
             null);
-    PipelineOperator.Result result =
+    Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));
     assertThatResult(result).isLaunchFinished();
 
@@ -137,18 +137,27 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     expectedData.put("tinyint", createRows("tinyint", "0", "255", "128", "42", "NULL"));
     expectedData.put(
         "tinyint_to_string", createRows("tinyint_to_string", "0", "255", "128", "42", "NULL"));
+    expectedData.put(
+        "tinyint_to_float",
+        createRows("tinyint_to_float", "0.0", "255.0", "128.0", "42.0", "NULL"));
     expectedData.put("tinyint_pk", createRows("tinyint_pk", "0", "255", "128", "42"));
 
     expectedData.put("smallint", createRows("smallint", "-32768", "32767", "0", "15", "NULL"));
     expectedData.put(
         "smallint_to_string",
         createRows("smallint_to_string", "-32768", "32767", "0", "15", "NULL"));
+    expectedData.put(
+        "smallint_to_float",
+        createRows("smallint_to_float", "-32768.0", "32767.0", "0.0", "15.0", "NULL"));
     expectedData.put("smallint_pk", createRows("smallint_pk", "-32768", "32767", "0", "15"));
 
     expectedData.put("int", createRows("int", "-2147483648", "2147483647", "0", "30", "NULL"));
     expectedData.put(
         "int_to_string",
         createRows("int_to_string", "-2147483648", "2147483647", "0", "30", "NULL"));
+    expectedData.put(
+        "int_to_float",
+        createRows("int_to_float", "-2.147483648E9", "2.147483647E9", "0.0", "30.0", "NULL"));
     expectedData.put("int_pk", createRows("int_pk", "-2147483648", "2147483647", "0", "30"));
 
     expectedData.put(
@@ -158,6 +167,15 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         "bigint_to_string",
         createRows(
             "bigint_to_string", "-9223372036854775808", "9223372036854775807", "0", "40", "NULL"));
+    expectedData.put(
+        "bigint_to_float",
+        createRows(
+            "bigint_to_float",
+            "-9.223372036854776E18",
+            "9.223372036854776E18",
+            "0.0",
+            "40.0",
+            "NULL"));
     expectedData.put(
         "bigint_pk",
         createRows("bigint_pk", "-9223372036854775808", "9223372036854775807", "0", "40"));
@@ -268,6 +286,15 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "float_to_string",
         createRows("float_to_string", "-1.79E308", "1.79E308", "45.56", "0.0", "NULL"));
+    expectedData.put(
+        "float_to_numeric",
+        createRows(
+            "float_to_numeric",
+            "45.560000000",
+            "123456789.123456000",
+            "-123456789.123456000",
+            "0.000000000",
+            "NULL"));
 
     expectedData.put("real", createRows("real", "-3.4E38", "3.4E38", "12.34", "0.0", "NULL"));
     expectedData.put(

@@ -10,6 +10,12 @@ CREATE TABLE IF NOT EXISTS tinyint_to_string_table (
   PRIMARY KEY(id)
 );
 
+CREATE TABLE IF NOT EXISTS tinyint_to_float_table (
+  id bigint NOT NULL,
+  tinyint_to_float_col double precision,
+  PRIMARY KEY(id)
+);
+
 CREATE TABLE IF NOT EXISTS tinyint_pk_table (
   id bigint NOT NULL,
   tinyint_pk_col bigint NOT NULL,
@@ -25,6 +31,12 @@ CREATE TABLE IF NOT EXISTS smallint_table (
 CREATE TABLE IF NOT EXISTS smallint_to_string_table (
   id bigint NOT NULL,
   smallint_to_string_col varchar,
+  PRIMARY KEY(id)
+);
+
+CREATE TABLE IF NOT EXISTS smallint_to_float_table (
+  id bigint NOT NULL,
+  smallint_to_float_col double precision,
   PRIMARY KEY(id)
 );
 
@@ -46,6 +58,12 @@ CREATE TABLE IF NOT EXISTS int_to_string_table (
   PRIMARY KEY(id)
 );
 
+CREATE TABLE IF NOT EXISTS int_to_float_table (
+  id bigint NOT NULL,
+  int_to_float_col double precision,
+  PRIMARY KEY(id)
+);
+
 CREATE TABLE IF NOT EXISTS int_pk_table (
   id bigint NOT NULL,
   int_pk_col bigint NOT NULL,
@@ -61,6 +79,12 @@ CREATE TABLE IF NOT EXISTS bigint_table (
 CREATE TABLE IF NOT EXISTS bigint_to_string_table (
   id bigint NOT NULL,
   bigint_to_string_col varchar,
+  PRIMARY KEY(id)
+);
+
+CREATE TABLE IF NOT EXISTS bigint_to_float_table (
+  id bigint NOT NULL,
+  bigint_to_float_col double precision,
   PRIMARY KEY(id)
 );
 
@@ -181,6 +205,12 @@ CREATE TABLE IF NOT EXISTS float_table (
 CREATE TABLE IF NOT EXISTS float_to_string_table (
   id bigint NOT NULL,
   float_to_string_col varchar,
+  PRIMARY KEY(id)
+);
+
+CREATE TABLE IF NOT EXISTS float_to_numeric_table (
+  id bigint NOT NULL,
+  float_to_numeric_col numeric,
   PRIMARY KEY(id)
 );
 

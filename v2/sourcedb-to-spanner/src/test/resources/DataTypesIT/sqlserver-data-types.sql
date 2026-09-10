@@ -10,6 +10,12 @@ CREATE TABLE [tinyint_to_string_table] (
 );
 INSERT INTO [tinyint_to_string_table] ([id], [tinyint_to_string_col]) VALUES (1, 0), (2, 255), (3, 128), (4, 42), (5, NULL);
 
+CREATE TABLE [tinyint_to_float_table] (
+    [id] INT PRIMARY KEY,
+    [tinyint_to_float_col] TINYINT DEFAULT NULL
+);
+INSERT INTO [tinyint_to_float_table] ([id], [tinyint_to_float_col]) VALUES (1, 0), (2, 255), (3, 128), (4, 42), (5, NULL);
+
 CREATE TABLE [tinyint_pk_table] (
     [id] TINYINT PRIMARY KEY,
     [tinyint_pk_col] TINYINT NOT NULL
@@ -27,6 +33,12 @@ CREATE TABLE [smallint_to_string_table] (
     [smallint_to_string_col] SMALLINT DEFAULT NULL
 );
 INSERT INTO [smallint_to_string_table] ([id], [smallint_to_string_col]) VALUES (1, -32768), (2, 32767), (3, 0), (4, 15), (5, NULL);
+
+CREATE TABLE [smallint_to_float_table] (
+    [id] INT PRIMARY KEY,
+    [smallint_to_float_col] SMALLINT DEFAULT NULL
+);
+INSERT INTO [smallint_to_float_table] ([id], [smallint_to_float_col]) VALUES (1, -32768), (2, 32767), (3, 0), (4, 15), (5, NULL);
 
 CREATE TABLE [smallint_pk_table] (
     [id] SMALLINT PRIMARY KEY,
@@ -46,6 +58,12 @@ CREATE TABLE [int_to_string_table] (
 );
 INSERT INTO [int_to_string_table] ([id], [int_to_string_col]) VALUES (1, -2147483648), (2, 2147483647), (3, 0), (4, 30), (5, NULL);
 
+CREATE TABLE [int_to_float_table] (
+    [id] INT PRIMARY KEY,
+    [int_to_float_col] INT DEFAULT NULL
+);
+INSERT INTO [int_to_float_table] ([id], [int_to_float_col]) VALUES (1, -2147483648), (2, 2147483647), (3, 0), (4, 30), (5, NULL);
+
 CREATE TABLE [int_pk_table] (
     [id] INT PRIMARY KEY,
     [int_pk_col] INT NOT NULL
@@ -63,6 +81,12 @@ CREATE TABLE [bigint_to_string_table] (
     [bigint_to_string_col] BIGINT DEFAULT NULL
 );
 INSERT INTO [bigint_to_string_table] ([id], [bigint_to_string_col]) VALUES (1, -9223372036854775808), (2, 9223372036854775807), (3, 0), (4, 40), (5, NULL);
+
+CREATE TABLE [bigint_to_float_table] (
+    [id] INT PRIMARY KEY,
+    [bigint_to_float_col] BIGINT DEFAULT NULL
+);
+INSERT INTO [bigint_to_float_table] ([id], [bigint_to_float_col]) VALUES (1, -9223372036854775808), (2, 9223372036854775807), (3, 0), (4, 40), (5, NULL);
 
 CREATE TABLE [bigint_pk_table] (
     [id] BIGINT PRIMARY KEY,
@@ -183,6 +207,12 @@ CREATE TABLE [float_to_string_table] (
     [float_to_string_col] FLOAT DEFAULT NULL
 );
 INSERT INTO [float_to_string_table] ([id], [float_to_string_col]) VALUES (1, -1.79E+308), (2, 1.79E+308), (3, 45.56), (4, 0.0), (5, NULL);
+
+CREATE TABLE [float_to_numeric_table] (
+    [id] INT PRIMARY KEY,
+    [float_to_numeric_col] FLOAT DEFAULT NULL
+);
+INSERT INTO [float_to_numeric_table] ([id], [float_to_numeric_col]) VALUES (1, 45.56), (2, 123456789.123456), (3, -123456789.123456), (4, 0.0), (5, NULL);
 
 CREATE TABLE [real_table] (
     [id] INT PRIMARY KEY,
