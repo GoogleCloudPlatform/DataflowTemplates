@@ -45,22 +45,23 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.joda.time.Instant;
 
 @Template(
-    name = "GCS_Spanner_Data_Validator",
+    name = "Avro_to_Spanner_Data_Validator",
     category = TemplateCategory.BATCH,
-    displayName = "GCS Spanner Data Validation",
+    displayName = "Cloud Storage Avro files to Spanner Data Validation",
     description =
-        "Batch pipeline that reads data from GCS and Spanner compares them to validate migration"
+        "Batch pipeline that reads data from Cloud Storage and Spanner and compares them to validate migration"
             + " correctness.",
     optionsClass = GCSSpannerDVOptions.class,
-    flexContainerName = "gcs-spanner-dv",
+    flexContainerName = "avro-to-spanner-dv",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/gcs-spanner-dv",
     contactInformation = "https://cloud.google.com/support",
     preview = true,
     requirements = {
-      "The GCS directory for AVRO files must exist before pipeline execution.",
+      "The Cloud Storage directory for Avro files must exist before pipeline execution.",
+      "The target BigQuery dataset for validation results must exist before pipeline execution.",
       "The Spanner tables must exist before pipeline execution.",
-      "The Spanner tables must have a compatible schema (either directly or schema mapping)."
+      "The Spanner tables must have a compatible schema (either directly or through schema mapping)."
     })
 public class GCSSpannerDV {
 

@@ -31,9 +31,9 @@ Example snippet for `SourceDbToSpanner` execution:
 
 ### Step 2: Configure and Run the Validation Template
 
-After the records have been dumped to GCS, you can run the `GCS_Spanner_Data_Validator` template.
+After the records have been dumped to GCS, you can run the `Avro_to_Spanner_Data_Validator` template.
 
-Refer to [README_GCS_Spanner_Data_Validator.md](README_GCS_Spanner_Data_Validator.md) for full details on all available parameters and commands to build and run the template.
+Refer to [README_Avro_to_Spanner_Data_Validator.md](README_Avro_to_Spanner_Data_Validator.md) for full details on all available parameters and commands to build and run the template.
 
 The most important parameters you need to configure are:
 - **gcsInputDirectory**: Path to the AVRO files dump from Step 1 (e.g., `gs://your-bucket/your-path`).
@@ -84,5 +84,4 @@ WHERE run_id = 'your_run_id';
 ```
 
 ## References
-- See [README_GCS_Spanner_Data_Validator.md](README_GCS_Spanner_Data_Validator.md) for full commands to build and run the template.
-- For more advanced end-to-end deployment examples using Terraform, please refer to the [Terraform samples directory](terraform/samples/).
+- See [README_Avro_to_Spanner_Data_Validator.md](README_Avro_to_Spanner_Data_Validator.md) for full commands to build and run the template.
