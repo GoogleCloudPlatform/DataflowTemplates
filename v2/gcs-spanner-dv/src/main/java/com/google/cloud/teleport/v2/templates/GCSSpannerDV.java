@@ -54,7 +54,7 @@ import org.joda.time.Instant;
     optionsClass = GCSSpannerDVOptions.class,
     flexContainerName = "avro-to-spanner-dv",
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/gcs-spanner-dv",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-spanner-dv",
     contactInformation = "https://cloud.google.com/support",
     preview = true,
     requirements = {
