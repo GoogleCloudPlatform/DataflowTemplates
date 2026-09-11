@@ -1,0 +1,13 @@
+CREATE TABLE "Category" (
+  "category_id" NUMBER PRIMARY KEY,
+  "name" VARCHAR2(25),
+  "last_update" TIMESTAMP
+);
+ALTER TABLE "Category" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+
+CREATE TABLE "Books" (
+  "id" NUMBER,
+  "title" VARCHAR2(200),
+  "author_id" NUMBER
+);
+ALTER TABLE "Books" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
