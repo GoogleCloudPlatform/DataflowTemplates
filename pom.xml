@@ -355,7 +355,12 @@
         <version>${httpcore5.version}</version>
       </dependency>
       <!-- Enforce non-vulnerable version of lz4-java (CVE-2026-59949). Pulled in
-           transitively by com.clickhouse:client-v2 via beam-sdks-java-io-clickhouse. -->
+           transitively by com.clickhouse:client-v2 via beam-sdks-java-io-clickhouse,
+           and it is the only provider of net.jpountz.* (used by Netty's LZ4 codec).
+           TODO - Remove once Beam ships beam-sdks-java-io-clickhouse built against
+           clickhouse-java >= 0.11.0, which picks up lz4-java >= 1.11.1
+           (https://github.com/ClickHouse/clickhouse-java/pull/2958). Beam 2.76.0
+           still resolves clickhouse-java 0.9.6. -->
       <dependency>
         <groupId>at.yawk.lz4</groupId>
         <artifactId>lz4-java</artifactId>
