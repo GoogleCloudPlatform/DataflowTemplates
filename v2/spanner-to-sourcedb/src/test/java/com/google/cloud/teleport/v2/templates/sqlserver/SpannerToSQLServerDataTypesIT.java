@@ -367,6 +367,20 @@ public class SpannerToSQLServerDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "smallmoney_to_string", List.of(Value.string("68.7500"), Value.string(null)));
     spannerRowData.put("float_to_string", List.of(Value.string("52.67"), Value.string(null)));
+    spannerRowData.put(
+        "float_to_numeric", List.of(Value.numeric(new BigDecimal("52.67")), Value.numeric(null)));
+    spannerRowData.put(
+        "tinyint_to_float",
+        List.of(Value.float64(10.0), Value.float64(255.0), Value.float64(null)));
+    spannerRowData.put(
+        "smallint_to_float",
+        List.of(Value.float64(15.0), Value.float64(32767.0), Value.float64(null)));
+    spannerRowData.put(
+        "int_to_float",
+        List.of(Value.float64(30.0), Value.float64(2147483647.0), Value.float64(null)));
+    spannerRowData.put(
+        "bigint_to_float",
+        List.of(Value.float64(40.0), Value.float64(9007199254740991.0), Value.float64(null)));
     spannerRowData.put("real_to_float64", List.of(Value.float64(45.56), Value.float64(null)));
     spannerRowData.put("real_to_string", List.of(Value.string("45.56"), Value.string(null)));
     spannerRowData.put("date_to_string", List.of(Value.string("2012-09-17"), Value.string(null)));
@@ -587,6 +601,14 @@ public class SpannerToSQLServerDataTypesIT extends SpannerToSourceDbITBase {
         "smallmoney_to_string",
         createRows("smallmoney_to_string", new BigDecimal("68.7500"), null));
     expectedData.put("float_to_string", createRows("float_to_string", 52.67, null));
+    expectedData.put("float_to_numeric", createRows("float_to_numeric", 52.67, null));
+    expectedData.put(
+        "tinyint_to_float", createRows("tinyint_to_float", (short) 10, (short) 255, null));
+    expectedData.put(
+        "smallint_to_float", createRows("smallint_to_float", (short) 15, (short) 32767, null));
+    expectedData.put("int_to_float", createRows("int_to_float", 30, 2147483647, null));
+    expectedData.put(
+        "bigint_to_float", createRows("bigint_to_float", 40L, 9007199254740991L, null));
     expectedData.put("real_to_float64", createRows("real_to_float64", 45.56F, null));
     expectedData.put("real_to_string", createRows("real_to_string", 45.56F, null));
     expectedData.put(

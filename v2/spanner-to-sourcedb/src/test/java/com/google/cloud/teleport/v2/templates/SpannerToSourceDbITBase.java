@@ -609,42 +609,4 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       }
     }
   }
-
-  protected void createSQLServerTableWithNColumns(
-      MSSQLResourceManager jdbcResourceManager, String tableName, int n, String stringSize)
-      throws Exception {
-    if (tableName == null || tableName.isBlank()) {
-      throw new IllegalArgumentException("Table name must be specified and non-blank");
-    }
-
-    if (n < 1) {
-      throw new IllegalArgumentException("Number of columns must be at least 1");
-    }
-
-    if (stringSize == null || stringSize.isBlank()) {
-      throw new IllegalArgumentException("String size must be specified and non-blank");
-    }
-
-    StringBuilder ddlBuilder = new StringBuilder();
-    ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
-    ddlBuilder.append("    id VARCHAR(20) NOT NULL PRIMARY KEY,\n");
-
-    for (int i = 1; i <= n; i++) {
-      ddlBuilder.append("    col_").append(i).append(" VARCHAR(").append(stringSize).append("),\n");
-    }
-
-    ddlBuilder.setLength(ddlBuilder.length() - 2);
-    ddlBuilder.append("\n);");
-
-    String ddl = ddlBuilder.toString().trim();
-    if (ddl.isBlank()) {
-      throw new IllegalStateException("DDL generation failed for column count: " + n);
-    }
-
-    try {
-      jdbcResourceManager.runSQLUpdate(ddl);
-    } catch (Exception e) {
-      throw new RuntimeException("Error executing DDL statement: " + ddl, e);
-    }
-  }
 }

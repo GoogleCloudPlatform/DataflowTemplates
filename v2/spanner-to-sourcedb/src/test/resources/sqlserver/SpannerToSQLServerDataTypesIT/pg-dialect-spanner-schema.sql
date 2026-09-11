@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS money_to_string_table (id bigint NOT NULL PRIMARY KEY
 CREATE TABLE IF NOT EXISTS smallmoney_to_float64_table (id bigint NOT NULL PRIMARY KEY, smallmoney_to_float64_col double precision);
 CREATE TABLE IF NOT EXISTS smallmoney_to_string_table (id bigint NOT NULL PRIMARY KEY, smallmoney_to_string_col varchar);
 CREATE TABLE IF NOT EXISTS float_to_string_table (id bigint NOT NULL PRIMARY KEY, float_to_string_col varchar);
+CREATE TABLE IF NOT EXISTS float_to_numeric_table (id bigint NOT NULL PRIMARY KEY, float_to_numeric_col numeric);
+CREATE TABLE IF NOT EXISTS tinyint_to_float_table (id bigint NOT NULL PRIMARY KEY, tinyint_to_float_col double precision);
+CREATE TABLE IF NOT EXISTS smallint_to_float_table (id bigint NOT NULL PRIMARY KEY, smallint_to_float_col double precision);
+CREATE TABLE IF NOT EXISTS int_to_float_table (id bigint NOT NULL PRIMARY KEY, int_to_float_col double precision);
+CREATE TABLE IF NOT EXISTS bigint_to_float_table (id bigint NOT NULL PRIMARY KEY, bigint_to_float_col double precision);
 CREATE TABLE IF NOT EXISTS real_to_float64_table (id bigint NOT NULL PRIMARY KEY, real_to_float64_col double precision);
 CREATE TABLE IF NOT EXISTS real_to_string_table (id bigint NOT NULL PRIMARY KEY, real_to_string_col varchar);
 CREATE TABLE IF NOT EXISTS date_to_string_table (id bigint NOT NULL PRIMARY KEY, date_to_string_col varchar);

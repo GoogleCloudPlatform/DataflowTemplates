@@ -42,6 +42,11 @@ CREATE TABLE money_to_string_table (id INT NOT NULL PRIMARY KEY, money_to_string
 CREATE TABLE smallmoney_to_float64_table (id INT NOT NULL PRIMARY KEY, smallmoney_to_float64_col SMALLMONEY);
 CREATE TABLE smallmoney_to_string_table (id INT NOT NULL PRIMARY KEY, smallmoney_to_string_col SMALLMONEY);
 CREATE TABLE float_to_string_table (id INT NOT NULL PRIMARY KEY, float_to_string_col FLOAT);
+CREATE TABLE float_to_numeric_table (id INT NOT NULL PRIMARY KEY, float_to_numeric_col FLOAT);
+CREATE TABLE tinyint_to_float_table (id INT NOT NULL PRIMARY KEY, tinyint_to_float_col TINYINT);
+CREATE TABLE smallint_to_float_table (id INT NOT NULL PRIMARY KEY, smallint_to_float_col SMALLINT);
+CREATE TABLE int_to_float_table (id INT NOT NULL PRIMARY KEY, int_to_float_col INT);
+CREATE TABLE bigint_to_float_table (id INT NOT NULL PRIMARY KEY, bigint_to_float_col BIGINT);
 CREATE TABLE real_to_float64_table (id INT NOT NULL PRIMARY KEY, real_to_float64_col REAL);
 CREATE TABLE real_to_string_table (id INT NOT NULL PRIMARY KEY, real_to_string_col REAL);
 CREATE TABLE date_to_string_table (id INT NOT NULL PRIMARY KEY, date_to_string_col DATE);

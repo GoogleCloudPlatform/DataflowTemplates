@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS money_to_string_table (id INT64 NOT NULL, money_to_st
 CREATE TABLE IF NOT EXISTS smallmoney_to_float64_table (id INT64 NOT NULL, smallmoney_to_float64_col FLOAT64) PRIMARY KEY(id);
 CREATE TABLE IF NOT EXISTS smallmoney_to_string_table (id INT64 NOT NULL, smallmoney_to_string_col STRING(MAX)) PRIMARY KEY(id);
 CREATE TABLE IF NOT EXISTS float_to_string_table (id INT64 NOT NULL, float_to_string_col STRING(MAX)) PRIMARY KEY(id);
+CREATE TABLE IF NOT EXISTS float_to_numeric_table (id INT64 NOT NULL, float_to_numeric_col NUMERIC) PRIMARY KEY(id);
+CREATE TABLE IF NOT EXISTS tinyint_to_float_table (id INT64 NOT NULL, tinyint_to_float_col FLOAT64) PRIMARY KEY(id);
+CREATE TABLE IF NOT EXISTS smallint_to_float_table (id INT64 NOT NULL, smallint_to_float_col FLOAT64) PRIMARY KEY(id);
+CREATE TABLE IF NOT EXISTS int_to_float_table (id INT64 NOT NULL, int_to_float_col FLOAT64) PRIMARY KEY(id);
+CREATE TABLE IF NOT EXISTS bigint_to_float_table (id INT64 NOT NULL, bigint_to_float_col FLOAT64) PRIMARY KEY(id);
 CREATE TABLE IF NOT EXISTS real_to_float64_table (id INT64 NOT NULL, real_to_float64_col FLOAT64) PRIMARY KEY(id);
 CREATE TABLE IF NOT EXISTS real_to_string_table (id INT64 NOT NULL, real_to_string_col STRING(MAX)) PRIMARY KEY(id);
 CREATE TABLE IF NOT EXISTS date_to_string_table (id INT64 NOT NULL, date_to_string_col STRING(MAX)) PRIMARY KEY(id);
