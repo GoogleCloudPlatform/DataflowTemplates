@@ -20,12 +20,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
+import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class DocumentWithMetadataTest {
+
+  private static final JsonWriterSettings EXTENDED_JSON =
+      JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
   @Test
   public void documentWithMetadata_toAndFromDlqJson_roundTrip() {
@@ -206,5 +212,53 @@ public class DocumentWithMetadataTest {
 
     assertEquals(item1.getDedupKey(), item2.getDedupKey());
     assertTrue(item1.getDedupKey().startsWith("targetCol#"));
+  }
+
+  @Test
+  public void getDedupKey_shardedCdcAndBackfill_produceMatchingKeys() {
+    ObjectId id = new ObjectId();
+    Document doc = new Document("_id", id).append("customerId", 12345).append("name", "acme");
+
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            doc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+
+    // On a sharded collection the change stream documentKey also carries the shard key fields.
+    String shardedDocumentKey =
+        new Document("customerId", 12345).append("_id", id).toJson(EXTENDED_JSON);
+    DocumentWithMetadata cdc =
+        DocumentWithMetadata.cdcEvent(
+            doc,
+            doc.toJson(),
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(100L, 1L),
+            shardedDocumentKey);
+
+    assertEquals(backfill.getDedupKey(), cdc.getDedupKey());
+  }
+
+  @Test
+  public void getDedupKey_unshardedCdcAndBackfill_produceMatchingKeys() {
+    ObjectId id = new ObjectId();
+    Document doc = new Document("_id", id).append("name", "acme");
+
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            doc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+
+    String unshardedDocumentKey = new Document("_id", id).toJson(EXTENDED_JSON);
+    DocumentWithMetadata cdc =
+        DocumentWithMetadata.cdcEvent(
+            doc,
+            doc.toJson(),
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(100L, 1L),
+            unshardedDocumentKey);
+
+    assertEquals(backfill.getDedupKey(), cdc.getDedupKey());
   }
 }

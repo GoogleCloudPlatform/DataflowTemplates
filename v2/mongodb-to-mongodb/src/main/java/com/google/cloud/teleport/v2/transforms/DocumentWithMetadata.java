@@ -181,6 +181,19 @@ public class DocumentWithMetadata implements Serializable {
       col = "default";
     }
     if (documentKey != null && !documentKey.isEmpty()) {
+      // On sharded collections the change stream documentKey carries the shard key fields in
+      // addition to _id, while backfill events only ever carry _id. Normalize down to _id so both
+      // streams agree on the key; otherwise the same document would occupy two different dedup
+      // state cells and two different write shards, allowing a stale backfill row to be written
+      // concurrently with (and after) a newer CDC event.
+      try {
+        Document keyDoc = Document.parse(documentKey);
+        if (keyDoc.containsKey("_id")) {
+          return col + "#" + new Document("_id", keyDoc.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
+        }
+      } catch (Exception ignored) {
+        // Fall through to the raw documentKey below.
+      }
       return col + "#" + documentKey;
     }
     if (document != null && document.containsKey("_id")) {
