@@ -26,6 +26,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -62,8 +64,15 @@ public class SourceReaderTransform
     return input
         .apply("CreateFilePatterns", Create.of(getFilePatterns(gcsInputDirectory, tableConfig)))
         .apply(
+            "MatchFilePatterns",
+            FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
+        .apply(
+            "ReadMatchedFiles",
+            FileIO.readMatches()
+                .withDirectoryTreatment(FileIO.ReadMatches.DirectoryTreatment.PROHIBIT))
+        .apply(
             "ReadSourceAvroRecords",
-            AvroIO.parseAllGenericRecords(new IdentityGenericRecordFn())
+            AvroIO.parseFilesGenericRecords(new IdentityGenericRecordFn())
                 .withCoder(GenericRecordCoder.of()))
         .apply(
             "CalculateSourceRecordsHash",
