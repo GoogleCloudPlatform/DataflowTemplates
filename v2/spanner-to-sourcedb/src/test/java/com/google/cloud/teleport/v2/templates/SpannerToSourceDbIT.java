@@ -35,8 +35,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,7 +47,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.SSLMySQLResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
@@ -90,7 +88,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  private static SSLMySQLResourceManager jdbcResourceManager;
+  private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
@@ -109,22 +107,17 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         spannerResourceManager = createSpannerDatabase(SpannerToSourceDbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = SSLMySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        gcsResourceManager.uploadArtifact(
-            "input/truststore_Shard1.jks", jdbcResourceManager.getTruststorePath());
+        
         String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks", gcsResourceManager);
 
         String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
 
-        String props =
-            String.format(
-                "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s",
-                URLEncoder.encode(truststoreLocalUrl, StandardCharsets.UTF_8),
-                URLEncoder.encode(jdbcResourceManager.getPassword(), StandardCharsets.UTF_8));
+        String props = "useSSL=false&allowPublicKeyRetrieval=true";
 
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard1");
