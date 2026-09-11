@@ -111,6 +111,9 @@
     <neo4j-driver.version>5.28.12</neo4j-driver.version>
     <okio.version>3.18.1</okio.version>
     <jetty.version>12.1.11</jetty.version>
+    <httpclient5.version>5.6.4</httpclient5.version>
+    <httpcore5.version>5.4.3</httpcore5.version>
+    <lz4-java.version>1.11.2</lz4-java.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>
@@ -334,6 +337,34 @@
         <groupId>org.apache.zookeeper</groupId>
         <artifactId>zookeeper</artifactId>
         <version>${zookeeper.version}</version>
+      </dependency>
+      <!-- Enforce non-vulnerable version of HttpComponents Core 5 and Client 5 (CVE-2026-54399) -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.client5</groupId>
+        <artifactId>httpclient5</artifactId>
+        <version>${httpclient5.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>${httpcore5.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5-h2</artifactId>
+        <version>${httpcore5.version}</version>
+      </dependency>
+      <!-- Enforce non-vulnerable version of lz4-java (CVE-2026-59949). Pulled in
+           transitively by com.clickhouse:client-v2 via beam-sdks-java-io-clickhouse,
+           and it is the only provider of net.jpountz.* (used by Netty's LZ4 codec).
+           TODO - Remove once Beam ships beam-sdks-java-io-clickhouse built against
+           clickhouse-java >= 0.11.0, which picks up lz4-java >= 1.11.1
+           (https://github.com/ClickHouse/clickhouse-java/pull/2958). Beam 2.76.0
+           still resolves clickhouse-java 0.9.6. -->
+      <dependency>
+        <groupId>at.yawk.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>${lz4-java.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
