@@ -20,26 +20,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.mongodb.ServerAddress;
-import com.mongodb.ServerCursor;
-import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import java.lang.reflect.Proxy;
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -167,8 +157,11 @@ public class ReadSplitGeneratorTest {
     @SuppressWarnings("unchecked")
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
 
-    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
-    when(mockDb.getCollection(anyString(), eq(BsonDocument.class))).thenReturn(mockCol);
+    when(mockClient.getDatabase(org.mockito.ArgumentMatchers.anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.eq(BsonDocument.class)))
+        .thenReturn(mockCol);
 
     // Mock detectIdTypes to return multiple types
     @SuppressWarnings("unchecked")
@@ -179,19 +172,23 @@ public class ReadSplitGeneratorTest {
 
     // Mock $sample aggregation
     @SuppressWarnings("unchecked")
-    AggregateIterable<BsonDocument> mockAgg =
-        (AggregateIterable<BsonDocument>)
-            Proxy.newProxyInstance(
+    com.mongodb.client.AggregateIterable<BsonDocument> mockAgg =
+        (com.mongodb.client.AggregateIterable<BsonDocument>)
+            java.lang.reflect.Proxy.newProxyInstance(
                 getClass().getClassLoader(),
-                new Class<?>[] {AggregateIterable.class},
+                new Class<?>[] {com.mongodb.client.AggregateIterable.class},
                 (proxy, method, args) -> {
+                  if (method.getName().equals("allowDiskUse")
+                      || method.getName().equals("maxTime")) {
+                    return proxy;
+                  }
                   if (method.getName().equals("iterator")) {
-                    return new MongoCursor<BsonDocument>() {
-                      Iterator<BsonDocument> iter =
-                          Arrays.asList(
-                                  new BsonDocument("_id", new BsonString("min")),
-                                  new BsonDocument("_id", new BsonString("mid")),
-                                  new BsonDocument("_id", new BsonString("max")))
+                    return new com.mongodb.client.MongoCursor<BsonDocument>() {
+                      java.util.Iterator<BsonDocument> iter =
+                          java.util.Arrays.asList(
+                                  new BsonDocument("_id", new org.bson.BsonString("min")),
+                                  new BsonDocument("_id", new org.bson.BsonString("mid")),
+                                  new BsonDocument("_id", new org.bson.BsonString("max")))
                               .iterator();
 
                       @Override
@@ -213,12 +210,12 @@ public class ReadSplitGeneratorTest {
                       }
 
                       @Override
-                      public ServerCursor getServerCursor() {
+                      public com.mongodb.ServerCursor getServerCursor() {
                         return null;
                       }
 
                       @Override
-                      public ServerAddress getServerAddress() {
+                      public com.mongodb.ServerAddress getServerAddress() {
                         return null;
                       }
 
@@ -246,5 +243,74 @@ public class ReadSplitGeneratorTest {
     assertTrue(slice0.contains("\"$type\": \"string\""));
     assertTrue(slice0.contains("\"$type\": \"objectId\""));
     assertTrue(slice0.contains("\"$type\": [\"int\""));
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_smallCollectionReturnsSingleSplit() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(2000L);
+
+    List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16);
+    assertEquals(1, splits.size());
+    assertTrue(splits.get(0).isEmpty());
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_calculatesEffectiveSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(1_000_000L);
+
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
+    assertEquals(5, splits.size());
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_clampsToMaxSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(100_000_000L);
+
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
+    assertEquals(256, splits.size());
+  }
+
+  @Test
+  public void testGenerateTypeIsolatedSplits_zeroTargetChunkSize_usesNumSplits() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(10_000_000L);
+
+    List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16, 0, 256);
+    assertEquals(16, splits.size());
+  }
+
+  @Test
+  public void testGenerateProbedObjectIdSplits_boundsTailSliceWithMaxHex() {
+    String minHex = "66d000000000000000000000";
+    String maxHex = "66dff0000000000000000000";
+    List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 4);
+    assertEquals(4, splits.size());
+    assertTrue(splits.get(0).toJson().contains("\"$lt\""));
+    assertTrue(splits.get(1).toJson().contains("\"$gte\""));
+    assertTrue(splits.get(1).toJson().contains("\"$lt\""));
+    String tailJson = splits.get(3).toJson();
+    assertTrue(tailJson.contains("\"$gte\""));
+    assertTrue(tailJson.contains("\"$lte\""));
+    assertTrue(tailJson.contains(maxHex));
+  }
+
+  @Test
+  public void testGenerateProbedObjectIdSplits_singleSplitBoundedToMaxHex() {
+    String minHex = "66d000000000000000000000";
+    String maxHex = "66dff0000000000000000000";
+    List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 1);
+    assertEquals(1, splits.size());
+    String json = splits.get(0).toJson();
+    assertTrue(json.contains("\"$lte\""));
+    assertTrue(json.contains(maxHex));
   }
 }
