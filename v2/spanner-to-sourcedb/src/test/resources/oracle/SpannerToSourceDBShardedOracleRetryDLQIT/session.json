@@ -1,0 +1,4329 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "dlq-it-test",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "Customers",
+      "ColIds": [
+        "c6",
+        "c7",
+        "c8",
+        "c9",
+        "c55"
+      ],
+      "ShardIdColumn": "c55",
+      "ColDefs": {
+        "c55": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c55",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c6": {
+          "Name": "CustomerId",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: CustomerId int(10)",
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c7": {
+          "Name": "CustomerName",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: CustomerName varchar(255)",
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c8": {
+          "Name": "CreditLimit",
+          "T": {
+            "Name": "NUMERIC",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: CreditLimit decimal(10,2)",
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c9": {
+          "Name": "LoyaltyTier",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: LegacyRegion varchar(50)",
+          "Id": "c9",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c6",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c55",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": [],
+      "Comment": "Spanner schema for source table Customers",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Orders",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c56",
+        "c58"
+      ],
+      "ShardIdColumn": "c56",
+      "ColDefs": {
+        "c11": {
+          "Name": "CustomerId",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: CustomerId int(10)",
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c12": {
+          "Name": "OrderId",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: OrderId int(10)",
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c13": {
+          "Name": "OrderValue",
+          "T": {
+            "Name": "NUMERIC",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: OrderValue decimal(10,2)",
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c56": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c56",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c58": {
+          "Name": "OrderSource",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "",
+          "Id": "c58",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 3
+        },
+        {
+          "ColId": "c56",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Orders",
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "AllDataTypes",
+      "ColIds": [
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20",
+        "c21",
+        "c22",
+        "c23",
+        "c24",
+        "c25",
+        "c26",
+        "c27",
+        "c28",
+        "c29",
+        "c30",
+        "c31",
+        "c32",
+        "c33",
+        "c34",
+        "c35",
+        "c36",
+        "c37",
+        "c38",
+        "c39",
+        "c40",
+        "c41",
+        "c42",
+        "c43",
+        "c44",
+        "c45",
+        "c46",
+        "c47",
+        "c48",
+        "c49",
+        "c50",
+        "c51",
+        "c52",
+        "c53",
+        "c54"
+      ],
+      "ShardIdColumn": "c54",
+      "ColDefs": {
+        "c15": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c16": {
+          "Name": "varchar_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 1000,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: varchar_col varchar(1000)",
+          "Id": "c16",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c17": {
+          "Name": "tinyint_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: tinyint_col tinyint(3)",
+          "Id": "c17",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c18": {
+          "Name": "tinyint_unsigned_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: tinyint_unsigned_col tinyint",
+          "Id": "c18",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c19": {
+          "Name": "text_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: text_col text(65535)",
+          "Id": "c19",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c20": {
+          "Name": "date_col",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: date_col date",
+          "Id": "c20",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c21": {
+          "Name": "smallint_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: smallint_col smallint(5)",
+          "Id": "c21",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c22": {
+          "Name": "smallint_unsigned_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: smallint_unsigned_col smallint(5)",
+          "Id": "c22",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c23": {
+          "Name": "mediumint_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: mediumint_col mediumint(7)",
+          "Id": "c23",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c24": {
+          "Name": "mediumint_unsigned_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: mediumint_unsigned_col mediumint(7)",
+          "Id": "c24",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c25": {
+          "Name": "bigint_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bigint_col bigint(19)",
+          "Id": "c25",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c26": {
+          "Name": "bigint_unsigned_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bigint_unsigned_col bigint unsigned(20)",
+          "Id": "c26",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c27": {
+          "Name": "float_col",
+          "T": {
+            "Name": "FLOAT32",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: float_col float(12)",
+          "Id": "c27",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c28": {
+          "Name": "double_col",
+          "T": {
+            "Name": "FLOAT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: double_col double(22)",
+          "Id": "c28",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c29": {
+          "Name": "decimal_col",
+          "T": {
+            "Name": "NUMERIC",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: decimal_col decimal(65,30)",
+          "Id": "c29",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c30": {
+          "Name": "datetime_col",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: datetime_col datetime",
+          "Id": "c30",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c31": {
+          "Name": "time_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: time_col time",
+          "Id": "c31",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c32": {
+          "Name": "year_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: year_col year",
+          "Id": "c32",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c33": {
+          "Name": "char_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: char_col char(255)",
+          "Id": "c33",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c34": {
+          "Name": "tinyblob_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: tinyblob_col tinyblob(255)",
+          "Id": "c34",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c35": {
+          "Name": "tinytext_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: tinytext_col tinytext(255)",
+          "Id": "c35",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c36": {
+          "Name": "blob_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 65535,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: blob_col blob(65535)",
+          "Id": "c36",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c37": {
+          "Name": "mediumblob_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 10485760,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: mediumblob_col mediumblob(16777215)",
+          "Id": "c37",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c38": {
+          "Name": "mediumtext_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: mediumtext_col mediumtext(16777215)",
+          "Id": "c38",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c39": {
+          "Name": "test_json_col",
+          "T": {
+            "Name": "JSON",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: test_json_col json",
+          "Id": "c39",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c40": {
+          "Name": "longblob_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 10485760,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: longblob_col longblob(4294967295)",
+          "Id": "c40",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c41": {
+          "Name": "longtext_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: longtext_col longtext(4294967295)",
+          "Id": "c41",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c42": {
+          "Name": "enum_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: enum_col enum(1)",
+          "Id": "c42",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c43": {
+          "Name": "bool_col",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bool_col tinyint(1)",
+          "Id": "c43",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c44": {
+          "Name": "binary_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: binary_col binary(255)",
+          "Id": "c44",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c45": {
+          "Name": "varbinary_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 1000,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: varbinary_col varbinary(1000)",
+          "Id": "c45",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c46": {
+          "Name": "bit_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bit_col bit(64)",
+          "Id": "c46",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c47": {
+          "Name": "bit8_col",
+          "T": {
+            "Name": "BYTES",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bit8_col bit(8)",
+          "Id": "c47",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c48": {
+          "Name": "bit1_col",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: bit1_col bit(1)",
+          "Id": "c48",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c49": {
+          "Name": "boolean_col",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: boolean_col tinyint(1)",
+          "Id": "c49",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c50": {
+          "Name": "int_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: int_col int(10)",
+          "Id": "c50",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c51": {
+          "Name": "integer_unsigned_col",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: integer_unsigned_col int(10)",
+          "Id": "c51",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c52": {
+          "Name": "timestamp_col",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: timestamp_col timestamp",
+          "Id": "c52",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c53": {
+          "Name": "set_col",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: set_col set[]",
+          "Id": "c53",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c54": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c54",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c15",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c54",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table AllDataTypes",
+      "Id": "t3"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "Customers",
+      "Schema": "dlq-it-test",
+      "ColIds": [
+        "c6",
+        "c7",
+        "c8",
+        "c9"
+      ],
+      "ColDefs": {
+        "c6": {
+          "Name": "CustomerId",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c7": {
+          "Name": "CustomerName",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c8": {
+          "Name": "CreditLimit",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10,
+              2
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c9": {
+          "Name": "LegacyRegion",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c9",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c6",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": [
+        {
+          "Name": "CHK_CreditLimit",
+          "Expr": "(`CreditLimit` > 1000)",
+          "ExprId": "e4",
+          "Id": "cc5"
+        }
+      ],
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Orders",
+      "Schema": "dlq-it-test",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14"
+      ],
+      "ColDefs": {
+        "c11": {
+          "Name": "CustomerId",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c12": {
+          "Name": "OrderId",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c13": {
+          "Name": "OrderValue",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10,
+              2
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c14": {
+          "Name": "LegacyOrderSystem",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c14",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 3
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "FK_CustomerOrder",
+          "ColIds": [
+            "c11"
+          ],
+          "ReferTableId": "t1",
+          "ReferColumnIds": [
+            "c6"
+          ],
+          "OnDelete": "NO ACTION",
+          "OnUpdate": "NO ACTION",
+          "Id": "f10"
+        }
+      ],
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "AllDataTypes",
+      "Schema": "dlq-it-test",
+      "ColIds": [
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20",
+        "c21",
+        "c22",
+        "c23",
+        "c24",
+        "c25",
+        "c26",
+        "c27",
+        "c28",
+        "c29",
+        "c30",
+        "c31",
+        "c32",
+        "c33",
+        "c34",
+        "c35",
+        "c36",
+        "c37",
+        "c38",
+        "c39",
+        "c40",
+        "c41",
+        "c42",
+        "c43",
+        "c44",
+        "c45",
+        "c46",
+        "c47",
+        "c48",
+        "c49",
+        "c50",
+        "c51",
+        "c52",
+        "c53"
+      ],
+      "ColDefs": {
+        "c15": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c16": {
+          "Name": "varchar_col",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              1000
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c16",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c17": {
+          "Name": "tinyint_col",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": [
+              3
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c17",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c18": {
+          "Name": "tinyint_unsigned_col",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c18",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c19": {
+          "Name": "text_col",
+          "Type": {
+            "Name": "text",
+            "Mods": [
+              65535
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c19",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c20": {
+          "Name": "date_col",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c20",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c21": {
+          "Name": "smallint_col",
+          "Type": {
+            "Name": "smallint",
+            "Mods": [
+              5
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c21",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c22": {
+          "Name": "smallint_unsigned_col",
+          "Type": {
+            "Name": "smallint",
+            "Mods": [
+              5
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c22",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c23": {
+          "Name": "mediumint_col",
+          "Type": {
+            "Name": "mediumint",
+            "Mods": [
+              7
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c23",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c24": {
+          "Name": "mediumint_unsigned_col",
+          "Type": {
+            "Name": "mediumint",
+            "Mods": [
+              7
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c24",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c25": {
+          "Name": "bigint_col",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c25",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c26": {
+          "Name": "bigint_unsigned_col",
+          "Type": {
+            "Name": "bigint unsigned",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c26",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c27": {
+          "Name": "float_col",
+          "Type": {
+            "Name": "float",
+            "Mods": [
+              12
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c27",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c28": {
+          "Name": "double_col",
+          "Type": {
+            "Name": "double",
+            "Mods": [
+              22
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c28",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c29": {
+          "Name": "decimal_col",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              65,
+              30
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c29",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c30": {
+          "Name": "datetime_col",
+          "Type": {
+            "Name": "datetime",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c30",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c31": {
+          "Name": "time_col",
+          "Type": {
+            "Name": "time",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c31",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c32": {
+          "Name": "year_col",
+          "Type": {
+            "Name": "year",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c32",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c33": {
+          "Name": "char_col",
+          "Type": {
+            "Name": "char",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c33",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c34": {
+          "Name": "tinyblob_col",
+          "Type": {
+            "Name": "tinyblob",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c34",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c35": {
+          "Name": "tinytext_col",
+          "Type": {
+            "Name": "tinytext",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c35",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c36": {
+          "Name": "blob_col",
+          "Type": {
+            "Name": "blob",
+            "Mods": [
+              65535
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c36",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c37": {
+          "Name": "mediumblob_col",
+          "Type": {
+            "Name": "mediumblob",
+            "Mods": [
+              16777215
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c37",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c38": {
+          "Name": "mediumtext_col",
+          "Type": {
+            "Name": "mediumtext",
+            "Mods": [
+              16777215
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c38",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c39": {
+          "Name": "test_json_col",
+          "Type": {
+            "Name": "json",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c39",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c40": {
+          "Name": "longblob_col",
+          "Type": {
+            "Name": "longblob",
+            "Mods": [
+              4294967295
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c40",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c41": {
+          "Name": "longtext_col",
+          "Type": {
+            "Name": "longtext",
+            "Mods": [
+              4294967295
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c41",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c42": {
+          "Name": "enum_col",
+          "Type": {
+            "Name": "enum",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c42",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c43": {
+          "Name": "bool_col",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c43",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c44": {
+          "Name": "binary_col",
+          "Type": {
+            "Name": "binary",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c44",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c45": {
+          "Name": "varbinary_col",
+          "Type": {
+            "Name": "varbinary",
+            "Mods": [
+              1000
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c45",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c46": {
+          "Name": "bit_col",
+          "Type": {
+            "Name": "bit",
+            "Mods": [
+              64
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c46",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c47": {
+          "Name": "bit8_col",
+          "Type": {
+            "Name": "bit",
+            "Mods": [
+              8
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c47",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c48": {
+          "Name": "bit1_col",
+          "Type": {
+            "Name": "bit",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c48",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c49": {
+          "Name": "boolean_col",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c49",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c50": {
+          "Name": "int_col",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c50",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c51": {
+          "Name": "integer_unsigned_col",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c51",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c52": {
+          "Name": "timestamp_col",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c52",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c53": {
+          "Name": "set_col",
+          "Type": {
+            "Name": "set",
+            "Mods": null,
+            "ArrayBounds": [
+              -1
+            ]
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c53",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c15",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t3"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c55": [
+          5
+        ],
+        "c6": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t2": {
+      "ColumnLevelIssues": {
+        "c11": [
+          14
+        ],
+        "c12": [
+          14
+        ],
+        "c56": [
+          5
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t3": {
+      "ColumnLevelIssues": {
+        "c15": [
+          14
+        ],
+        "c17": [
+          14
+        ],
+        "c18": [
+          14
+        ],
+        "c21": [
+          14
+        ],
+        "c22": [
+          14
+        ],
+        "c23": [
+          14
+        ],
+        "c24": [
+          14
+        ],
+        "c26": [
+          52
+        ],
+        "c30": [
+          13
+        ],
+        "c31": [
+          15
+        ],
+        "c32": [
+          15
+        ],
+        "c50": [
+          14
+        ],
+        "c51": [
+          14
+        ],
+        "c53": [
+          31
+        ],
+        "c54": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "AllDataTypes": {
+      "Name": "AllDataTypes",
+      "Cols": {
+        "bigint_col": "bigint_col",
+        "bigint_unsigned_col": "bigint_unsigned_col",
+        "binary_col": "binary_col",
+        "bit1_col": "bit1_col",
+        "bit8_col": "bit8_col",
+        "bit_col": "bit_col",
+        "blob_col": "blob_col",
+        "bool_col": "bool_col",
+        "boolean_col": "boolean_col",
+        "char_col": "char_col",
+        "date_col": "date_col",
+        "datetime_col": "datetime_col",
+        "decimal_col": "decimal_col",
+        "double_col": "double_col",
+        "enum_col": "enum_col",
+        "float_col": "float_col",
+        "id": "id",
+        "int_col": "int_col",
+        "integer_unsigned_col": "integer_unsigned_col",
+        "longblob_col": "longblob_col",
+        "longtext_col": "longtext_col",
+        "mediumblob_col": "mediumblob_col",
+        "mediumint_col": "mediumint_col",
+        "mediumint_unsigned_col": "mediumint_unsigned_col",
+        "mediumtext_col": "mediumtext_col",
+        "set_col": "set_col",
+        "smallint_col": "smallint_col",
+        "smallint_unsigned_col": "smallint_unsigned_col",
+        "test_json_col": "test_json_col",
+        "text_col": "text_col",
+        "time_col": "time_col",
+        "timestamp_col": "timestamp_col",
+        "tinyblob_col": "tinyblob_col",
+        "tinyint_col": "tinyint_col",
+        "tinyint_unsigned_col": "tinyint_unsigned_col",
+        "tinytext_col": "tinytext_col",
+        "varbinary_col": "varbinary_col",
+        "varchar_col": "varchar_col",
+        "year_col": "year_col"
+      }
+    },
+    "Customers": {
+      "Name": "Customers",
+      "Cols": {
+        "CreditLimit": "CreditLimit",
+        "CustomerId": "CustomerId",
+        "CustomerName": "CustomerName",
+        "LegacyRegion": "LoyaltyTier"
+      }
+    },
+    "Orders": {
+      "Name": "Orders",
+      "Cols": {
+        "CustomerId": "CustomerId",
+        "LegacyOrderSystem": "LegacyOrderSystem",
+        "OrderId": "OrderId",
+        "OrderValue": "OrderValue"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r57",
+      "Name": "r57",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": null
+    }
+  ],
+  "IsSharded": true,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "span-cloud-ck-testing-external",
+  "SpInstanceId": "ea-functional-tests",
+  "Source": "mysql",
+  "DatabaseOptions": {
+    "DbName": "",
+    "DefaultTimezone": ""
+  },
+  "DefaultIdentityOptions": {
+    "SkipRangeMin": "",
+    "SkipRangeMax": "",
+    "StartCounterWith": ""
+  }
+}
