@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.common.collect.ImmutableMap;
+import java.util.List;
 import org.bson.Document;
 import org.bson.types.Binary;
 import org.bson.types.ObjectId;
@@ -130,7 +131,7 @@ public class MongoDbChangeEventContextTest {
               "_metadata_source": {
                 "collection": "test_collection"
               },
-              "_id": "[1, 2, 3]",
+              "_id": true,
               "_metadata_timestamp_seconds": 1683782270,
               "_metadata_timestamp_nanos": 123456789
             }\
@@ -412,8 +413,8 @@ public class MongoDbChangeEventContextTest {
     assertEquals(0, binaryId.getType());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testConstructorArrayIdThrows() throws JsonProcessingException {
+  @Test
+  public void testConstructorArrayId() throws JsonProcessingException {
     JsonNode eventWithArrayId =
         OBJECT_MAPPER.readTree(
             """
@@ -429,7 +430,15 @@ public class MongoDbChangeEventContextTest {
               "_metadata_timestamp_nanos": 123456789
             }\
             """);
-    new MongoDbChangeEventContext(eventWithArrayId, SHADOW_PREFIX);
+    MongoDbChangeEventContext context =
+        new MongoDbChangeEventContext(eventWithArrayId, SHADOW_PREFIX);
+    assertNotNull(context.getDocumentId());
+    assertTrue(context.getDocumentId() instanceof List);
+    List<?> list = (List<?>) context.getDocumentId();
+    assertEquals(3, list.size());
+    assertEquals(1, list.get(0));
+    assertEquals(2, list.get(1));
+    assertEquals(3, list.get(2));
   }
 
   @Test(expected = IllegalArgumentException.class)
