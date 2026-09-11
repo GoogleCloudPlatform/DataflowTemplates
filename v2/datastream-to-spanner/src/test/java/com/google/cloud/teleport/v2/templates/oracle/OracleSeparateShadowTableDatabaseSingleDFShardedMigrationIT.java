@@ -130,7 +130,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         streamNameA = stream.getName().substring(stream.getName().lastIndexOf('/') + 1);
 
         gcsResourceManager.createArtifact(
-            "input/shardingConfig.conf", generateSourceConfig(streamNameA, "system", "L1"));
+            "input/shardingConfig.conf", generateSourceConfig(streamNameA, oracleUser, "L1"));
 
         Map<String, String> jobParams = new HashMap<>();
         jobParams.put("inputFileFormat", "avro");
@@ -142,23 +142,17 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
             "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
         jobParams.put("shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
         jobParams.put("shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
+        jobParams.put("workerMachineType", "n1-standard-4");
 
         if (System.getProperty("jdbcDriverJars") != null) {
           String driverPath = System.getProperty("jdbcDriverJars");
           jobParams.put("jdbcDriverJars", driverPath);
         }
 
-        String sessionFileContent =
-            com.google.common.io.Resources.toString(
-                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
-                java.nio.charset.StandardCharsets.UTF_8);
-        sessionFileContent =
-            sessionFileContent.replace("it_test", "system").replace("shard_1", "L1");
-
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
-                null,
+                SESSION_FILE_RESOURCE,
                 null,
                 "OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1",
                 spannerResourceManager,
@@ -168,7 +162,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
                 null,
                 gcsResourceManager,
                 datastreamResourceManager,
-                sessionFileContent,
+                null,
                 jdbcSource);
       }
     }
@@ -313,6 +307,17 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         + "\",\n"
         + "      \"dbName\": \""
         + dbA
+        + "\",\n"
+        + "      \"streamId\": \""
+        + streamA
+        + "\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "      \"logicalShardId\": \""
+        + shardA
+        + "\",\n"
+        + "      \"dbName\": \""
+        + dbA.toLowerCase()
         + "\",\n"
         + "      \"streamId\": \""
         + streamA

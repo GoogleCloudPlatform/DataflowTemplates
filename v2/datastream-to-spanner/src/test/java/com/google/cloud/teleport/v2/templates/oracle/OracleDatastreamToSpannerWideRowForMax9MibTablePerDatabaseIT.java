@@ -313,7 +313,9 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
 
           try (java.sql.Connection conn =
                   java.sql.DriverManager.getConnection(
-                      oracleResourceManager.getUri(), oracleUser, "TestPassword123");
+                      oracleResourceManager.getUri(),
+                      oracleUser,
+                      SharedOracleLiveITInstance.ORACLE_PASSWORD);
               java.sql.PreparedStatement pstmt =
                   conn.prepareStatement(
                       "INSERT INTO "
@@ -345,6 +347,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
         }
 
+        SharedOracleLiveITInstance.flushRedoLogs();
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }
     };

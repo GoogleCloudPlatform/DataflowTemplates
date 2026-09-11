@@ -65,6 +65,30 @@ import org.junit.runners.Parameterized;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
 public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
+  private void executeOracleSql(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String sqlString,
+      String targetUsername)
+      throws Exception {
+    String sql = sqlString;
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    String[] statements = sql.split(";");
+
+    try (java.sql.Connection connection =
+        java.sql.DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            targetUsername,
+            SharedOracleLiveITInstance.ORACLE_PASSWORD)) {
+      connection.setAutoCommit(true);
+      try (java.sql.Statement statement = connection.createStatement()) {
+        for (String st : statements) {
+          if (!st.trim().isEmpty()) {
+            statement.execute(st.trim());
+          }
+        }
+      }
+    }
+  }
 
   private static final Integer NUM_EVENTS = 10;
 
@@ -377,7 +401,33 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
           }
           cdcEvents.put(tableName, cdcRows);
 
-          success &= oracleResourceManager.write(tableName, rows);
+          for (Map<String, Object> record : rows) {
+            StringBuilder columns = new StringBuilder();
+            StringBuilder vals = new StringBuilder();
+            for (String key : record.keySet()) {
+              if (columns.length() > 0) {
+                columns.append(", ");
+                vals.append(", ");
+              }
+              columns.append("\"").append(key).append("\"");
+              vals.append("'").append(record.get(key)).append("'");
+            }
+            try {
+              executeOracleSql(
+                  oracleResourceManager,
+                  "INSERT INTO \""
+                      + tableName
+                      + "\" ("
+                      + columns.toString()
+                      + ") VALUES ("
+                      + vals.toString()
+                      + ")",
+                  oracleUser);
+            } catch (Exception e) {
+              success = false;
+              e.printStackTrace();
+            }
+          }
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
         }
 

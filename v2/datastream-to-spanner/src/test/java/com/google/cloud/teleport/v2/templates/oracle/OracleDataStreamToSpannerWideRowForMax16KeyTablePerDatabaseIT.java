@@ -358,7 +358,33 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
           }
 
           cdcEvents.put(tableName, rows);
-          success &= oracleResourceManager.write(tableName, rows);
+          for (Map<String, Object> record : rows) {
+            StringBuilder columns = new StringBuilder();
+            StringBuilder vals = new StringBuilder();
+            for (String key : record.keySet()) {
+              if (columns.length() > 0) {
+                columns.append(", ");
+                vals.append(", ");
+              }
+              columns.append("\"").append(key).append("\"");
+              vals.append("'").append(record.get(key)).append("'");
+            }
+            try {
+              executeOracleSql(
+                  oracleResourceManager,
+                  "INSERT INTO \""
+                      + tableName
+                      + "\" ("
+                      + columns.toString()
+                      + ") VALUES ("
+                      + vals.toString()
+                      + ")",
+                  oracleUser);
+            } catch (Exception e) {
+              success = false;
+              e.printStackTrace();
+            }
+          }
 
           SharedOracleLiveITInstance.flushRedoLogs();
           messages.add(String.format("%d rows to %s", rows.size(), tableName));

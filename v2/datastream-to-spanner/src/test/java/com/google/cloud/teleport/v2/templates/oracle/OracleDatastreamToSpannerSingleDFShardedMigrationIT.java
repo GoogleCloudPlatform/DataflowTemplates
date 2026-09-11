@@ -99,10 +99,6 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
       }
 
       if (jobInfo == null) {
-
-        String oracleUser = System.getProperty("cloudOracleUsername", "system");
-        String oraclePassword = System.getProperty("cloudOraclePassword", "TestPassword123");
-
         oracleResourceManager = SharedOracleLiveITInstance.getInstance();
         oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
@@ -118,7 +114,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
             org.apache.beam.it.gcp.datastream.OracleSource.builder(
                     oracleResourceManager.getHost(),
                     oracleUser,
-                    oraclePassword,
+                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
                     oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
@@ -168,16 +164,10 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
           jobParams.put("jdbcDriverJars", driverPath);
         }
 
-        String sessionFileContent =
-            com.google.common.io.Resources.toString(
-                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
-                java.nio.charset.StandardCharsets.UTF_8);
-        sessionFileContent =
-            sessionFileContent.replace("it_test", oracleUser).replace("shard_1", "L1");
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
-                null,
+                SESSION_FILE_RESOURCE,
                 null,
                 "shard1",
                 spannerResourceManager,
@@ -187,7 +177,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 null,
                 gcsResourceManager,
                 datastreamResourceManager,
-                sessionFileContent,
+                null,
                 oracleSource);
       }
     }
@@ -202,8 +192,8 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
-        oracleResourceManager,
         datastreamResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   @Test
@@ -390,6 +380,17 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         + "\",\n"
         + "      \"dbName\": \""
         + dbA
+        + "\",\n"
+        + "      \"streamId\": \""
+        + streamA
+        + "\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "      \"logicalShardId\": \""
+        + shardA
+        + "\",\n"
+        + "      \"dbName\": \""
+        + dbA.toLowerCase()
         + "\",\n"
         + "      \"streamId\": \""
         + streamA

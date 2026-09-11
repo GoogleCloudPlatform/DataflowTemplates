@@ -352,6 +352,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         cloudOracleResourceManager,
         "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar2_col\") VALUES (999, 'test999')",
         oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
   }
 
   private Map<String, Object> createExpectedRowFor999() {

@@ -188,7 +188,7 @@
   "SrcSchema": {
     "t34": {
       "Name": "Authors",
-      "Schema": "e2e-it",
+      "Schema": "",
       "ColIds": [
         "c37",
         "c38",
@@ -279,7 +279,7 @@
     },
     "t35": {
       "Name": "Books",
-      "Schema": "e2e-it",
+      "Schema": "",
       "ColIds": [
         "c41",
         "c42",
@@ -394,7 +394,7 @@
     },
     "t36": {
       "Name": "Genre",
-      "Schema": "e2e-it",
+      "Schema": "",
       "ColIds": [
         "c44",
         "c45"

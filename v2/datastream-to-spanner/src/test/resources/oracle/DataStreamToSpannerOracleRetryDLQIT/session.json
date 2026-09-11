@@ -1969,7 +1969,7 @@
   "SrcSchema": {
     "t1": {
       "Name": "AllDataTypes",
-      "Schema": "XE",
+      "Schema": "",
       "ColIds": [
         "c4",
         "c5",
@@ -3699,7 +3699,7 @@
     },
     "t2": {
       "Name": "Customers",
-      "Schema": "XE",
+      "Schema": "",
       "ColIds": [
         "c47",
         "c48",
@@ -3894,7 +3894,7 @@
     },
     "t3": {
       "Name": "Orders",
-      "Schema": "XE",
+      "Schema": "",
       "ColIds": [
         "c43",
         "c44",
