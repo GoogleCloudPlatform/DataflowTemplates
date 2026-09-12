@@ -45,9 +45,13 @@ public final class BigQuerySchemas {
                       .setType("STRING")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName(MismatchedRecord.RECORD_KEY_COLUMN_NAME)
+                      .setName(MismatchedRecord.SPANNER_RECORD_KEY_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(MismatchedRecord.SOURCE_RECORD_KEY_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("NULLABLE"),
                   new TableFieldSchema()
                       .setName(MismatchedRecord.SOURCE_COLUMN_NAME)
                       .setType("STRING")

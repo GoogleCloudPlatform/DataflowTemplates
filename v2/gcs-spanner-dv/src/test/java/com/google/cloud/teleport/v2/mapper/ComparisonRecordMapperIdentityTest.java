@@ -78,6 +78,7 @@ public class ComparisonRecordMapperIdentityTest {
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -87,6 +88,7 @@ public class ComparisonRecordMapperIdentityTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", tableName);
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);
@@ -161,6 +163,7 @@ public class ComparisonRecordMapperIdentityTest {
         Arrays.asList(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -170,6 +173,7 @@ public class ComparisonRecordMapperIdentityTest {
     GenericRecord avroGenericRecord = new GenericData.Record(avroSchema);
     avroGenericRecord.put("tableName", tableName);
     avroGenericRecord.put("shardId", "shard1");
+    avroGenericRecord.put("primaryKeys", Arrays.asList("id"));
     avroGenericRecord.put("payload", payload);
 
     // 2. Create Spanner Struct

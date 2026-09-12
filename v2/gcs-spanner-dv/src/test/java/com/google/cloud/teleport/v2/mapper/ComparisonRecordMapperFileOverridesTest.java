@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.mapper;
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
@@ -37,6 +38,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -124,6 +126,7 @@ public class ComparisonRecordMapperFileOverridesTest {
         ImmutableList.of(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -133,6 +136,7 @@ public class ComparisonRecordMapperFileOverridesTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "SourceUsers");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     // Mock Transformer Behavior
@@ -178,6 +182,7 @@ public class ComparisonRecordMapperFileOverridesTest {
         ImmutableList.of(
             new Schema.Field("tableName", Schema.create(Schema.Type.STRING), null, null),
             new Schema.Field("shardId", Schema.create(Schema.Type.STRING), null, null),
+            new Schema.Field("primaryKeys", Schema.createArray(Schema.create(Schema.Type.STRING)), null, null),
             new Schema.Field("payload", payloadSchema, null, null)));
 
     GenericRecord payload = new GenericData.Record(payloadSchema);
@@ -187,6 +192,7 @@ public class ComparisonRecordMapperFileOverridesTest {
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
     avroRecord.put("tableName", "SourceUsers");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("id"));
     avroRecord.put("payload", payload);
 
     MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);

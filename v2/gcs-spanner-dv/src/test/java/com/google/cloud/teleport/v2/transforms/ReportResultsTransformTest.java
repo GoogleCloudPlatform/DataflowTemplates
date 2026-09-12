@@ -80,6 +80,7 @@ public class ReportResultsTransformTest implements Serializable {
             .setShardId("shard1")
             .setPrimaryKeyColumns(
                 Arrays.asList(Column.builder().setColName("id").setColValue("1").build()))
+            .setSourcePrimaryKeyColumns(Arrays.asList(Column.builder().setColName("id").setColValue("1").build()))
             .build();
 
     ComparisonRecord missingInSource =
@@ -103,7 +104,8 @@ public class ReportResultsTransformTest implements Serializable {
             .setRunId("run1")
             .setTableName("Table1")
             .setMismatchType("MISSING_IN_DESTINATION")
-            .setRecordKey("[id:1]")
+            .setSpannerRecordKey("[id:1]")
+            .setSourceRecordKey("[id:1]")
             .setSource(ReportResultsTransform.GCS_SOURCE)
             .setHash("hash1")
             .setShardId("shard1")
@@ -114,7 +116,8 @@ public class ReportResultsTransformTest implements Serializable {
             .setRunId("run1")
             .setTableName("Table1")
             .setMismatchType("MISSING_IN_SOURCE")
-            .setRecordKey("[id:2]")
+            .setSpannerRecordKey("[id:2]")
+            .setSourceRecordKey("")
             .setSource(ReportResultsTransform.SPANNER_DESTINATION)
             .setHash("hash2")
             .build();
