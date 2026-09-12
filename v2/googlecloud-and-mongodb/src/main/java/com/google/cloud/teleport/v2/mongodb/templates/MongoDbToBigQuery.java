@@ -106,6 +106,7 @@ public class MongoDbToBigQuery {
       throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
     String userOption = options.getUserOption();
+    boolean useIso8601DateFormat = options.getUseIso8601DateFormat();
 
     TableSchema bigquerySchema;
 
@@ -163,7 +164,8 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
+                    TableRow row =
+                        MongoDbUtils.getTableSchema(document, userOption, useIso8601DateFormat);
                     c.output(row);
                   }
                 }))

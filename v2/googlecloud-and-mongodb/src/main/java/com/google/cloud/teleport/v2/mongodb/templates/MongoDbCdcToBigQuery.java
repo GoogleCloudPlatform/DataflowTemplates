@@ -136,6 +136,7 @@ public class MongoDbCdcToBigQuery {
     options.setStreaming(true);
     Pipeline pipeline = Pipeline.create(options);
     String userOption = options.getUserOption();
+    boolean useIso8601DateFormat = options.getUseIso8601DateFormat();
     String inputOption = options.getInputTopic();
 
     TableSchema bigquerySchema;
@@ -184,7 +185,8 @@ public class MongoDbCdcToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
+                    TableRow row =
+                        MongoDbUtils.getTableSchema(document, userOption, useIso8601DateFormat);
                     c.output(row);
                   }
                 }))
