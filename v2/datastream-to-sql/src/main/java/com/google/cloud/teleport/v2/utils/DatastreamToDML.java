@@ -559,7 +559,9 @@ public abstract class DatastreamToDML
 
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         DatabaseMetaData metaData = connection.getMetaData();
-        try (ResultSet columns = metaData.getColumns(catalogName, schemaName, tableName, null)) {
+        String catalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
+        String schema = (schemaName == null || schemaName.isEmpty()) ? null : schemaName;
+        try (ResultSet columns = metaData.getColumns(catalog, schema, tableName, null)) {
           while (columns.next()) {
             tableSchema.put(columns.getString("COLUMN_NAME"), columns.getString("TYPE_NAME"));
           }
@@ -638,8 +640,9 @@ public abstract class DatastreamToDML
       List<String> primaryKeys = new ArrayList<String>();
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         DatabaseMetaData metaData = connection.getMetaData();
-        try (ResultSet jdbcPrimaryKeys =
-            metaData.getPrimaryKeys(catalogName, schemaName, tableName)) {
+        String catalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
+        String schema = (schemaName == null || schemaName.isEmpty()) ? null : schemaName;
+        try (ResultSet jdbcPrimaryKeys = metaData.getPrimaryKeys(catalog, schema, tableName)) {
           while (jdbcPrimaryKeys.next()) {
             primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
           }
