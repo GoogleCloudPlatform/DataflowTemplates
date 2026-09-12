@@ -697,6 +697,27 @@ public class MongoDbChangeStreamReader {
     private final Counter changeStreamCursorReconnects =
         Metrics.counter(MongoDbChangeStreamReader.class, "changeStreamCursorReconnects");
 
+    /*
+     * Diagnostic breakdown of changeStreamCursorReconnects by cause. These three counters partition
+     * every cursor build, so their sum equals changeStreamCursorReconnects.
+     */
+    private final Counter cursorRebuildFirstStart =
+        Metrics.counter(MongoDbChangeStreamReader.class, "cursorRebuildFirstStart");
+    private final Counter cursorRebuildCacheMiss =
+        Metrics.counter(MongoDbChangeStreamReader.class, "cursorRebuildCacheMiss");
+    private final Counter cursorRebuildTokenMismatch =
+        Metrics.counter(MongoDbChangeStreamReader.class, "cursorRebuildTokenMismatch");
+
+    /** Why a change stream cursor had to be built, for diagnostic attribution. */
+    private enum RebuildCause {
+      /** No cached cursor and no prior resume token: a genuine cold start. */
+      FIRST_START,
+      /** No cached cursor but a prior resume token exists: partition migrated or DoFn recreated. */
+      CACHE_MISS,
+      /** A cached cursor existed but its position disagreed with the incoming restriction. */
+      TOKEN_MISMATCH
+    }
+
     /** Holds a cached cursor and tracks its last access timestamp and resume token for eviction. */
     public static class PartitionCursorHolder implements AutoCloseable {
       private final MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor;
@@ -799,10 +820,22 @@ public class MongoDbChangeStreamReader {
       BsonDocument currentToken = currentRestriction.getResumeToken();
       PartitionCursorHolder cursorHolder = cursorCache.get(partitionKey);
 
+      // Records why a rebuild was needed, for the diagnostic counters at the build site below.
+      RebuildCause rebuildCause = null;
+      if (cursorHolder == null) {
+        rebuildCause = currentToken == null ? RebuildCause.FIRST_START : RebuildCause.CACHE_MISS;
+      }
+
       // Validate that cached cursor position matches the incoming restriction resume token
       if (cursorHolder != null) {
         if (!Objects.equals(cursorHolder.getLastResumeToken(), currentToken)) {
           // Partition was progressed on another worker or reconnect required; discard stale cursor
+          LOG.debug(
+              "Cursor token mismatch on partition {}; holder={} restriction={}",
+              partitionKey,
+              cursorHolder.getLastResumeToken(),
+              currentToken);
+          rebuildCause = RebuildCause.TOKEN_MISMATCH;
           closeCursorForPartition(partitionKey);
           cursorHolder = null;
         }
@@ -871,6 +904,13 @@ public class MongoDbChangeStreamReader {
           cursorHolder = new PartitionCursorHolder(activeCursor, currentToken);
           cursorCache.put(partitionKey, cursorHolder);
           changeStreamCursorReconnects.inc();
+          if (rebuildCause == RebuildCause.TOKEN_MISMATCH) {
+            cursorRebuildTokenMismatch.inc();
+          } else if (rebuildCause == RebuildCause.CACHE_MISS) {
+            cursorRebuildCacheMiss.inc();
+          } else {
+            cursorRebuildFirstStart.inc();
+          }
         } catch (MongoCommandException mce) {
           int errCode = mce.getErrorCode();
           String targetDesc =
