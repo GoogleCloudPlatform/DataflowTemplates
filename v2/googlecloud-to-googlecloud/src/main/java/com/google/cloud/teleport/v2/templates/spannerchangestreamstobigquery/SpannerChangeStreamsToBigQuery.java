@@ -336,6 +336,11 @@ public final class SpannerChangeStreamsToBigQuery {
       }
     }
 
+    String directedReadOptions = options.getSpannerDirectedReadOptions();
+    if (directedReadOptions != null && !directedReadOptions.isEmpty()) {
+      readChangeStream = readChangeStream.withDirectedReadOptions(directedReadOptions);
+    }
+
     PCollection<DataChangeRecord> dataChangeRecord =
         pipeline
             .apply("Read from Spanner Change Streams", readChangeStream)

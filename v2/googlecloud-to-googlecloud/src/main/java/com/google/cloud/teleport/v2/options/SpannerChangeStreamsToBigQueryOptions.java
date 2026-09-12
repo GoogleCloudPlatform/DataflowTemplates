@@ -259,4 +259,18 @@ public interface SpannerChangeStreamsToBigQueryOptions
   String getSpannerChangeStreamTvfNameList();
 
   void setSpannerChangeStreamTvfNameList(String value);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      groupName = "Source",
+      description = "Cloud Spanner directed read options",
+      helpText =
+          "Directed read options for Cloud Spanner reads. The value must be a JSON string format of"
+              + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}})."
+              + " For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads).")
+  @Default.String("")
+  String getSpannerDirectedReadOptions();
+
+  void setSpannerDirectedReadOptions(String value);
 }

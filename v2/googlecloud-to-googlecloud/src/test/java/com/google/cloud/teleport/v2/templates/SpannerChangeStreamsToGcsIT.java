@@ -82,6 +82,24 @@ public class SpannerChangeStreamsToGcsIT extends SpannerTemplateITBase {
             paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
   }
 
+  @Test
+  public void testSpannerChangeStreamsToGcsWithDirectedReads() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    testSpannerChangeStreamsToGcsBase(
+        paramAdder ->
+            paramAdder
+                .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
+                .addParameter(
+                    "spannerDirectedReadOptions",
+                    String.format(
+                        "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"%s\"}]}}",
+                        REGION)));
+  }
+
   private void testSpannerChangeStreamsToGcsBase(
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)

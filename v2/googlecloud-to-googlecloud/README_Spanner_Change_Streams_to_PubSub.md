@@ -56,6 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputMessageMetadata**: The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
 * **useSpannerEmulatorHost**: Whether to use the Spanner host configured in getSpannerHost() as the Emulator host. Defaults to: false.
 * **spannerChangeStreamTvfNameList**: Semicolon-separated list of Spanner Change Stream TVF names to query and union. Defaults to empty.
+* **spannerDirectedReadOptions**: Directed read options for Cloud Spanner reads. The value must be a JSON string format of DirectedReadOptions (e.g. {"includeReplicas":{"replicaSelections":[{"location":"us-central1","type":"READ_ONLY"}]}}). For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads). Defaults to empty.
 
 
 
@@ -170,6 +171,7 @@ export INCLUDE_SPANNER_SOURCE=false
 export OUTPUT_MESSAGE_METADATA=""
 export USE_SPANNER_EMULATOR_HOST=false
 export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
+export SPANNER_DIRECTED_READ_OPTIONS=""
 
 gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --project "$PROJECT" \
@@ -194,7 +196,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --parameters "includeSpannerSource=$INCLUDE_SPANNER_SOURCE" \
   --parameters "outputMessageMetadata=$OUTPUT_MESSAGE_METADATA" \
   --parameters "useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST" \
-  --parameters "spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST"
+  --parameters "spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST" \
+  --parameters "spannerDirectedReadOptions=$SPANNER_DIRECTED_READ_OPTIONS"
 ```
 
 For more information about the command, please check:
@@ -235,6 +238,7 @@ export INCLUDE_SPANNER_SOURCE=false
 export OUTPUT_MESSAGE_METADATA=""
 export USE_SPANNER_EMULATOR_HOST=false
 export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
+export SPANNER_DIRECTED_READ_OPTIONS=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -243,7 +247,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-pubsub-job" \
 -DtemplateName="Spanner_Change_Streams_to_PubSub" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY,includeSpannerSource=$INCLUDE_SPANNER_SOURCE,outputMessageMetadata=$OUTPUT_MESSAGE_METADATA,useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY,includeSpannerSource=$INCLUDE_SPANNER_SOURCE,outputMessageMetadata=$OUTPUT_MESSAGE_METADATA,useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST,spannerDirectedReadOptions=$SPANNER_DIRECTED_READ_OPTIONS" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -308,6 +312,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_pubsub" 
     # outputMessageMetadata = ""
     # useSpannerEmulatorHost = "false"
     # spannerChangeStreamTvfNameList = ""
+    # spannerDirectedReadOptions = ""
   }
 }
 ```
