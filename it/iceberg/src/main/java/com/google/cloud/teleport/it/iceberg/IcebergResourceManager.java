@@ -68,7 +68,7 @@ public class IcebergResourceManager implements ResourceManager {
   private static final String DEFAULT_CATALOG_NAME = "default";
 
   private final String testId;
-  private Catalog cachedCatalog;
+  private volatile Catalog cachedCatalog;
   private final String catalogName;
   private final Map<String, String> catalogProps;
   private final Map<String, String> configProps;
@@ -103,7 +103,7 @@ public class IcebergResourceManager implements ResourceManager {
    *
    * @return The Iceberg catalog.
    */
-  public Catalog catalog() {
+  public synchronized Catalog catalog() {
     if (cachedCatalog == null) {
       String catalogName = this.catalogName;
       Configuration config = new Configuration();
@@ -296,10 +296,21 @@ public class IcebergResourceManager implements ResourceManager {
     synchronized (createdNamespaces) {
       namespacesToClean = List.copyOf(createdNamespaces);
     }
-    for (String namespace : namespacesToClean) {
-      dropNamespace(namespace, true);
+    try {
+      for (String namespace : namespacesToClean) {
+        dropNamespace(namespace, true);
+      }
+      createdNamespaces.clear();
+    } finally {
+      if (cachedCatalog instanceof AutoCloseable) {
+        try {
+          ((AutoCloseable) cachedCatalog).close();
+        } catch (Exception e) {
+          LOG.warn("Error closing Iceberg catalog", e);
+        }
+      }
+      cachedCatalog = null;
     }
-    createdNamespaces.clear();
     LOG.info("Cleaned up all resources for test ID: {}.", testId);
   }
 
