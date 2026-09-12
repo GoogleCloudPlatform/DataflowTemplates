@@ -148,5 +148,10 @@
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-dataplex</artifactId>
+      <version>1.90.0</version>
+    </dependency>
   </dependencies>
 </project>
