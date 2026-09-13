@@ -58,3 +58,4 @@ CREATE TABLE `%PREFIX%NoPkTable` (
     Name STRING(MAX)
 );
 
+CREATE FUNCTION `%PREFIX%_gsql_add`(a INT64, b INT64) RETURNS INT64 AS (a + b);

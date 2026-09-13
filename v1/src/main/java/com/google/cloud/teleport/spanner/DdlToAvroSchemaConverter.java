@@ -59,6 +59,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SPANNER_DETERMINISM;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
@@ -146,6 +147,9 @@ public class DdlToAvroSchemaConverter {
       }
       if (udf.security() != null) {
         recordBuilder.prop(SPANNER_UDF_SECURITY, udf.security().toString());
+      }
+      if (udf.spannerDeterminism() != null) {
+        recordBuilder.prop(SPANNER_UDF_SPANNER_DETERMINISM, udf.spannerDeterminism());
       }
       int i = 0;
       for (UdfParameter udfParameter : udf.parameters()) {
