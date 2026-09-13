@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANN
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
@@ -76,6 +77,8 @@ public class GCSSpannerDV {
   public static PipelineResult run(GCSSpannerDVOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
     // Fetch Spanner DDL using Info schema
@@ -107,13 +110,14 @@ public class GCSSpannerDV {
                 options.getGcsInputDirectory(),
                 ddlView,
                 schemaMapperProvider,
-                customTransformation));
+                customTransformation,
+                tableConfig));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords =
         pipeline.apply(
             "ReadSpannerRecords",
-            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider));
+            new SpannerReaderTransform(spannerConfig, ddlView, schemaMapperProvider, tableConfig));
 
     PCollectionTuple inputs =
         PCollectionTuple.of(SOURCE_TAG, sourceRecords).and(SPANNER_TAG, spannerRecords);

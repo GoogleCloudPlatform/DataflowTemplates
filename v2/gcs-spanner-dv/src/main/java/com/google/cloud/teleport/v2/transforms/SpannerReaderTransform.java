@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.dofn.CreateSpannerReadOpsFn;
 import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
@@ -43,21 +44,26 @@ public class SpannerReaderTransform
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
+  private final TableConfiguration tableConfig;
 
   public SpannerReaderTransform(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
-      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
+      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
+      TableConfiguration tableConfig) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
+    this.tableConfig = tableConfig;
   }
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
-            "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView)).withSideInputs(ddlView))
+            "CreateReadOps",
+            ParDo.of(new CreateSpannerReadOpsFn(ddlView, schemaMapperProvider, tableConfig))
+                .withSideInputs(ddlView))
         .apply("ReadSpannerRecords", readFromSpanner())
         .apply(
             "CalculateSpannerRecordsHash",
