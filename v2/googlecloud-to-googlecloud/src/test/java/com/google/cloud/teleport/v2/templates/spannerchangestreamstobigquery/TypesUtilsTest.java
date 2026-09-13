@@ -82,8 +82,35 @@ public final class TypesUtilsTest {
         .isEqualTo(Type.array(Type.string()));
     assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("JSONB[]"))
         .isEqualTo(Type.array(Type.pgJsonb()));
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("real[]"))
+        .isEqualTo(Type.array(Type.float32()));
     assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("real"))
         .isEqualTo(Type.float32());
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLVectorTypeToSpannerType() {
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("real[] vector length 512"))
+        .isEqualTo(Type.array(Type.float32()));
+    assertThat(
+            TypesUtils.informationSchemaPostgreSQLTypeToSpannerType(
+                "DOUBLE PRECISION[] VECTOR LENGTH 4"))
+        .isEqualTo(Type.array(Type.float64()));
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLVectorTypeRejectsInvalidTypes() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TypesUtils.informationSchemaPostgreSQLTypeToSpannerType(
+                "real[] vector length invalid"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("real[] vector length 0"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("integer[] vector length 4"));
   }
 
   @Test
