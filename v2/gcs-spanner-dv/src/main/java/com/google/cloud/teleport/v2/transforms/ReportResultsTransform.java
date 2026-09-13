@@ -33,6 +33,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.transforms.Combine;
@@ -74,6 +75,15 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
   private final String runId;
   private final Instant startTimestamp;
 
+  private BigQueryServices testServices;
+  private String testTempLocation;
+
+  public ReportResultsTransform withTestServices(BigQueryServices testServices, String testTempLocation) {
+    this.testServices = testServices;
+    this.testTempLocation = testTempLocation;
+    return this;
+  }
+
   public ReportResultsTransform(String bigQueryDataset, String runId, Instant startTimestamp) {
     this.bigQueryDataset = bigQueryDataset;
     this.runId = runId;
@@ -90,9 +100,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     PCollection<MismatchedRecord> allMismatches =
         transformMismatchedRecords(missingInSpanner, missingInSource);
 
-    allMismatches.apply(
-        "WriteMismatchedRecords",
-        BigQueryIO.<MismatchedRecord>write()
+    BigQueryIO.Write<MismatchedRecord> writeMismatches = BigQueryIO.<MismatchedRecord>write()
             .to(String.format("%s.%s", bigQueryDataset, MISMATCHED_RECORDS_TABLE))
             .withSchema(BigQuerySchemas.MISMATCHED_RECORDS_SCHEMA)
             .withFormatFunction(
@@ -108,15 +116,17 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                         .set(MismatchedRecord.SHARD_ID_COLUMN_NAME, r.getShardId()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
+            .withMethod(BigQueryIO.Write.Method.FILE_LOADS);
+    if (this.testServices != null) {
+      writeMismatches = writeMismatches.withTestServices(this.testServices).withCustomGcsTempLocation(org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of(this.testTempLocation));
+    }
+    allMismatches.apply("WriteMismatchedRecords", writeMismatches);
 
     // 2. Aggregate Stats
     PCollection<TableValidationStats> tableStats =
         calculateTableStats(matched, missingInSpanner, missingInSource);
 
-    tableStats.apply(
-        "WriteTableStats",
-        BigQueryIO.<TableValidationStats>write()
+    BigQueryIO.Write<TableValidationStats> writeTableStats = BigQueryIO.<TableValidationStats>write()
             .to(String.format("%s.%s", bigQueryDataset, TABLE_VALIDATION_STATS_TABLE))
             .withSchema(BigQuerySchemas.TABLE_VALIDATION_STATS_SCHEMA)
             .withFormatFunction(
@@ -146,7 +156,11 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             stats.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
+            .withMethod(BigQueryIO.Write.Method.FILE_LOADS);
+    if (this.testServices != null) {
+      writeTableStats = writeTableStats.withTestServices(this.testServices).withCustomGcsTempLocation(org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of(this.testTempLocation));
+    }
+    tableStats.apply("WriteTableStats", writeTableStats);
 
     // 3. Validation Summary
     /**
@@ -172,9 +186,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
 
     PCollection<ValidationSummary> validationSummary = calculateValidationSummary(tableStats);
 
-    validationSummary.apply(
-        "WriteValidationSummary",
-        BigQueryIO.<ValidationSummary>write()
+    BigQueryIO.Write<ValidationSummary> writeValidationSummary = BigQueryIO.<ValidationSummary>write()
             .to(String.format("%s.%s", this.bigQueryDataset, VALIDATION_SUMMARY_TABLE))
             .withSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA)
             .withFormatFunction(
@@ -206,7 +218,11 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             s.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
+            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS);
+    if (this.testServices != null) {
+      writeValidationSummary = writeValidationSummary.withTestServices(this.testServices);
+    }
+    validationSummary.apply("WriteValidationSummary", writeValidationSummary);
 
     return PDone.in(input.getPipeline());
   }
