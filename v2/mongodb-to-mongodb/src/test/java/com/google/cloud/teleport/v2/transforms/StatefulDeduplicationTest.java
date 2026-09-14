@@ -16,12 +16,15 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
@@ -29,6 +32,7 @@ import com.google.cloud.teleport.v2.transforms.StatefulDeduplication.StatefulDed
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.testing.PAssert;
@@ -74,9 +78,11 @@ public class StatefulDeduplicationTest implements Serializable {
     }
   }
 
+  /** Bounded retention used by the tests that specifically exercise state expiry. */
+  private static final Duration TEST_RETENTION = Duration.standardHours(24);
+
   private static class Harness {
-    final StatefulDeduplicationFn fn =
-        new StatefulDeduplicationFn(StatefulDeduplication.DEFAULT_STATE_RETENTION);
+    final StatefulDeduplicationFn fn;
     final TestValueState<TimestampSortKey> state = new TestValueState<>();
     final List<DocumentWithMetadata> outputs = new ArrayList<>();
     final Timer expiryTimer = mock(Timer.class);
@@ -84,7 +90,13 @@ public class StatefulDeduplicationTest implements Serializable {
     @SuppressWarnings("unchecked")
     final OutputReceiver<DocumentWithMetadata> receiver = mock(OutputReceiver.class);
 
+    /** Unbounded retention, matching the template default. */
     Harness() {
+      this(null);
+    }
+
+    Harness(@Nullable Duration stateRetention) {
+      this.fn = new StatefulDeduplicationFn(stateRetention);
       doAnswer(
               invocation -> {
                 outputs.add(invocation.getArgument(0));
@@ -253,19 +265,19 @@ public class StatefulDeduplicationTest implements Serializable {
 
   @Test
   public void testStateExpiry_schedulesTimerOnEveryAcceptedEvent() {
-    Harness h = new Harness();
+    Harness h = new Harness(TEST_RETENTION);
 
     h.process(createCdc("1", "v1", 1000L, 1L, "users"));
     h.process(createCdc("1", "v2", 1000L, 2L, "users"));
 
     // Sliding window: each accepted event pushes the expiry out again.
-    verify(h.expiryTimer, times(2)).offset(StatefulDeduplication.DEFAULT_STATE_RETENTION);
+    verify(h.expiryTimer, times(2)).offset(TEST_RETENTION);
     verify(h.expiryTimer, times(2)).setRelative();
   }
 
   @Test
   public void testStateExpiry_doesNotScheduleTimerOnDroppedEvent() {
-    Harness h = new Harness();
+    Harness h = new Harness(TEST_RETENTION);
 
     h.process(createCdc("1", "v2", 1000L, 2L, "users"));
     h.process(createCdc("1", "v1", 1000L, 1L, "users"));
@@ -276,7 +288,7 @@ public class StatefulDeduplicationTest implements Serializable {
 
   @Test
   public void testStateExpiry_releasesStateAndReadmitsStaleEvent() {
-    Harness h = new Harness();
+    Harness h = new Harness(TEST_RETENTION);
 
     h.process(createCdc("1", "v2", 1000L, 2L, "users"));
     assertEquals(1, h.outputs.size());
@@ -289,5 +301,41 @@ public class StatefulDeduplicationTest implements Serializable {
     // therefore exceed the longest expected backfill.
     h.process(createCdc("1", "v1", 1000L, 1L, "users"));
     assertEquals(2, h.outputs.size());
+  }
+
+  @Test
+  public void testUnboundedRetention_neverSchedulesTimer() {
+    Harness h = new Harness();
+
+    h.process(createCdc("1", "v1", 1000L, 1L, "users"));
+    h.process(createCdc("1", "v2", 1000L, 2L, "users"));
+    h.process(createCdc("1", "v3", 1000L, 3L, "users"));
+
+    assertEquals(3, h.outputs.size());
+    // No expiry means no state to lose, and no timer write per accepted event.
+    verifyNoInteractions(h.expiryTimer);
+  }
+
+  @Test
+  public void testUnboundedRetention_stillDropsStaleEvents() {
+    Harness h = new Harness();
+
+    h.process(createCdc("1", "v2", 1000L, 2L, "users"));
+    h.process(createCdc("1", "v1", 1000L, 1L, "users"));
+
+    assertEquals(1, h.outputs.size());
+  }
+
+  @Test
+  public void testOf_rejectsNonPositiveRetention() {
+    assertThrows(IllegalArgumentException.class, () -> StatefulDeduplication.of(Duration.ZERO));
+    assertThrows(
+        IllegalArgumentException.class, () -> StatefulDeduplication.of(Duration.standardHours(-1)));
+  }
+
+  @Test
+  public void testOf_acceptsNullAsUnbounded() {
+    assertNotNull(StatefulDeduplication.of((Duration) null));
+    assertNotNull(StatefulDeduplication.of());
   }
 }

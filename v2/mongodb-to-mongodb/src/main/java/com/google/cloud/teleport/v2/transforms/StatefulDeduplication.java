@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.Counter;
@@ -59,33 +60,46 @@ import org.slf4j.LoggerFactory;
  *   <li>Sub-second increment: Higher sub-second counter wins.
  * </ol>
  *
- * <p>State is retained per document key for {@link #DEFAULT_STATE_RETENTION} after the most recent
- * accepted event and then released, bounding state growth on collections with an unbounded number
- * of distinct documents. Retention must exceed the longest expected backfill, because a duplicate
- * arriving after its key's state has expired is treated as unseen and re-emitted.
+ * <p>By default per-key state is retained for the life of the job. Retention can optionally be
+ * bounded via {@link #of(Duration)} to limit state growth on collections with an unbounded number
+ * of distinct documents, but note the tradeoff: a duplicate arriving after its key's state has
+ * expired is treated as unseen and re-emitted. Because backfill records carry an older sort key
+ * than any CDC event for the same document, an expiry that fires while backfill is still running
+ * lets a stale backfill row overwrite newer CDC data. Any bound must therefore exceed the longest
+ * expected backfill.
  */
 public class StatefulDeduplication
     extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
 
   /**
-   * Default per-key state retention. Deduplication only has to cover the window in which backfill
-   * and CDC can both emit the same document, so this needs to exceed the backfill duration rather
-   * than the lifetime of the job.
+   * Per-key state retention, or {@code null} to retain state for the life of the job.
+   *
+   * <p>Per-key state is small — a {@link TimestampSortKey} keyed by {@code collection#{_id}} — so
+   * unbounded retention costs on the order of a hundred bytes per distinct document, while bounding
+   * it risks re-applying stale backfill data. Hence unbounded by default.
    */
-  public static final Duration DEFAULT_STATE_RETENTION = Duration.standardHours(24);
+  @Nullable private final Duration stateRetention;
 
-  private final Duration stateRetention;
-
-  private StatefulDeduplication(Duration stateRetention) {
+  private StatefulDeduplication(@Nullable Duration stateRetention) {
+    if (stateRetention != null && stateRetention.getMillis() <= 0) {
+      throw new IllegalArgumentException(
+          "stateRetention must be positive when set, got " + stateRetention);
+    }
     this.stateRetention = stateRetention;
   }
 
+  /** Returns an instance retaining per-key deduplication state for the life of the job. */
   public static StatefulDeduplication of() {
-    return new StatefulDeduplication(DEFAULT_STATE_RETENTION);
+    return new StatefulDeduplication(null);
   }
 
-  /** Returns an instance retaining per-key deduplication state for {@code stateRetention}. */
-  public static StatefulDeduplication of(Duration stateRetention) {
+  /**
+   * Returns an instance retaining per-key deduplication state for {@code stateRetention} after the
+   * most recent accepted event, or for the life of the job when {@code null}.
+   *
+   * @param stateRetention must be positive when non-null
+   */
+  public static StatefulDeduplication of(@Nullable Duration stateRetention) {
     return new StatefulDeduplication(stateRetention);
   }
 
@@ -138,10 +152,20 @@ public class StatefulDeduplication
     private final Counter dedupStateExpired =
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_state_expired");
 
-    private final Duration stateRetention;
+    @Nullable private final Duration stateRetention;
 
-    public StatefulDeduplicationFn(Duration stateRetention) {
+    public StatefulDeduplicationFn(@Nullable Duration stateRetention) {
       this.stateRetention = stateRetention;
+    }
+
+    /**
+     * Slides the expiry window forward so state survives for as long as the document is active.
+     * No-op when retention is unbounded, which also avoids a timer write per accepted event.
+     */
+    private void armExpiryTimer(Timer stateExpiryTimer) {
+      if (stateRetention != null) {
+        stateExpiryTimer.offset(stateRetention).setRelative();
+      }
     }
 
     @StateId(STATE_ID_LAST_SEEN_KEY)
@@ -195,7 +219,7 @@ public class StatefulDeduplication
       if (lastSeenKey == null) {
         // First time seeing this document key
         lastSeenState.write(incomingKey);
-        stateExpiryTimer.offset(stateRetention).setRelative();
+        armExpiryTimer(stateExpiryTimer);
         recordAccepted(element);
         if (element.isDlqReconsumed()) {
           dedupDlqPassed.inc();
@@ -209,8 +233,7 @@ public class StatefulDeduplication
       if (cmp >= 0) {
         // Incoming event is newer than or equal to last seen state
         lastSeenState.write(incomingKey);
-        // Slide the expiry window forward so state survives for as long as the document is active.
-        stateExpiryTimer.offset(stateRetention).setRelative();
+        armExpiryTimer(stateExpiryTimer);
         recordAccepted(element);
         if (element.isDlqReconsumed()) {
           dedupDlqPassed.inc();
