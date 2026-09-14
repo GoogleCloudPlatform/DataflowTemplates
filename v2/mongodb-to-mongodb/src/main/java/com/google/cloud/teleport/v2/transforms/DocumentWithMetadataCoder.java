@@ -44,6 +44,16 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
+  /**
+   * Wire markers for the {@code originalDocument} field. A single boolean cannot distinguish "the
+   * field was null" from "the field was equal to the serialized document", so both decode to null
+   * and break {@code decode(encode(x)).equals(x)}.
+   */
+  private static final int ORIGINAL_DOC_ABSENT = 0;
+
+  private static final int ORIGINAL_DOC_SAME_AS_DOCUMENT = 1;
+  private static final int ORIGINAL_DOC_DISTINCT = 2;
+
   private DocumentWithMetadataCoder() {}
 
   public static DocumentWithMetadataCoder of() {
@@ -62,11 +72,17 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
         value.getDocument() != null ? value.getDocument().toJson(CANONICAL_JSON_SETTINGS) : null;
     STRING_CODER.encode(docJson, outStream);
 
-    String originalDoc = value.getOriginalDocument();
-    boolean hasDistinctOriginal =
-        originalDoc != null && (docJson == null || !originalDoc.equals(docJson));
-    BOOLEAN_CODER.encode(hasDistinctOriginal, outStream);
-    if (hasDistinctOriginal) {
+    String originalDoc = value.rawOriginalDocument();
+    int originalDocState;
+    if (originalDoc == null) {
+      originalDocState = ORIGINAL_DOC_ABSENT;
+    } else if (originalDoc.equals(docJson)) {
+      originalDocState = ORIGINAL_DOC_SAME_AS_DOCUMENT;
+    } else {
+      originalDocState = ORIGINAL_DOC_DISTINCT;
+    }
+    VARINT_CODER.encode(originalDocState, outStream);
+    if (originalDocState == ORIGINAL_DOC_DISTINCT) {
       STRING_CODER.encode(originalDoc, outStream);
     }
 
@@ -95,8 +111,19 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     String docJson = STRING_CODER.decode(inStream);
     Document doc = docJson != null ? Document.parse(docJson) : null;
 
-    boolean hasDistinctOriginal = BOOLEAN_CODER.decode(inStream);
-    String originalDoc = hasDistinctOriginal ? STRING_CODER.decode(inStream) : null;
+    int originalDocState = VARINT_CODER.decode(inStream);
+    String originalDoc;
+    switch (originalDocState) {
+      case ORIGINAL_DOC_SAME_AS_DOCUMENT:
+        originalDoc = docJson;
+        break;
+      case ORIGINAL_DOC_DISTINCT:
+        originalDoc = STRING_CODER.decode(inStream);
+        break;
+      default:
+        originalDoc = null;
+        break;
+    }
     int retryCount = VARINT_CODER.decode(inStream);
     String errorMessage = STRING_CODER.decode(inStream);
     String errorTypeStr = STRING_CODER.decode(inStream);

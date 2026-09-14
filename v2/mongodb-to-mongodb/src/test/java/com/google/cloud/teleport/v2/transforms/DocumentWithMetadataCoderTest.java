@@ -161,4 +161,54 @@ public class DocumentWithMetadataCoderTest {
 
     CoderProperties.coderDeterministic(DocumentWithMetadataCoder.of(), item1, item2);
   }
+
+  /**
+   * {@code originalDocument} has three distinct states on the wire, and {@link
+   * DocumentWithMetadata#equals} compares the stored field rather than the lazily derived getter.
+   * All three must survive a round trip.
+   */
+  @Test
+  public void testCoderProperties_roundTripEqual_originalDocumentAbsent() throws Exception {
+    Document doc = new Document("_id", 1).append("k", "v");
+
+    CoderProperties.coderDecodeEncodeEqual(
+        DocumentWithMetadataCoder.of(), withOriginalDocument(doc, null));
+  }
+
+  @Test
+  public void testCoderProperties_roundTripEqual_originalDocumentEqualToDocument()
+      throws Exception {
+    Document doc = new Document("_id", 2).append("k", "v");
+    // The canonical serialization the coder itself would produce for `doc`. A one-bit "is it
+    // distinct" flag collapses this case onto the null case and loses the field.
+    String canonicalJson = DocumentWithMetadata.of(doc, "s", "t").getOriginalDocument();
+
+    CoderProperties.coderDecodeEncodeEqual(
+        DocumentWithMetadataCoder.of(), withOriginalDocument(doc, canonicalJson));
+  }
+
+  @Test
+  public void testCoderProperties_roundTripEqual_originalDocumentDistinct() throws Exception {
+    Document doc = new Document("_id", 3).append("k", "transformed");
+
+    CoderProperties.coderDecodeEncodeEqual(
+        DocumentWithMetadataCoder.of(),
+        withOriginalDocument(doc, new Document("_id", 3).append("k", "original").toJson()));
+  }
+
+  private static DocumentWithMetadata withOriginalDocument(Document doc, String originalDocument) {
+    return new DocumentWithMetadata(
+        doc,
+        originalDocument,
+        0,
+        null,
+        null,
+        "sourceCol",
+        "targetCol",
+        null,
+        DocumentWithMetadata.OperationType.INSERT,
+        TimestampSortKey.cdc(1724000000L, 1L),
+        new Document("_id", doc.get("_id")).toJson(),
+        false);
+  }
 }

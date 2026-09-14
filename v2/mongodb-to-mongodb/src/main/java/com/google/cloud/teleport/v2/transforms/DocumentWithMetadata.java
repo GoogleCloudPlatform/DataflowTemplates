@@ -225,6 +225,17 @@ public class DocumentWithMetadata implements Serializable {
     return null;
   }
 
+  /**
+   * Returns the {@code originalDocument} field exactly as stored, without the lazy fallback to the
+   * serialized document applied by {@link #getOriginalDocument()}.
+   *
+   * <p>{@link #equals(Object)} compares this field directly, so {@link DocumentWithMetadataCoder}
+   * must serialize it verbatim for {@code decode(encode(x)).equals(x)} to hold.
+   */
+  String rawOriginalDocument() {
+    return originalDocument;
+  }
+
   /** Returns the retry count associated with this document in DLQ. */
   public Integer getRetryCount() {
     return retryCount;
