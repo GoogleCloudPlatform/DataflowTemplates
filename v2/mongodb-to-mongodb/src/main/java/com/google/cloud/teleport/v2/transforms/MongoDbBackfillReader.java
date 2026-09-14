@@ -454,453 +454,43 @@ public class MongoDbBackfillReader {
     return generatePartitions(uri, database, sourceCollection, targetCollection, 1, t0);
   }
 
-  /**
-   * SDF restriction for MongoDB backfill tracking sequential offset, serialized canonical BSON _id,
-   * and completion state.
-   */
-  public static class BackfillRestriction implements Serializable {
-    private static final long serialVersionUID = 1L;
+  /** Holds a cached cursor and tracks its last access timestamp and last seen document ID. */
+  public static class PartitionCursorHolder implements AutoCloseable {
+    private final MongoCursor<Document> cursor;
+    private volatile long lastAccessedMs;
+    private volatile String lastSeenIdJson;
 
-    private final long offset;
-    private final String lastSeenIdJson;
-    private final boolean done;
-
-    public BackfillRestriction() {
-      this(0L, null, false);
+    public PartitionCursorHolder(MongoCursor<Document> cursor, String initialLastSeenIdJson) {
+      this.cursor = cursor;
+      this.lastAccessedMs = System.currentTimeMillis();
+      this.lastSeenIdJson = initialLastSeenIdJson;
     }
 
-    public BackfillRestriction(long offset, String lastSeenIdJson, boolean done) {
-      this.offset = offset;
-      this.lastSeenIdJson = lastSeenIdJson;
-      this.done = done;
-    }
-
-    public long getOffset() {
-      return offset;
+    public MongoCursor<Document> getCursor() {
+      this.lastAccessedMs = System.currentTimeMillis();
+      return cursor;
     }
 
     public String getLastSeenIdJson() {
       return lastSeenIdJson;
     }
 
-    public boolean isDone() {
-      return done;
+    public void setLastSeenIdJson(String lastSeenIdJson) {
+      this.lastSeenIdJson = lastSeenIdJson;
+      this.lastAccessedMs = System.currentTimeMillis();
     }
 
-    public BsonValue getLastSeenId() {
-      if (lastSeenIdJson == null || lastSeenIdJson.isEmpty()) {
-        return null;
-      }
-      try {
-        return BsonDocument.parse(lastSeenIdJson).get("_id");
-      } catch (Exception e) {
-        LOG.warn("Failed parsing lastSeenIdJson: {}", lastSeenIdJson, e);
-        return null;
-      }
+    public boolean isExpired(long timeoutMs) {
+      return (System.currentTimeMillis() - lastAccessedMs) > timeoutMs;
     }
 
     @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (!(o instanceof BackfillRestriction)) {
-        return false;
-      }
-      BackfillRestriction that = (BackfillRestriction) o;
-      return offset == that.offset
-          && done == that.done
-          && Objects.equals(lastSeenIdJson, that.lastSeenIdJson);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(offset, lastSeenIdJson, done);
-    }
-
-    @Override
-    public String toString() {
-      return "BackfillRestriction{offset="
-          + offset
-          + ", hasLastSeenId="
-          + (lastSeenIdJson != null)
-          + ", done="
-          + done
-          + "}";
-    }
-  }
-
-  /**
-   * RestrictionTracker for BackfillRestriction ensuring slice-per-offset claiming,
-   * claim-before-output, and checkpoint splitting.
-   *
-   * <p>{@link RestrictionTracker} documents that {@code trySplit} and {@code getProgress} may be
-   * invoked concurrently from a thread other than the one running {@code tryClaim}, so every access
-   * to the mutable state below is synchronized on this instance.
-   */
-  public static class BackfillRestrictionTracker
-      extends RestrictionTracker<BackfillRestriction, BackfillRestriction> {
-
-    private BackfillRestriction currentRestriction;
-    private boolean shouldStop = false;
-
-    public BackfillRestrictionTracker(BackfillRestriction restriction) {
-      this.currentRestriction =
-          restriction != null ? restriction : new BackfillRestriction(0L, null, false);
-    }
-
-    @Override
-    public synchronized boolean tryClaim(BackfillRestriction position) {
-      if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
-        return false;
-      }
-      this.currentRestriction = position;
-      return true;
-    }
-
-    @Override
-    public synchronized BackfillRestriction currentRestriction() {
-      return currentRestriction;
-    }
-
-    @Override
-    public synchronized @Nullable SplitResult<BackfillRestriction> trySplit(
-        double fractionOfRemainder) {
-      if (fractionOfRemainder == 0) {
-        if (shouldStop || currentRestriction.isDone()) {
-          return null;
-        }
-        shouldStop = true;
-        BackfillRestriction primary = currentRestriction;
-        BackfillRestriction residual =
-            new BackfillRestriction(
-                currentRestriction.getOffset(),
-                currentRestriction.getLastSeenIdJson(),
-                currentRestriction.isDone());
-        return SplitResult.of(primary, residual);
-      }
-      return null;
-    }
-
-    @Override
-    public synchronized void checkDone() throws IllegalStateException {
-      if (!shouldStop && (currentRestriction == null || !currentRestriction.isDone())) {
-        throw new IllegalStateException(
-            String.format(
-                "Last claimed restriction %s is not marked as done, but execution finished without a split.",
-                currentRestriction));
-      }
-    }
-
-    @Override
-    public IsBounded isBounded() {
-      return IsBounded.BOUNDED;
-    }
-  }
-
-  /**
-   * Splittable DoFn that executes partitioned MongoDB backfill reads on worker threads, streaming
-   * micro-batches of documents into Windmill without exceeding bundle commit limits.
-   */
-  public static class ProcessBackfillPartitionFn
-      extends DoFn<BackfillPartition, DocumentWithMetadata> {
-
-    public static final int MAX_DOCS_PER_SLICE = 2000;
-    public static final long MAX_SLICE_DURATION_MS = 10000L;
-    public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle eviction
-
-    private final SerializableFunction<String, MongoClient> clientFactory;
-
-    private transient ConcurrentHashMap<String, MongoClient> clientCache;
-    private transient ConcurrentHashMap<String, PartitionCursorHolder> cursorCache;
-
-    private final Counter backfillDocumentsRead =
-        Metrics.counter(MongoDbBackfillReader.class, "backfillDocumentsRead");
-    private final Counter backfillSlicesCompleted =
-        Metrics.counter(MongoDbBackfillReader.class, "backfillSlicesCompleted");
-    private final Counter backfillEmptySlices =
-        Metrics.counter(MongoDbBackfillReader.class, "backfillEmptySlices");
-    private final Counter backfillReadErrors =
-        Metrics.counter(MongoDbBackfillReader.class, "backfillReadErrors");
-
-    /** Holds a cached cursor and tracks its last access timestamp and last seen document ID. */
-    public static class PartitionCursorHolder implements AutoCloseable {
-      private final MongoCursor<Document> cursor;
-      private volatile long lastAccessedMs;
-      private volatile String lastSeenIdJson;
-
-      public PartitionCursorHolder(MongoCursor<Document> cursor, String initialLastSeenIdJson) {
-        this.cursor = cursor;
-        this.lastAccessedMs = System.currentTimeMillis();
-        this.lastSeenIdJson = initialLastSeenIdJson;
-      }
-
-      public MongoCursor<Document> getCursor() {
-        this.lastAccessedMs = System.currentTimeMillis();
-        return cursor;
-      }
-
-      public String getLastSeenIdJson() {
-        return lastSeenIdJson;
-      }
-
-      public void setLastSeenIdJson(String lastSeenIdJson) {
-        this.lastSeenIdJson = lastSeenIdJson;
-        this.lastAccessedMs = System.currentTimeMillis();
-      }
-
-      public boolean isExpired(long timeoutMs) {
-        return (System.currentTimeMillis() - lastAccessedMs) > timeoutMs;
-      }
-
-      @Override
-      public void close() {
-        if (cursor != null) {
-          try {
-            cursor.close();
-          } catch (Exception ignored) {
-          }
-        }
-      }
-    }
-
-    public ProcessBackfillPartitionFn() {
-      this(MongoDbTransforms::getOrCreateMongoClient);
-    }
-
-    public ProcessBackfillPartitionFn(SerializableFunction<String, MongoClient> clientFactory) {
-      this.clientFactory = clientFactory;
-    }
-
-    @GetInitialRestriction
-    public BackfillRestriction getInitialRestriction(@Element BackfillPartition partition) {
-      return new BackfillRestriction(0L, null, false);
-    }
-
-    @NewTracker
-    public BackfillRestrictionTracker newTracker(
-        @Element BackfillPartition partition, @Restriction BackfillRestriction restriction) {
-      return new BackfillRestrictionTracker(restriction);
-    }
-
-    @GetRestrictionCoder
-    public Coder<BackfillRestriction> getRestrictionCoder() {
-      return SerializableCoder.of(BackfillRestriction.class);
-    }
-
-    @ProcessElement
-    public ProcessContinuation processElement(
-        @Element BackfillPartition partition,
-        RestrictionTracker<BackfillRestriction, BackfillRestriction> tracker,
-        OutputReceiver<DocumentWithMetadata> receiver) {
-
-      if (cursorCache == null) {
-        cursorCache = new ConcurrentHashMap<>();
-      }
-      if (clientCache == null) {
-        clientCache = new ConcurrentHashMap<>();
-      }
-      evictExpiredCursors();
-
-      BackfillRestriction currentRestriction = tracker.currentRestriction();
-      if (currentRestriction.isDone() || !tracker.tryClaim(currentRestriction)) {
-        return ProcessContinuation.stop();
-      }
-
-      String partitionKey =
-          partition.getDatabase()
-              + "."
-              + partition.getSourceCollection()
-              + "#"
-              + partition.getPartitionIndex();
-
-      String currentLastSeenIdJson = currentRestriction.getLastSeenIdJson();
-      PartitionCursorHolder cursorHolder = cursorCache.get(partitionKey);
-
-      // Validate that cached cursor position matches the incoming restriction
-      if (cursorHolder != null) {
-        if (!Objects.equals(cursorHolder.getLastSeenIdJson(), currentLastSeenIdJson)) {
-          closeCursorForPartition(partitionKey);
-          cursorHolder = null;
-        }
-      }
-
-      if (cursorHolder == null) {
+    public void close() {
+      if (cursor != null) {
         try {
-          MongoClient client =
-              clientCache.computeIfAbsent(partition.getUri(), clientFactory::apply);
-          MongoDatabase db = client.getDatabase(partition.getDatabase());
-          MongoCollection<Document> collection = db.getCollection(partition.getSourceCollection());
-
-          Bson baseFilter =
-              partition.hasFilter()
-                  ? BsonDocument.parse(partition.getFilterJson())
-                  : new BsonDocument();
-
-          BsonValue lastSeenId = currentRestriction.getLastSeenId();
-          Bson queryFilter;
-          if (lastSeenId != null) {
-            BsonDocument gtFilter = new BsonDocument("_id", new BsonDocument("$gt", lastSeenId));
-            if (partition.hasFilter()) {
-              queryFilter =
-                  new BsonDocument(
-                      "$and",
-                      new BsonArray(
-                          Arrays.asList(BsonDocument.parse(partition.getFilterJson()), gtFilter)));
-            } else {
-              queryFilter = gtFilter;
-            }
-          } else {
-            queryFilter = baseFilter;
-          }
-
-          FindIterable<Document> findIterable =
-              collection
-                  .find(queryFilter)
-                  .sort(new BsonDocument("_id", new BsonInt32(1)))
-                  .batchSize(DEFAULT_CURSOR_BATCH_SIZE);
-
-          MongoCursor<Document> cursor = findIterable.iterator();
-          cursorHolder = new PartitionCursorHolder(cursor, currentLastSeenIdJson);
-          cursorCache.put(partitionKey, cursorHolder);
-        } catch (Exception e) {
-          backfillReadErrors.inc();
-          LOG.warn(
-              "Failed opening backfill cursor for partition {}: {}. Retrying in 1s.",
-              partition,
-              e.getMessage(),
-              e);
-          closeCursorForPartition(partitionKey);
-          return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
+          cursor.close();
+        } catch (Exception ignored) {
         }
-      }
-
-      long sliceStartTime = System.currentTimeMillis();
-      int docsInSlice = 0;
-      long currentOffset = currentRestriction.getOffset();
-      String lastSeenIdJson = currentLastSeenIdJson;
-
-      try {
-        MongoCursor<Document> cursor = cursorHolder.getCursor();
-        while (docsInSlice < MAX_DOCS_PER_SLICE
-            && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
-          if (!cursor.hasNext()) {
-            // Reached EOF for this partition
-            tracker.tryClaim(
-                new BackfillRestriction(currentOffset + docsInSlice, lastSeenIdJson, true));
-            closeCursorForPartition(partitionKey);
-            backfillSlicesCompleted.inc();
-            if (currentOffset + docsInSlice == 0) {
-              backfillEmptySlices.inc();
-            }
-            LOG.info(
-                "Completed backfill read for collection '{}' [Slice {}/{}]: total {} documents",
-                partition.getSourceCollection(),
-                partition.getPartitionIndex(),
-                partition.getTotalPartitions(),
-                currentOffset + docsInSlice);
-            return ProcessContinuation.stop();
-          }
-
-          Document doc = cursor.next();
-          BsonValue docId = doc.toBsonDocument().get("_id");
-          String nextIdJson =
-              docId != null ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS) : null;
-
-          // Claim document position BEFORE emitting (claim-before-output)
-          if (!tracker.tryClaim(
-              new BackfillRestriction(currentOffset + docsInSlice + 1, nextIdJson, false))) {
-            closeCursorForPartition(partitionKey);
-            return ProcessContinuation.stop();
-          }
-
-          DocumentWithMetadata item =
-              partition.getTimestampSortKey() != null
-                  ? DocumentWithMetadata.backfillEvent(
-                      doc,
-                      partition.getSourceCollection(),
-                      partition.getTargetCollection(),
-                      partition.getTimestampSortKey())
-                  : DocumentWithMetadata.of(
-                      doc, partition.getSourceCollection(), partition.getTargetCollection());
-
-          receiver.output(item);
-          backfillDocumentsRead.inc();
-          docsInSlice++;
-          lastSeenIdJson = nextIdJson;
-          cursorHolder.setLastSeenIdJson(lastSeenIdJson);
-        }
-      } catch (MongoCursorNotFoundException | MongoSocketException mse) {
-        backfillReadErrors.inc();
-        LOG.warn(
-            "Cached cursor disconnected/expired for partition {}: {}."
-                + " Resuming from lastSeenId in 500ms.",
-            partition,
-            mse.getMessage());
-        closeCursorForPartition(partitionKey);
-        return ProcessContinuation.resume().withResumeDelay(Duration.millis(500));
-      } catch (MongoException me) {
-        backfillReadErrors.inc();
-        LOG.warn(
-            "Transient MongoDB exception reading partition {}: {}. Resuming from lastSeenId in 1s.",
-            partition,
-            me.getMessage());
-        closeCursorForPartition(partitionKey);
-        return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
-      } catch (Exception e) {
-        backfillReadErrors.inc();
-        LOG.error(
-            "Unexpected error reading partition {}: {}. Failing bundle.",
-            partition,
-            e.getMessage(),
-            e);
-        closeCursorForPartition(partitionKey);
-        throw new RuntimeException("Backfill read failed for partition " + partition, e);
-      }
-
-      return ProcessContinuation.resume();
-    }
-
-    private void evictExpiredCursors() {
-      if (cursorCache != null) {
-        cursorCache
-            .entrySet()
-            .removeIf(
-                entry -> {
-                  if (entry.getValue().isExpired(CURSOR_EXPIRATION_TIMEOUT_MS)) {
-                    entry.getValue().close();
-                    return true;
-                  }
-                  return false;
-                });
-      }
-    }
-
-    private void closeCursorForPartition(String partitionKey) {
-      if (cursorCache != null && partitionKey != null) {
-        PartitionCursorHolder holder = cursorCache.remove(partitionKey);
-        if (holder != null) {
-          holder.close();
-        }
-      }
-    }
-
-    @Teardown
-    public void teardown() {
-      if (cursorCache != null) {
-        for (PartitionCursorHolder holder : cursorCache.values()) {
-          holder.close();
-        }
-        cursorCache.clear();
-      }
-      if (clientCache != null) {
-        for (MongoClient client : clientCache.values()) {
-          try {
-            client.close();
-          } catch (Exception ignored) {
-          }
-        }
-        clientCache.clear();
       }
     }
   }
@@ -1074,8 +664,7 @@ public class MongoDbBackfillReader {
     private final SerializableFunction<String, MongoClient> clientFactory;
 
     private transient ConcurrentHashMap<String, MongoClient> clientCache;
-    private transient ConcurrentHashMap<String, ProcessBackfillPartitionFn.PartitionCursorHolder>
-        cursorCache;
+    private transient ConcurrentHashMap<String, PartitionCursorHolder> cursorCache;
 
     private final Counter backfillDocumentsRead =
         Metrics.counter(MongoDbBackfillReader.class, "backfillDocumentsRead");
@@ -1149,7 +738,7 @@ public class MongoDbBackfillReader {
               + partition.getPartitionIndex();
 
       String currentLastSeenIdJson = currentRestriction.getLastSeenIdJson();
-      ProcessBackfillPartitionFn.PartitionCursorHolder cursorHolder = cursorCache.get(partitionKey);
+      PartitionCursorHolder cursorHolder = cursorCache.get(partitionKey);
 
       if (cursorHolder != null) {
         if (!Objects.equals(cursorHolder.getLastSeenIdJson(), currentLastSeenIdJson)) {
@@ -1194,8 +783,7 @@ public class MongoDbBackfillReader {
                   .batchSize(DEFAULT_CURSOR_BATCH_SIZE);
 
           MongoCursor<Document> cursor = findIterable.iterator();
-          cursorHolder =
-              new ProcessBackfillPartitionFn.PartitionCursorHolder(cursor, currentLastSeenIdJson);
+          cursorHolder = new PartitionCursorHolder(cursor, currentLastSeenIdJson);
           cursorCache.put(partitionKey, cursorHolder);
         } catch (Exception e) {
           backfillReadErrors.inc();
@@ -1324,7 +912,7 @@ public class MongoDbBackfillReader {
 
     private void closeCursorForPartition(String partitionKey) {
       if (cursorCache != null && partitionKey != null) {
-        ProcessBackfillPartitionFn.PartitionCursorHolder holder = cursorCache.remove(partitionKey);
+        PartitionCursorHolder holder = cursorCache.remove(partitionKey);
         if (holder != null) {
           holder.close();
         }
@@ -1334,7 +922,7 @@ public class MongoDbBackfillReader {
     @Teardown
     public void teardown() {
       if (cursorCache != null) {
-        for (ProcessBackfillPartitionFn.PartitionCursorHolder holder : cursorCache.values()) {
+        for (PartitionCursorHolder holder : cursorCache.values()) {
           holder.close();
         }
         cursorCache.clear();
