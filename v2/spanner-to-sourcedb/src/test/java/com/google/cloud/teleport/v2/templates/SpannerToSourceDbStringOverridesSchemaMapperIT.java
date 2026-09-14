@@ -81,7 +81,9 @@ public class SpannerToSourceDbStringOverridesSchemaMapperIT extends SpannerToSou
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        mySQLResourceManager = MySQLResourceManager.builder(testName).build();
+        mySQLResourceManager =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName);
         createMySQLSchema(mySQLResourceManager, MYSQL_SCHEMA_FILE_RESOURCE);
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, mySQLResourceManager);

@@ -74,7 +74,9 @@ public class SpannerToMySqlReservedKeywordsIT extends SpannerToSourceDbITBase {
   public void setUp() throws IOException {
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
-    mySQLResourceManager = MySQLResourceManager.builder(testName).build();
+    mySQLResourceManager =
+        com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+            .createResourceManager(testName);
     createMySQLSchema(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createAndUploadShardConfigToGcs(gcsResourceManager, mySQLResourceManager);
