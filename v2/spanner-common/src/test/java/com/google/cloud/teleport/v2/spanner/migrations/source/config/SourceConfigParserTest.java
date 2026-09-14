@@ -275,6 +275,18 @@ public class SourceConfigParserTest {
     assertEquals("superSecretPassword", pgJdbcConfig.getShardConfigs().get(0).getPassword());
     assertEquals(
         "resolvedPasswordFromSecretManager", pgJdbcConfig.getShardConfigs().get(1).getPassword());
+
+    // Test for SQLSERVER
+    SourceConnectionConfig sqlServerConfig =
+        parser.parseConfiguration("sqlserver", tempFile.getAbsolutePath());
+    assertNotNull(sqlServerConfig);
+    assertEquals(JdbcShardConfig.class, sqlServerConfig.getClass());
+    JdbcShardConfig sqlServerJdbcConfig = (JdbcShardConfig) sqlServerConfig;
+    assertEquals(2, sqlServerJdbcConfig.getShardConfigs().size());
+    assertEquals("superSecretPassword", sqlServerJdbcConfig.getShardConfigs().get(0).getPassword());
+    assertEquals(
+        "resolvedPasswordFromSecretManager",
+        sqlServerJdbcConfig.getShardConfigs().get(1).getPassword());
   }
 
   @Test

@@ -21,6 +21,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **deltaLakeVersion**: Version of the Delta Lake table to read. Cannot be set if timestamp is set. For example, `0`.
+* **deltaLakeTimestamp**: Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set. For example, `2026-05-20T15:43:26Z`.
 * **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
@@ -127,6 +129,8 @@ export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
 export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
+export DELTA_LAKE_VERSION=<deltaLakeVersion>
+export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_DROP=<lakehouseDrop>
@@ -141,6 +145,8 @@ gcloud dataflow flex-template run "deltalake-to-lakehouse-yaml-job" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "deltaLakeTable=$DELTA_LAKE_TABLE" \
+  --parameters "deltaLakeVersion=$DELTA_LAKE_VERSION" \
+  --parameters "deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP" \
   --parameters "deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG" \
   --parameters "lakehouseTable=$LAKEHOUSE_TABLE" \
   --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
@@ -176,6 +182,8 @@ export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
 export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
+export DELTA_LAKE_VERSION=<deltaLakeVersion>
+export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_DROP=<lakehouseDrop>
@@ -192,7 +200,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="deltalake-to-lakehouse-yaml-job" \
 -DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
--Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
+-Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeVersion=$DELTA_LAKE_VERSION,deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -241,6 +249,8 @@ resource "google_dataflow_flex_template_job" "deltalake_to_lakehouse_yaml" {
     lakehouseTable = "<lakehouseTable>"
     lakehouseCatalogName = "<lakehouseCatalogName>"
     lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
+    # deltaLakeVersion = "<deltaLakeVersion>"
+    # deltaLakeTimestamp = "<deltaLakeTimestamp>"
     # deltaLakeHadoopConfig = ""{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": }""
     # lakehouseConfigProperties = "<lakehouseConfigProperties>"
     # lakehouseDrop = "<lakehouseDrop>"

@@ -179,7 +179,6 @@
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>${mssql-jdbc.version}</version>
-            <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-common -->
         <!-- test dependencies for localCassandraIO begin -->

@@ -743,6 +743,11 @@ public class InformationSchemaScanner {
       String optionValue = resultSet.getString(5);
 
       KV<String, String> kv = KV.of(tableName, columnName);
+
+      if (optionName.equalsIgnoreCase("locality_group")) {
+        continue;
+      }
+
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
 

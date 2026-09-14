@@ -101,7 +101,6 @@ public class SpannerSpToSrcSourceConnectorTest {
     assertEquals(maxConnections, request.getMaxConnections());
     assertEquals(null, request.getDriver());
     assertEquals(null, request.getConnectionInitQuery());
-    assertEquals(null, request.getJdbcUrlPrefix());
   }
 
   @Test

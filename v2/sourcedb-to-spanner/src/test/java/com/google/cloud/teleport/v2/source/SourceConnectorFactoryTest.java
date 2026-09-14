@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConne
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.sqlserver.SqlServerSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
@@ -92,6 +93,16 @@ public class SourceConnectorFactoryTest {
   }
 
   @Test
+  public void testGetSourceConnectorByDialect_optionsSqlServer() {
+    SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    options.setSourceDbDialect(SourceDbToSpannerOptions.SQLSERVER_SOURCE_DIALECT);
+
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
   public void testGetSourceConnectorByDialect_optionsUnsupportedDialect() {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect("unsupported_db");
@@ -146,6 +157,14 @@ public class SourceConnectorFactoryTest {
   }
 
   @Test
+  public void testGetSourceConnectorByDialect_sqlDialectSqlServer() {
+    AbstractJdbcSrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceJdbcConnectorByDialect(SQLDialect.SQLSERVER);
+
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
   public void testGetSourceConnectorByDialect_sqlDialectNull() {
     IllegalArgumentException thrown =
         assertThrows(
@@ -183,6 +202,13 @@ public class SourceConnectorFactoryTest {
     assertThat(connector)
         .isInstanceOf(
             com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_sqlserver() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.SQLSERVER_SOURCE_TYPE);
+    assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
   }
 
   @Test

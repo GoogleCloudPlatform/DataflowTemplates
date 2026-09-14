@@ -32,6 +32,7 @@ public class Shard implements Serializable {
   private String secretManagerUri = "";
   private String connectionProperties = "";
   private String streamId = "";
+  private transient String connectionUrl;
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 
@@ -160,6 +161,14 @@ public class Shard implements Serializable {
 
   public void setConnectionProperties(String input) {
     this.connectionProperties = input;
+  }
+
+  public String getConnectionUrl() {
+    return connectionUrl;
+  }
+
+  public void setConnectionUrl(String connectionUrl) {
+    this.connectionUrl = connectionUrl;
   }
 
   public Map<String, String> getDbNameToLogicalShardIdMap() {

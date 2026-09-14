@@ -36,6 +36,8 @@ import org.apache.beam.sdk.options.PipelineOptions;
 
 public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
+  private static final String JDBC_URL_PREFIX = "jdbc:oracle:thin:@//";
+
   private final IConnectionHelper connectionHelper;
 
   public OracleSpToSrcSourceConnector() {
@@ -53,12 +55,7 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:oracle:thin:@//"
-        + shard.getHost()
-        + ":"
-        + shard.getPort()
-        + "/"
-        + shard.getDbName();
+    return JDBC_URL_PREFIX + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -69,14 +66,12 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
+      for (Shard shard : shards) {
+        shard.setConnectionUrl(getConnectionUrl(shard));
+      }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "oracle.jdbc.OracleDriver",
-              null,
-              "jdbc:oracle:thin:@//");
+              shards, null, maxConnections, "oracle.jdbc.OracleDriver", null);
       connectionHelper.init(request);
     }
   }

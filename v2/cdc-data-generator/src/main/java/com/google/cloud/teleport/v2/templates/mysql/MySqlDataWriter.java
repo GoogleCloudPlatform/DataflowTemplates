@@ -173,14 +173,16 @@ public class MySqlDataWriter implements DataWriter {
       this.shardsByLogicalId = Collections.unmodifiableMap(byId);
     }
     if (!connectionHelper.isConnectionPoolInitialized()) {
+      for (Shard shard : shardsByLogicalId.values()) {
+        shard.setConnectionUrl(buildConnectionUrl(shard));
+      }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
               ImmutableList.copyOf(shardsByLogicalId.values()),
               "",
               maxShardConnections,
               Constants.MYSQL_JDBC_DRIVER,
-              "",
-              Constants.JDBC_MYSQL_URL_PREFIX);
+              "");
       connectionHelper.init(request);
     }
   }
@@ -203,15 +205,18 @@ public class MySqlDataWriter implements DataWriter {
   }
 
   @VisibleForTesting
-  static String buildConnectionKey(Shard shard) {
+  static String buildConnectionUrl(Shard shard) {
     return Constants.JDBC_MYSQL_URL_PREFIX
         + shard.getHost()
         + ":"
         + shard.getPort()
         + "/"
-        + (shard.getDbName() == null ? "" : shard.getDbName())
-        + "/"
-        + shard.getUserName();
+        + (shard.getDbName() == null ? "" : shard.getDbName());
+  }
+
+  @VisibleForTesting
+  static String buildConnectionKey(Shard shard) {
+    return buildConnectionUrl(shard) + "/" + shard.getUserName();
   }
 
   /**
