@@ -186,8 +186,8 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     spannerResourceManager.executeDdlStatement(createTableStatement);
 
     int key = nextValue();
-    String firstName = UUID.randomUUID().toString();
-    String lastName = UUID.randomUUID().toString();
+    String firstName = "firstName";
+    String lastName = "lastName";
     Mutation insertOneRow =
         Mutation.newInsertBuilder(spannerTable)
             .set("Id")
@@ -228,7 +228,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     assertThatPipeline(launchInfo).isRunning();
 
-    String updatedLastName = UUID.randomUUID().toString();
+    String updatedLastName = "updatedLastName";
     Mutation updateOneRow =
         Mutation.newUpdateBuilder(spannerTable)
             .set("Id")
