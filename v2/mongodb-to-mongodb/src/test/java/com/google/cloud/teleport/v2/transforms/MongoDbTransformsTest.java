@@ -39,6 +39,7 @@ import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,8 +60,15 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.bson.BsonBinaryReader;
+import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.DocumentCodec;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
+import org.bson.types.Binary;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -954,5 +962,92 @@ public class MongoDbTransformsTest {
     verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
     List<WriteModel<Document>> capturedModels = captor.getValue();
     assertEquals(5, capturedModels.size());
+  }
+
+  /**
+   * Encodes and decodes a document through the real BSON binary codec, mirroring what the MongoDB
+   * driver does when it materializes a document off the wire.
+   */
+  private static Document bsonRoundTrip(Document doc) {
+    DocumentCodec codec = new DocumentCodec();
+    BasicOutputBuffer buffer = new BasicOutputBuffer();
+    try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
+      codec.encode(writer, doc, EncoderContext.builder().build());
+    }
+    try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(buffer.toByteArray()))) {
+      return codec.decode(reader, DecoderContext.builder().build());
+    }
+  }
+
+  /**
+   * Batch coalescing keys a {@link java.util.LinkedHashMap} on the raw {@code _id} object, so it is
+   * only correct when that object has value-based equality. A binary {@code _id} arrives off the
+   * wire as {@link Binary} (which compares its bytes), not as a raw {@code byte[]} (which would
+   * compare by identity and silently defeat coalescing). This test pins down both that decode
+   * premise and the resulting coalescing behaviour.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_binaryId_coalescesByValue() throws Exception {
+    byte[] idBytes = new byte[] {0x01, 0x02, 0x03, 0x04};
+
+    // Two independently decoded documents that share the same binary _id bytes. Decoding
+    // separately means the two _id objects are distinct instances, so coalescing them relies
+    // purely on value equality.
+    Document docV1 =
+        bsonRoundTrip(new Document("_id", idBytes.clone()).append("val", 1).append("name", "v1"));
+    Document docV2 =
+        bsonRoundTrip(new Document("_id", idBytes.clone()).append("val", 2).append("name", "v2"));
+
+    // Guard the premise: the driver decodes BSON binary to Binary, not to byte[].
+    assertTrue(docV1.get("_id") instanceof Binary);
+    assertEquals(new Binary(idBytes), docV1.get("_id"));
+    assertTrue(docV1.get("_id") != docV2.get("_id"));
+    assertEquals(docV1.get("_id"), docV2.get("_id"));
+
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    DocumentWithMetadata item1 = DocumentWithMetadata.of(docV1, "blobs", "blobs");
+    DocumentWithMetadata item2 = DocumentWithMetadata.of(docV2, "blobs", "blobs");
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("blobs#0", Arrays.asList(item1, item2)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+
+    ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
+    assertEquals(2, replaceModel.getReplacement().get("val"));
+    assertEquals(new Binary(idBytes), replaceModel.getReplacement().get("_id"));
   }
 }
