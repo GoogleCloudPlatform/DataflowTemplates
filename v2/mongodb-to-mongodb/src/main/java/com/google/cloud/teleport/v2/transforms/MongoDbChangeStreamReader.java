@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -708,6 +709,19 @@ public class MongoDbChangeStreamReader {
     private final Counter cursorRebuildTokenMismatch =
         Metrics.counter(MongoDbChangeStreamReader.class, "cursorRebuildTokenMismatch");
 
+    /*
+     * Latency distributions used to quantify the cost of a cursor rebuild. The sum of
+     * cursorBuildMillis and cursorFirstEventMillis, divided by total cursor-time
+     * (wall seconds x partition count), gives the fraction of streaming time lost to rebuilds.
+     * Beam Distributions report sum, count, min, max, so the totals are directly recoverable.
+     */
+    private final Distribution cursorBuildMillis =
+        Metrics.distribution(MongoDbChangeStreamReader.class, "cursorBuildMillis");
+    private final Distribution cursorFirstEventMillis =
+        Metrics.distribution(MongoDbChangeStreamReader.class, "cursorFirstEventMillis");
+    private final Distribution sliceDurationMillis =
+        Metrics.distribution(MongoDbChangeStreamReader.class, "sliceDurationMillis");
+
     /** Why a change stream cursor had to be built, for diagnostic attribution. */
     private enum RebuildCause {
       /** No cached cursor and no prior resume token: a genuine cold start. */
@@ -822,6 +836,7 @@ public class MongoDbChangeStreamReader {
 
       // Records why a rebuild was needed, for the diagnostic counters at the build site below.
       RebuildCause rebuildCause = null;
+      boolean rebuiltThisSlice = false;
       if (cursorHolder == null) {
         rebuildCause = currentToken == null ? RebuildCause.FIRST_START : RebuildCause.CACHE_MISS;
       }
@@ -886,6 +901,7 @@ public class MongoDbChangeStreamReader {
           }
 
           MongoChangeStreamCursor<ChangeStreamDocument<Document>> activeCursor;
+          long buildStartMs = System.currentTimeMillis();
           try {
             activeCursor = configuredStream.cursor();
           } catch (MongoCommandException mce) {
@@ -901,6 +917,8 @@ public class MongoDbChangeStreamReader {
               throw mce;
             }
           }
+          cursorBuildMillis.update(System.currentTimeMillis() - buildStartMs);
+          rebuiltThisSlice = true;
           cursorHolder = new PartitionCursorHolder(activeCursor, currentToken);
           cursorCache.put(partitionKey, cursorHolder);
           changeStreamCursorReconnects.inc();
@@ -992,6 +1010,10 @@ public class MongoDbChangeStreamReader {
           }
 
           lastEventTimeMs = System.currentTimeMillis();
+          if (eventsInSlice == 0 && rebuiltThisSlice) {
+            // Time for the server to relocate the resume point and return the first match.
+            cursorFirstEventMillis.update(lastEventTimeMs - sliceStartTime);
+          }
           eventsInSlice++;
           changeEventsRead.inc();
 
@@ -1086,6 +1108,8 @@ public class MongoDbChangeStreamReader {
         closeCursorForPartition(partitionKey);
         return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
       }
+
+      sliceDurationMillis.update(System.currentTimeMillis() - sliceStartTime);
 
       if (eventsInSlice > 0) {
         if (eventsInSlice >= MAX_EVENTS_PER_SLICE) {
