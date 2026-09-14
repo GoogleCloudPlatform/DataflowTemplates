@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext.DATA_COL;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.Base64;
 import java.util.Set;
