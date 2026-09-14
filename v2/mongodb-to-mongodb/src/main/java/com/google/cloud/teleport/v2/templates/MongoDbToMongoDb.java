@@ -60,6 +60,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.BsonTimestamp;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -405,6 +406,23 @@ public class MongoDbToMongoDb {
     Integer getMaxConcurrentBackfillReads();
 
     void setMaxConcurrentBackfillReads(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 27,
+        groupName = "Target",
+        optional = true,
+        description = "Deduplication State Retention (hours)",
+        helpText =
+            "How long per-document deduplication state is retained after the most recent accepted"
+                + " event, in hours. Only applies when both backfill and change streams are"
+                + " enabled. Deduplication guards the window in which backfill and CDC can emit the"
+                + " same document, so this must exceed the longest expected backfill: if state"
+                + " expires while both streams are still active, a stale event for that document is"
+                + " treated as unseen and re-applied. Default is 24.")
+    @Default.Integer(24)
+    Integer getDedupStateRetentionHours();
+
+    void setDedupStateRetentionHours(Integer value);
   }
 
   public static void main(String[] args) {
@@ -784,7 +802,11 @@ public class MongoDbToMongoDb {
       // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
       // for any given document are already strictly ordered and sequential from the oplog.
       if (requiresDeduplication) {
-        documents = documents.apply("Deduplicate", StatefulDeduplication.of());
+        documents =
+            documents.apply(
+                "Deduplicate",
+                StatefulDeduplication.of(
+                    Duration.standardHours(options.getDedupStateRetentionHours())));
       }
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
