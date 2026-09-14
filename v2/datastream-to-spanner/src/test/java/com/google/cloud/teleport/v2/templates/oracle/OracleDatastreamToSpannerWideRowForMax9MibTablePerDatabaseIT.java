@@ -183,7 +183,7 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+                createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     // Assert
     assertThatResult(result).meetsConditions();

@@ -409,15 +409,15 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                 columns.append(", ");
                 vals.append(", ");
               }
-              columns.append("\"").append(key).append("\"");
+              columns.append(key);
               vals.append("'").append(record.get(key)).append("'");
             }
             try {
               executeOracleSql(
                   oracleResourceManager,
-                  "INSERT INTO \""
+                  "INSERT INTO "
                       + tableName
-                      + "\" ("
+                      + " ("
                       + columns.toString()
                       + ") VALUES ("
                       + vals.toString()

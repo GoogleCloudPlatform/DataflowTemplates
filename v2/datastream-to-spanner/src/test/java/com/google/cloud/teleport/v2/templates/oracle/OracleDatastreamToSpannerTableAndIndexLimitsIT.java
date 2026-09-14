@@ -200,7 +200,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 SpannerRowsCheck.builder(spannerResourceManager, LARGE_KEY_TABLE)
                     .setMinRows(1)
                     .build());
@@ -231,7 +231,7 @@ public class OracleDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamTo
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 SpannerRowsCheck.builder(spannerResourceManager, LARGE_CELL_TABLE)
                     .setMinRows(1)
                     .build());

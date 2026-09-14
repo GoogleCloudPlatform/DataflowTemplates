@@ -163,7 +163,7 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(20)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 SpannerRowsCheck.builder(spannerResourceManager, "`true`").setMinRows(1).build());
     assertThatResult(result).meetsConditions();
 

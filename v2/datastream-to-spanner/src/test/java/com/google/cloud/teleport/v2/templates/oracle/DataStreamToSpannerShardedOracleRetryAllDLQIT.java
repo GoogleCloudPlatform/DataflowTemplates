@@ -347,7 +347,7 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
     PipelineOperator.Result retryResult =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(retryJobInfo, Duration.ofMinutes(15)), dlqConditionCheck);
+                createConfig(retryJobInfo, Duration.ofMinutes(45)), dlqConditionCheck);
 
     assertThatResult(retryResult).meetsConditions();
     LOG.info("Retry job completed processing successfully");

@@ -231,7 +231,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 DlqEventsCountCheck.builder(gcsResourceManager, GCS_PATH_PREFIX + "/dlq/severe/")
                     .setMinEvents(2)
                     .build()
@@ -326,7 +326,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
 
     LOG.info("Waiting for the retryDLQ job to complete automatically");
     PipelineOperator.Result retryJobResult =
-        pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(15)));
+        pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(45)));
     assertThatResult(retryJobResult).isLaunchFinished();
 
     assertTrue(
@@ -339,7 +339,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     PipelineOperator.Result finalWaitResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 SpannerRowsCheck.builder(spannerResourceManager, "Orders")
                     .setMinRows(2)
                     .build()

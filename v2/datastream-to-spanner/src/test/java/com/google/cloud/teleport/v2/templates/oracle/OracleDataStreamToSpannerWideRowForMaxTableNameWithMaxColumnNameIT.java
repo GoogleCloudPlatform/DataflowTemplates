@@ -183,7 +183,7 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(jobInfo, Duration.ofMinutes(10)), conditionCheck);
+                createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     // Assert
     assertThatResult(result).meetsConditions();

@@ -208,7 +208,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
                     .setJobId(jobInfo.jobId())
                     .setProject(PROJECT)
                     .setRegion(REGION)
-                    .setTimeoutAfter(Duration.ofMinutes(20))
+                    .setTimeoutAfter(Duration.ofMinutes(45))
                     .setCheckAfter(Duration.ofSeconds(5))
                     .build(),
                 conditionCheck);

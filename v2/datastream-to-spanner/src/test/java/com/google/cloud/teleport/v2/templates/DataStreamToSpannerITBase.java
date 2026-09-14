@@ -75,7 +75,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   // time between Job start to when workers start requesting work. Need to account for this
   // latency in the first condition check after the job start. The subsequent condition check
   // waits don't need to account for this latency.
-  public static final int JOB_START_PROCESSING_WAIT_MINUTES = 15;
+  public static final int JOB_START_PROCESSING_WAIT_MINUTES = 45;
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();

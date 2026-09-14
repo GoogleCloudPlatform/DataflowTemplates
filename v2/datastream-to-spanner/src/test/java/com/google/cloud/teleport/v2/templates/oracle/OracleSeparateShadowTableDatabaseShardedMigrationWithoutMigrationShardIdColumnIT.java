@@ -163,10 +163,17 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
                   "v2/datastream-to-spanner/src/test/resources/" + SESSION_FILE_RESOURCE);
         }
 
+        String sessionFileContent =
+            com.google.common.io.Resources.toString(
+                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
+                java.nio.charset.StandardCharsets.UTF_8);
+        sessionFileContent =
+            sessionFileContent.replace("it_test", oracleUser).replace("shard_1", "L1");
+
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName() + "shard1",
-                SESSION_FILE_RESOURCE,
+                null,
                 null,
                 "shard1",
                 spannerResourceManager,
@@ -176,7 +183,7 @@ public class OracleSeparateShadowTableDatabaseShardedMigrationWithoutMigrationSh
                 null,
                 gcsResourceManager,
                 datastreamResourceManager,
-                null,
+                sessionFileContent,
                 null);
       }
     }

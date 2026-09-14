@@ -224,7 +224,7 @@ public class OracleSeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerI
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();

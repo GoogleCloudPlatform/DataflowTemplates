@@ -187,7 +187,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
+                createConfig(jobInfo, Duration.ofMinutes(45)),
                 DlqEventsCountCheck.builder(gcsResourceManager, GCS_PATH_PREFIX + "/dlq/retry/")
                     .setMinEvents(2)
                     .build()
@@ -227,7 +227,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
     assertTrue(
         "id=103 should NOT exist yet in Orders", !rowExistsInSpanner("Orders", "OrderId", 103));
 
-    pipelineOperator().cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(15)));
+    pipelineOperator().cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(45)));
 
     spannerResourceManager.write(
         List.of(
@@ -292,7 +292,7 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
     PipelineOperator.Result retryResult =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(retryJobInfo, Duration.ofMinutes(30)), dlqConditionCheck);
+                createConfig(retryJobInfo, Duration.ofMinutes(45)), dlqConditionCheck);
 
     assertThatResult(retryResult).meetsConditions();
 

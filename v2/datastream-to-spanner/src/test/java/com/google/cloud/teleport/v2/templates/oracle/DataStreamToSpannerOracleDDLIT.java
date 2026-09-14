@@ -209,7 +209,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();

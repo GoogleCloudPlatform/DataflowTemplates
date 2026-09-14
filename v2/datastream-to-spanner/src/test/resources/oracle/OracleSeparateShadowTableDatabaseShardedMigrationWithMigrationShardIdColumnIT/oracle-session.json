@@ -101,7 +101,7 @@
   "SrcSchema": {
     "t2": {
       "Name": "Users",
-      "Schema": "",
+      "Schema": "it_test",
       "ColIds": [
         "c11",
         "c12",
