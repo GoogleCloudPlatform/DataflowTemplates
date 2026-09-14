@@ -548,6 +548,10 @@ public class MongoDbChangeStreamReader {
   /**
    * RestrictionTracker for ChangeStreamRestriction ensuring slice-per-offset claiming and
    * checkpoint splitting.
+   *
+   * <p>{@link RestrictionTracker} documents that {@code trySplit} and {@code getProgress} may be
+   * invoked concurrently from a thread other than the one running {@code tryClaim}, so every access
+   * to the mutable state below is synchronized on this instance.
    */
   public static class ChangeStreamRestrictionTracker
       extends RestrictionTracker<ChangeStreamRestriction, ChangeStreamRestriction> {
@@ -561,7 +565,7 @@ public class MongoDbChangeStreamReader {
     }
 
     @Override
-    public boolean tryClaim(ChangeStreamRestriction position) {
+    public synchronized boolean tryClaim(ChangeStreamRestriction position) {
       if (shouldStop) {
         return false;
       }
@@ -570,12 +574,13 @@ public class MongoDbChangeStreamReader {
     }
 
     @Override
-    public ChangeStreamRestriction currentRestriction() {
+    public synchronized ChangeStreamRestriction currentRestriction() {
       return currentRestriction;
     }
 
     @Override
-    public @Nullable SplitResult<ChangeStreamRestriction> trySplit(double fractionOfRemainder) {
+    public synchronized @Nullable SplitResult<ChangeStreamRestriction> trySplit(
+        double fractionOfRemainder) {
       if (fractionOfRemainder == 0) {
         if (shouldStop) {
           return null;

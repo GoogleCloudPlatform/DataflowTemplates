@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.MongoDbTestAssertions.assertStateAccessorsSynchronized;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader.BackfillPartition;
+import com.google.common.collect.ImmutableList;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -53,6 +55,18 @@ import org.mockito.ArgumentCaptor;
 /** Unit tests for {@link MongoDbBackfillReader}. */
 @RunWith(JUnit4.class)
 public class MongoDbBackfillReaderTest {
+
+  /** See {@link MongoDbTestAssertions#assertStateAccessorsSynchronized}. */
+  @Test
+  public void restrictionTrackers_stateAccessorsAreSynchronized() {
+    ImmutableList<String> stateAccessors =
+        ImmutableList.of("tryClaim", "currentRestriction", "trySplit", "checkDone");
+
+    assertStateAccessorsSynchronized(
+        MongoDbBackfillReader.BackfillRestrictionTracker.class, stateAccessors);
+    assertStateAccessorsSynchronized(
+        MongoDbBackfillReader.BackfillSlotRestrictionTracker.class, stateAccessors);
+  }
 
   @Test
   public void generatePartitions_withoutTimestamp_returnsSingleRootPartition() {

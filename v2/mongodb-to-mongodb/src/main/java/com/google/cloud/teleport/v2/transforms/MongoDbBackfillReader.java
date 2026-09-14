@@ -533,6 +533,10 @@ public class MongoDbBackfillReader {
   /**
    * RestrictionTracker for BackfillRestriction ensuring slice-per-offset claiming,
    * claim-before-output, and checkpoint splitting.
+   *
+   * <p>{@link RestrictionTracker} documents that {@code trySplit} and {@code getProgress} may be
+   * invoked concurrently from a thread other than the one running {@code tryClaim}, so every access
+   * to the mutable state below is synchronized on this instance.
    */
   public static class BackfillRestrictionTracker
       extends RestrictionTracker<BackfillRestriction, BackfillRestriction> {
@@ -546,7 +550,7 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public boolean tryClaim(BackfillRestriction position) {
+    public synchronized boolean tryClaim(BackfillRestriction position) {
       if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
         return false;
       }
@@ -555,12 +559,13 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public BackfillRestriction currentRestriction() {
+    public synchronized BackfillRestriction currentRestriction() {
       return currentRestriction;
     }
 
     @Override
-    public @Nullable SplitResult<BackfillRestriction> trySplit(double fractionOfRemainder) {
+    public synchronized @Nullable SplitResult<BackfillRestriction> trySplit(
+        double fractionOfRemainder) {
       if (fractionOfRemainder == 0) {
         if (shouldStop || currentRestriction.isDone()) {
           return null;
@@ -578,7 +583,7 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public void checkDone() throws IllegalStateException {
+    public synchronized void checkDone() throws IllegalStateException {
       if (!shouldStop && (currentRestriction == null || !currentRestriction.isDone())) {
         throw new IllegalStateException(
             String.format(
@@ -990,7 +995,13 @@ public class MongoDbBackfillReader {
     }
   }
 
-  /** SDF restriction tracker for slot-based backfill partitions. */
+  /**
+   * SDF restriction tracker for slot-based backfill partitions.
+   *
+   * <p>{@link RestrictionTracker} documents that {@code trySplit} and {@code getProgress} may be
+   * invoked concurrently from a thread other than the one running {@code tryClaim}, so every access
+   * to the mutable state below is synchronized on this instance.
+   */
   public static class BackfillSlotRestrictionTracker
       extends RestrictionTracker<BackfillSlotRestriction, BackfillSlotRestriction> {
 
@@ -1002,7 +1013,7 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public boolean tryClaim(BackfillSlotRestriction position) {
+    public synchronized boolean tryClaim(BackfillSlotRestriction position) {
       if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
         return false;
       }
@@ -1011,12 +1022,13 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public BackfillSlotRestriction currentRestriction() {
+    public synchronized BackfillSlotRestriction currentRestriction() {
       return currentRestriction;
     }
 
     @Override
-    public @Nullable SplitResult<BackfillSlotRestriction> trySplit(double fractionOfRemainder) {
+    public synchronized @Nullable SplitResult<BackfillSlotRestriction> trySplit(
+        double fractionOfRemainder) {
       if (fractionOfRemainder == 0.0) {
         if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
           return null;
@@ -1034,7 +1046,7 @@ public class MongoDbBackfillReader {
     }
 
     @Override
-    public void checkDone() throws IllegalStateException {
+    public synchronized void checkDone() throws IllegalStateException {
       if (!shouldStop && (currentRestriction == null || !currentRestriction.isDone())) {
         throw new IllegalStateException(
             String.format(

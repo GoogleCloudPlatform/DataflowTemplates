@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.MongoDbTestAssertions.assertStateAccessorsSynchronized;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -34,6 +35,7 @@ import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ChangeS
 import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ChangeStreamRestriction;
 import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ChangeStreamRestrictionTracker;
 import com.google.cloud.teleport.v2.transforms.MongoDbChangeStreamReader.ProcessChangeStreamPartitionFn;
+import com.google.common.collect.ImmutableList;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
@@ -58,6 +60,17 @@ import org.junit.runners.JUnit4;
 /** Unit tests for {@link MongoDbChangeStreamReader}. */
 @RunWith(JUnit4.class)
 public class MongoDbChangeStreamReaderTest {
+
+  /**
+   * See {@link MongoDbTestAssertions#assertStateAccessorsSynchronized}. {@code checkDone} is a
+   * no-op here and touches no state, so it is intentionally left unsynchronized.
+   */
+  @Test
+  public void changeStreamRestrictionTracker_stateAccessorsAreSynchronized() {
+    assertStateAccessorsSynchronized(
+        MongoDbChangeStreamReader.ChangeStreamRestrictionTracker.class,
+        ImmutableList.of("tryClaim", "currentRestriction", "trySplit"));
+  }
 
   private static ChangeStreamDocument<Document> createEvent(
       OperationType op, Document fullDoc, BsonDocument docKey, BsonTimestamp timestamp) {
