@@ -215,4 +215,25 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
   String getTransformationCustomParameters();
 
   void setTransformationCustomParameters(String value);
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      description = "Comma-separated list of source tables to validate",
+      helpText = "A comma-separated list of source tables to include in the validation run.")
+  @Default.String("")
+  String getTables();
+
+  void setTables(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 17,
+      optional = true,
+      description = "GCS path to a file containing a list of source tables to validate",
+      helpText =
+          "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`.")
+  @Default.String("")
+  String getTableConfigurationFilePath();
+
+  void setTableConfigurationFilePath(String value);
 }

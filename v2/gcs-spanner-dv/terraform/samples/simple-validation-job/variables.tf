@@ -23,6 +23,8 @@ variable "dataflow_params" {
       schema_overrides_file_path       = optional(string, null)
       table_overrides                  = optional(string, null)
       column_overrides                 = optional(string, null)
+      tables                           = optional(string, null)
+      table_configuration_file_path             = optional(string, null)
       run_id                           = optional(string, null)
       transformation_jar_path          = optional(string, null)
       transformation_class_name        = optional(string, null)

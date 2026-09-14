@@ -16,9 +16,12 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -26,18 +29,40 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class GCSSpannerDVTest {
 
+  private GCSSpannerDVOptions options;
+
+  @Before
+  public void setUp() {
+    options = PipelineOptionsFactory.create().as(GCSSpannerDVOptions.class);
+    // Set required options to bypass early validation (if any)
+    options.setGcsInputDirectory("gs://dummy/input");
+    options.setProjectId("test-project");
+    options.setInstanceId("test-instance");
+    options.setDatabaseId("test-database");
+    options.setBigQueryDataset("test_dataset");
+  }
+
   @Test
   public void testCreateSpannerConfig() {
-    String[] args =
-        new String[] {
-          "--projectId=test-project",
-          "--instanceId=test-instance",
-          "--databaseId=test-database",
-          "--bigQueryDataset=test-dataset",
-          "--gcsInputDirectory=test-directory"
-        };
-    GCSSpannerDVOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSSpannerDVOptions.class);
     assertNotNull(GCSSpannerDV.createSpannerConfig(options));
+  }
+
+  @Test
+  public void testRunThrowsExceptionWhenBothTableConfigsProvided() {
+    options.setTables("table1,table2");
+    options.setTableConfigurationFilePath("gs://dummy/tables.json");
+
+    IllegalArgumentException thrown =
+        assertThrows(IllegalArgumentException.class, () -> GCSSpannerDV.run(options));
+
+    assertTrue(
+        thrown.getMessage().contains("Please configure only one of these parameters at a time"));
+  }
+
+  @Test
+  public void testRunThrowsExceptionWhenTableConfigurationFileFailsToRead() {
+    options.setTableConfigurationFilePath("non_existent_file.json");
+    RuntimeException thrown = assertThrows(RuntimeException.class, () -> GCSSpannerDV.run(options));
+    assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
   }
 }
