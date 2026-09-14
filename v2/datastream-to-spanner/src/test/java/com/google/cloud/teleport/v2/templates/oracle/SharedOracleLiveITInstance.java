@@ -105,7 +105,28 @@ public class SharedOracleLiveITInstance {
   }
 
   public static synchronized void dropUser(String user) {
-    // Pending implementation
+    if (user != null && !user.trim().isEmpty()) {
+      try {
+        SpannerOracleResourceManager cdbAdmin = getCdbAdmin();
+        LOG.info("Killing active sessions for user {} before dropping", user);
+        try {
+          cdbAdmin.runSQLUpdate(
+              "BEGIN "
+                  + "FOR s IN (SELECT sid, serial# FROM v$session WHERE username = '"
+                  + user
+                  + "') LOOP "
+                  + "  EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE'; "
+                  + "END LOOP; "
+                  + "END;");
+        } catch (Exception killEx) {
+          LOG.warn("Could not kill sessions for user {}, ignoring: {}", user, killEx.getMessage());
+        }
+        LOG.info("Dropping isolated Oracle COMMON user via CDB Admin: {}", user);
+        cdbAdmin.runSQLUpdate("DROP USER " + user + " CASCADE");
+      } catch (Exception e) {
+        LOG.warn("Failed to drop user {} during test cleanup: {}", user, e.getMessage());
+      }
+    }
   }
 
   public static synchronized String setupOracleIsolatedUser() {
