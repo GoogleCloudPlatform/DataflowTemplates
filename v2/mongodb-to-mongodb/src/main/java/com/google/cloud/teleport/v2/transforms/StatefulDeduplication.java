@@ -22,18 +22,25 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.TimeDomain;
+import org.apache.beam.sdk.state.Timer;
+import org.apache.beam.sdk.state.TimerSpec;
+import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.Element;
+import org.apache.beam.sdk.transforms.DoFn.OnTimer;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.DoFn.StateId;
+import org.apache.beam.sdk.transforms.DoFn.TimerId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,14 +58,35 @@ import org.slf4j.LoggerFactory;
  *   <li>Stream precedence: At identical epoch second $T_0$, live CDC wins over Backfill.
  *   <li>Sub-second increment: Higher sub-second counter wins.
  * </ol>
+ *
+ * <p>State is retained per document key for {@link #DEFAULT_STATE_RETENTION} after the most recent
+ * accepted event and then released, bounding state growth on collections with an unbounded number
+ * of distinct documents. Retention must exceed the longest expected backfill, because a duplicate
+ * arriving after its key's state has expired is treated as unseen and re-emitted.
  */
 public class StatefulDeduplication
     extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
 
-  private StatefulDeduplication() {}
+  /**
+   * Default per-key state retention. Deduplication only has to cover the window in which backfill
+   * and CDC can both emit the same document, so this needs to exceed the backfill duration rather
+   * than the lifetime of the job.
+   */
+  public static final Duration DEFAULT_STATE_RETENTION = Duration.standardHours(24);
+
+  private final Duration stateRetention;
+
+  private StatefulDeduplication(Duration stateRetention) {
+    this.stateRetention = stateRetention;
+  }
 
   public static StatefulDeduplication of() {
-    return new StatefulDeduplication();
+    return new StatefulDeduplication(DEFAULT_STATE_RETENTION);
+  }
+
+  /** Returns an instance retaining per-key deduplication state for {@code stateRetention}. */
+  public static StatefulDeduplication of(Duration stateRetention) {
+    return new StatefulDeduplication(stateRetention);
   }
 
   @Override
@@ -80,7 +108,7 @@ public class StatefulDeduplication
                   }
                 }))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), DocumentWithMetadataCoder.of()))
-        .apply("DeduplicateStateful", ParDo.of(new StatefulDeduplicationFn()));
+        .apply("DeduplicateStateful", ParDo.of(new StatefulDeduplicationFn(stateRetention)));
   }
 
   /** Stateful DoFn maintaining the latest observed timestamp per document key. */
@@ -89,6 +117,7 @@ public class StatefulDeduplication
 
     private static final Logger LOG = LoggerFactory.getLogger(StatefulDeduplicationFn.class);
     private static final String STATE_ID_LAST_SEEN_KEY = "lastSeenKey";
+    private static final String TIMER_ID_STATE_EXPIRY = "lastSeenKeyExpiry";
 
     private final Counter dedupAccepted =
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_accepted");
@@ -106,10 +135,21 @@ public class StatefulDeduplication
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_cdc_dropped");
     private final Counter dedupPassthrough =
         Metrics.counter(StatefulDeduplicationFn.class, "dedup_passthrough");
+    private final Counter dedupStateExpired =
+        Metrics.counter(StatefulDeduplicationFn.class, "dedup_state_expired");
+
+    private final Duration stateRetention;
+
+    public StatefulDeduplicationFn(Duration stateRetention) {
+      this.stateRetention = stateRetention;
+    }
 
     @StateId(STATE_ID_LAST_SEEN_KEY)
     private final StateSpec<ValueState<TimestampSortKey>> lastSeenKeySpec =
         StateSpecs.value(TimestampSortKeyCoder.of());
+
+    @TimerId(TIMER_ID_STATE_EXPIRY)
+    private final TimerSpec stateExpirySpec = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
 
     private void recordAccepted(DocumentWithMetadata element) {
       dedupAccepted.inc();
@@ -133,7 +173,8 @@ public class StatefulDeduplication
     public void processElement(
         @Element KV<String, DocumentWithMetadata> kv,
         OutputReceiver<DocumentWithMetadata> receiver,
-        @StateId(STATE_ID_LAST_SEEN_KEY) ValueState<TimestampSortKey> lastSeenState) {
+        @StateId(STATE_ID_LAST_SEEN_KEY) ValueState<TimestampSortKey> lastSeenState,
+        @TimerId(TIMER_ID_STATE_EXPIRY) Timer stateExpiryTimer) {
 
       DocumentWithMetadata element = kv.getValue();
       if (element == null) {
@@ -154,6 +195,7 @@ public class StatefulDeduplication
       if (lastSeenKey == null) {
         // First time seeing this document key
         lastSeenState.write(incomingKey);
+        stateExpiryTimer.offset(stateRetention).setRelative();
         recordAccepted(element);
         if (element.isDlqReconsumed()) {
           dedupDlqPassed.inc();
@@ -167,6 +209,8 @@ public class StatefulDeduplication
       if (cmp >= 0) {
         // Incoming event is newer than or equal to last seen state
         lastSeenState.write(incomingKey);
+        // Slide the expiry window forward so state survives for as long as the document is active.
+        stateExpiryTimer.offset(stateRetention).setRelative();
         recordAccepted(element);
         if (element.isDlqReconsumed()) {
           dedupDlqPassed.inc();
@@ -189,6 +233,17 @@ public class StatefulDeduplication
               lastSeenKey);
         }
       }
+    }
+
+    /**
+     * Releases the per-key state once no event has been accepted for the retention window. Without
+     * this the transform holds one state cell per distinct document for the lifetime of the job.
+     */
+    @OnTimer(TIMER_ID_STATE_EXPIRY)
+    public void onStateExpiry(
+        @StateId(STATE_ID_LAST_SEEN_KEY) ValueState<TimestampSortKey> lastSeenState) {
+      lastSeenState.clear();
+      dedupStateExpired.inc();
     }
   }
 }

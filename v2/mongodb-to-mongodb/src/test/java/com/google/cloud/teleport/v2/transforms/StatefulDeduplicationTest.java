@@ -16,15 +16,20 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.StatefulDeduplication.StatefulDeduplicationFn;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -33,6 +38,7 @@ import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.bson.Document;
+import org.joda.time.Duration;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,9 +75,11 @@ public class StatefulDeduplicationTest implements Serializable {
   }
 
   private static class Harness {
-    final StatefulDeduplicationFn fn = new StatefulDeduplicationFn();
+    final StatefulDeduplicationFn fn =
+        new StatefulDeduplicationFn(StatefulDeduplication.DEFAULT_STATE_RETENTION);
     final TestValueState<TimestampSortKey> state = new TestValueState<>();
     final List<DocumentWithMetadata> outputs = new ArrayList<>();
+    final Timer expiryTimer = mock(Timer.class);
 
     @SuppressWarnings("unchecked")
     final OutputReceiver<DocumentWithMetadata> receiver = mock(OutputReceiver.class);
@@ -84,10 +92,11 @@ public class StatefulDeduplicationTest implements Serializable {
               })
           .when(receiver)
           .output(any(DocumentWithMetadata.class));
+      when(expiryTimer.offset(any(Duration.class))).thenReturn(expiryTimer);
     }
 
     void process(DocumentWithMetadata doc) {
-      fn.processElement(KV.of(doc.getDedupKey(), doc), receiver, state);
+      fn.processElement(KV.of(doc.getDedupKey(), doc), receiver, state, expiryTimer);
     }
   }
 
@@ -240,5 +249,45 @@ public class StatefulDeduplicationTest implements Serializable {
             });
 
     pipeline.run();
+  }
+
+  @Test
+  public void testStateExpiry_schedulesTimerOnEveryAcceptedEvent() {
+    Harness h = new Harness();
+
+    h.process(createCdc("1", "v1", 1000L, 1L, "users"));
+    h.process(createCdc("1", "v2", 1000L, 2L, "users"));
+
+    // Sliding window: each accepted event pushes the expiry out again.
+    verify(h.expiryTimer, times(2)).offset(StatefulDeduplication.DEFAULT_STATE_RETENTION);
+    verify(h.expiryTimer, times(2)).setRelative();
+  }
+
+  @Test
+  public void testStateExpiry_doesNotScheduleTimerOnDroppedEvent() {
+    Harness h = new Harness();
+
+    h.process(createCdc("1", "v2", 1000L, 2L, "users"));
+    h.process(createCdc("1", "v1", 1000L, 1L, "users"));
+
+    assertEquals(1, h.outputs.size());
+    verify(h.expiryTimer, times(1)).setRelative();
+  }
+
+  @Test
+  public void testStateExpiry_releasesStateAndReadmitsStaleEvent() {
+    Harness h = new Harness();
+
+    h.process(createCdc("1", "v2", 1000L, 2L, "users"));
+    assertEquals(1, h.outputs.size());
+
+    h.fn.onStateExpiry(h.state);
+    assertNull(h.state.read());
+
+    // Documented consequence of bounding state: once retention lapses the key looks unseen, so an
+    // event that would previously have been dropped as stale is emitted again. Retention must
+    // therefore exceed the longest expected backfill.
+    h.process(createCdc("1", "v1", 1000L, 1L, "users"));
+    assertEquals(2, h.outputs.size());
   }
 }
