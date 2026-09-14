@@ -266,7 +266,7 @@ public interface SpannerChangeStreamsToBigQueryOptions
       groupName = "Source",
       description = "Cloud Spanner directed read options",
       helpText =
-          "Directed read options for Cloud Spanner reads. The value must be a JSON string format of"
+          "Directed read options for Cloud Spanner Change Stream reads. The value must be a JSON string format of"
               + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}})."
               + " For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads).")
   @Default.String("")

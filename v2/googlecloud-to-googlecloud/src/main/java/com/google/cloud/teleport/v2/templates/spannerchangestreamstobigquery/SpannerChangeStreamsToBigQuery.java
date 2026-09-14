@@ -318,7 +318,8 @@ public final class SpannerChangeStreamsToBigQuery {
             .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
-            .withRpcPriority(options.getRpcPriority());
+            .withRpcPriority(options.getRpcPriority())
+            .withDirectedReadOptions(options.getSpannerDirectedReadOptions());
 
     String spannerMetadataTableName = options.getSpannerMetadataTableName();
     if (spannerMetadataTableName != null) {
@@ -334,11 +335,6 @@ public final class SpannerChangeStreamsToBigQuery {
       if (!tvfNameList.isEmpty()) {
         readChangeStream = readChangeStream.withTvfNameList(tvfNameList);
       }
-    }
-
-    String directedReadOptions = options.getSpannerDirectedReadOptions();
-    if (directedReadOptions != null && !directedReadOptions.isEmpty()) {
-      readChangeStream = readChangeStream.withDirectedReadOptions(directedReadOptions);
     }
 
     PCollection<DataChangeRecord> dataChangeRecord =

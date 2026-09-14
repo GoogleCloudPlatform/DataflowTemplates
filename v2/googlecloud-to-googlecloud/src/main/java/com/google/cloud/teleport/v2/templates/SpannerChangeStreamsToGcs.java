@@ -52,15 +52,29 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Cloud Storage",
     description = {
-      "The Cloud Spanner change streams to Cloud Storage template is a streaming pipeline that streams Spanner data change records and writes them into a Cloud Storage bucket using Dataflow Runner V2.\n",
-      "The pipeline groups Spanner change stream records into windows based on their timestamp, with each window representing a time duration whose length you can configure with this template. "
-          + "All records with timestamps belonging to the window are guaranteed to be in the window; there can be no late arrivals. "
-          + "You can also define a number of output shards; the pipeline creates one Cloud Storage output file per window per shard. "
-          + "Within an output file, records are unordered. Output files can be written in either JSON or AVRO format, depending on the user configuration.\n",
-      "Note that you can minimize network latency and network transport costs by running the Dataflow job from the same region as your Cloud Spanner instance or Cloud Storage bucket. "
-          + "If you use sources, sinks, staging file locations, or temporary file locations that are located outside of your job's region, your data might be sent across regions. "
-          + "See more about <a href=\"https://cloud.google.com/dataflow/docs/concepts/regional-endpoints\">Dataflow regional endpoints</a>.\n",
-      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
+      "The Cloud Spanner change streams to Cloud Storage template is a streaming pipeline that"
+          + " streams Spanner data change records and writes them into a Cloud Storage bucket using"
+          + " Dataflow Runner V2.\n",
+      "The pipeline groups Spanner change stream records into windows based on their timestamp,"
+          + " with each window representing a time duration whose length you can configure with"
+          + " this template. All records with timestamps belonging to the window are guaranteed to"
+          + " be in the window; there can be no late arrivals. You can also define a number of"
+          + " output shards; the pipeline creates one Cloud Storage output file per window per"
+          + " shard. Within an output file, records are unordered. Output files can be written in"
+          + " either JSON or AVRO format, depending on the user configuration.\n",
+      "Note that you can minimize network latency and network transport costs by running the"
+          + " Dataflow job from the same region as your Cloud Spanner instance or Cloud Storage"
+          + " bucket. If you use sources, sinks, staging file locations, or temporary file"
+          + " locations that are located outside of your job's region, your data might be sent"
+          + " across regions. See more about <a"
+          + " href=\"https://cloud.google.com/dataflow/docs/concepts/regional-endpoints\">Dataflow"
+          + " regional endpoints</a>.\n",
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change"
+          + " streams</a>, <a"
+          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to"
+          + " build change streams Dataflow pipelines</a>, and <a"
+          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best"
+          + " practices</a>."
     },
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
     flexContainerName = "googlecloud-to-googlecloud",
@@ -163,25 +177,19 @@ public class SpannerChangeStreamsToGcs {
               ValueProvider.StaticValueProvider.of(options.getSpannerDatabaseRole()));
     }
     LOG.info("Created SpannerConfig: " + spannerConfig);
-    SpannerIO.ReadChangeStream readChangeStream =
-        SpannerIO.readChangeStream()
-            .withSpannerConfig(spannerConfig)
-            .withMetadataInstance(metadataInstanceId)
-            .withMetadataDatabase(metadataDatabaseId)
-            .withChangeStreamName(changeStreamName)
-            .withInclusiveStartAt(startTimestamp)
-            .withInclusiveEndAt(endTimestamp)
-            .withRpcPriority(rpcPriority)
-            .withMetadataTable(metadataTableName)
-            .withTvfNameList(tvfNameList);
-
-    String directedReadOptions = options.getSpannerDirectedReadOptions();
-    if (directedReadOptions != null && !directedReadOptions.isEmpty()) {
-      readChangeStream = readChangeStream.withDirectedReadOptions(directedReadOptions);
-    }
-
     pipeline
-        .apply(readChangeStream)
+        .apply(
+            SpannerIO.readChangeStream()
+                .withSpannerConfig(spannerConfig)
+                .withMetadataInstance(metadataInstanceId)
+                .withMetadataDatabase(metadataDatabaseId)
+                .withChangeStreamName(changeStreamName)
+                .withInclusiveStartAt(startTimestamp)
+                .withInclusiveEndAt(endTimestamp)
+                .withRpcPriority(rpcPriority)
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList)
+                .withDirectedReadOptions(options.getSpannerDirectedReadOptions()))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
