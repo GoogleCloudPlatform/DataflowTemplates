@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -29,7 +31,6 @@ import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.TimestampSortKey;
-import java.time.Instant;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -141,8 +142,44 @@ public class MongoDbToMongoDbTest {
         PipelineOptionsFactory.fromArgs(args).as(MongoDbToMongoDb.Options.class);
 
     assertEquals(iso, options.getStartAtOperationTime());
-    long expectedEpochSec = Instant.parse(iso).getEpochSecond();
-    assertEquals(1789041600L, expectedEpochSec);
+    assertEquals(
+        1789041600,
+        MongoDbToMongoDb.parseStartAtOperationTime(options.getStartAtOperationTime()).getTime());
+  }
+
+  @Test
+  public void parseStartAtOperationTime_epochSeconds_parsed() {
+    assertEquals(1789041600, MongoDbToMongoDb.parseStartAtOperationTime("1789041600").getTime());
+    assertEquals(0, MongoDbToMongoDb.parseStartAtOperationTime("1789041600").getInc());
+  }
+
+  @Test
+  public void parseStartAtOperationTime_iso8601WithOffset_parsed() {
+    assertEquals(
+        1789041600, MongoDbToMongoDb.parseStartAtOperationTime("2026-09-10T12:00:00Z").getTime());
+  }
+
+  @Test
+  public void parseStartAtOperationTime_surroundingWhitespace_parsed() {
+    assertEquals(1789041600, MongoDbToMongoDb.parseStartAtOperationTime("  1789041600 ").getTime());
+  }
+
+  /**
+   * These previously fell through to {@code captureCurrentClusterTime}, silently skipping every
+   * event between the requested start and now. A local datetime without an offset is the likely
+   * user error, since {@link java.time.Instant#parse} requires the offset.
+   */
+  @Test
+  public void parseStartAtOperationTime_unparseable_throwsRatherThanStartingFromNow() {
+    for (String bad :
+        new String[] {"2026-09-10T12:00:00", "2026-09-10", "not-a-time", "yesterday", ""}) {
+      IllegalArgumentException e =
+          assertThrows(
+              "expected rejection of '" + bad + "'",
+              IllegalArgumentException.class,
+              () -> MongoDbToMongoDb.parseStartAtOperationTime(bad));
+      assertTrue(e.getMessage().contains("startAtOperationTime"));
+    }
   }
 
   @Test

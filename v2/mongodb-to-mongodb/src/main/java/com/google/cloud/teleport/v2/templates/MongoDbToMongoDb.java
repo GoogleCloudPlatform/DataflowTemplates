@@ -33,11 +33,13 @@ import com.google.cloud.teleport.v2.transforms.MongoDbTransforms.ApplyUdfFn;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms.WriteToDlq;
 import com.google.cloud.teleport.v2.transforms.StatefulDeduplication;
 import com.google.cloud.teleport.v2.transforms.UriSanitizer;
+import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -415,14 +417,48 @@ public class MongoDbToMongoDb {
         helpText =
             "How long per-document deduplication state is retained after the most recent accepted"
                 + " event, in hours. Only applies when both backfill and change streams are"
-                + " enabled. Deduplication guards the window in which backfill and CDC can emit the"
-                + " same document, so this must exceed the longest expected backfill: if state"
-                + " expires while both streams are still active, a stale event for that document is"
-                + " treated as unseen and re-applied. Default is 24.")
-    @Default.Integer(24)
+                + " enabled. Defaults to 0, meaning state is kept for the life of the job; this is"
+                + " recommended. Per-document state is only about a hundred bytes, so bounding it"
+                + " saves little, and if state expires while backfill is still running then a"
+                + " stale backfill record for that document is treated as unseen and re-applied"
+                + " over newer change stream data. Only set this if deduplication state size is a"
+                + " demonstrated problem, and set it comfortably above your longest expected"
+                + " backfill.")
+    @Default.Integer(0)
     Integer getDedupStateRetentionHours();
 
     void setDedupStateRetentionHours(Integer value);
+  }
+
+  /**
+   * Parses the {@code startAtOperationTime} option as either epoch seconds or an ISO-8601 instant.
+   *
+   * <p>Throws rather than falling back to the current cluster time: the caller explicitly asked to
+   * start from a point in the past, and silently starting from now would skip every event in
+   * between. Note that {@link Instant#parse} requires an offset, so {@code 2026-09-01T00:00:00} is
+   * rejected while {@code 2026-09-01T00:00:00Z} is accepted.
+   *
+   * @throws IllegalArgumentException if the value is neither epoch seconds nor an ISO-8601 instant
+   */
+  @VisibleForTesting
+  static BsonTimestamp parseStartAtOperationTime(String value) {
+    long sec;
+    try {
+      sec = Long.parseLong(value.trim());
+    } catch (NumberFormatException nfe) {
+      try {
+        sec = Instant.parse(value.trim()).getEpochSecond();
+      } catch (DateTimeParseException dtpe) {
+        throw new IllegalArgumentException(
+            "Could not parse startAtOperationTime '"
+                + value
+                + "'. Expected epoch seconds (e.g. 1789041600) or an ISO-8601 instant including a"
+                + " UTC offset (e.g. 2026-09-10T12:00:00Z). Omit the option to start from the"
+                + " current cluster time.",
+            dtpe);
+      }
+    }
+    return new BsonTimestamp((int) sec, 0);
   }
 
   public static void main(String[] args) {
@@ -536,21 +572,7 @@ public class MongoDbToMongoDb {
     if (includeCdc) {
       if (options.getStartAtOperationTime() != null
           && !options.getStartAtOperationTime().isEmpty()) {
-        try {
-          long sec;
-          try {
-            sec = Long.parseLong(options.getStartAtOperationTime());
-          } catch (NumberFormatException nfe) {
-            sec = Instant.parse(options.getStartAtOperationTime()).getEpochSecond();
-          }
-          t0 = new BsonTimestamp((int) sec, 0);
-        } catch (Exception e) {
-          LOG.warn(
-              "Could not parse startAtOperationTime '{}' as epoch seconds or ISO-8601. Capturing current"
-                  + " cluster time.",
-              options.getStartAtOperationTime());
-          t0 = MongoDbChangeStreamReader.captureCurrentClusterTime(sourceUri, sourceDatabase);
-        }
+        t0 = parseStartAtOperationTime(options.getStartAtOperationTime());
       } else {
         t0 = MongoDbChangeStreamReader.captureCurrentClusterTime(sourceUri, sourceDatabase);
       }
@@ -802,11 +824,12 @@ public class MongoDbToMongoDb {
       // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
       // for any given document are already strictly ordered and sequential from the oplog.
       if (requiresDeduplication) {
-        documents =
-            documents.apply(
-                "Deduplicate",
-                StatefulDeduplication.of(
-                    Duration.standardHours(options.getDedupStateRetentionHours())));
+        Integer retentionHours = options.getDedupStateRetentionHours();
+        Duration dedupStateRetention =
+            (retentionHours == null || retentionHours <= 0)
+                ? null
+                : Duration.standardHours(retentionHours);
+        documents = documents.apply("Deduplicate", StatefulDeduplication.of(dedupStateRetention));
       }
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
