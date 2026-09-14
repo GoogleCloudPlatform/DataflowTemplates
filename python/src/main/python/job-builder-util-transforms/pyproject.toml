@@ -5,7 +5,6 @@ description = "Utility transforms for job builder"
 authors = ["Google Cloud Platform"]
 packages = [
     { include = "copy_files_to_gcs.py" },
-    { include = "read_from_delta_lake.py" },
     { include = "write_to_lakehouse.py" },
 ]
 

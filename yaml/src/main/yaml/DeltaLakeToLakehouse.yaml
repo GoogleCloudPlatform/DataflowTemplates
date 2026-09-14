@@ -30,8 +30,8 @@ template:
 pipeline:
   type: chain
   transforms:
-    - type: ReadFromDeltaLake
-      name: ReadFromDeltaLake
+    - type: ReadFromDelta
+      name: ReadFromDelta
       config:
         table: "{{ deltaLakeTable }}"
         {% if deltaLakeVersion is defined and deltaLakeVersion != '' %}
@@ -75,7 +75,6 @@ providers:
       packages:
         - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-30/job_builder_util_transforms-0.3.1.tar.gz
     transforms:
-      ReadFromDeltaLake: "read_from_delta_lake.ReadFromDeltaLake"
       WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
 
 options:
