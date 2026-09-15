@@ -366,7 +366,9 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("last_name")).isEqualTo("BB");
 
     rows =
-        jdbcResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
             String.format("select * from \"%s\" order by \"%s\"", TABLE2, "varchar_column"));
     assertThat(rows).hasSize(2);
     assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
@@ -381,7 +383,9 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(readClob(rows.get(0).get("text_column"))).isEqualTo("Sample text append");
 
     rows =
-        jdbcResourceManager.runSQLQuery(
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
             String.format(
                 "select * from \"%s\" where \"%s\" like '%s'",
                 TABLE2, "varchar_column", "example1"));

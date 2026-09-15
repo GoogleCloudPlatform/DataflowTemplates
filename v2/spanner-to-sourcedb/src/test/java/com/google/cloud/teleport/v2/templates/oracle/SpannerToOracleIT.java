@@ -395,8 +395,10 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   private void assertGenColRowsInOracleAfterInsert(PipelineOperator.Result result) {
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        runIsolatedReadTable(
-            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_VIRTUAL_GEN_COL + "\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
+            "SELECT * FROM \"" + TABLE_WITH_VIRTUAL_GEN_COL + "\" ORDER BY \"id\" ASC");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("column1")).isEqualTo(new java.math.BigDecimal("1"));
@@ -407,8 +409,10 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(1).get("virtual_generated_column"))
         .isEqualTo(new java.math.BigDecimal("4"));
     rows =
-        runIsolatedReadTable(
-            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_STORED_GEN_COL + "\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
+            "SELECT * FROM \"" + TABLE_WITH_STORED_GEN_COL + "\" ORDER BY \"id\" ASC");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(new java.math.BigDecimal("1"));
     assertThat(rows.get(0).get("column1")).isEqualTo(new java.math.BigDecimal("1"));
@@ -512,8 +516,10 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
   private void assertIdentityColRowsInOracleAfterInsert(PipelineOperator.Result result) {
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        runIsolatedReadTable(
-            jdbcResourceManager, testUsername, "\"" + TABLE_WITH_IDENTITY_COL + "\"");
+        runIsolatedSQLQuery(
+            jdbcResourceManager,
+            testUsername,
+            "SELECT * FROM \"" + TABLE_WITH_IDENTITY_COL + "\" ORDER BY \"id\" ASC");
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id").toString()).isEqualTo("1");
     assertThat(rows.get(0).get("column1")).isEqualTo("id1");
