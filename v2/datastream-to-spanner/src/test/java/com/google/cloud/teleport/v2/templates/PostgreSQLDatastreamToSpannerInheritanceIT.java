@@ -72,6 +72,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
   private static boolean initialized = false;
   private static CloudPostgresResourceManager postgresResourceManager;
+  private static CloudPostgresResourceManager pgDialectPostgresResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager pgDialectSpannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -91,6 +92,18 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
         postgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
         LOG.info(
             "PostgreSQL resource manager created with URI: {}", postgresResourceManager.getUri());
+        // The GoogleSQL and PG-dialect test methods each get their OWN isolated source database.
+        // Both methods drive data via CDC by inserting into empty tables only AFTER their stream is
+        // running (Datastream backfill would otherwise read SELECT * FROM parent_table and, because
+        // of table INHERITANCE, also return the child/grandchild rows). Sharing a single source
+        // database across both methods would (a) cause duplicate-primary-key insert failures and
+        // (b) let one method's rows be backfilled/replicated into the other method's Spanner
+        // database, so a dedicated database per method keeps the two tests fully independent.
+        LOG.info("Setting up PG dialect PostgreSQL resource manager...");
+        pgDialectPostgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
+        LOG.info(
+            "PG dialect PostgreSQL resource manager created with URI: {}",
+            pgDialectPostgresResourceManager.getUri());
         LOG.info("Setting up Spanner resource manager...");
         spannerResourceManager = setUpSpannerResourceManager();
         LOG.info(
@@ -117,9 +130,10 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
         LOG.info("Executing PostgreSQL DDL script...");
         executeSqlScript(postgresResourceManager, POSTGRESQL_DDL_RESOURCE);
+        executeSqlScript(pgDialectPostgresResourceManager, POSTGRESQL_DDL_RESOURCE);
 
         replicationInfo = postgresResourceManager.createLogicalReplication();
-        pgDialectReplicationInfo = postgresResourceManager.createLogicalReplication();
+        pgDialectReplicationInfo = pgDialectPostgresResourceManager.createLogicalReplication();
 
         initialized = true;
       }
@@ -141,6 +155,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
     ResourceManagerUtils.cleanResources(
         datastreamResourceManager,
         postgresResourceManager,
+        pgDialectPostgresResourceManager,
         spannerResourceManager,
         pgDialectSpannerResourceManager,
         gcsResourceManager,
@@ -191,7 +206,8 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
     ConditionCheck condition =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeCdcData(), buildBaseConditionCheck(spannerResourceManager, expectedData)))
+                    writeCdcData(postgresResourceManager),
+                    buildBaseConditionCheck(spannerResourceManager, expectedData)))
             .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
@@ -209,11 +225,11 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     PostgresqlSource postgresqlSource =
         PostgresqlSource.builder(
-                postgresResourceManager.getHost(),
-                postgresResourceManager.getUsername(),
-                postgresResourceManager.getPassword(),
-                postgresResourceManager.getPort(),
-                postgresResourceManager.getDatabaseName(),
+                pgDialectPostgresResourceManager.getHost(),
+                pgDialectPostgresResourceManager.getUsername(),
+                pgDialectPostgresResourceManager.getPassword(),
+                pgDialectPostgresResourceManager.getPort(),
+                pgDialectPostgresResourceManager.getDatabaseName(),
                 pgDialectReplicationInfo.getReplicationSlotName(),
                 pgDialectReplicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
@@ -246,7 +262,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
     ConditionCheck condition =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeCdcData(),
+                    writeCdcData(pgDialectPostgresResourceManager),
                     buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData)))
             .build();
     LOG.info("Waiting for pipeline to process data...");
@@ -295,9 +311,10 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
    * Datastream backfill which reads {@code SELECT * FROM parent_table} and, because of table
    * INHERITANCE, would also return the child/grandchild rows.
    *
+   * @param resourceManager the isolated PostgreSQL source database for the calling test method.
    * @return A ConditionCheck containing the JDBC write operation.
    */
-  private ConditionCheck writeCdcData() {
+  private ConditionCheck writeCdcData(CloudPostgresResourceManager resourceManager) {
     return new ConditionCheck() {
       @Override
       protected String getDescription() {
@@ -307,11 +324,11 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
       @Override
       protected CheckResult check() {
         try {
-          postgresResourceManager.runSQLUpdate(
+          resourceManager.runSQLUpdate(
               "INSERT INTO parent_table (id, name) VALUES (1, 'Parent Row 1')");
-          postgresResourceManager.runSQLUpdate(
+          resourceManager.runSQLUpdate(
               "INSERT INTO child_table (id, name, age) VALUES (2, 'Child Row 1', 10)");
-          postgresResourceManager.runSQLUpdate(
+          resourceManager.runSQLUpdate(
               "INSERT INTO grandchild_table (id, name, age, city) VALUES (3, 'Grandchild Row 1', 5,"
                   + " 'New York')");
         } catch (Exception e) {
