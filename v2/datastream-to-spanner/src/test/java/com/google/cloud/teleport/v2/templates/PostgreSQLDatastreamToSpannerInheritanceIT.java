@@ -92,13 +92,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
         postgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
         LOG.info(
             "PostgreSQL resource manager created with URI: {}", postgresResourceManager.getUri());
-        // The GoogleSQL and PG-dialect test methods each get their OWN isolated source database.
-        // Both methods drive data via CDC by inserting into empty tables only AFTER their stream is
-        // running (Datastream backfill would otherwise read SELECT * FROM parent_table and, because
-        // of table INHERITANCE, also return the child/grandchild rows). Sharing a single source
-        // database across both methods would (a) cause duplicate-primary-key insert failures and
-        // (b) let one method's rows be backfilled/replicated into the other method's Spanner
-        // database, so a dedicated database per method keeps the two tests fully independent.
+        // Each method uses its own source database to keep the two tests independent.
         LOG.info("Setting up PG dialect PostgreSQL resource manager...");
         pgDialectPostgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
         LOG.info(
@@ -199,10 +193,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    // Insert the source rows only AFTER the pipeline is running so they are captured by logical
-    // decoding and replicated as CDC events (this is how datastream-to-spanner is used in
-    // production). Chaining the write before the row-count wait guarantees the wait follows the
-    // inserts.
+    // Insert rows after the pipeline is running so they replicate as CDC events.
     ConditionCheck condition =
         ChainedConditionCheck.builder(
                 List.of(
@@ -255,10 +246,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    // Insert the source rows only AFTER the pipeline is running so they are captured by logical
-    // decoding and replicated as CDC events (this is how datastream-to-spanner is used in
-    // production). Chaining the write before the row-count wait guarantees the wait follows the
-    // inserts.
+    // Insert rows after the pipeline is running so they replicate as CDC events.
     ConditionCheck condition =
         ChainedConditionCheck.builder(
                 List.of(
@@ -293,27 +281,14 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
       for (Struct row : rows) {
         LOG.info("Found row: {}", row.toString());
       }
-      // Exact per-table row count assertion. Under CDC replication each physical table receives
-      // only its own events, so e.g. parent_table must contain exactly 1 row (id=1) and NOT the
-      // inherited child/grandchild rows. The subset check below alone would miss such
-      // inherited-row duplication, so we additionally assert the exact count.
+      // Assert the exact row count so inherited rows are not counted in parent_table.
       SpannerAsserts.assertThatStructs(rows).hasRows(entry.getValue().size());
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
     }
   }
 
-  /**
-   * Helper function for constructing a ConditionCheck whose check() method inserts the inheritance
-   * rows into the PostgreSQL source AFTER the pipeline is running. The rows are then captured by
-   * logical decoding and replicated as CDC events, tagged per physical table. This mirrors how the
-   * datastream-to-spanner template is used in production (CDC replication), as opposed to
-   * Datastream backfill which reads {@code SELECT * FROM parent_table} and, because of table
-   * INHERITANCE, would also return the child/grandchild rows.
-   *
-   * @param resourceManager the isolated PostgreSQL source database for the calling test method.
-   * @return A ConditionCheck containing the JDBC write operation.
-   */
+  /** Returns a ConditionCheck that inserts the inheritance rows into the PostgreSQL source. */
   private ConditionCheck writeCdcData(CloudPostgresResourceManager resourceManager) {
     return new ConditionCheck() {
       @Override
@@ -346,10 +321,6 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
     HashMap<String, List<Map<String, Object>>> result = new HashMap<>();
-
-    // According to PostgreSQL logical replication, inserts to child_table replicate as child_table
-    // events.
-    // The parent_table only receives its own events. So the tables are independent in replication.
 
     List<Map<String, Object>> parentRows = new ArrayList<>();
     Map<String, Object> parentRow1 = new HashMap<>();
