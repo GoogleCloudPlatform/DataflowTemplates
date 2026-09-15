@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -183,7 +184,16 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildBaseConditionCheck(spannerResourceManager, expectedData);
+    // Insert the source rows only AFTER the pipeline is running so they are captured by logical
+    // decoding and replicated as CDC events (this is how datastream-to-spanner is used in
+    // production). Chaining the write before the row-count wait guarantees the wait follows the
+    // inserts.
+    ConditionCheck condition =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeCdcData(),
+                    buildBaseConditionCheck(spannerResourceManager, expectedData)))
+            .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -230,8 +240,16 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
+    // Insert the source rows only AFTER the pipeline is running so they are captured by logical
+    // decoding and replicated as CDC events (this is how datastream-to-spanner is used in
+    // production). Chaining the write before the row-count wait guarantees the wait follows the
+    // inserts.
     ConditionCheck condition =
-        buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData);
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeCdcData(),
+                    buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData)))
+            .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -260,9 +278,50 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
       for (Struct row : rows) {
         LOG.info("Found row: {}", row.toString());
       }
+      // Exact per-table row count assertion. Under CDC replication each physical table receives
+      // only its own events, so e.g. parent_table must contain exactly 1 row (id=1) and NOT the
+      // inherited child/grandchild rows. The subset check below alone would miss such
+      // inherited-row duplication, so we additionally assert the exact count.
+      SpannerAsserts.assertThatStructs(rows).hasRows(entry.getValue().size());
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
     }
+  }
+
+  /**
+   * Helper function for constructing a ConditionCheck whose check() method inserts the inheritance
+   * rows into the PostgreSQL source AFTER the pipeline is running. The rows are then captured by
+   * logical decoding and replicated as CDC events, tagged per physical table. This mirrors how the
+   * datastream-to-spanner template is used in production (CDC replication), as opposed to
+   * Datastream backfill which reads {@code SELECT * FROM parent_table} and, because of table
+   * INHERITANCE, would also return the child/grandchild rows.
+   *
+   * @return A ConditionCheck containing the JDBC write operation.
+   */
+  private ConditionCheck writeCdcData() {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send CDC inserts to PostgreSQL inheritance tables.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        try {
+          postgresResourceManager.runSQLUpdate(
+              "INSERT INTO parent_table (id, name) VALUES (1, 'Parent Row 1')");
+          postgresResourceManager.runSQLUpdate(
+              "INSERT INTO child_table (id, name, age) VALUES (2, 'Child Row 1', 10)");
+          postgresResourceManager.runSQLUpdate(
+              "INSERT INTO grandchild_table (id, name, age, city) VALUES (3, 'Grandchild Row 1', 5,"
+                  + " 'New York')");
+        } catch (Exception e) {
+          return new CheckResult(false, "Failed to insert CDC rows: " + e.getMessage());
+        }
+        return new CheckResult(
+            true, "Inserted CDC rows into parent_table, child_table and grandchild_table.");
+      }
+    };
   }
 
   private List<String> getAllowedTables() {
