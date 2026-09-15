@@ -191,8 +191,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
     ConditionCheck condition =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeCdcData(),
-                    buildBaseConditionCheck(spannerResourceManager, expectedData)))
+                    writeCdcData(), buildBaseConditionCheck(spannerResourceManager, expectedData)))
             .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
