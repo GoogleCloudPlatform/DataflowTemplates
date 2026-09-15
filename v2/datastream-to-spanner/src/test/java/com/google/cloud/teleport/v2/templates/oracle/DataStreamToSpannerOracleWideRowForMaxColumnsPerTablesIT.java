@@ -37,7 +37,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -64,7 +63,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
   private static final Integer NUM_TABLES = 1;
   private static final Integer NUM_COLUMNS = 1000;
 
-  private static CloudOracleResourceManager cloudOracleResourceManager;
+  private static SpannerOracleResourceManager cloudOracleResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -120,8 +119,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
           // // // builder.setDatabaseName("XEPDB1");
         }
         cloudOracleResourceManager =
-            (org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager)
-                (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
+            (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
 
         String sessionContent = generateBaseSchema();
         sessionContent =
@@ -144,6 +142,7 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("datastreamSourceType", "oracle");
                     put("workerMachineType", "n1-standard-4");
                   }
                 },

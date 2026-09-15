@@ -118,6 +118,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
         jobParameters.put("transformationCustomParameters", "mode=bad");
         jobParameters.put("dlqMaxRetryCount", "20");
         jobParameters.put("dlqRetryMinutes", "1");
+        jobParameters.put("inputFileFormat", "avro");
+        jobParameters.put("datastreamSourceType", "oracle");
 
         OracleSource oracleSource =
             OracleSource.builder(
@@ -252,6 +254,8 @@ public class DataStreamToSpannerOracleRetryAllDLQIT extends DataStreamToSpannerI
     retryJobParameters.put("transformationCustomParameters", "mode=good");
     retryJobParameters.put("dlqMaxRetryCount", "20");
     retryJobParameters.put("dlqRetryMinutes", "1");
+    retryJobParameters.put("inputFileFormat", "avro");
+    retryJobParameters.put("datastreamSourceType", "oracle");
     retryJobParameters.put(
         "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));
 

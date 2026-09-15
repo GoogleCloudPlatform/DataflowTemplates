@@ -160,7 +160,29 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
   private void setupSchema() {
     TABLE_NAMES.forEach(
         tableName -> {
-          oracleResourceManager.createTable(tableName, createJdbcSchema());
+          String createSql =
+              "CREATE TABLE \""
+                  + tableName
+                  + "\" (\""
+                  + ROW_ID
+                  + "\" NUMBER NOT NULL, \""
+                  + NAME
+                  + "\" VARCHAR2(200), \""
+                  + AGE
+                  + "\" NUMBER, \""
+                  + MEMBER
+                  + "\" VARCHAR2(200), \""
+                  + ENTRY_ADDED
+                  + "\" VARCHAR2(200), \""
+                  + LARGE_BLOB_ADDED
+                  + "\" BLOB, PRIMARY KEY (\""
+                  + ROW_ID
+                  + "\"))";
+          try {
+            executeOracleSql(oracleResourceManager, createSql, oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
         });
     createSpannerTables();
   }

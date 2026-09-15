@@ -110,6 +110,7 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
 
         Map<String, String> overridesMap = new HashMap<>();
         overridesMap.put("inputFileFormat", "avro");
+        overridesMap.put("datastreamSourceType", "oracle");
         overridesMap.put("tableOverrides", "[{person1, human1}]");
         overridesMap.put("columnOverrides", "[{person1.first_name1, person1.name1}]");
         overridesMap.put("workerMachineType", "n1-standard-4");
@@ -170,6 +171,7 @@ public class DataStreamToSpannerOracleStringOverridesIT extends DataStreamToSpan
                               "INSERT INTO \"person1\" (\"first_name1\", \"last_name1\") VALUES"
                                   + " ('Alice', 'Johnson')",
                               oracleUser);
+                          executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
                           SharedOracleLiveITInstance.flushRedoLogs();
                           return new CheckResult(true, "Inserted successfully");
                         } catch (Exception e) {

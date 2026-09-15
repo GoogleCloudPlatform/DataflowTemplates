@@ -104,7 +104,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
         String sessionContent = generateBaseSchema();
         sessionContent =
             sessionContent
-                .replaceAll("SRC_DATABASE", oracleResourceManager.getDatabaseName())
+                .replaceAll("SRC_DATABASE", oracleUser)
                 .replaceAll("SP_DATABASE", spannerResourceManager.getDatabaseId());
         for (int i = 1; i <= NUM_TABLES; i++) {
           sessionContent = sessionContent.replaceAll("TABLE" + i, TABLE_NAMES.get(i - 1));
@@ -121,6 +121,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("datastreamSourceType", "oracle");
                   }
                 },
                 null,

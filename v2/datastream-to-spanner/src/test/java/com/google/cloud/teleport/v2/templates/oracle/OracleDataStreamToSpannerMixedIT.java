@@ -159,11 +159,18 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
         PipelineLauncher.LaunchConfig.builder(PipelineUtils.createJobName(testName), specPath)
             .setParameters(jobParams)
             .addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    String sessionFileContent =
+        com.google.common.io.Resources.toString(
+            com.google.common.io.Resources.getResource(
+                "oracle/OracleDataStreamToSpannerMixedIT/oracle-session.json"),
+            java.nio.charset.StandardCharsets.UTF_8);
+    sessionFileContent =
+        sessionFileContent.replace("\"Schema\": \"\"", "\"Schema\": \"" + oracleUser + "\"");
 
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             testName,
-            "oracle/OracleDataStreamToSpannerMixedIT/oracle-session.json",
+            null,
             null,
             testName,
             spannerResourceManager,
@@ -171,7 +178,10 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
             jobParams,
             null,
             null,
-            gcsResourceManager);
+            gcsResourceManager,
+            null,
+            sessionFileContent,
+            null);
 
     assertThatPipeline(jobInfo).isRunning();
 

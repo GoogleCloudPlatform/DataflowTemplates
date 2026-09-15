@@ -185,7 +185,15 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
 
     tableNames.forEach(
         tableName -> {
-          oracleResourceManager.createTable(tableName, createJdbcSchema());
+          String createSql =
+              "CREATE TABLE \""
+                  + tableName
+                  + "\" (ROW_ID INTEGER NOT NULL, NAME VARCHAR2(200), AGE INTEGER, MEMBER VARCHAR2(200), ENTRY_ADDED VARCHAR2(200), PRIMARY KEY (ROW_ID))";
+          try {
+            executeOracleSql(oracleResourceManager, createSql, oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
         });
 
     OracleSource jdbcSource =
@@ -236,7 +244,8 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                         fileFormat.equals(
                                 DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
                             ? "avro"
-                            : "json"))
+                            : "json")
+                    .addParameter("datastreamSourceType", "oracle"))
             .addParameter("workerMachineType", "n2-standard-4");
 
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

@@ -148,10 +148,17 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                     })
                 .build();
 
+        String sessionFileContent =
+            com.google.common.io.Resources.toString(
+                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
+                java.nio.charset.StandardCharsets.UTF_8);
+        sessionFileContent =
+            sessionFileContent.replace("\"Schema\": \"\"", "\"Schema\": \"" + oracleUser + "\"");
+
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
-                SESSION_FILE_RESOURCE,
+                null,
                 null,
                 "OracleSessionIT",
                 spannerResourceManager,
@@ -166,7 +173,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                 null,
                 gcsResourceManager,
                 datastreamResourceManager,
-                null,
+                sessionFileContent,
                 oracleSource);
       }
     }
