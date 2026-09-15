@@ -230,6 +230,7 @@ jobs:
           **/surefire-reports/TEST-*.xml
           **/surefire-reports/*.html
           **/surefire-reports/html/**
+          **/surefire-reports/*-output.txt
         retention-days: 10
     - name: Integration Test report on GitHub
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0

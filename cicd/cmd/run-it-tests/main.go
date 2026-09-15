@@ -56,6 +56,7 @@ func main() {
 		mvnFlags.RunIntegrationTests(flags.UnifiedWorkerHarnessContainerImage() != ""),
 		mvnFlags.ThreadCount(flags.ThreadCount()),
 		mvnFlags.IntegrationTestParallelism(flags.IntegrationTestParallelism()),
+		"-Dmaven.test.redirectTestOutputToFile=true",
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
