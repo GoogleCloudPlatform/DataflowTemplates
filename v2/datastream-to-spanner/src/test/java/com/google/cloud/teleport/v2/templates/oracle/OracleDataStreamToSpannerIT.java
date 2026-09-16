@@ -52,7 +52,6 @@ import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -65,30 +64,6 @@ import org.junit.runners.Parameterized;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
 public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
-  private void executeOracleSql(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
-      String sqlString,
-      String targetUsername)
-      throws Exception {
-    String sql = sqlString;
-    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
-    String[] statements = sql.split(";");
-
-    try (java.sql.Connection connection =
-        java.sql.DriverManager.getConnection(
-            jdbcResourceManager.getUri(),
-            targetUsername,
-            SharedOracleLiveITInstance.ORACLE_PASSWORD)) {
-      connection.setAutoCommit(true);
-      try (java.sql.Statement statement = connection.createStatement()) {
-        for (String st : statements) {
-          if (!st.trim().isEmpty()) {
-            statement.execute(st.trim());
-          }
-        }
-      }
-    }
-  }
 
   private static final Integer NUM_EVENTS = 10;
 
@@ -274,14 +249,39 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
     assertThatResult(result).meetsConditions();
   }
 
-  private JDBCResourceManager.JDBCSchema createJdbcSchema() {
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put(ROW_ID, "INTEGER NOT NULL");
-    columns.put(NAME, "VARCHAR2(200)");
-    columns.put(AGE, "INTEGER");
-    columns.put(MEMBER, "VARCHAR2(200)");
-    columns.put(ENTRY_ADDED, "VARCHAR2(200)");
-    return new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+  protected void executeOracleSql(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String sqlString,
+      String targetUsername)
+      throws Exception {
+    String sql = sqlString;
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    String[] statements = sql.split(";");
+
+    try (java.sql.Connection connection =
+        java.sql.DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (java.sql.Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = \"" + targetUsername + "\"");
+        }
+      }
+
+      try (java.sql.Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isBlank()) {
+            if (stmt.toLowerCase().trim().startsWith("select")) {
+              statement.executeQuery(stmt);
+            } else {
+              statement.executeUpdate(stmt);
+            }
+          }
+        }
+      }
+    }
   }
 
   private void createPubSubNotifications() throws IOException {
@@ -491,19 +491,30 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
                       + ROW_ID
                       + " = "
                       + i;
-              oracleResourceManager.runSQLUpdate(updateSql);
+              try {
+                executeOracleSql(oracleResourceManager, updateSql, oracleUser);
+                executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
+              } catch (Exception e) {
+                return new CheckResult(false, e.getMessage());
+              }
               newCdcEvents.add(values);
             } else {
-              oracleResourceManager.runSQLUpdate(
-                  "DELETE FROM " + tableName + " WHERE " + ROW_ID + "=" + i);
+              try {
+                executeOracleSql(
+                    oracleResourceManager,
+                    "DELETE FROM " + tableName + " WHERE " + ROW_ID + "=" + i,
+                    oracleUser);
+                executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
+              } catch (Exception e) {
+                return new CheckResult(false, e.getMessage());
+              }
             }
           }
           cdcEvents.put(tableName, newCdcEvents);
           messages.add(String.format("%d changes to %s", newCdcEvents.size(), tableName));
         }
-
-        oracleResourceManager.runSQLUpdate("COMMIT");
-        SharedOracleLiveITInstance.flushRedoLogs();
         return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
       }
     };

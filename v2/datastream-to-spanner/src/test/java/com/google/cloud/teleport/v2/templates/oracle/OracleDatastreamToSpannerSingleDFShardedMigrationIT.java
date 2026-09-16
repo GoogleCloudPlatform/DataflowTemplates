@@ -73,6 +73,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
   private static HashSet<OracleDatastreamToSpannerSingleDFShardedMigrationIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static final String GCS_PATH_PREFIX = "oracle-datastream-to-spanner-sharded-migration";
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
@@ -124,11 +125,15 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         com.google.cloud.datastream.v1.SourceConfig sourceConfig =
             datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", oracleSource);
 
+        String gcsPrefix =
+            getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket() + "/", "");
+
         com.google.cloud.datastream.v1.DestinationConfig destinationConfig =
             datastreamResourceManager.buildGCSDestinationConfig(
                 "gcs-profile",
                 gcsResourceManager.getBucket(),
-                "oracle-shard-cdc/cdc/",
+                gcsPrefix,
                 org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat
                     .AVRO_FILE_FORMAT);
 
@@ -152,8 +157,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         Map<String, String> jobParams = new HashMap<>();
         jobParams.put("inputFileFormat", "avro");
         jobParams.put(
-            "inputFilePattern",
-            "gs://" + gcsResourceManager.getBucket() + "/oracle-shard-cdc/cdc/");
+            "inputFilePattern", getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager));
         jobParams.put("datastreamSourceType", "oracle");
         jobParams.put("workerMachineType", "n1-standard-4");
         jobParams.put(
@@ -176,7 +180,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 getClass().getSimpleName() + "shard1",
                 null,
                 null,
-                "shard1",
+                GCS_PATH_PREFIX,
                 spannerResourceManager,
                 null,
                 jobParams,

@@ -83,8 +83,6 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
 
   @Before
   public void setUp() throws Exception {
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleDDLIT.class) {
       testInstances.add(this);

@@ -65,6 +65,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
       "oracle/OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT/oracle-session.json";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static final String GCS_PATH_PREFIX = "oracle-separate-shadow-table-sharded";
   private static HashSet<OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT>
       testInstances = new HashSet<>();
 
@@ -115,11 +116,15 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
 
         com.google.cloud.datastream.v1.SourceConfig sourceConfig =
             datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
+        String gcsPrefix =
+            getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket() + "/", "");
+
         com.google.cloud.datastream.v1.DestinationConfig destinationConfig =
             datastreamResourceManager.buildGCSDestinationConfig(
                 "gcs-profile",
                 gcsResourceManager.getBucket(),
-                "oracle-shard-cdc/cdc/",
+                gcsPrefix,
                 DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
         com.google.cloud.datastream.v1.Stream stream =
             datastreamResourceManager.createStream(
@@ -135,8 +140,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
         Map<String, String> jobParams = new HashMap<>();
         jobParams.put("inputFileFormat", "avro");
         jobParams.put(
-            "inputFilePattern",
-            "gs://" + gcsResourceManager.getBucket() + "/oracle-shard-cdc/cdc/");
+            "inputFilePattern", getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager));
         jobParams.put("datastreamSourceType", "oracle");
         jobParams.put(
             "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
@@ -161,7 +165,7 @@ public class OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT
                 getClass().getSimpleName() + "shard1",
                 null,
                 null,
-                "OracleSeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1",
+                GCS_PATH_PREFIX,
                 spannerResourceManager,
                 pubsubResourceManager,
                 jobParams,

@@ -92,10 +92,6 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
 
   @Before
   public void setUp() throws Exception {
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
-    oracleUser = setupOracleIsolatedUser(SharedOracleLiveITInstance.getInstance());
-
     skipBaseCleanup = true;
     synchronized (DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT.class) {
       testInstances.add(this);
@@ -108,18 +104,8 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-
-        // builder removed;
-        if (System.getProperty("cloudOracleHost") != null) {
-          // // // builder.setPassword(System.getProperty("cloudOraclePassword",
-          // "TestPassword123"));
-          // // // builder.setHost(System.getProperty("cloudOracleHost"));
-          // // // builder.setPort(1521);
-          // // // builder.setUsername(System.getProperty("cloudOracleUsername", "system"));
-          // // // builder.setDatabaseName("XEPDB1");
-        }
-        cloudOracleResourceManager =
-            (SpannerOracleResourceManager) SharedOracleLiveITInstance.getInstance();
+        cloudOracleResourceManager = SharedOracleLiveITInstance.getInstance();
+        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
 
         String sessionContent = generateBaseSchema();
         sessionContent =
@@ -169,17 +155,21 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        cloudOracleResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
   }
 
   private void setupSchema() {
     TABLE_NAMES.forEach(
         tableName -> {
-          cloudOracleResourceManager.runSQLUpdate(getJDBCSchema(oracleUser + "." + tableName));
+          try {
+            executeOracleSql(cloudOracleResourceManager, getJDBCSchema(tableName), oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
         });
     createSpannerTables();
   }
@@ -359,12 +349,36 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
             rows.add(values);
           }
           cdcEvents.put(tableName, rows);
-          success &= cloudOracleResourceManager.write(oracleUser + "." + tableName, rows);
+          try {
+            for (Map<String, Object> values : rows) {
+              StringBuilder cols = new StringBuilder();
+              StringBuilder valsStr = new StringBuilder();
+              for (Map.Entry<String, Object> entry : values.entrySet()) {
+                if (cols.length() > 0) {
+                  cols.append(",");
+                  valsStr.append(",");
+                }
+                cols.append(entry.getKey());
+                valsStr.append("'").append(entry.getValue()).append("'");
+              }
+              executeOracleSql(
+                  cloudOracleResourceManager,
+                  "INSERT INTO "
+                      + tableName
+                      + " ("
+                      + cols.toString()
+                      + ") VALUES ("
+                      + valsStr.toString()
+                      + ")",
+                  oracleUser);
+            }
+            SharedOracleLiveITInstance.flushRedoLogs();
+          } catch (Exception e) {
+            success = false;
+            messages.add("Failed to write to " + tableName + ": " + e.getMessage());
+            return new CheckResult(false, e.getMessage());
+          }
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
-        }
-        try {
-          SharedOracleLiveITInstance.flushRedoLogs();
-        } catch (Exception e) {
         }
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }

@@ -251,7 +251,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
 
   private String getJDBCSchema(String tableName) {
     StringBuilder sb = new StringBuilder();
-    sb.append("CREATE TABLE ").append(tableName).append(" (");
+    sb.append("CREATE TABLE \"").append(tableName).append("\" (");
 
     for (int i = 0; i < NUM_COLUMNS; i++) {
       sb.append("\"").append(COLUMNS.get(i)).append("\"").append(" VARCHAR2(20) NOT NULL");
@@ -381,13 +381,13 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                       + vals.toString()
                       + ")",
                   oracleUser);
+              SharedOracleLiveITInstance.flushRedoLogs();
             } catch (Exception e) {
               success = false;
               e.printStackTrace();
+              return new CheckResult(false, e.getMessage());
             }
           }
-
-          SharedOracleLiveITInstance.flushRedoLogs();
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
         }
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
