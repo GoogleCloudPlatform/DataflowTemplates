@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -114,7 +113,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance(Optional.of(1))
+            .maybeUseStaticInstance()
             .setNodeCount(10)
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
@@ -139,7 +138,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     if (separateShadowTableDb) {
       shadowTableSpannerResourceManager =
           SpannerResourceManager.builder("shadow_" + testName, project, region)
-              .maybeUseStaticInstance(Optional.of(1))
+              .maybeUseStaticInstance()
               .setNodeCount(10)
               .setMonitoringClient(monitoringClient)
               .setSuppressVerboseLogs(true)

@@ -91,7 +91,9 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createPGDialectSpannerMetadataDatabase();
 
-    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+    jdbcResourceManager =
+        com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+            .createResourceManager(testName);
 
     createMySQLSchema(
         jdbcResourceManager, SpannerToMySqlDataTypesPGDialectIT.MYSQL_SCHEMA_FILE_RESOURCE);
