@@ -16,8 +16,8 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.datacatalog.v1beta1.Entry;
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
+import com.google.cloud.dataplex.v1.Entry;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -46,7 +46,7 @@ public class PubSubChangeConsumer
 
   private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(PubSubChangeConsumer.class);
 
-  public static final BiFunction<String, DataCatalogSchemaManager, Publisher>
+  public static final BiFunction<String, KnowledgeCatalogSchemaUtils, Publisher>
       DEFAULT_PUBLISHER_FACTORY =
           (tableName, schemaUtils) -> {
             try {
@@ -65,15 +65,15 @@ public class PubSubChangeConsumer
 
   private final Set<String> whitelistedTables;
   private final Set<String> observedTables;
-  private final DataCatalogSchemaManager schemaUpdater;
-  private final BiFunction<String, DataCatalogSchemaManager, Publisher> pubSubPublisherFactory;
+  private final KnowledgeCatalogSchemaUtils schemaUpdater;
+  private final BiFunction<String, KnowledgeCatalogSchemaUtils, Publisher> pubSubPublisherFactory;
   private final DebeziumSourceRecordToDataflowCdcFormatTranslator translator =
       new DebeziumSourceRecordToDataflowCdcFormatTranslator();
 
   public PubSubChangeConsumer(
       Set<String> whitelistedTables,
-      DataCatalogSchemaManager schemaUpdater,
-      BiFunction<String, DataCatalogSchemaManager, Publisher> pubSubPublisherFactory) {
+      KnowledgeCatalogSchemaUtils schemaUpdater,
+      BiFunction<String, KnowledgeCatalogSchemaUtils, Publisher> pubSubPublisherFactory) {
     this.whitelistedTables = whitelistedTables;
     this.observedTables = new HashSet<>();
     this.pubsubPublisherMap = new HashMap<>();
@@ -129,7 +129,7 @@ public class PubSubChangeConsumer
           Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
           if (result == null) {
             throw new InterruptedException(
-                "A problem occurred when communicating with Cloud Data Catalog");
+                "A problem occurred when communicating with Knowledge Catalog");
           }
           observedTables.add(tableName);
         }

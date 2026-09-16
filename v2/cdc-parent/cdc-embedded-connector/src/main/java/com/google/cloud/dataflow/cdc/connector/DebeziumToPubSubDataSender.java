@@ -15,7 +15,7 @@
  */
 package com.google.cloud.dataflow.cdc.connector;
 
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import io.debezium.config.Configuration;
@@ -179,7 +179,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
     final PubSubChangeConsumer changeConsumer =
         new PubSubChangeConsumer(
             whitelistedTables,
-            DataCatalogSchemaUtils.getSchemaManager(
+            KnowledgeCatalogSchemaUtils.getSchemaManager(
                 gcpProject, gcpPubsubTopicPrefix, singleTopicMode),
             PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
