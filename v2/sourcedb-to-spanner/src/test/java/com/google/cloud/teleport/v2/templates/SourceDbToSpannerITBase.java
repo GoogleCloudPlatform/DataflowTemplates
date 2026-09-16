@@ -443,6 +443,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setPort(String.valueOf(msSqlRm.getPort()));
       shard.setDbName(msSqlRm.getDatabaseName());
     } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.SSLMySQLResourceManager sslRm) {
+      shard.setHost(sslRm.getHost());
+      shard.setPort(String.valueOf(sslRm.getPort()));
+      shard.setDbName(sslRm.getDatabaseName());
+    } else if (jdbcResourceManager
         instanceof org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager cloudRm) {
       shard.setHost(cloudRm.getHost());
       shard.setPort(String.valueOf(cloudRm.getPort()));

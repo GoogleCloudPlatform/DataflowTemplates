@@ -147,7 +147,8 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                     jdbcResourceManager.getPassword());
             Statement stmt = con.createStatement()) {
           stmt.execute(
-              String.format("CREATE USER '%s'@'%%' IDENTIFIED BY '' REQUIRE X509", dfUser));
+              String.format(
+                  "CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '' REQUIRE X509", dfUser));
           stmt.execute(String.format("GRANT ALL PRIVILEGES ON *.* TO '%s'@'%%'", dfUser));
           stmt.execute("FLUSH PRIVILEGES");
         } catch (SQLException e) {
