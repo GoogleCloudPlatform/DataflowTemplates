@@ -56,7 +56,7 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   // The versions of each of the JDBC drivers to use.
   // NOTE: These versions must correspond to the versions declared in the `pom.xml` file.
   private static final String MYSQL_VERSION = "8.0.30";
-  private static final String POSTGRES_VERSION = "42.6.1";
+  private static final String POSTGRES_VERSION = "42.7.10";
   private static final String ORACLE_VERSION = "23.9.0.25.07";
   private static final String MSSQL_VERSION = "13.2.1.jre11";
 
