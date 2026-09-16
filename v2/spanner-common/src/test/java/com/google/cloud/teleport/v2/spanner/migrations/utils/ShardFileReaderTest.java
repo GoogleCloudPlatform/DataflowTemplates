@@ -238,4 +238,18 @@ public final class ShardFileReaderTest {
 
     assertEquals(shards, expectedShards);
   }
+
+  @Test
+  public void readBulkMigrationShardFileWithNoCredentials() {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards =
+        shardFileReader.readForwardMigrationShardingConfig(
+            "src/test/resources/bulk-migration-shards-nocreds.json");
+    assertEquals(1, shards.size());
+    assertEquals("", shards.get(0).getPassword());
+    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", "", "", null, null, "");
+    shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
+    List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1));
+    assertEquals(shards, expectedShards);
+  }
 }
