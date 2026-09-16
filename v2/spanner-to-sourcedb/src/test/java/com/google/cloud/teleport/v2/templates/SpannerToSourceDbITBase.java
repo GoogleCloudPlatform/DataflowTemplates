@@ -349,7 +349,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    params.put("targetParallelism", "1");
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");

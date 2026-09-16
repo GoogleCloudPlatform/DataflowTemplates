@@ -412,7 +412,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
 
-    params.put("targetParallelism", "1");
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
