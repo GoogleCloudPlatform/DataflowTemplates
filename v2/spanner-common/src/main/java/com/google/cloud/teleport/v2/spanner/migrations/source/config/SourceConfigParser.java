@@ -136,9 +136,6 @@ public class SourceConfigParser {
       String password =
           secretManagerAccessor.resolvePassword(
               shard.getSecretManagerUri(), shard.getLogicalShardId(), shard.getPassword());
-      if (password == null) {
-        password = "";
-      }
       shard.setPassword(password);
     }
   }

@@ -67,9 +67,6 @@ public class ShardFileReader {
         String password =
             secretManagerAccessor.resolvePassword(
                 shard.getSecretManagerUri(), shard.getLogicalShardId(), shard.getPassword());
-        if (password == null) {
-          password = "";
-        }
         shard.setPassword(password);
       }
 
@@ -147,9 +144,6 @@ public class ShardFileReader {
       String password =
           secretManagerAccessor.resolvePassword(
               (String) dataShard.get("secretManagerUri"), host, (String) dataShard.get("password"));
-      if (password == null) {
-        password = "";
-      }
       String namespace =
           Optional.ofNullable(dataShard.get("namespace")).map(Object::toString).orElse(null);
 

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -155,7 +156,7 @@ public final class ShardFileReaderTest {
     List<Shard> shards =
         shardFileReader.getOrderedShardDetails("src/test/resources/shard-with-nocreds.json");
     assertEquals(1, shards.size());
-    assertEquals("", shards.get(0).getPassword());
+    assertNull(shards.get(0).getPassword());
   }
 
   @Test
@@ -246,8 +247,8 @@ public final class ShardFileReaderTest {
         shardFileReader.readForwardMigrationShardingConfig(
             "src/test/resources/bulk-migration-shards-nocreds.json");
     assertEquals(1, shards.size());
-    assertEquals("", shards.get(0).getPassword());
-    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", "", "", null, null, "");
+    assertNull(shards.get(0).getPassword());
+    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", null, "", null, null, "");
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1));
     assertEquals(shards, expectedShards);
