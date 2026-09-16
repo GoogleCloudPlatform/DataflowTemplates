@@ -396,7 +396,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         ipConfig = jobParameters.get("ipConfiguration");
       }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
-        if ("namespace".equals(entry.getKey()) || "ipConfiguration".equals(entry.getKey())) {
+        if ("namespace".equals(entry.getKey()) 
+            || "ipConfiguration".equals(entry.getKey())
+            || "dbUser".equals(entry.getKey())
+            || "dbPassword".equals(entry.getKey())
+            || "connectionProperties".equals(entry.getKey())) {
           continue;
         }
         params.put(entry.getKey(), entry.getValue());
@@ -470,8 +474,19 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
 
-    if (jobParameters != null && jobParameters.containsKey("namespace")) {
-      shard.setNamespace(jobParameters.get("namespace"));
+    if (jobParameters != null) {
+      if (jobParameters.containsKey("namespace")) {
+        shard.setNamespace(jobParameters.get("namespace"));
+      }
+      if (jobParameters.containsKey("dbUser")) {
+        shard.setUser(jobParameters.get("dbUser"));
+      }
+      if (jobParameters.containsKey("dbPassword")) {
+        shard.setPassword(jobParameters.get("dbPassword"));
+      }
+      if (jobParameters.containsKey("connectionProperties")) {
+        shard.setConnectionProperties(jobParameters.get("connectionProperties"));
+      }
     }
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
