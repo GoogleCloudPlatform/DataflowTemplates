@@ -194,6 +194,20 @@
                 </dependency>
             </dependencies>
         </profile>
+        <profile>
+            <id>templatesIntegrationTests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <perCoreThreadCount>false</perCoreThreadCount>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>
