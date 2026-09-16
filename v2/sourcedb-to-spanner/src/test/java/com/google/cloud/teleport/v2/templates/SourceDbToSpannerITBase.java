@@ -396,7 +396,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         ipConfig = jobParameters.get("ipConfiguration");
       }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
-        if ("namespace".equals(entry.getKey()) 
+        if ("namespace".equals(entry.getKey())
             || "ipConfiguration".equals(entry.getKey())
             || "dbUser".equals(entry.getKey())
             || "dbPassword".equals(entry.getKey())
