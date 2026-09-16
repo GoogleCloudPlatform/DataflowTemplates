@@ -647,7 +647,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected PipelineOperator.Config.Builder wrapConfiguration(
       PipelineOperator.Config.Builder builder) {
     if (System.getProperty("directRunnerTest") != null) {
-      return builder.setTimeoutAfter(Duration.ofMinutes(45));
+      return builder.setTimeoutAfter(Duration.ofMinutes(25));
     }
     return builder;
   }

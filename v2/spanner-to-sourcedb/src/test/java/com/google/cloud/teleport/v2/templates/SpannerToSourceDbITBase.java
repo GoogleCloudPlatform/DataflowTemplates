@@ -567,7 +567,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected org.apache.beam.it.common.PipelineOperator.Config.Builder wrapConfiguration(
       org.apache.beam.it.common.PipelineOperator.Config.Builder builder) {
     if (System.getProperty("directRunnerTest") != null) {
-      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(45));
+      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(25));
     }
     return builder;
   }
