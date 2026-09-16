@@ -349,6 +349,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
+    params.put("targetParallelism", "1");
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
@@ -560,5 +561,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     } catch (Exception e) {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
     }
+  }
+
+  @Override
+  protected org.apache.beam.it.common.PipelineOperator.Config.Builder wrapConfiguration(
+      org.apache.beam.it.common.PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(45));
+    }
+    return builder;
   }
 }
