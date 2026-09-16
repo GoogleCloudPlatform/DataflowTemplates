@@ -136,12 +136,8 @@ public class SourceConfigParser {
       String password =
           secretManagerAccessor.resolvePassword(
               shard.getSecretManagerUri(), shard.getLogicalShardId(), shard.getPassword());
-      if (password == null || password.isEmpty()) {
-        throw new RuntimeException(
-            "Neither password nor secretManagerUri was found in the shard file "
-                + sourceShardsFilePath
-                + "  for shard "
-                + shard.getLogicalShardId());
+      if (password == null) {
+        password = "";
       }
       shard.setPassword(password);
     }

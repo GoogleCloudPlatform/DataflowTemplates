@@ -67,12 +67,8 @@ public class ShardFileReader {
         String password =
             secretManagerAccessor.resolvePassword(
                 shard.getSecretManagerUri(), shard.getLogicalShardId(), shard.getPassword());
-        if (password == null || password.isEmpty()) {
-          throw new RuntimeException(
-              "Neither password nor secretManagerUri was found in the shard file "
-                  + sourceShardsFilePath
-                  + "  for shard "
-                  + shard.getLogicalShardId());
+        if (password == null) {
+          password = "";
         }
         shard.setPassword(password);
       }
@@ -151,13 +147,8 @@ public class ShardFileReader {
       String password =
           secretManagerAccessor.resolvePassword(
               (String) dataShard.get("secretManagerUri"), host, (String) dataShard.get("password"));
-      if (password == null || password.isEmpty()) {
-        LOG.warn("could not fetch password for host: {}", host);
-        throw new RuntimeException(
-            "Neither password nor secretManagerUri was found in the shard file "
-                + sourceShardsFilePath
-                + "  for host "
-                + host);
+      if (password == null) {
+        password = "";
       }
       String namespace =
           Optional.ofNullable(dataShard.get("namespace")).map(Object::toString).orElse(null);

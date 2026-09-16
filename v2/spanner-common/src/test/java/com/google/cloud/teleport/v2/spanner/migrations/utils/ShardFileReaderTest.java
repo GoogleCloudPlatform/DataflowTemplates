@@ -152,16 +152,10 @@ public final class ShardFileReaderTest {
   @Test
   public void shardFileWithNoCredentials() {
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                shardFileReader.getOrderedShardDetails(
-                    "src/test/resources/shard-with-nocreds.json"));
-    assertTrue(
-        thrown
-            .getMessage()
-            .contains("Neither password nor secretManagerUri was found in the shard file"));
+    List<Shard> shards =
+        shardFileReader.getOrderedShardDetails("src/test/resources/shard-with-nocreds.json");
+    assertEquals(1, shards.size());
+    assertEquals("", shards.get(0).getPassword());
   }
 
   @Test

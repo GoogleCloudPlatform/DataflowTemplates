@@ -107,7 +107,7 @@ public class SourceConfigParserTest {
   }
 
   @Test
-  public void testResolveShardSecret_ThrowsExceptionOnEmptyPassword() {
+  public void testResolveShardSecret_EmptyPassword() {
     Shard shard = new Shard();
     shard.setLogicalShardId("shard2");
 
@@ -116,17 +116,13 @@ public class SourceConfigParserTest {
 
     when(mockSecretManagerAccessor.resolvePassword(null, "shard2", null)).thenReturn("");
 
-    RuntimeException exception =
-        assertThrows(
-            RuntimeException.class, () -> parser.resolveShardSecret(mockConfig, "dummy/path.json"));
+    parser.resolveShardSecret(mockConfig, "dummy/path.json");
 
-    assertEquals(
-        "Neither password nor secretManagerUri was found in the shard file dummy/path.json  for shard shard2",
-        exception.getMessage());
+    assertEquals("", shard.getPassword());
   }
 
   @Test
-  public void testResolveShardSecret_ThrowsExceptionOnNullPassword() {
+  public void testResolveShardSecret_NullPassword() {
     Shard shard = new Shard();
     shard.setLogicalShardId("shard3");
 
@@ -135,13 +131,9 @@ public class SourceConfigParserTest {
 
     when(mockSecretManagerAccessor.resolvePassword(null, "shard3", null)).thenReturn(null);
 
-    RuntimeException exception =
-        assertThrows(
-            RuntimeException.class, () -> parser.resolveShardSecret(mockConfig, "dummy/path.json"));
+    parser.resolveShardSecret(mockConfig, "dummy/path.json");
 
-    assertEquals(
-        "Neither password nor secretManagerUri was found in the shard file dummy/path.json  for shard shard3",
-        exception.getMessage());
+    assertEquals("", shard.getPassword());
   }
 
   @Test
