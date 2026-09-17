@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.source.config;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -72,7 +73,7 @@ public class SourceConfigParserTest {
     when(mockConfig.getShardConfigs()).thenReturn(Collections.singletonList(shard));
 
     when(mockSecretManagerAccessor.resolvePassword(
-            "projects/123/secrets/my-secret/versions/1", "shard1", ""))
+            "projects/123/secrets/my-secret/versions/1", "shard1", null))
         .thenReturn("superSecretPassword");
 
     parser.resolveShardSecret(mockConfig, "dummy/path.json");
@@ -94,7 +95,7 @@ public class SourceConfigParserTest {
     when(mockConfig.getShardConfigs()).thenReturn(Arrays.asList(shard1, shard2));
 
     when(mockSecretManagerAccessor.resolvePassword(
-            "projects/123/secrets/my-secret/versions/1", "shard1", ""))
+            "projects/123/secrets/my-secret/versions/1", "shard1", null))
         .thenReturn("superSecretPassword");
 
     when(mockSecretManagerAccessor.resolvePassword("", "shard2", "directPassword"))
@@ -114,11 +115,11 @@ public class SourceConfigParserTest {
     JdbcShardConfig mockConfig = mock(JdbcShardConfig.class);
     when(mockConfig.getShardConfigs()).thenReturn(Collections.singletonList(shard));
 
-    when(mockSecretManagerAccessor.resolvePassword(null, "shard2", null)).thenReturn("");
+    when(mockSecretManagerAccessor.resolvePassword(null, "shard2", null)).thenReturn(null);
 
     parser.resolveShardSecret(mockConfig, "dummy/path.json");
 
-    assertEquals("", shard.getPassword());
+    assertNull(shard.getPassword());
   }
 
   @Test
@@ -133,7 +134,7 @@ public class SourceConfigParserTest {
 
     parser.resolveShardSecret(mockConfig, "dummy/path.json");
 
-    assertEquals("", shard.getPassword());
+    assertNull(shard.getPassword());
   }
 
   @Test
@@ -242,7 +243,7 @@ public class SourceConfigParserTest {
     when(mockSecretManagerAccessor.resolvePassword("", "shard1", "superSecretPassword"))
         .thenReturn("superSecretPassword");
     when(mockSecretManagerAccessor.resolvePassword(
-            "projects/123/secrets/my-secret/versions/1", "shard2", ""))
+            "projects/123/secrets/my-secret/versions/1", "shard2", null))
         .thenReturn("resolvedPasswordFromSecretManager");
 
     // Test for MYSQL
