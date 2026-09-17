@@ -26,9 +26,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -212,9 +209,10 @@ public final class ReadSplitGenerator {
           Arrays.asList(
               new TypeBucket("number", NUMBER_BSON_TYPES),
               new TypeBucket("string", new BsonString("string")),
-              new TypeBucket("objectId", new BsonString("objectId")),
-              new TypeBucket("binData", new BsonString("binData")),
               new TypeBucket("object", new BsonString("object")),
+              new TypeBucket("binData", new BsonString("binData")),
+              new TypeBucket("objectId", new BsonString("objectId")),
+              new TypeBucket("bool", new BsonString("bool")),
               new TypeBucket("date", new BsonString("date"))));
 
   public static final class ProbedTypeBounds {
@@ -241,6 +239,18 @@ public final class ReadSplitGenerator {
     }
   }
 
+  public static TypeBucket getBucketForValue(BsonValue val) {
+    if (val == null) {
+      return null;
+    }
+    for (TypeBucket bucket : KNOWN_TYPE_BUCKETS) {
+      if (matchesType(val, bucket)) {
+        return bucket;
+      }
+    }
+    return null;
+  }
+
   private static String getDbName(MongoCollection<BsonDocument> col) {
     return col != null && col.getNamespace() != null
         ? col.getNamespace().getDatabaseName()
@@ -254,70 +264,108 @@ public final class ReadSplitGenerator {
   }
 
   /**
-   * Performs lightweight covered index seeks (<26ms) in parallel using a dedicated ExecutorService
-   * to detect all active BSON types and their min/max boundaries without blocking sequentially.
+   * Performs lightweight covered index seeks in O(1) to detect active BSON types and their min/max
+   * boundaries. For homogeneous collections (the vast majority), a single min/max check (<2ms)
+   * resolves the bounds immediately without probing any other types.
    */
   public static List<ProbedTypeBounds> probeActiveTypeBounds(MongoCollection<BsonDocument> col) {
-    List<ProbedTypeBounds> activeBounds = new ArrayList<>();
-    ExecutorService executor =
-        Executors.newFixedThreadPool(
-            Math.min(KNOWN_TYPE_BUCKETS.size(), 6),
-            r -> {
-              Thread t = new Thread(r);
-              t.setDaemon(true);
-              return t;
-            });
     try {
-      List<Future<ProbedTypeBounds>> futures = new ArrayList<>();
-      for (TypeBucket bucket : KNOWN_TYPE_BUCKETS) {
-        futures.add(executor.submit(() -> probeBucket(col, bucket)));
-      }
-      for (Future<ProbedTypeBounds> future : futures) {
-        try {
-          ProbedTypeBounds bounds = future.get(5, TimeUnit.SECONDS);
-          if (bounds != null) {
-            activeBounds.add(bounds);
-          }
-        } catch (Exception e) {
-          LOG.warn(
-              "Covered index probe future failed on '{}.{}': {}",
-              getDbName(col),
-              getColName(col),
-              e.getMessage());
-        }
-      }
-    } finally {
-      executor.shutdown();
-    }
-    return activeBounds;
-  }
-
-  private static ProbedTypeBounds probeBucket(
-      MongoCollection<BsonDocument> col, TypeBucket bucket) {
-    try {
+      // Step 1: Global Min / Max seek (O(1) covered index scan)
       BsonDocument minDoc =
-          col.find(bucket.query())
+          col.find()
               .projection(new BsonDocument("_id", new BsonInt32(1)))
               .sort(new BsonDocument("_id", new BsonInt32(1)))
               .limit(1)
-              .maxTime(3, TimeUnit.SECONDS)
+              .maxTime(5, TimeUnit.SECONDS)
               .first();
-      if (minDoc != null && minDoc.containsKey("_id")) {
-        BsonDocument maxDoc =
-            col.find(bucket.query())
-                .projection(new BsonDocument("_id", new BsonInt32(1)))
-                .sort(new BsonDocument("_id", new BsonInt32(-1)))
-                .limit(1)
-                .maxTime(3, TimeUnit.SECONDS)
-                .first();
-        BsonValue minVal = minDoc.get("_id");
-        BsonValue maxVal =
-            (maxDoc != null && maxDoc.containsKey("_id")) ? maxDoc.get("_id") : minVal;
-        return new ProbedTypeBounds(bucket, minVal, maxVal);
+
+      if (minDoc == null || !minDoc.containsKey("_id")) {
+        return Collections.emptyList();
+      }
+
+      BsonDocument maxDoc =
+          col.find()
+              .projection(new BsonDocument("_id", new BsonInt32(1)))
+              .sort(new BsonDocument("_id", new BsonInt32(-1)))
+              .limit(1)
+              .maxTime(5, TimeUnit.SECONDS)
+              .first();
+
+      BsonValue minVal = minDoc.get("_id");
+      BsonValue maxVal = (maxDoc != null && maxDoc.containsKey("_id")) ? maxDoc.get("_id") : minVal;
+
+      TypeBucket minBucket = getBucketForValue(minVal);
+      TypeBucket maxBucket = getBucketForValue(maxVal);
+
+      // If either type is unknown, return empty so caller falls back to algorithmic splits
+      if (minBucket == null || maxBucket == null) {
+        return Collections.emptyList();
+      }
+
+      // Case A: Homogeneous collection (min and max have the same BSON type)
+      // Because B-tree index stores keys in canonical BSON order, no other type can exist!
+      if (minBucket.getName().equals(maxBucket.getName())) {
+        return Collections.singletonList(new ProbedTypeBounds(minBucket, minVal, maxVal));
+      }
+
+      // Case B: Mixed collection
+      int minIdx = KNOWN_TYPE_BUCKETS.indexOf(minBucket);
+      int maxIdx = KNOWN_TYPE_BUCKETS.indexOf(maxBucket);
+      if (minIdx < 0 || maxIdx < 0 || minIdx > maxIdx) {
+        return Collections.emptyList();
+      }
+
+      List<ProbedTypeBounds> activeBounds = new ArrayList<>();
+
+      // 1. Min bucket: we already have minVal, seek maxVal for this type
+      BsonValue minBucketMax = probeBucketBound(col, minBucket, -1);
+      activeBounds.add(
+          new ProbedTypeBounds(minBucket, minVal, minBucketMax != null ? minBucketMax : minVal));
+
+      // 2. Intermediate candidate buckets: probe existence and min bound in one sorted query
+      for (int i = minIdx + 1; i < maxIdx; i++) {
+        TypeBucket candidate = KNOWN_TYPE_BUCKETS.get(i);
+        BsonValue candMin = probeBucketBound(col, candidate, 1);
+        if (candMin != null) {
+          BsonValue candMax = probeBucketBound(col, candidate, -1);
+          activeBounds.add(
+              new ProbedTypeBounds(candidate, candMin, candMax != null ? candMax : candMin));
+        }
+      }
+
+      // 3. Max bucket: we already have maxVal, seek minVal for this type
+      BsonValue maxBucketMin = probeBucketBound(col, maxBucket, 1);
+      activeBounds.add(
+          new ProbedTypeBounds(maxBucket, maxBucketMin != null ? maxBucketMin : maxVal, maxVal));
+
+      return activeBounds;
+    } catch (Exception e) {
+      LOG.warn(
+          "Fast index type probe failed on '{}.{}': {}.",
+          getDbName(col),
+          getColName(col),
+          e.getMessage());
+      return Collections.emptyList();
+    }
+  }
+
+  private static BsonValue probeBucketBound(
+      MongoCollection<BsonDocument> col, TypeBucket bucket, int direction) {
+    try {
+      BsonDocument doc =
+          col.find(bucket.query())
+              .projection(new BsonDocument("_id", new BsonInt32(1)))
+              .sort(new BsonDocument("_id", new BsonInt32(direction)))
+              .limit(1)
+              .maxTime(5, TimeUnit.SECONDS)
+              .first();
+      if (doc != null && doc.containsKey("_id")) {
+        return doc.get("_id");
       }
     } catch (Exception e) {
       LOG.warn(
-          "Covered index probe failed for type '{}' on '{}.{}': {}",
+          "Failed seeking bound (dir={}) for type '{}' on '{}.{}': {}",
+          direction,
           bucket.getName(),
           getDbName(col),
           getColName(col),
@@ -426,9 +474,6 @@ public final class ReadSplitGenerator {
       MongoCollection<BsonDocument> col, ProbedTypeBounds bounds, int splits) {
     if (splits <= 1) {
       BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
-      if (bounds.getMaxKey() != null) {
-        idDoc.append("$lte", bounds.getMaxKey());
-      }
       return Collections.singletonList(new BsonDocument("_id", idDoc));
     }
 
@@ -492,9 +537,6 @@ public final class ReadSplitGenerator {
             idDoc.append("$lte", boundaries.get(0));
           } else if (i == boundaryCount) {
             idDoc.append("$gt", boundaries.get(boundaryCount - 1));
-            if (maxKey != null) {
-              idDoc.append("$lte", maxKey);
-            }
           } else {
             idDoc.append("$gt", boundaries.get(i - 1)).append("$lte", boundaries.get(i));
           }
@@ -526,9 +568,6 @@ public final class ReadSplitGenerator {
     }
 
     BsonDocument fallbackId = new BsonDocument("$type", bounds.getBucket().getTypeValue());
-    if (bounds.getMaxKey() != null) {
-      fallbackId.append("$lte", bounds.getMaxKey());
-    }
     return Collections.singletonList(new BsonDocument("_id", fallbackId));
   }
 
@@ -541,12 +580,14 @@ public final class ReadSplitGenerator {
         return k.isInt32() || k.isInt64() || k.isDouble() || k.isDecimal128();
       case "string":
         return k.isString();
-      case "objectId":
-        return k.isObjectId();
-      case "binData":
-        return k.isBinary();
       case "object":
         return k.isDocument();
+      case "binData":
+        return k.isBinary();
+      case "objectId":
+        return k.isObjectId();
+      case "bool":
+        return k.isBoolean();
       case "date":
         return k.isDateTime();
       default:
@@ -610,10 +651,7 @@ public final class ReadSplitGenerator {
   public static List<BsonDocument> generateProbedObjectIdSplits(
       String minHex, String maxHex, int numSplits) {
     if (numSplits <= 1 || minHex.equals(maxHex)) {
-      return Collections.singletonList(
-          BsonDocument.parse(
-              String.format(
-                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}", maxHex)));
+      return Collections.singletonList(BsonDocument.parse("{\"_id\": {\"$type\": \"objectId\"}}"));
     }
 
     BigInteger minBig = new BigInteger(minHex, 16);
@@ -622,10 +660,7 @@ public final class ReadSplitGenerator {
     BigInteger step = range.divide(BigInteger.valueOf(numSplits));
 
     if (step.compareTo(BigInteger.ZERO) <= 0) {
-      return Collections.singletonList(
-          BsonDocument.parse(
-              String.format(
-                  "{\"_id\": {\"$type\": \"objectId\", \"$lte\": {\"$oid\": \"%s\"}}}", maxHex)));
+      return Collections.singletonList(BsonDocument.parse("{\"_id\": {\"$type\": \"objectId\"}}"));
     }
 
     List<BsonDocument> slices = new ArrayList<>();
@@ -643,8 +678,7 @@ public final class ReadSplitGenerator {
         slices.add(
             BsonDocument.parse(
                 String.format(
-                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}, \"$lte\": {\"$oid\": \"%s\"}}}",
-                    lowHex, maxHex)));
+                    "{\"_id\": {\"$type\": \"objectId\", \"$gte\": {\"$oid\": \"%s\"}}}", lowHex)));
       } else {
         BigInteger low = minBig.add(step.multiply(BigInteger.valueOf(i)));
         BigInteger high = minBig.add(step.multiply(BigInteger.valueOf(i + 1)));

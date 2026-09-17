@@ -289,7 +289,7 @@ public class ReadSplitGeneratorTest {
   }
 
   @Test
-  public void testGenerateProbedObjectIdSplits_boundsTailSliceWithMaxHex() {
+  public void testGenerateProbedObjectIdSplits_leavesTailSliceUnboundedAbove() {
     String minHex = "66d000000000000000000000";
     String maxHex = "66dff0000000000000000000";
     List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 4);
@@ -299,18 +299,100 @@ public class ReadSplitGeneratorTest {
     assertTrue(splits.get(1).toJson().contains("\"$lt\""));
     String tailJson = splits.get(3).toJson();
     assertTrue(tailJson.contains("\"$gte\""));
-    assertTrue(tailJson.contains("\"$lte\""));
-    assertTrue(tailJson.contains(maxHex));
+    assertFalse(tailJson.contains("\"$lte\""));
   }
 
   @Test
-  public void testGenerateProbedObjectIdSplits_singleSplitBoundedToMaxHex() {
+  public void testGenerateProbedObjectIdSplits_singleSplitUnboundedAbove() {
     String minHex = "66d000000000000000000000";
     String maxHex = "66dff0000000000000000000";
     List<BsonDocument> splits = ReadSplitGenerator.generateProbedObjectIdSplits(minHex, maxHex, 1);
     assertEquals(1, splits.size());
     String json = splits.get(0).toJson();
-    assertTrue(json.contains("\"$lte\""));
-    assertTrue(json.contains(maxHex));
+    assertTrue(json.contains("\"$type\": \"objectId\""));
+    assertFalse(json.contains("\"$lte\""));
+  }
+
+  @Test
+  public void testGetBucketForValue_identifiesAllBsonTypes() {
+    assertEquals(
+        "number", ReadSplitGenerator.getBucketForValue(new org.bson.BsonInt32(42)).getName());
+    assertEquals(
+        "number", ReadSplitGenerator.getBucketForValue(new org.bson.BsonInt64(42L)).getName());
+    assertEquals(
+        "number", ReadSplitGenerator.getBucketForValue(new org.bson.BsonDouble(42.5)).getName());
+    assertEquals(
+        "string", ReadSplitGenerator.getBucketForValue(new org.bson.BsonString("test")).getName());
+    assertEquals(
+        "objectId",
+        ReadSplitGenerator.getBucketForValue(
+                new org.bson.BsonObjectId(new org.bson.types.ObjectId("600000000000000000000001")))
+            .getName());
+    assertEquals(
+        "bool", ReadSplitGenerator.getBucketForValue(new org.bson.BsonBoolean(true)).getName());
+    assertEquals(
+        "date",
+        ReadSplitGenerator.getBucketForValue(new org.bson.BsonDateTime(1700000000000L)).getName());
+    assertEquals(
+        "binData",
+        ReadSplitGenerator.getBucketForValue(new org.bson.BsonBinary(new byte[] {1, 2, 3}))
+            .getName());
+    assertEquals(
+        "object",
+        ReadSplitGenerator.getBucketForValue(new BsonDocument("sub", new org.bson.BsonInt32(1)))
+            .getName());
+  }
+
+  @Test
+  public void testProbeActiveTypeBounds_homogeneous_singleTypeImmediateReturn() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    @SuppressWarnings("unchecked")
+    FindIterable<BsonDocument> mockFind = mock(FindIterable.class);
+
+    when(mockCol.find()).thenReturn(mockFind);
+    when(mockFind.projection(any())).thenReturn(mockFind);
+    when(mockFind.sort(any())).thenReturn(mockFind);
+    when(mockFind.limit(any(Integer.class))).thenReturn(mockFind);
+    when(mockFind.maxTime(any(Long.class), any())).thenReturn(mockFind);
+
+    org.bson.BsonObjectId minOid =
+        new org.bson.BsonObjectId(new org.bson.types.ObjectId("600000000000000000000001"));
+    org.bson.BsonObjectId maxOid =
+        new org.bson.BsonObjectId(new org.bson.types.ObjectId("600000000000000000000009"));
+
+    // First call is global min sort({_id: 1}), second call is global max sort({_id: -1})
+    when(mockFind.first())
+        .thenReturn(new BsonDocument("_id", minOid))
+        .thenReturn(new BsonDocument("_id", maxOid));
+
+    List<ReadSplitGenerator.ProbedTypeBounds> bounds =
+        ReadSplitGenerator.probeActiveTypeBounds(mockCol);
+
+    assertEquals(1, bounds.size());
+    ReadSplitGenerator.ProbedTypeBounds b = bounds.get(0);
+    assertEquals("objectId", b.getBucket().getName());
+    assertEquals(minOid, b.getMinKey());
+    assertEquals(maxOid, b.getMaxKey());
+  }
+
+  @Test
+  public void testProbeActiveTypeBounds_emptyCollectionReturnsEmptyList() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    @SuppressWarnings("unchecked")
+    FindIterable<BsonDocument> mockFind = mock(FindIterable.class);
+
+    when(mockCol.find()).thenReturn(mockFind);
+    when(mockFind.projection(any())).thenReturn(mockFind);
+    when(mockFind.sort(any())).thenReturn(mockFind);
+    when(mockFind.limit(any(Integer.class))).thenReturn(mockFind);
+    when(mockFind.maxTime(any(Long.class), any())).thenReturn(mockFind);
+    when(mockFind.first()).thenReturn(null);
+
+    List<ReadSplitGenerator.ProbedTypeBounds> bounds =
+        ReadSplitGenerator.probeActiveTypeBounds(mockCol);
+
+    assertTrue(bounds.isEmpty());
   }
 }
