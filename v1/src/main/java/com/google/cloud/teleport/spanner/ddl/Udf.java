@@ -70,10 +70,28 @@ public abstract class Udf implements Serializable {
   @Nullable
   public abstract SqlSecurity security();
 
+  @Nullable
+  public abstract String spannerDeterminism();
+
   public abstract ImmutableList<UdfParameter> parameters();
 
   public abstract ImmutableList<String> options();
 
+  /**
+   * Generates the CREATE FUNCTION SQL statement, adapting to Google Standard SQL (GSQL) and
+   * PostgreSQL (PG) dialects.
+   *
+   * <p>Noteable dialect differences: - GSQL uses 'AS (definition)' for the body, PG uses 'RETURN
+   * definition'. - GSQL adds 'SQL' before 'SECURITY <rights>'. - PG supports volatility keywords
+   * (IMMUTABLE, STABLE, VOLATILE) for determinism.
+   *
+   * <p>E.g., GSQL: CREATE FUNCTION func(x INT64) RETURNS INT64 SQL SECURITY INVOKER AS (x * 2)
+   * E.g., PG: CREATE FUNCTION func(x integer) RETURNS integer SECURITY INVOKER IMMUTABLE RETURN x *
+   * 2
+   *
+   * @param appendable The Appendable to write the SQL to.
+   * @throws IOException if an I/O error occurs.
+   */
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append("CREATE FUNCTION ").append(quoteIdentifier(name(), dialect()));
     appendable.append("(");
@@ -89,7 +107,6 @@ public abstract class Udf implements Serializable {
     if (type() != null) {
       appendable.append(" RETURNS ").append(type());
     }
-
     // Determinism should be added to INFORMATION_SCHEMA.ROUTINES.
     // For now, we infer it from the language.
     if (language() != null && language().equalsIgnoreCase("REMOTE")) {
@@ -100,6 +117,21 @@ public abstract class Udf implements Serializable {
         determinism = "VOLATILE";
       }
       appendable.append(" ").append(determinism);
+    } else if (spannerDeterminism() != null && dialect() == Dialect.POSTGRESQL) {
+      switch (spannerDeterminism()) {
+        case "DETERMINISTIC":
+          appendable.append(" IMMUTABLE");
+          break;
+        case "NOT_DETERMINISTIC_STABLE":
+          appendable.append(" STABLE");
+          break;
+        case "NOT_DETERMINISTIC_VOLATILE":
+          appendable.append(" VOLATILE");
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unrecognized UDF determinism: " + spannerDeterminism());
+      }
     }
 
     if (language() != null && !language().isEmpty()) {
@@ -112,7 +144,10 @@ public abstract class Udf implements Serializable {
     if (security() != null) {
       // Remote UDF don't use SQL SECURITY, but it is marked NOT NULL in IS.
       if (!"REMOTE".equalsIgnoreCase(language())) {
-        appendable.append(" SQL SECURITY ").append(security().toString());
+        if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+          appendable.append(" SQL");
+        }
+        appendable.append(" SECURITY ").append(security().toString());
       }
     }
 
@@ -235,6 +270,10 @@ public abstract class Udf implements Serializable {
 
     public abstract ImmutableList<String> options();
 
+    public abstract Builder spannerDeterminism(String spannerDeterminism);
+
+    public abstract String spannerDeterminism();
+
     public abstract Builder parameters(ImmutableList<UdfParameter> parameters);
 
     public ImmutableList<UdfParameter> parameters() {
@@ -277,6 +316,7 @@ public abstract class Udf implements Serializable {
           .language(language())
           .security(security())
           .options(options())
+          .spannerDeterminism(spannerDeterminism())
           .parameters(ImmutableList.copyOf(parameters()))
           .autoBuild();
     }
