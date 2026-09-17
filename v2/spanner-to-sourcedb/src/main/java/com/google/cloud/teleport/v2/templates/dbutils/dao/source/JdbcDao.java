@@ -17,12 +17,13 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.sql.Connection;
 import java.sql.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcDao implements IDao<String> {
+public class JdbcDao implements IDao {
   private String sqlUrl;
   private String sqlUser;
 
@@ -37,9 +38,13 @@ public class JdbcDao implements IDao<String> {
   }
 
   @Override
-  public void write(String sqlStatement, TransactionalCheck transactionalCheck) throws Exception {
+  public void write(
+      DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
+      throws Exception {
     Connection connObj = null;
     Statement statement = null;
+
+    String dmlStatement = dmlGeneratorResponse.getDmlStatement();
 
     try {
       connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
@@ -47,8 +52,24 @@ public class JdbcDao implements IDao<String> {
         throw new ConnectionException("Connection is null");
       }
       connObj.setAutoCommit(false);
-      statement = connObj.createStatement();
-      statement.executeUpdate(sqlStatement);
+      java.util.List<Object> params = dmlGeneratorResponse.getPreparedStatementParameters();
+      if (params != null && !params.isEmpty()) {
+        java.sql.PreparedStatement pstmt = connObj.prepareStatement(dmlStatement);
+        statement = pstmt;
+        int paramIdx = 1;
+        for (Object param : params) {
+          if (param instanceof byte[]) {
+            byte[] bytes = (byte[]) param;
+            pstmt.setBlob(paramIdx++, new java.io.ByteArrayInputStream(bytes), bytes.length);
+          } else {
+            pstmt.setObject(paramIdx++, param);
+          }
+        }
+        pstmt.executeUpdate();
+      } else {
+        statement = connObj.createStatement();
+        statement.executeUpdate(dmlStatement);
+      }
 
       if (transactionalCheck != null) {
         transactionalCheck.check();

@@ -6,7 +6,7 @@ options:
         description: "BigQuery table"
         help: >
           BigQuery table location to write the output to or read from. The name 
-          should be in the format <project>:<dataset>.<table_name>`. For write, 
+          should be in the format <project>:<dataset>.<table_name>. For write, 
           the table's schema must match input objects.
         required: true
         type: text

@@ -51,7 +51,6 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
-import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -118,7 +117,8 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             .addParameter("transformationJarPath", customTransformation.jarPath())
             .addParameter("transformationClassName", customTransformation.classPath())
             .addParameter("dlqRetryMinutes", DLQ_RETRY_MINUTES.toString())
-            .addParameter("workerMachineType", "n2-standard-4")
+            .addEnvironmentVariable(
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .addEnvironmentVariable(
                 "additionalExperiments", List.of("use_runner_v2", "enable_data_sampling"))
             .build();
@@ -252,7 +252,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
                             : row.getValue(colName).toString()));
         readValues.add(rowMapBuilder.build());
       }
-      Log.info("Spanner Cassandra Values are: {}", readValues);
+      LOG.info("Spanner Cassandra Values are: {}", readValues);
       assertThat(readValues).isEqualTo(entry.getValue());
     }
   }

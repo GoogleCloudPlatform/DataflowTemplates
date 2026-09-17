@@ -59,6 +59,11 @@ class MutationKeyEncoder {
     this.schema = schema;
   }
 
+  @VisibleForTesting
+  static void clearUnknownTablesWarningsMap() {
+    unknownTablesWarnings.clear();
+  }
+
   /**
    * Builds a lexicographically sortable binary key based on a primary key descriptor.
    *

@@ -36,6 +36,7 @@ public class DatastreamConstants {
 
   // Event types
   public static final String DELETE_EVENT = "DELETE";
+  public static final String UPDATE_EVENT = "UPDATE";
   public static final String EMPTY_EVENT = "";
 
   // Default shadow collection prefix

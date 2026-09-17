@@ -55,6 +55,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **includeSpannerSource**: Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false.
 * **outputMessageMetadata**: The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
 * **useSpannerEmulatorHost**: Whether to use the Spanner host configured in getSpannerHost() as the Emulator host. Defaults to: false.
+* **spannerChangeStreamTvfNameList**: Semicolon-separated list of Spanner Change Stream TVF names to query and union. Defaults to empty.
 
 
 
@@ -168,6 +169,7 @@ export RPC_PRIORITY=HIGH
 export INCLUDE_SPANNER_SOURCE=false
 export OUTPUT_MESSAGE_METADATA=""
 export USE_SPANNER_EMULATOR_HOST=false
+export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
 
 gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --project "$PROJECT" \
@@ -191,7 +193,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --parameters "rpcPriority=$RPC_PRIORITY" \
   --parameters "includeSpannerSource=$INCLUDE_SPANNER_SOURCE" \
   --parameters "outputMessageMetadata=$OUTPUT_MESSAGE_METADATA" \
-  --parameters "useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST"
+  --parameters "useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST" \
+  --parameters "spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST"
 ```
 
 For more information about the command, please check:
@@ -231,6 +234,7 @@ export RPC_PRIORITY=HIGH
 export INCLUDE_SPANNER_SOURCE=false
 export OUTPUT_MESSAGE_METADATA=""
 export USE_SPANNER_EMULATOR_HOST=false
+export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -239,7 +243,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-pubsub-job" \
 -DtemplateName="Spanner_Change_Streams_to_PubSub" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY,includeSpannerSource=$INCLUDE_SPANNER_SOURCE,outputMessageMetadata=$OUTPUT_MESSAGE_METADATA,useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputDataFormat=$OUTPUT_DATA_FORMAT,pubsubAPI=$PUBSUB_API,pubsubProjectId=$PUBSUB_PROJECT_ID,pubsubTopic=$PUBSUB_TOPIC,rpcPriority=$RPC_PRIORITY,includeSpannerSource=$INCLUDE_SPANNER_SOURCE,outputMessageMetadata=$OUTPUT_MESSAGE_METADATA,useSpannerEmulatorHost=$USE_SPANNER_EMULATOR_HOST,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -303,6 +307,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_pubsub" 
     # includeSpannerSource = "false"
     # outputMessageMetadata = ""
     # useSpannerEmulatorHost = "false"
+    # spannerChangeStreamTvfNameList = ""
   }
 }
 ```

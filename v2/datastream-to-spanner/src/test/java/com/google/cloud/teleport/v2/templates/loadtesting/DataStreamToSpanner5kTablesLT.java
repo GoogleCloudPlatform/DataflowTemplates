@@ -62,6 +62,11 @@ public class DataStreamToSpanner5kTablesLT extends DataStreamToSpannerLTBase {
     jdbcResourceManager = CloudMySQLResourceManager.builder(testName).build();
   }
 
+  @Override
+  protected boolean shouldUsePrivateConnectivity() {
+    return true;
+  }
+
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(jdbcResourceManager);

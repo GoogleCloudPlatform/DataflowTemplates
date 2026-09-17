@@ -546,3 +546,19 @@ CREATE TABLE time_pk_table (
   id STRING(MAX) NOT NULL,
   time_pk_col STRING(MAX) NOT NULL
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS uuid_table (
+  id INT64 NOT NULL,
+  uuid_col UUID,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS uuid_pk_table (
+  id UUID NOT NULL,
+  uuid_pk_col UUID NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS utf8mb4_pk_table (
+  id STRING(200) NOT NULL,
+  utf8mb4_pk_col STRING(200) NOT NULL,
+) PRIMARY KEY(id);
+

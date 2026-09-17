@@ -62,8 +62,11 @@ public class ComparisonRecordMapper implements Serializable {
   public ComparisonRecord mapFrom(GenericRecord avroRecord) {
     try {
       String tableName = avroRecord.get("tableName").toString();
+      Object shardIdObj = avroRecord.get("shardId");
       String shardId =
-          avroRecord.get("shardId") != null ? avroRecord.get("shardId").toString() : "";
+          (shardIdObj != null && !shardIdObj.toString().trim().isEmpty())
+              ? shardIdObj.toString()
+              : null;
       GenericRecord payload = (GenericRecord) avroRecord.get("payload");
       GenericRecordTypeConvertor convertor =
           new GenericRecordTypeConvertor(schemaMapper, "", shardId, transformer);
@@ -74,13 +77,14 @@ public class ComparisonRecordMapper implements Serializable {
       }
       // Map to Spanner table using mapper
       String spannerTableName = schemaMapper.getSpannerTableName("", tableName);
-      Table table = ddl.table(spannerTableName);
+      String cleanSpannerTableName = getCleanTableName(spannerTableName);
+      Table table = ddl.table(cleanSpannerTableName);
       if (table == null) {
-        throw new RuntimeException("Table not found in DDL: " + spannerTableName);
+        throw new RuntimeException("Table not found in DDL: " + cleanSpannerTableName);
       }
       List<String> pkNames =
           table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
-      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames);
+      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames, shardId);
     } catch (Exception e) {
       throw new RuntimeException(
           "Error mapping GenericRecord to ComparisonRecord: " + e.getMessage(), e);
@@ -89,19 +93,20 @@ public class ComparisonRecordMapper implements Serializable {
 
   public ComparisonRecord mapFrom(Struct spannerStruct) {
     TreeMap<String, Value> values = new TreeMap<>();
+    String tableName = spannerStruct.getString(GCSSpannerDVConstants.TABLE_NAME_COLUMN);
     spannerStruct.getType().getStructFields().stream()
         .filter(field -> !field.getName().equals(GCSSpannerDVConstants.TABLE_NAME_COLUMN))
+        .filter(field -> !schemaMapper.isGeneratedColumn("", tableName, field.getName()))
         .forEach(field -> values.put(field.getName(), spannerStruct.getValue(field.getName())));
-
-    String tableName = spannerStruct.getString(GCSSpannerDVConstants.TABLE_NAME_COLUMN);
-    Table table = ddl.table(tableName);
+    String cleanTableName = getCleanTableName(tableName);
+    Table table = ddl.table(cleanTableName);
     if (table == null) {
-      throw new RuntimeException("Table not found in DDL: " + tableName);
+      throw new RuntimeException("Table not found in DDL: " + cleanTableName);
     }
     List<String> pkNames =
         table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
 
-    return buildRecord(tableName, values, pkNames);
+    return buildRecord(tableName, values, pkNames, null);
   }
 
   /**
@@ -126,7 +131,7 @@ public class ComparisonRecordMapper implements Serializable {
    * on.
    */
   private ComparisonRecord buildRecord(
-      String tableName, TreeMap<String, Value> data, List<String> pkNames) {
+      String tableName, TreeMap<String, Value> data, List<String> pkNames, String shardId) {
 
     // 1. Use the record data to compute the hash
     Hasher hasher = Hashing.murmur3_128().newHasher();
@@ -156,11 +161,32 @@ public class ComparisonRecordMapper implements Serializable {
                 })
             .collect(Collectors.toList());
 
+    String schemaName = getSchemaName(tableName);
+    String cleanTableName = getCleanTableName(tableName);
+
     // 3. Build the final record
     return ComparisonRecord.builder()
-        .setTableName(tableName)
+        .setTableName(cleanTableName)
         .setHash(hash)
         .setPrimaryKeyColumns(primaryKeyColumns)
+        .setSchemaName(schemaName)
+        .setShardId(shardId)
         .build();
+  }
+
+  private static String getCleanTableName(String tableName) {
+    if (tableName == null) {
+      return null;
+    }
+    int dotIndex = tableName.indexOf('.');
+    return dotIndex == -1 ? tableName : tableName.substring(dotIndex + 1);
+  }
+
+  private static String getSchemaName(String tableName) {
+    if (tableName == null) {
+      return null;
+    }
+    int dotIndex = tableName.indexOf('.');
+    return dotIndex == -1 ? null : tableName.substring(0, dotIndex);
   }
 }

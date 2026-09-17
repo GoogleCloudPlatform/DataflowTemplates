@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "sources": [
+    {"type": "text", "name": "inline-source", "format": "excel", "header": ["seller_id"], "data": [["s1"]]}
+  ],
+  "targets": {
+    "queries": [
+      {"name": "query-target", "source": "inline-source", "query": "UNWIND $rows AS row RETURN row"}
+    ]
+  }
+}

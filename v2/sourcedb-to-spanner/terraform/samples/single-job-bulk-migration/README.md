@@ -267,31 +267,26 @@ of the GCE instance hosting MySQL.
 Ensure the firewall rules are configured so that other addresses can connect
 to the source.
 
-### Updating workers of a Dataflow job
+### Specifying schema changes
 
-Currently, the Terraform `google_dataflow_flex_template_job` resource does not
-support updating the workers of a Dataflow job.
-If the worker counts are changed in `tfvars` and a Terraform apply is run,
-Terraform will attempt to cancel the existing Dataflow job and replace it
-with a new one.
-**This is not recommended**. Instead, use the `gcloud` CLI to update the worker
-counts of a launched Dataflow job.
+By default, the validation job performs a like-like schema mapping between the source AVRO records and Spanner. Any schema changes between the source and Spanner can be specified using a `session file` or `overrides` parameters.
 
-```shell
-gcloud dataflow jobs update-options \                                                                                                                                                                                                                                                                                                                      (base) 
-        --region=us-central1 \
-        --min-num-workers=5 \
-        --max-num-workers=20 \
-      2024-06-17_01_21_44-12198433486526363702
-```
+**We highly recommend using the schema overrides parameters (`table_overrides` and `column_overrides`) instead of a session file** when dealing with schema differences.
 
-### Specifying schema overrides
+#### Using Schema Overrides (Recommended)
 
-By default, the bulk job performs a like-like mapping between
-source and Spanner. Any schema changes between source and Spanner can be
-specified using the `session file`.
+When passing schema overrides to the job, you must strictly follow the required `[{}]` bracket-brace format. If the format is not matched exactly, Dataflow will reject the configuration with a regex error.
 
-To generate a session file:
+*   **For `table_overrides`**: Use the format `[{OldTableName,NewTableName}]`.
+    *   *Example:* `[{Singers, Vocalists}]`
+*   **For `column_overrides`**: You **MUST** include the table name alongside the column names. Use the format `[{TableName.OldColumnName,TableName.NewColumnName}]`. Missing the table name will cause the pipeline to crash.
+    *   *Example:* `[{Singers.SingerId, Singers.VocalistId}]`
+
+You can pass these overrides directly to your Terraform configuration using `var.table_overrides` and `var.column_overrides`.
+
+#### Using a Session File
+
+If you prefer or need to use a session file, you can generate one using the Spanner Migration Tool (SMT):
 
 1. Setup SMT
    and [launch the UI](https://googlecloudplatform.github.io/spanner-migration-tool/ui#launching-the-web-ui-for-spanner-migration-tool).

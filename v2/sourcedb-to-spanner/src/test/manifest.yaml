@@ -1,0 +1,127 @@
+scenarios:
+  # ==================================================================
+  # Bulk Migration (v2/sourcedb-to-spanner)
+  # ==================================================================
+  - id: bulk-datatypes
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDataTypesIT
+    description: "Porting reference MySQL DataTypes validation suite to verify target database dialect type mappings (e.g. integers, decimals, date/time types, blobs, and text)."
+
+  - id: bulk-datatypes-pg
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDataTypesPGDialectIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates MySQL data type mappings specifically targeting a PostgreSQL-dialect Spanner database."
+
+  - id: bulk-timezone
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SourceDbToSpannerTimezoneIT
+    description: "Verifies MySQL bulk migration timezone offsets, conversion constraints, and validation logic."
+
+  - id: bulk-simple
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDbToSpannerSimpleIT
+    description: "Validates basic bulk database migrations using single-shard configuration."
+
+  - id: bulk-session-mapper-transform
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSessionSchemaMapperWithTransformationIT
+    description: "Validates schema mapper executing custom column transformation logic using session file configurations."
+
+  - id: bulk-widerow-maxcolumnsize
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDBToSpannerWideRowMaxColumnAndTableSizeIT
+    description: "Validates wide rows with large column counts and table sizes under database constraints."
+
+  - id: bulk-session-mapper-tablefilter
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSessionSchemaMapperWithTableFilterIT
+    description: "Validates session schema mapper filtering specified tables out of the migration stream."
+
+  - id: bulk-identity-schema-mapper
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLIdentitySchemaMapperIT
+    description: "Validates custom identity schema mapper direct projections (zero changes)."
+
+  - id: bulk-reserved-keywords
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLReservedKeywordsIT
+    description: "Validates behavior when dealing with database reserved keywords as column, table, or constraint names."
+
+  - id: bulk-singleshard
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSingleShardIT
+    description: "Validates single shard data replication from MySQL to Spanner."
+
+  - id: bulk-string-overrides-mapper
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLStringOverridesSchemaMapperIT
+    description: "Validates custom string type override column mappings."
+
+  - id: bulk-widerow-maxrowsize
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDBToSpannerWideRowMaxRowSizeIT
+    description: "Validates wide rows testing the maximum row size limits in the database."
+
+  - id: bulk-widerow-maxsizetablekey
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT
+    description: "Validates wide rows testing large size limits on primary key columns."
+
+  - id: bulk-ddl
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDDLIT
+    description: "Verifies direct DDL schema translation logic."
+
+  - id: bulk-widerow-maxcolumns-pertable
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLToSpannerWiderowForMaxColumnsPerTableIT
+    description: "Validates wide rows containing large column counts per table."
+
+  - id: bulk-session-mapper
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSessionSchemaMapperIT
+    description: "Validates session schema mapper mapping database tables using session file configurations."
+
+  - id: bulk-widerow-maxcolumns-tablekey
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT
+    description: "Validates wide rows with large column counts in primary keys."
+
+  - id: bulk-identity-mapper-transform
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLIdentitySchemaMapperWithTransformationIT
+    description: "Validates identity mapper combined with custom column transformations."
+
+  - id: bulk-fileoverrides-mapper
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLFileOverridesSchemaMapperIT
+    description: "Validates schema mapper custom file override configuration properties."
+
+  - id: bulk-foreignkey-dependency
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLForeignKeyDependencyIT
+    description: "Validates relation mappings, foreign key constraints, and relational integrity dependency checks."
+
+  - id: bulk-widerow-maxsizestring
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDBToSpannerWideRowMaxSizeStringIT
+    description: "Validates wide rows containing large string columns up to database constraints."
+
+  - id: bulk-customtransformation
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLCustomTransformationsNonShardedIT
+    description: "Validates applying custom column value transformations to data during bulk migration."
+
+  - id: bulk-namespace
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.NamespaceIT
+    description: "Verifies handling of custom database schema namespaces, prefixes, and catalog qualifiers during bulk migration."
+
+  - id: bulk-widerow-interleavedepth
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDBToSpannerWideRowInterleaveDepthIT
+    description: "Validates wide rows across deep parent-child interleaved table hierarchies in Spanner."
+

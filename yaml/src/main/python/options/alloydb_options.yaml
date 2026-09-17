@@ -1,0 +1,63 @@
+options:
+  - name: "alloydb_common_options"
+    parameters:
+      - order: 1
+        name: "jdbcUrl"
+        description: "Connection URL for the JDBC source/sink."
+        help: "The JDBC connection URL."
+        example: "jdbc:postgresql://your-host:5432/your-db"
+        required: true
+        type: text
+      - order: 2
+        name: "username"
+        description: "Username for the JDBC connection."
+        help: "The database username."
+        example: "my_user"
+        required: false
+        type: text
+      - order: 3
+        name: "password"
+        description: "Password for the JDBC connection."
+        help: "The database password."
+        example: "my_secret_password"
+        required: false
+        type: password
+      - order: 4
+        name: "connectionProperties"
+        description: "JDBC connection properties."
+        help: "A semicolon-separated list of key-value pairs for the JDBC connection."
+        example: "key1=value1;key2=value2"
+        required: false
+        type: text
+      - order: 5
+        name: "alloydbTable"
+        description: "The name of the AlloyDB table."
+        help: "The name of the database table."
+        example: "public.my_table"
+        required: false
+        type: text
+      - order: 6
+        name: "query"
+        description: "The SQL query/statement to execute."
+        help: "The SQL query/statement to execute on the source/sink."
+        example: "SELECT * FROM my_table WHERE status = 'active'"
+        required: false
+        type: text
+
+  - name: "alloydb_write_options"
+    parameters:
+      - order: 1
+        name: "batchSize"
+        description: "The number of records to group for each write operation."
+        help: "The number of records to group together for each write."
+        example: 1000
+        required: false
+        type: integer
+        default: 1000
+      - order: 2
+        name: "autosharding"
+        description: "If true, enables using a dynamically determined number of shards to write."
+        help: "If true, a dynamic number of shards will be used for writing."
+        example: false
+        required: false
+        type: boolean

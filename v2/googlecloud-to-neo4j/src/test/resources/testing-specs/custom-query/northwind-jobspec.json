@@ -19,7 +19,7 @@
       "execute_after": "start",
       "type": "cypher",
       "options": [{
-        "cypher": "CREATE CONSTRAINT unique_seller FOR (s:Seller) REQUIRE s.id IS NODE KEY"
+        "cypher": "CREATE CONSTRAINT unique_seller IF NOT EXISTS FOR (s:Seller) REQUIRE s.id IS NODE KEY"
       }]
     },
     {
@@ -27,7 +27,7 @@
       "execute_after": "start",
       "type": "cypher",
       "options": [{
-        "cypher": "CREATE CONSTRAINT unique_customer FOR (c:Customer) REQUIRE c.id IS NODE KEY"
+        "cypher": "CREATE CONSTRAINT unique_customer IF NOT EXISTS FOR (c:Customer) REQUIRE c.id IS NODE KEY"
       }]
     },
     {
@@ -35,7 +35,7 @@
       "execute_after": "start",
       "type": "cypher",
       "options": [{
-        "cypher": "CREATE CONSTRAINT unique_sold_product FOR ()-[s:SOLD]->() REQUIRE s.productId IS RELATIONSHIP KEY"
+        "cypher": "CREATE CONSTRAINT unique_sold_product IF NOT EXISTS FOR ()-[s:SOLD]->() REQUIRE s.productId IS RELATIONSHIP KEY"
       }]
     }
   ],

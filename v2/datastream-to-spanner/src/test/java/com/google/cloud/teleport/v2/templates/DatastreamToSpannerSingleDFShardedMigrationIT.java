@@ -67,7 +67,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
       "DatastreamToSpannerSingleDFShardedMigrationIT/mysql-session.json";
 
   private static final String SHARDING_CONTEXT_RESOURCE =
-      "DatastreamToSpannerSingleDFShardedMigrationIT/sharding-context.json";
+      "DatastreamToSpannerSingleDFShardedMigrationIT/sharding-config.conf";
 
   private static final String SPANNER_DDL_RESOURCE =
       "DatastreamToSpannerSingleDFShardedMigrationIT/spanner-schema.sql";

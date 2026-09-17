@@ -21,6 +21,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import com.google.common.escape.Escaper;
+import com.google.common.escape.Escapers;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
@@ -31,6 +33,11 @@ import javax.annotation.Nullable;
 public abstract class Udf implements Serializable {
 
   private static final long serialVersionUID = 1L;
+
+  // Remote UDF definition is printed using: AS '{definition}'.
+  // Quotes inside definiton string can be escaped using ''.
+  public static final Escaper PG_DEFINITION_ESCAPER =
+      Escapers.builder().addEscape('\'', "''").build();
 
   /** The access rights used by the UDF for underlying data: invoker-rights or definer-rights. */
   public enum SqlSecurity {
@@ -58,9 +65,14 @@ public abstract class Udf implements Serializable {
   public abstract String definition();
 
   @Nullable
+  public abstract String language();
+
+  @Nullable
   public abstract SqlSecurity security();
 
   public abstract ImmutableList<UdfParameter> parameters();
+
+  public abstract ImmutableList<String> options();
 
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append("CREATE FUNCTION ").append(quoteIdentifier(name(), dialect()));
@@ -77,14 +89,53 @@ public abstract class Udf implements Serializable {
     if (type() != null) {
       appendable.append(" RETURNS ").append(type());
     }
-    SqlSecurity rights = security();
-    if (rights != null) {
-      appendable.append(" SQL SECURITY ").append(rights.toString());
+
+    // Determinism should be added to INFORMATION_SCHEMA.ROUTINES.
+    // For now, we infer it from the language.
+    if (language() != null && language().equalsIgnoreCase("REMOTE")) {
+      String determinism;
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        determinism = "NOT DETERMINISTIC";
+      } else {
+        determinism = "VOLATILE";
+      }
+      appendable.append(" ").append(determinism);
     }
-    if (definition() != null) {
-      appendable.append(" AS (");
-      appendable.append(definition());
-      appendable.append(")");
+
+    if (language() != null && !language().isEmpty()) {
+      // GSQL does not accept LANGUAGE SQL even though it reports it.
+      if (dialect() != Dialect.GOOGLE_STANDARD_SQL || !language().equalsIgnoreCase("SQL")) {
+        appendable.append(" LANGUAGE ").append(language());
+      }
+    }
+
+    if (security() != null) {
+      // Remote UDF don't use SQL SECURITY, but it is marked NOT NULL in IS.
+      if (!"REMOTE".equalsIgnoreCase(language())) {
+        appendable.append(" SQL SECURITY ").append(security().toString());
+      }
+    }
+
+    if (!options().isEmpty()) {
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append(" OPTIONS (").append(String.join(", ", options())).append(")");
+      } else {
+        throw new IllegalArgumentException(
+            "Options are not supported in PostgreSQL dialect for non-remote UDFs.");
+      }
+    }
+
+    if (definition() != null && !definition().isEmpty()) {
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append(" AS (").append(definition()).append(")");
+      } else {
+        if (language() == null || language().isEmpty() || "SQL".equalsIgnoreCase(language())) {
+          appendable.append(" RETURN ").append(definition());
+        } else {
+          // Other languages use AS definition instead of sql body.
+          appendable.append(" AS '").append(PG_DEFINITION_ESCAPER.escape(definition())).append("'");
+        }
+      }
     }
   }
 
@@ -113,6 +164,10 @@ public abstract class Udf implements Serializable {
     if (type() != null) {
       builder.type(type());
     }
+    if (language() != null) {
+      builder.language(language());
+    }
+    builder.options(options());
     if (definition() != null) {
       builder.definition(definition());
     }
@@ -126,7 +181,10 @@ public abstract class Udf implements Serializable {
   }
 
   public static Builder builder(Dialect dialect) {
-    return new AutoValue_Udf.Builder().dialect(dialect).parameters(ImmutableList.of());
+    return new AutoValue_Udf.Builder()
+        .dialect(dialect)
+        .parameters(ImmutableList.of())
+        .options(ImmutableList.of());
   }
 
   public static Builder builder() {
@@ -165,9 +223,17 @@ public abstract class Udf implements Serializable {
 
     public abstract String definition();
 
+    public abstract Builder language(String language);
+
+    public abstract String language();
+
     public abstract Builder security(SqlSecurity rights);
 
     public abstract SqlSecurity security();
+
+    public abstract Builder options(ImmutableList<String> options);
+
+    public abstract ImmutableList<String> options();
 
     public abstract Builder parameters(ImmutableList<UdfParameter> parameters);
 
@@ -208,7 +274,9 @@ public abstract class Udf implements Serializable {
           .dialect(dialect())
           .type(type())
           .definition(definition())
+          .language(language())
           .security(security())
+          .options(options())
           .parameters(ImmutableList.copyOf(parameters()))
           .autoBuild();
     }

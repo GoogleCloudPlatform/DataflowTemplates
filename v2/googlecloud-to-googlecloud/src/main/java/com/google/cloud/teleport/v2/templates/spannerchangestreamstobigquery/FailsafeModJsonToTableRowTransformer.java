@@ -272,7 +272,11 @@ public final class FailsafeModJsonToTableRowTransformer {
         // Detect schema updates (newly added tables/columns) from mod and propagate changes into
         // spannerTableByName which stores schema information by table name.
         // Not able to get schema update from DELETE mods as they have empty newValuesJson.
-        if (mod.getModType() != ModType.DELETE) {
+        // However, if the table is not in spannerTableByName, we should still try to update
+        // schema to avoid failure, especially for NEW_VALUES capture type where we can query
+        // INFORMATION_SCHEMA.
+        if (mod.getModType() != ModType.DELETE
+            || !spannerTableByName.containsKey(mod.getTableName())) {
           spannerTableByName =
               SchemaUpdateUtils.updateStoredSchemaIfNeeded(
                   spannerAccessor,

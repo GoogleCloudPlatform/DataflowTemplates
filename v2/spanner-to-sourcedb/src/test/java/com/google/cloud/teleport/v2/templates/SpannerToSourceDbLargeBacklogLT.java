@@ -30,13 +30,14 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.common.base.MoreObjects;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -458,18 +459,21 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
   }
 
   private void createAndUploadShardConfigToGcs() throws IOException {
-    JsonArray ja = new JsonArray();
-    ja.add(createShardConfig("shard_0", "shard0", manager1));
-    ja.add(createShardConfig("shard_1", "shard1", manager1));
-    ja.add(createShardConfig("shard_2", "shard2", manager2));
-    ja.add(createShardConfig("shard_3", "shard3", manager2));
+    List<Shard> shards = new ArrayList<>();
+    shards.add(createShardConfig("shard_0", "shard0", manager1));
+    shards.add(createShardConfig("shard_1", "shard1", manager1));
+    shards.add(createShardConfig("shard_2", "shard2", manager2));
+    shards.add(createShardConfig("shard_3", "shard3", manager2));
 
-    String shardFileContents = ja.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact(SOURCE_SHARDS_FILE_NAME, shardFileContents);
   }
 
-  private JsonObject createShardConfig(
+  private Shard createShardConfig(
       String logicalShardId, String dbName, CloudSqlResourceManager manager) {
     Shard shard = new Shard();
     shard.setLogicalShardId(logicalShardId);
@@ -478,9 +482,7 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     shard.setPassword(manager.getPassword());
     shard.setPort(String.valueOf(manager.getPort()));
     shard.setDbName(dbName);
-    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri");
-    return jsObj;
+    return shard;
   }
 
   private PipelineLauncher.LaunchInfo launchImportJob(String inputDir) throws IOException {

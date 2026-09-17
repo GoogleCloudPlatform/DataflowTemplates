@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -52,7 +53,7 @@ public final class ShardFileReaderTest {
                 "test",
                 "test",
                 "namespaceA",
-                null,
+                "",
                 "jdbcCompliantTruncation=true"),
             new Shard(
                 "shardB",
@@ -61,8 +62,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "test",
                 "test",
-                null,
-                null,
+                "",
+                "",
                 "jdbcCompliantTruncation=true"));
 
     assertEquals(shards, expectedShards);
@@ -82,12 +83,16 @@ public final class ShardFileReaderTest {
   @Test
   public void shardFileReadingWithSecret() {
 
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretA/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretA/versions/latest", "shardA", "test"))
         .thenReturn("secretA");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretB/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretB", "shardB", "test"))
         .thenReturn("secretB");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretC/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretC/", "shardC", "test"))
         .thenReturn("secretC");
+    when(secretManagerAccessorMockImpl.resolvePassword("", "shardD", "test")).thenReturn("test");
 
     ShardFileReader shardFileReader = new ShardFileReader(secretManagerAccessorMockImpl);
     List<Shard> shards =
@@ -103,7 +108,7 @@ public final class ShardFileReaderTest {
                 "test",
                 "namespaceA",
                 "projects/123/secrets/secretA/versions/latest",
-                null),
+                ""),
             new Shard(
                 "shardB",
                 "hostShardB",
@@ -111,9 +116,9 @@ public final class ShardFileReaderTest {
                 "test",
                 "secretB",
                 "test",
-                null,
+                "",
                 "projects/123/secrets/secretB",
-                null),
+                ""),
             new Shard(
                 "shardC",
                 "hostShardC",
@@ -123,8 +128,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "namespaceC",
                 "projects/123/secrets/secretC/",
-                null),
-            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null, null, null));
+                ""),
+            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", "", "", ""));
 
     assertEquals(shards, expectedShards);
   }
@@ -141,22 +146,17 @@ public final class ShardFileReaderTest {
     assertTrue(
         thrown
             .getMessage()
-            .contains("does not adhere to expected pattern projects/.*/secrets/.*/versions/.*"));
+            .contains(
+                "does not adhere to expected pattern projects/{project}/secrets/{secret}/versions/{version}"));
   }
 
   @Test
   public void shardFileWithNoCredentials() {
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                shardFileReader.getOrderedShardDetails(
-                    "src/test/resources/shard-with-nocreds.json"));
-    assertTrue(
-        thrown
-            .getMessage()
-            .contains("Neither password nor secretManagerUri was found in the shard file"));
+    List<Shard> shards =
+        shardFileReader.getOrderedShardDetails("src/test/resources/shard-with-nocreds.json");
+    assertEquals(1, shards.size());
+    assertNull(shards.get(0).getPassword());
   }
 
   @Test
@@ -199,9 +199,11 @@ public final class ShardFileReaderTest {
 
   @Test
   public void readBulkMigrationShardFileWithSecrets() {
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretA/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretA/versions/latest", "1.1.1.1", null))
         .thenReturn("secretA");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretB/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretB/versions/latest", "1.1.1.2", null))
         .thenReturn("secretB");
     ShardFileReader shardFileReader = new ShardFileReader(secretManagerAccessorMockImpl);
     List<Shard> shards =
@@ -235,6 +237,20 @@ public final class ShardFileReaderTest {
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
 
+    assertEquals(shards, expectedShards);
+  }
+
+  @Test
+  public void readBulkMigrationShardFileWithNoCredentials() {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards =
+        shardFileReader.readForwardMigrationShardingConfig(
+            "src/test/resources/bulk-migration-shards-nocreds.json");
+    assertEquals(1, shards.size());
+    assertNull(shards.get(0).getPassword());
+    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", null, "", null, null, "");
+    shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
+    List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1));
     assertEquals(shards, expectedShards);
   }
 }

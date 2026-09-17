@@ -120,6 +120,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqRetryMinutes**: The number of minutes between dead-letter queue retries. The default value is `10`.
 * **ignoreFields**: A comma-separated list of fields (case sensitive) to ignore. These fields might be fields of watched tables, or metadata fields added by the pipeline. Ignored fields aren't inserted into BigQuery. When you ignore the _metadata_spanner_table_name field, the bigQueryChangelogTableNameTemplate parameter is also ignored. Defaults to empty.
 * **disableDlqRetries**: Whether or not to disable retries for the DLQ. Defaults to: false.
+* **spannerChangeStreamTvfNameList**: Semicolon-separated list of Spanner Change Stream TVF names to query and union. Defaults to empty.
 * **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **useStorageWriteApiAtLeastOnce**:  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 * **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
@@ -237,6 +238,7 @@ export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export IGNORE_FIELDS=""
 export DISABLE_DLQ_RETRIES=false
+export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
@@ -265,6 +267,7 @@ gcloud dataflow flex-template run "spanner-change-streams-to-bigquery-job" \
   --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
   --parameters "ignoreFields=$IGNORE_FIELDS" \
   --parameters "disableDlqRetries=$DISABLE_DLQ_RETRIES" \
+  --parameters "spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
@@ -308,6 +311,7 @@ export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export IGNORE_FIELDS=""
 export DISABLE_DLQ_RETRIES=false
+export SPANNER_CHANGE_STREAM_TVF_NAME_LIST=""
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
@@ -320,7 +324,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-bigquery-job" \
 -DtemplateName="Spanner_Change_Streams_to_BigQuery" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,rpcPriority=$RPC_PRIORITY,spannerHost=$SPANNER_HOST,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,bigQueryDataset=$BIG_QUERY_DATASET,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableNameTemplate=$BIG_QUERY_CHANGELOG_TABLE_NAME_TEMPLATE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,ignoreFields=$IGNORE_FIELDS,disableDlqRetries=$DISABLE_DLQ_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,rpcPriority=$RPC_PRIORITY,spannerHost=$SPANNER_HOST,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,bigQueryDataset=$BIG_QUERY_DATASET,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableNameTemplate=$BIG_QUERY_CHANGELOG_TABLE_NAME_TEMPLATE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,ignoreFields=$IGNORE_FIELDS,disableDlqRetries=$DISABLE_DLQ_RETRIES,spannerChangeStreamTvfNameList=$SPANNER_CHANGE_STREAM_TVF_NAME_LIST,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -384,6 +388,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_bigquery
     # dlqRetryMinutes = "10"
     # ignoreFields = ""
     # disableDlqRetries = "false"
+    # spannerChangeStreamTvfNameList = ""
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
     # numStorageWriteApiStreams = "0"

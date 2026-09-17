@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,7 +24,7 @@ import org.apache.beam.sdk.options.Validation;
     name = "PubSub_To_BigTable_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "PubSub to BigTable (YAML)",
+    displayName = "Pub/Sub to BigTable (YAML)",
     description =
         "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",

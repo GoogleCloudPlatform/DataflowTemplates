@@ -110,6 +110,11 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
   }
 
   @Test
+  public void testDetectsAnomalyWithNullMeasureValues() throws IOException, InterruptedException {
+    testNullMeasureValuesImpl();
+  }
+
+  @Test
   public void testGroupedRatioMetric() throws IOException, InterruptedException {
     testGroupedRatioMetricImpl("sharded");
   }
@@ -255,6 +260,161 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
 
     // --- Verify BQ sink table ---
     verifySinkTable(SINK_TABLE_NAME, WINDOW_SIZE_SEC, null /* no keys expected */);
+  }
+
+  /**
+   * Tests that NULL measure values are skipped instead of stalling the pipeline.
+   *
+   * <p>Every batch (baseline and anomaly) contains rows whose "amount" column is NULL. The
+   * combiners cannot fold None (regression: a single NULL raised TypeError inside the Combine and
+   * wedged the streaming bundle in a permanent retry loop, so no anomaly was ever published and
+   * this test would time out waiting on Pub/Sub). With NULL rows dropped before aggregation, the
+   * MEAN is computed over the non-NULL rows only and the anomaly spike is still detected.
+   */
+  private void testNullMeasureValuesImpl() throws IOException, InterruptedException {
+    // --- Arrange ---
+
+    String tableName = "null_measure_test";
+    String sinkTableName = "null_measure_results";
+
+    Schema schema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("amount", StandardSQLTypeName.FLOAT64));
+    bigQueryResourceManager.createDataset(REGION);
+    bigQueryResourceManager.createTable(tableName, schema);
+
+    TopicName outputTopic = pubsubResourceManager.createTopic("null-anomaly-output");
+    SubscriptionName outputSubscription =
+        pubsubResourceManager.createSubscription(outputTopic, "null-anomaly-output-sub");
+
+    // 1-second fixed windows, MEAN of amount, RobustZScore detector — same
+    // shape as testSimpleSumMetric, so the only variable is the NULLs.
+    String metricSpec =
+        "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
+            + "\"size_seconds\":"
+            + WINDOW_SIZE_SEC
+            + "},\"measures\":[{\"field\":\"amount\","
+            + "\"agg\":\"MEAN\",\"alias\":\"avg_amount\"}]}}";
+    String detectorSpec = "{\"type\":\"RobustZScore\"}";
+
+    String tableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            tableName);
+
+    String sinkTableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            sinkTableName);
+
+    // --- Act ---
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("table", tableRef)
+            .addParameter("metric_spec", metricSpec)
+            .addParameter("detector_spec", detectorSpec)
+            .addParameter("topic", outputTopic.toString())
+            .addParameter("poll_interval_sec", "15")
+            .addParameter("start_offset_sec", "300")
+            .addParameter("duration_sec", "600")
+            .addParameter("log_all_results", "true")
+            .addParameter("sink_table", sinkTableRef);
+
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    // Baseline: 360 batches x 100 rows, one per second. Every 5th row has a
+    // NULL amount (the column is simply omitted from the insert), so every
+    // 1-second window the pipeline aggregates contains NULLs.
+    LOG.info(
+        "Inserting {} batches of {} rows every {}ms (amount={}, every 5th row NULL)",
+        BASELINE_BATCHES,
+        ROWS_PER_BATCH,
+        BATCH_INTERVAL_MS,
+        NORMAL_AMOUNT);
+    Random rng = new Random(42);
+    int rowId = 0;
+    for (int batch = 0; batch < BASELINE_BATCHES; batch++) {
+      List<RowToInsert> rows = new ArrayList<>();
+      for (int i = 0; i < ROWS_PER_BATCH; i++) {
+        if (i % 5 == 0) {
+          // NULL amount: omitting the nullable column inserts NULL.
+          rows.add(RowToInsert.of(ImmutableMap.of("id", ++rowId)));
+        } else {
+          // Tiny variance (stdev ~0.5) so MAD/stdev > 0 for the detector.
+          double amount = NORMAL_AMOUNT + rng.nextGaussian() * 0.5;
+          rows.add(RowToInsert.of(ImmutableMap.of("id", ++rowId, "amount", amount)));
+        }
+      }
+      bigQueryResourceManager.write(tableName, rows);
+      if (batch < BASELINE_BATCHES - 1) {
+        TimeUnit.MILLISECONDS.sleep(BATCH_INTERVAL_MS);
+      }
+      if ((batch + 1) % 60 == 0) {
+        LOG.info("Inserted batch {}/{} ({} rows so far)", batch + 1, BASELINE_BATCHES, rowId);
+      }
+    }
+    LOG.info("Inserted {} baseline rows total", rowId);
+
+    // Pause to ensure the anomaly lands in a clean window, not mixed with baseline.
+    TimeUnit.SECONDS.sleep(2);
+
+    // Anomalous spike, also containing NULLs: MEAN of the non-NULL rows ≈ 10000.
+    LOG.info(
+        "Inserting anomalous batch ({} rows, amount={}, every 5th row NULL)",
+        ROWS_PER_BATCH,
+        ANOMALY_AMOUNT);
+    List<RowToInsert> anomalyRows = new ArrayList<>();
+    for (int i = 0; i < ROWS_PER_BATCH; i++) {
+      if (i % 5 == 0) {
+        anomalyRows.add(RowToInsert.of(ImmutableMap.of("id", ++rowId)));
+      } else {
+        anomalyRows.add(RowToInsert.of(ImmutableMap.of("id", ++rowId, "amount", ANOMALY_AMOUNT)));
+      }
+    }
+    bigQueryResourceManager.write(tableName, anomalyRows);
+    LOG.info("Inserted {} anomalous rows", anomalyRows.size());
+
+    // --- Assert ---
+
+    // Without NULL handling the pipeline stalls on the first NULL row and this
+    // check times out: no anomaly message can ever be published.
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(1)
+            .build();
+
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
+    assertThatResult(result).meetsConditions();
+
+    List<ReceivedMessage> messages = pubsubCheck.getReceivedMessageList();
+    assertThat(messages).isNotEmpty();
+
+    String messageData = messages.get(0).getMessage().getData().toStringUtf8();
+    LOG.info("Received anomaly message: {}", messageData);
+    JSONObject payload = new JSONObject(messageData);
+
+    assertThat(payload.getString("event_description")).contains("Anomaly detected");
+    assertThat(payload.getString("agent_id")).isEqualTo("RobustZScore");
+
+    // --- Verify BQ sink table ---
+    verifySinkTable(sinkTableName, WINDOW_SIZE_SEC, null /* no keys expected */);
+
+    // Every baseline window contained NULL rows, so a healthy number of scored
+    // (non-outlier) sink rows proves NULL-bearing windows were aggregated
+    // rather than crashing or being dropped wholesale.
+    TableResult tableResult = bigQueryResourceManager.readTable(sinkTableName);
+    List<Map<String, Object>> sinkRows = BigQueryAsserts.tableResultToRecords(tableResult);
+    long baselineWindows =
+        sinkRows.stream().filter(r -> ((Number) r.get("label")).intValue() != 1).count();
+    assertThat(baselineWindows).isGreaterThan(10);
+    LOG.info("NULL-handling verification passed: {} baseline windows scored", baselineWindows);
   }
 
   /**

@@ -117,6 +117,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
   private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
   private final ValueProvider<Integer> earlyIndexCreateThreshold;
+  private final ValueProvider<Boolean> runIndexDdlInParallel;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
@@ -127,7 +128,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       ValueProvider<Boolean> waitForSequences,
       ValueProvider<Boolean> earlyIndexCreateFlag,
       ValueProvider<Integer> ddlCreationTimeoutInMinutes,
-      ValueProvider<Integer> earlyIndexCreateThreshold) {
+      ValueProvider<Integer> earlyIndexCreateThreshold,
+      ValueProvider<Boolean> runIndexDdlInParallel) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
@@ -137,6 +139,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
     this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
     this.earlyIndexCreateThreshold = earlyIndexCreateThreshold;
+    this.runIndexDdlInParallel = runIndexDdlInParallel;
   }
 
   @Override
@@ -290,13 +293,29 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     }
     ddl.apply(Wait.on(previousComputation))
         .apply(
-            "Create Indexes", new ApplyDDLTransform(spannerConfig, pendingIndexes, waitForIndexes))
+            "Create Indexes",
+            new ApplyDDLTransform(
+                spannerConfig,
+                pendingIndexes,
+                waitForIndexes,
+                runIndexDdlInParallel,
+                /* statementType= */ "index"))
         .apply(
             "Add Foreign Keys",
-            new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys))
+            new ApplyDDLTransform(
+                spannerConfig,
+                pendingForeignKeys,
+                waitForForeignKeys,
+                runIndexDdlInParallel,
+                /* statementType= */ "foreign_key"))
         .apply(
             "Create Change Streams",
-            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams));
+            new ApplyDDLTransform(
+                spannerConfig,
+                pendingChangeStreams,
+                waitForChangeStreams,
+                runIndexDdlInParallel,
+                /* statementType= */ "change_stream"));
     return PDone.in(begin.getPipeline());
   }
 

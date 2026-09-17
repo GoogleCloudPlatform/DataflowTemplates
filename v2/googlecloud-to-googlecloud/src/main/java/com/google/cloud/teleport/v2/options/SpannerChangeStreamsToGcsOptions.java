@@ -186,4 +186,16 @@ public interface SpannerChangeStreamsToGcsOptions
   RpcPriority getRpcPriority();
 
   void setRpcPriority(RpcPriority rpcPriority);
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      groupName = "Source",
+      description =
+          "Semicolon-separated list of Spanner Change Stream TVF names to query and union.",
+      helpText = "Semicolon-separated list of Spanner Change Stream TVF names to query and union.")
+  @Default.String("")
+  String getSpannerChangeStreamTvfNameList();
+
+  void setSpannerChangeStreamTvfNameList(String value);
 }

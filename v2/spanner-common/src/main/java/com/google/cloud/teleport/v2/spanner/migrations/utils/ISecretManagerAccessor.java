@@ -19,4 +19,6 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 public interface ISecretManagerAccessor {
 
   String getSecret(String secretName);
+
+  String resolvePassword(String secretManagerUri, String logicalShardId, String password);
 }

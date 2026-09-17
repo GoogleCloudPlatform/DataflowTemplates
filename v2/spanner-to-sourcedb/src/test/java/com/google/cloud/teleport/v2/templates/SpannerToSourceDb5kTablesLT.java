@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import com.google.cloud.teleport.v2.templates.utils.LTMySQLResourceManager;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,7 +45,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -68,7 +69,7 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
   private static final int NUM_TABLES = 5000;
 
-  private MySQLResourceManager jdbcResourceManager;
+  private LTMySQLResourceManager jdbcResourceManager;
   private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
   private Instant startTime;
 
@@ -79,26 +80,26 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
     startTime = Instant.now();
 
     // Initialize Resource Managers directly to avoid base class constraints
-    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+    jdbcResourceManager = LTMySQLResourceManager.builder(testName).build();
     jdbcResourceManagers.add(jdbcResourceManager);
 
     spannerResourceManager =
         SpannerResourceManager.builder("rr-main-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
             .build();
 
     spannerMetadataResourceManager =
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerMetadataResourceManager.ensureUsableAndCreateResources();
 
     spannerChangeStreamMetadataResourceManager =
         SpannerResourceManager.builder("rr-cs-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerChangeStreamMetadataResourceManager.ensureUsableAndCreateResources();
@@ -283,7 +284,7 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
     LOG.info("Validation successful! Rows correctly replicated to all tables in MySQL.");
   }
 
-  private static Connection getJdbcConnection(MySQLResourceManager mySQLResourceManager)
+  private static Connection getJdbcConnection(LTMySQLResourceManager mySQLResourceManager)
       throws SQLException {
     return DriverManager.getConnection(
         mySQLResourceManager.getUri(),

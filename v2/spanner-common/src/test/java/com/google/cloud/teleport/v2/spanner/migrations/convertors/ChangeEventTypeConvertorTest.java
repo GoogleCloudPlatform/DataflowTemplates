@@ -575,6 +575,20 @@ public final class ChangeEventTypeConvertorTest {
         ByteArray.copyFrom(new byte[] {-1, 0}));
   }
 
+  @Test
+  public void canConvertToByteArrayPostgresqlBase64() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("_metadata_source_type", "postgresql");
+    // Base64 encoding of byte array: { (byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef }
+    changeEvent.put("field1", "3q2+7w==");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef}));
+  }
+
   @Test(expected = ChangeEventConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToByteArray() throws Exception {
     JSONObject changeEvent = new JSONObject();
@@ -771,5 +785,23 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "timestamp_field", true));
     assertNull(ChangeEventTypeConvertor.toDate(ce, "date_field", true));
     assertEquals("NULL", ChangeEventTypeConvertor.toString(ce, "string_field", true));
+  }
+
+  @Test
+  public void canConvertToValue() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("uuid_field", "550e8400-e29b-41d4-a716-446655440000");
+    changeEvent.put("pg_uuid_field", "123e4567-e89b-12d3-a456-426614174000");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertEquals(
+        com.google.cloud.spanner.Value.string("550e8400-e29b-41d4-a716-446655440000"),
+        ChangeEventTypeConvertor.toValue(
+            ce, com.google.cloud.teleport.v2.spanner.type.Type.uuid(), "uuid_field", true));
+
+    assertEquals(
+        com.google.cloud.spanner.Value.string("123e4567-e89b-12d3-a456-426614174000"),
+        ChangeEventTypeConvertor.toValue(
+            ce, com.google.cloud.teleport.v2.spanner.type.Type.pgUuid(), "pg_uuid_field", true));
   }
 }

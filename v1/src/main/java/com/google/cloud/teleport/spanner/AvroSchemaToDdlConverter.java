@@ -52,6 +52,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_R
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
@@ -167,7 +168,9 @@ public class AvroSchemaToDdlConverter {
             .specificName(functionSpecificName)
             .name(schema.getProp(SPANNER_UDF_NAME))
             .type(schema.getProp(SPANNER_UDF_TYPE))
-            .definition(schema.getProp(SPANNER_UDF_DEFINITION));
+            .language(schema.getProp(SPANNER_UDF_LANGUAGE))
+            .definition(schema.getProp(SPANNER_UDF_DEFINITION))
+            .options(toOptionsList(schema));
     if (schema.getProp(SPANNER_UDF_SECURITY) != null) {
       builder.security(Udf.SqlSecurity.valueOf(schema.getProp(SPANNER_UDF_SECURITY)));
     }

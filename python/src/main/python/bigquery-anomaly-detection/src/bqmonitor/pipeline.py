@@ -37,6 +37,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import google.auth
 from google.auth.transport.requests import AuthorizedSession
@@ -71,6 +73,8 @@ from apache_beam.ml.anomaly.detectors import zscore  # noqa: F401
 from apache_beam.ml.anomaly.detectors import iqr  # noqa: F401
 from apache_beam.ml.anomaly.detectors import robust_zscore  # noqa: F401
 
+from bqmonitor.cdc import _quote_identifier
+
 _LOGGER = logging.getLogger(__name__)
 
 _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
@@ -95,6 +99,18 @@ _WEBHOOK_KNOWN_KEYS = frozenset({
 # auth, bad payload schema) and the anomaly is dropped rather than
 # retried indefinitely.
 _TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
+
+# Inline retry policy for transient webhook failures (5xx, the statuses in
+# _TRANSIENT_RETRY_STATUSES, and any exception raised by the request). We
+# retry inside process() rather than re-raising and leaning on bundle retry,
+# because AsyncWrapper does not reliably re-deliver bundles whose DoFn
+# raises -- so a raise would effectively drop the anomaly instead of
+# retrying it. Backoff grows exponentially from _WEBHOOK_BASE_BACKOFF_SEC
+# and is capped at _WEBHOOK_MAX_BACKOFF_SEC, yielding the sequence
+# 0.5, 1, 2, 4, 8, 15, 15, 15, 15, 15 seconds across the 10 retries.
+_WEBHOOK_MAX_RETRIES = 10
+_WEBHOOK_BASE_BACKOFF_SEC = 0.5
+_WEBHOOK_MAX_BACKOFF_SEC = 15.0
 
 # Synthetic key attached to unkeyed pipelines' elements so they can flow
 # through stateful DoFns. _unpack_result translates it back to None.
@@ -366,13 +382,27 @@ _SINK_SCHEMA = {
 }
 
 
-def _anomaly_id(value):
+def _anomaly_id(keyed_value):
   """Stable hashable identity per anomaly. Used as AsyncWrapper's id_fn
-  for dedup across runner replays — must survive a serialize/deserialize
-  round-trip, hence (window_micros, model_id) rather than object identity."""
+  for dedup across runner replays, must survive a serialize/deserialize
+  round-trip, hence (key, window_micros, model_id) rather than object
+  identity.
+
+  ``keyed_value`` is the ``(key, AnomalyResult)`` pair that
+  ``_nest_key_for_webhook_id`` copies into the element value. The key
+  MUST be part of the identity: AsyncWrapper tracks in-flight work in a
+  worker-global map indexed by this id alone (its id_fn never sees the
+  element's key), so without it two group-by keys anomalous in the same
+  window with the same detector alias each other,  one alert is silently
+  dropped and the other posted twice. Unkeyed pipelines carry the
+  ``_UNKEYED_SENTINEL`` key, where same-id elements really are replays
+  of the same anomaly.
+  """
+  key, value = keyed_value
   example = value.example
   prediction = value.predictions[0]
   return (
+      key,
       example.window_start.micros,
       example.window_end.micros,
       prediction.model_id or '',
@@ -388,6 +418,34 @@ def _key_anomaly_for_async(element):
     key, value = element
     return (str(key), value)
   return (_UNKEYED_SENTINEL, element)
+
+
+def _nest_key_for_webhook_id(
+    element: Tuple[str, AnomalyResult]
+) -> Tuple[str, Tuple[str, AnomalyResult]]:
+  """Copies the key into the value: ``(key, v)`` -> ``(key, (key, v))``.
+
+  AsyncWrapper computes its dedup id as ``id_fn(element[1])``, from the
+  value only, so the key must ride inside the value for ``_anomaly_id``
+  to include it. See ``_anomaly_id`` for why omitting the key drops or
+  double-posts same-window anomalies on keyed pipelines."""
+  key, value = element
+  return (key, (key, value))
+
+
+def _unnest_key_for_webhook_id(
+    element: Union[Tuple[str, Tuple[str, AnomalyResult]],
+                   Tuple[str, AnomalyResult],
+                   AnomalyResult]
+) -> Tuple[Optional[str], AnomalyResult]:
+  """Inverse of ``_nest_key_for_webhook_id``: returns ``(key, result)``
+  with sentinel keys mapped to None. Also accepts un-nested elements,
+  a bare ``AnomalyResult`` is a dataclass, never a 2-tuple, so the two
+  shapes are unambiguous."""
+  key, result = _unpack_result(element)
+  if _is_keyed_pair(result):
+    key, result = _unpack_result(result)
+  return key, result
 
 
 def _is_outlier(element):
@@ -460,18 +518,14 @@ class _PostAnomalyToWebhook(beam.DoFn):
 
   String leaves in ``body`` and ``headers`` are format-substituted with
   ``anomaly fields | message_metadata | {anomaly_message}``.
-
-  Response handling (because streaming Dataflow retries bundles
-  indefinitely, we cannot blindly raise on every non-2xx — that would
-  block the pipeline on a misconfigured request):
-    * 2xx → success.
-    * 5xx, 408, 425, 429 → raise (transient; bundle retries).
-    * Other 4xx → log + drop + increment ``dropped_permanent_4xx`` metric.
-  Network errors propagate as-is so Beam's bundle retry handles them.
+  No exception is allowed to escape ``process``: anything reaching
+  ``AsyncWrapper`` would crash-loop the bundle.
   """
 
   _DROPPED_4XX_COUNTER = Metrics.counter(
       'bqmonitor.webhook', 'dropped_permanent_4xx')
+  _DROPPED_RETRIES_COUNTER = Metrics.counter(
+      'bqmonitor.webhook', 'dropped_exhausted_retries')
 
   def __init__(self, webhook_spec, message_format, message_metadata):
     self._webhook_spec = webhook_spec
@@ -484,7 +538,7 @@ class _PostAnomalyToWebhook(beam.DoFn):
     self._session = AuthorizedSession(creds)
 
   def process(self, element):
-    key, result = _unpack_result(element)
+    key, result = _unnest_key_for_webhook_id(element)
     fields = _build_anomaly_fields(key, result)
     anomaly_message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
@@ -496,44 +550,60 @@ class _PostAnomalyToWebhook(beam.DoFn):
     body = _substitute_template_tree(self._webhook_spec['body'], merged)
     headers = _substitute_template_tree(self._webhook_spec['headers'], merged)
 
-    window_str = f"{fields['window_start']}/{fields['window_end']}"
-    model_id = fields['model_id'] or '<none>'
+    method = self._webhook_spec['method']
+    endpoint = self._webhook_spec['endpoint']
+    ctx = (
+        f"{method} {endpoint} "
+        f"window={fields['window_start']}/{fields['window_end']} "
+        f"model_id={fields['model_id'] or '<none>'}")
 
-    start_monotonic = time.monotonic()
-    resp = self._session.request(
-        method=self._webhook_spec['method'],
-        url=self._webhook_spec['endpoint'],
-        json=body,
-        headers=headers or None,
-        timeout=self._webhook_spec['timeout_seconds'])
-    elapsed_sec = time.monotonic() - start_monotonic
+    # Retry transient failures (5xx, 408/425/429, and any error raised by
+    # the request) inline with exponential backoff capped at
+    # _WEBHOOK_MAX_BACKOFF_SEC. We retry here instead of raising for Beam to
+    # retry the bundle, because AsyncWrapper enters a crash loop if we raise.
+    last_error = None
+    for attempt in range(_WEBHOOK_MAX_RETRIES + 1):
+      if attempt:
+        time.sleep(min(_WEBHOOK_MAX_BACKOFF_SEC,
+                       _WEBHOOK_BASE_BACKOFF_SEC * 2 ** (attempt - 1)))
 
-    status = resp.status_code
-    if 200 <= status < 300:
-      _LOGGER.info(
-          'Webhook %s %s posted anomaly window=%s model_id=%s '
-          'in %.2fs (status=%d).',
-          self._webhook_spec['method'], self._webhook_spec['endpoint'],
-          window_str, model_id, elapsed_sec, status)
-      return
+      start = time.monotonic()
+      try:
+        resp = self._session.request(
+            method=method, url=endpoint, json=body,
+            headers=headers or None,
+            timeout=self._webhook_spec['timeout_seconds'])
+      except Exception as exc:  # pylint: disable=broad-except
+        last_error = f'request error: {exc!r}'
+        _LOGGER.warning('Webhook %s attempt %d/%d: %s',
+                        ctx, attempt, _WEBHOOK_MAX_RETRIES, last_error)
+        continue
 
-    if status >= 500 or status in _TRANSIENT_RETRY_STATUSES:
-      _LOGGER.warning(
-          'Webhook %s %s returned transient status %d after %.2fs for '
-          'anomaly window=%s model_id=%s; bundle will retry. '
-          'Response: %s',
-          self._webhook_spec['method'], self._webhook_spec['endpoint'],
-          status, elapsed_sec, window_str, model_id, resp.text[:500])
-      raise RuntimeError(
-          f'Webhook returned transient status {status}; retrying bundle.')
+      status = resp.status_code
+      if 200 <= status < 300:
+        _LOGGER.info('Webhook %s posted anomaly in %.2fs (status=%d, '
+                     'attempt=%d).', ctx, time.monotonic() - start,
+                     status, attempt)
+        return
 
-    _LOGGER.error(
-        'Webhook %s %s returned permanent status %d after %.2fs for '
-        'anomaly window=%s model_id=%s; dropping anomaly. '
-        'Response: %s',
-        self._webhook_spec['method'], self._webhook_spec['endpoint'],
-        status, elapsed_sec, window_str, model_id, resp.text[:500])
-    self._DROPPED_4XX_COUNTER.inc()
+      # Permanent client error (bad URL/auth/payload): drop, don't retry.
+      if status < 500 and status not in _TRANSIENT_RETRY_STATUSES:
+        _LOGGER.error('Webhook %s returned permanent status %d; dropping '
+                      'anomaly. Response: %s', ctx, status, resp.text[:500])
+        self._DROPPED_4XX_COUNTER.inc()
+        return
+
+      last_error = f'status {status}'
+      _LOGGER.warning('Webhook %s attempt %d/%d: transient status %d. '
+                      'Response: %s', ctx, attempt, _WEBHOOK_MAX_RETRIES,
+                      status, resp.text[:500])
+
+    # Exhausted all retries. Drop rather than raise: raising would feed
+    # Beam's bundle retry, which AsyncWrapper does not honor reliably, so
+    # it would risk wedging the bundle without ever delivering the anomaly.
+    _LOGGER.error('Webhook %s still failing (%s) after %d retries; '
+                  'dropping anomaly.', ctx, last_error, _WEBHOOK_MAX_RETRIES)
+    self._DROPPED_RETRIES_COUNTER.inc()
 
 
 class _FormatResultForBQ(beam.DoFn):
@@ -1019,7 +1089,9 @@ def _check_bq_source_table(project, dataset, table_name, options,
 
   # Dry-run a CDC query selecting the metric's required columns.
   # This validates CDC function access and column existence in one step.
-  select_clause = ', '.join(required_columns) if required_columns else '1'
+  select_clause = (
+      ', '.join(_quote_identifier(c) for c in required_columns)
+      if required_columns else '1')
   try:
     sql = (
         f"SELECT {select_clause} FROM {options.change_function}"
@@ -1316,6 +1388,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
     )
     _ = (
         alert_anomalies
+        | 'NestKeyForWebhookId' >> beam.Map(_nest_key_for_webhook_id)
         | 'PostAnomaliesToWebhook' >> beam.ParDo(async_webhook_dofn))
 
   if options.sink_table:

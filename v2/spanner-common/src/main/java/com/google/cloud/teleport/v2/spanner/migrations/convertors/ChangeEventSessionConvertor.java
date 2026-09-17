@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_UUID_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.ORACLE_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -112,7 +113,7 @@ public class ChangeEventSessionConvertor {
   }
 
   public String getShardId(JsonNode changeEvent) {
-    if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
+    if ((!MYSQL_SOURCE_TYPE.equals(this.sourceType) && !ORACLE_SOURCE_TYPE.equals(this.sourceType))
         || ((shardingContext.getStreamToDbAndShardMap() == null
                 || shardingContext.getStreamToDbAndShardMap().isEmpty())
             && (transformationContext.getSchemaToShardId() == null
@@ -152,7 +153,10 @@ public class ChangeEventSessionConvertor {
   }
 
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
-    if (!MYSQL_SOURCE_TYPE.equals(this.sourceType)
+    /*
+     * TODO: Check if PG needs to be part of this check or not
+     */
+    if ((!MYSQL_SOURCE_TYPE.equals(this.sourceType) && !ORACLE_SOURCE_TYPE.equals(this.sourceType))
         || ((shardingContext.getStreamToDbAndShardMap() == null
                 || shardingContext.getStreamToDbAndShardMap().isEmpty())
             && (transformationContext.getSchemaToShardId() == null

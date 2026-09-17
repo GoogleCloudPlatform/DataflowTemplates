@@ -105,6 +105,55 @@ public class FormatDatastreamJsonToJsonTest {
           + " Relations"
           + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":1019670290924988842,\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
 
+  private static final String SQLSERVER_JSON_WITH_REPLICATION_INDEX =
+      "{\"uuid\":\"test-uuid-ri\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"dbo_ORDERS\","
+          + "\"read_method\":\"sqlserver-cdc\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"source_metadata\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"ORDERS\","
+          + "\"database\":\"mydb\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"replication_index\":[\"order_id\"]},"
+          + "\"payload\":{\"ORDER_ID\":1}}";
+
+  private static final String ORACLE_JSON_WITH_NO_KEYS =
+      "{\"uuid\":\"test-uuid-none\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"HR_EMPLOYEES\","
+          + "\"read_method\":\"oracle-backfill\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"sort_keys\":[1640410924408,0,\"\",0],"
+          + "\"source_metadata\":{"
+          + "\"schema\":\"HR\","
+          + "\"table\":\"EMPLOYEES\","
+          + "\"database\":\"XE\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\"},"
+          + "\"payload\":{\"EMP_ID\":1}}";
+
+  private static final String JSON_WITH_BOTH_KEYS =
+      "{\"uuid\":\"test-uuid-both\","
+          + "\"read_timestamp\":\"2021-12-25 05:42:04.408\","
+          + "\"source_timestamp\":\"2021-12-25T05:42:04.408\","
+          + "\"object\":\"dbo_ITEMS\","
+          + "\"read_method\":\"sqlserver-cdc\","
+          + "\"stream_name\":\"projects/123/locations/us-central1/streams/s\","
+          + "\"source_metadata\":{"
+          + "\"schema\":\"dbo\","
+          + "\"table\":\"ITEMS\","
+          + "\"database\":\"mydb\","
+          + "\"is_deleted\":false,"
+          + "\"change_type\":\"INSERT\","
+          + "\"primary_keys\":[\"id\"],"
+          + "\"replication_index\":[\"repl_col\"]},"
+          + "\"payload\":{\"ID\":1}}";
+
   @Test
   public void testProcessElement_validJson() {
     Map<String, String> renameColumns = ImmutableMap.of("_metadata_row_id", "rowid");
@@ -194,6 +243,72 @@ public class FormatDatastreamJsonToJsonTest {
     pipeline.run();
   }
 
+  @Test
+  public void testGetPrimaryKeys_sqlServerReplicationIndexFallback() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(SQLSERVER_JSON_WITH_REPLICATION_INDEX))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("[\"order_id\"]");
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetPrimaryKeys_nullWhenNeitherFieldPresent() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(ORACLE_JSON_WITH_NO_KEYS))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("null");
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetPrimaryKeys_prefersPrimaryKeysWhenBothPresent() {
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<String> primaryKeys =
+        pipeline
+            .apply("CreateInput", Create.of(JSON_WITH_BOTH_KEYS))
+            .apply(
+                "Format",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(coder)
+            .apply("ExtractKeys", ParDo.of(new ExtractPrimaryKeysFn()));
+
+    PAssert.that(primaryKeys).containsInAnyOrder("[\"id\"]");
+    pipeline.run();
+  }
+
   // Static nested DoFn class to remove timestamp property
   static class RemoveTimestampPropertyFn
       extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
@@ -209,6 +324,17 @@ public class FormatDatastreamJsonToJsonTest {
         ((ObjectNode) changeEvent).remove("_metadata_dataflow_timestamp");
       }
       out.output(FailsafeElement.of(changeEvent.toString(), changeEvent.toString()));
+    }
+  }
+
+  static class ExtractPrimaryKeysFn extends DoFn<FailsafeElement<String, String>, String> {
+    @ProcessElement
+    public void processElement(
+        @Element FailsafeElement<String, String> element, OutputReceiver<String> out)
+        throws JsonProcessingException {
+      JsonNode changeEvent = new ObjectMapper().readTree(element.getPayload());
+      JsonNode primaryKeys = changeEvent.get("_metadata_primary_keys");
+      out.output(primaryKeys != null ? primaryKeys.toString() : "null");
     }
   }
 }

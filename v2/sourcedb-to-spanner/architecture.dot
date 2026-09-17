@@ -1,0 +1,35 @@
+digraph Architecture {
+    node [shape=box, style=filled, color=lightblue];
+    
+    SourceDb [label="Source Database\n(Cassandra, MySQL, PostgreSQL)"];
+    
+    subgraph cluster_Reader {
+        label = "com.google.cloud.teleport.v2.source.reader";
+        ReaderImpl [label="ReaderImpl"];
+        IoWrapper [label="IoWrapper (Cassandra, JDBC)"];
+        RowMapper [label="RowMapper"];
+    }
+    
+    subgraph cluster_Transformer {
+        label = "com.google.cloud.teleport.v2.transformer";
+        SourceRowToMutation [label="SourceRowToMutationDoFn"];
+    }
+    
+    subgraph cluster_Writer {
+        label = "com.google.cloud.teleport.v2.writer";
+        SpannerWriter [label="SpannerWriter"];
+        DLQ [label="DeadLetterQueue"];
+    }
+
+    Spanner [label="Cloud Spanner"];
+    GCS [label="GCS (DLQ)"];
+
+    SourceDb -> IoWrapper;
+    IoWrapper -> RowMapper;
+    RowMapper -> ReaderImpl;
+    ReaderImpl -> SourceRowToMutation [label="SourceRow"];
+    SourceRowToMutation -> SpannerWriter [label="Mutation"];
+    SpannerWriter -> Spanner;
+    SpannerWriter -> DLQ [label="Failed Mutations"];
+    DLQ -> GCS;
+}

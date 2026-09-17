@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -189,7 +189,7 @@ public interface KafkaToBigQueryYaml {
       optional = false,
       description = "BigQuery table",
       helpText =
-          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.",
+          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
       example = "")
   @Validation.Required
   String getTable();

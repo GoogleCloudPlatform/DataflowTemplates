@@ -15,21 +15,16 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
-import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getAllPropertyMappings;
-import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getKeyProperties;
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getPropertyMappings;
 import static java.util.stream.Collectors.toMap;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.neo4j.cypherdsl.support.schema_name.SchemaNames;
-import org.neo4j.importer.v1.targets.EntityTarget;
-import org.neo4j.importer.v1.targets.KeyMapping;
-import org.neo4j.importer.v1.targets.NodeReference;
-import org.neo4j.importer.v1.targets.NodeTarget;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
 
@@ -43,34 +38,17 @@ public class CypherPatterns {
     this.nonKeyPropertiesSet = nonKeyPropertiesSet;
   }
 
-  public static CypherPatterns parseRelationshipNodePatterns(
-      NodeTarget entity, NodeReference reference, String entityVariable, String rowVariable) {
-
-    var keyMappings = reference.getKeyMappings();
-    if (keyMappings.isEmpty()) {
-      return parsePatterns(entity, entityVariable, rowVariable);
-    }
-    var keyProperties =
-        keyMappings.stream()
-            .map(KeyMapping::getNodeProperty)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-    var fieldsByProperty =
-        keyMappings.stream()
-            .collect(toMap(KeyMapping::getNodeProperty, KeyMapping::getSourceField));
-    var cypherKeyProperties =
-        assignProperties(keyProperties, "", rowVariable, "", ": ", fieldsByProperty);
-    return new CypherPatterns(cypherKeyProperties, "");
-  }
-
   public static CypherPatterns parsePatterns(
-      EntityTarget entity, String entityVariable, String rowVariable) {
-    Set<String> keyProperties = getKeyProperties(entity);
-    String cypherKeyProperties = assignPropertiesInPattern(entity, keyProperties, rowVariable);
-    List<String> nonKeyProperties =
-        getAllPropertyMappings(entity).stream()
+      EntityTargetStep entity, String entityVariable, String rowVariable) {
+    var keyProperties =
+        entity.keyProperties().stream()
             .map(PropertyMapping::getTargetProperty)
-            .filter(targetProperty -> !keyProperties.contains(targetProperty))
-            .toList();
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    String cypherKeyProperties = assignPropertiesInPattern(entity, keyProperties, rowVariable);
+    var nonKeyProperties =
+        entity.nonKeyProperties().stream()
+            .map(PropertyMapping::getTargetProperty)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     String cypherSetNonKeys =
         assignProperties(entity, nonKeyProperties, entityVariable, rowVariable, "SET ", " = ");
     return new CypherPatterns(cypherKeyProperties, cypherSetNonKeys);
@@ -159,12 +137,12 @@ public class CypherPatterns {
   }
 
   private static String assignPropertiesInPattern(
-      EntityTarget target, Collection<String> properties, String rowVariable) {
+      EntityTargetStep target, Collection<String> properties, String rowVariable) {
     return assignProperties(target, properties, "", rowVariable, "", ": ");
   }
 
   private static String assignProperties(
-      EntityTarget target,
+      EntityTargetStep step,
       Collection<String> properties,
       String entityVariable,
       String rowVariable,
@@ -175,7 +153,7 @@ public class CypherPatterns {
       return "";
     }
     Map<String, String> fieldsByProperty =
-        target.getProperties().stream()
+        getPropertyMappings(step).stream()
             .collect(toMap(PropertyMapping::getTargetProperty, PropertyMapping::getSourceField));
 
     return assignProperties(

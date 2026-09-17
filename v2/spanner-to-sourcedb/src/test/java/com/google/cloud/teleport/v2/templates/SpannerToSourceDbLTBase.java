@@ -16,11 +16,12 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.templates.utils.LTMySQLResourceManager;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -32,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -46,7 +48,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +92,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
     for (int i = 0; i < numShards; ++i) {
-      jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
+      jdbcResourceManagers.add(LTMySQLResourceManager.builder(testName).build());
     }
 
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
@@ -136,7 +137,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .build();
     String ddl =
         String.join(
@@ -161,7 +162,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
       builder.setInstanceId(metadataInstanceId).useStaticInstance();
     } else {
-      builder.maybeUseStaticInstance();
+      builder.maybeUseStaticInstance(Optional.of(2));
     }
 
     SpannerResourceManager spannerMetadataResourceManager = builder.build();
@@ -213,10 +214,11 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public void createAndUploadShardConfigToGcs(
       GcsResourceManager gcsResourceManager, List<JDBCResourceManager> jdbcResourceManagers)
       throws IOException {
-    JsonArray ja = new JsonArray();
+    List<Shard> shards = new ArrayList<>();
     for (int i = 0; i < 1; ++i) {
-      if (jdbcResourceManagers.get(i) instanceof MySQLResourceManager) {
-        MySQLResourceManager resourceManager = (MySQLResourceManager) jdbcResourceManagers.get(i);
+      if (jdbcResourceManagers.get(i) instanceof LTMySQLResourceManager) {
+        LTMySQLResourceManager resourceManager =
+            (LTMySQLResourceManager) jdbcResourceManagers.get(i);
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard" + (i + 1));
         shard.setUser(jdbcResourceManagers.get(i).getUsername());
@@ -224,15 +226,16 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         shard.setPassword(jdbcResourceManagers.get(i).getPassword());
         shard.setPort(String.valueOf(resourceManager.getPort()));
         shard.setDbName(jdbcResourceManagers.get(i).getDatabaseName());
-        JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-        jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-        ja.add(jsObj);
+        shards.add(shard);
       } else {
         throw new UnsupportedOperationException(
             jdbcResourceManagers.get(i).getClass().getSimpleName() + " is not supported");
       }
     }
-    String shardFileContents = ja.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
@@ -280,7 +283,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "100");
     params.put("sourceType", sourceType);
-    params.put("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
       params.put(
@@ -297,7 +299,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"))
+        .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     options.setParameters(params);
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());

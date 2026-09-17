@@ -14,6 +14,9 @@
   }, {
     "name": "ModelStruct",
     "manifestFile": "ModelStruct-manifest.json"
+  }, {
+    "name": "UdfSchema",
+    "manifestFile": "UdfSchema-manifest.json"
   }],
   "databaseOptions": [{
     "optionName": "default_time_zone",
@@ -30,5 +33,9 @@
   }, {
     "name": "Sequence2",
     "manifestFile": "Sequence2-manifest.json"
+  }],
+  "udfs": [{
+    "name": "UdfSchema.Remote",
+    "manifestFile": "UdfSchema.Remote-manifest.json"
   }]
 }

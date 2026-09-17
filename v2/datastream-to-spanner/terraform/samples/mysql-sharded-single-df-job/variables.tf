@@ -54,7 +54,7 @@ variable "common_params" {
         transformation_class_name           = optional(string)
         filtered_events_directory           = optional(string)
         run_mode                            = optional(string)
-        local_sharding_context_path         = optional(string)
+        local_source_config_path            = optional(string)
         dead_letter_queue_directory         = optional(string)
         dlq_gcs_pub_sub_subscription        = optional(string)
       })

@@ -33,10 +33,6 @@
 
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
-  <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
-  </properties>
 
   <dependencies>
 
@@ -116,7 +112,7 @@
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-gcp</artifactId>
       <version>1.10.1</version>
-      <scope>test</scope>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.json</groupId>
@@ -128,21 +124,52 @@
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
-      <scope>test</scope>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
       <version>1.17.0</version>
-      <scope>test</scope>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-avro</artifactId>
       <version>1.17.0</version>
+      <scope>runtime</scope>
+    </dependency>
+    <!--
+      Delta Lake IO is only needed by DeltaLakeToLakehouseYamlIT, which uses the
+      Delta Kernel API directly to build the source table for the test. The
+      pipeline itself resolves Delta Lake IO at runtime from the official Beam
+      expansion service shadowJar (which packages it natively as of 2.76.0), so
+      these must not leak into the template's compile/runtime classpath.
+      jamm is required by delta-kernel-defaults at test runtime.
+    -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-delta</artifactId>
+      <version>${beam.version}</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>com.github.jbellis</groupId>
+      <artifactId>jamm</artifactId>
+      <version>0.4.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Hadoop AWS connector to resolve s3a:// paths -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-aws</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <!-- AWS SDK Bundle required by hadoop-aws -->
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-bundle</artifactId>
+      <version>1.12.367</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -157,9 +184,6 @@
         <directory>src/main/python</directory>
       </resource>
     </resources>
-
-    <plugins>
-    </plugins>
   </build>
 
   <profiles>

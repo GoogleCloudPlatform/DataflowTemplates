@@ -1,0 +1,7 @@
+- type: pythonPackage
+  config:
+    packages:
+      - https://storage.googleapis.com/<package_path>
+  transforms:
+    CopyFilesToGCS: "copy_files_to_gcs.CopyFilesToGCS"
+    WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"

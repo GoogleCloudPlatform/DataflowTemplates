@@ -16,10 +16,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoBulkWriteException;
@@ -30,23 +34,24 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.IterableCoder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
@@ -55,8 +60,15 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.bson.BsonBinaryReader;
+import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.DocumentCodec;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
+import org.bson.types.Binary;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -243,6 +255,136 @@ public class MongoDbTransformsTest {
     assertSuccessCount(result, 0L);
   }
 
+  @Test
+  public void writeWithDlq_mixedUpsertAndDelete_success() {
+    List<WriteModel<Document>> capturedModels = Collections.synchronizedList(new ArrayList<>());
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              List<WriteModel<Document>> models = invocation.getArgument(0);
+              capturedModels.addAll(models);
+              return mock(BulkWriteResult.class);
+            });
+
+    DocumentWithMetadata upsertDoc =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", "u1").append("name", "Alice"),
+            "{\"_id\": \"u1\", \"name\": \"Alice\"}",
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000L, 1L),
+            "{\"_id\": \"u1\"}");
+
+    DocumentWithMetadata deleteDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000L, 2L),
+            "{\"_id\": \"d1\"}");
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(upsertDoc, deleteDoc));
+
+    input.apply(
+        "Write_Mixed",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(10)
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 2L);
+    assertEquals(2, capturedModels.size());
+    assertTrue(capturedModels.stream().anyMatch(m -> m instanceof ReplaceOneModel));
+    assertTrue(capturedModels.stream().anyMatch(m -> m instanceof DeleteOneModel));
+  }
+
+  @Test
+  public void writeWithDlq_deletePermanentFailure_sentToDlqWithMetadata() {
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenThrow(
+            new MongoBulkWriteException(
+                mock(BulkWriteResult.class),
+                Arrays.asList(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 0)),
+                null,
+                new ServerAddress(),
+                Collections.emptySet()));
+
+    DocumentWithMetadata deleteDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000L, 5L),
+            "{\"_id\": \"d99\"}");
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(deleteDoc));
+
+    PCollectionTuple tuple =
+        input.apply(
+            "Write_Delete_Failure",
+            ParDo.of(
+                    MongoDbTransforms.WriteFn.builder()
+                        .withUri("mongodb://localhost:27017")
+                        .withDatabase("test")
+                        .withBatchSize(1)
+                        .withMaxWriteRetries(1)
+                        .withDlqMaxRetries(3)
+                        .withClientFactory(new MockClientFactory())
+                        .withFailureTag(FAILURE_TAG)
+                        .build())
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(tuple.get(FAILURE_TAG))
+        .satisfies(
+            failures -> {
+              List<DocumentWithMetadata> list = new ArrayList<>();
+              failures.forEach(list::add);
+              assertEquals(1, list.size());
+              DocumentWithMetadata failedItem = list.get(0);
+              assertEquals(
+                  DocumentWithMetadata.OperationType.DELETE, failedItem.getOperationType());
+              assertEquals("{\"_id\": \"d99\"}", failedItem.getDocumentKey());
+              assertEquals(TimestampSortKey.cdc(1000L, 5L), failedItem.getTimestampSortKey());
+              assertEquals(DocumentWithMetadata.ErrorType.PERMANENT, failedItem.getErrorType());
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void writeWithDlq_dropEvent_skippedWithoutError() {
+    DocumentWithMetadata dropDoc =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "test",
+            "test",
+            DocumentWithMetadata.OperationType.DROP,
+            TimestampSortKey.cdc(1000L, 10L),
+            null);
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(dropDoc));
+
+    input.apply(
+        "Write_Drop",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(10)
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 0L);
+  }
+
   private long getCounterValue(PipelineResult result, String counterName) {
     for (MetricResult<Long> c :
         result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
@@ -262,26 +404,34 @@ public class MongoDbTransformsTest {
   }
 
   @Test
-  public void writeWithDlq_documentLevelRetry_partialSuccess()
-      throws org.apache.beam.sdk.coders.CannotProvideCoderException {
+  public void writeWithDlq_documentLevelRetry_partialSuccess() {
     AtomicInteger callCount = new AtomicInteger(0);
+    final boolean[] doc2Retried = new boolean[] {false};
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
             invocation -> {
-              int count = callCount.getAndIncrement();
-              if (count == 0) {
+              callCount.getAndIncrement();
+              List<WriteModel<Document>> updates = invocation.getArgument(0);
+              List<BulkWriteError> errors = new ArrayList<>();
+              for (int i = 0; i < updates.size(); i++) {
+                Document doc = (Document) ((ReplaceOneModel) updates.get(i)).getReplacement();
+                int id = doc.getInteger("_id");
+                if (id == 1) {
+                  errors.add(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), i));
+                } else if (id == 2) {
+                  if (!doc2Retried[0]) {
+                    doc2Retried[0] = true;
+                    errors.add(new BulkWriteError(11600, "Interrupted", new BsonDocument(), i));
+                  }
+                }
+              }
+              if (!errors.isEmpty()) {
                 throw new MongoBulkWriteException(
                     mock(BulkWriteResult.class),
-                    Arrays.asList(
-                        new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 1),
-                        new BulkWriteError(11600, "Interrupted", new BsonDocument(), 2)),
+                    errors,
                     null,
                     new ServerAddress(),
                     Collections.emptySet());
-              } else if (count == 1) {
-                List<WriteModel<Document>> updates = invocation.getArgument(0);
-                assertEquals(1, updates.size());
-                return mock(BulkWriteResult.class);
               }
               return mock(BulkWriteResult.class);
             });
@@ -290,17 +440,7 @@ public class MongoDbTransformsTest {
     DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "test", "test");
     DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "test", "test");
 
-    KV<String, Iterable<DocumentWithMetadata>> batch =
-        KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
-
-    Coder<DocumentWithMetadata> documentWithMetadataCoder =
-        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(DocumentWithMetadata.class));
-
-    PCollection<KV<String, Iterable<DocumentWithMetadata>>> input =
-        pipeline.apply(
-            Create.of(Collections.singletonList(batch))
-                .withCoder(
-                    KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentWithMetadataCoder))));
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(doc0, doc1, doc2));
 
     input.apply(
         "Write_DocLevelRetry",
@@ -308,6 +448,7 @@ public class MongoDbTransformsTest {
                 MongoDbTransforms.WriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
+                    .withBatchSize(3)
                     .withMaxWriteRetries(3)
                     .withMaxConcurrentAsyncWrites(1)
                     .withClientFactory(new MockClientFactory())
@@ -317,7 +458,7 @@ public class MongoDbTransformsTest {
 
     PipelineResult result = pipeline.run();
 
-    assertEquals(2, callCount.get());
+    assertTrue(callCount.get() >= 2);
     assertSuccessCount(result, 2L);
   }
 
@@ -359,6 +500,63 @@ public class MongoDbTransformsTest {
               DocumentWithMetadata result = collection.iterator().next();
               assertEquals(true, result.getDocument().get("udf_applied"));
               assertEquals("test", result.getDocument().get("name"));
+              assertEquals(input.getOriginalDocument(), result.getOriginalDocument());
+              return null;
+            });
+
+    PAssert.that(output.get(FAILURE_TAG)).empty();
+
+    pipeline.run();
+  }
+
+  @Test
+  public void applyUdfFn_cdcFullDoc_preservesOriginalDocument() throws Exception {
+    File udfFile = tempFolder.newFile("cdc_transform.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write(
+          "function transform(inJson) {\n"
+              + "  var obj = JSON.parse(inJson);\n"
+              + "  obj.enriched = 'yes';\n"
+              + "  return JSON.stringify(obj);\n"
+              + "}");
+    }
+
+    Document fullDoc = new Document("_id", 42).append("status", "ACTIVE").append("tier", "GOLD");
+    TimestampSortKey sortKey = TimestampSortKey.cdc(1700000000L, 1L);
+    DocumentWithMetadata cdcEvent =
+        DocumentWithMetadata.cdcEvent(
+            fullDoc,
+            fullDoc.toJson(),
+            "users",
+            "users_target",
+            DocumentWithMetadata.OperationType.UPDATE,
+            sortKey,
+            new Document("_id", 42).toJson());
+
+    PCollection<DocumentWithMetadata> inputCollection = pipeline.apply(Create.of(cdcEvent));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF_CDC",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(), "transform", 0, FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG))
+        .satisfies(
+            collection -> {
+              DocumentWithMetadata result = collection.iterator().next();
+              assertEquals("yes", result.getDocument().get("enriched"));
+              assertEquals("ACTIVE", result.getDocument().get("status"));
+              assertEquals("GOLD", result.getDocument().get("tier"));
+              // Verify that originalDocument retains the untransformed original fullDoc
+              assertEquals(fullDoc.toJson(), result.getOriginalDocument());
+              // Verify that CDC metadata is preserved
+              assertEquals(DocumentWithMetadata.OperationType.UPDATE, result.getOperationType());
+              assertEquals(sortKey, result.getTimestampSortKey());
+              assertEquals("users", result.getSourceCollection());
+              assertEquals("users_target", result.getTargetCollection());
               return null;
             });
 
@@ -394,8 +592,7 @@ public class MongoDbTransformsTest {
         .satisfies(
             collection -> {
               DocumentWithMetadata result = collection.iterator().next();
-              org.junit.Assert.assertTrue(
-                  result.getErrorMessage().contains("UDF failed intentionally"));
+              assertTrue(result.getErrorMessage().contains("UDF failed intentionally"));
               return null;
             });
 
@@ -470,7 +667,387 @@ public class MongoDbTransformsTest {
 
     pipeline.run();
 
-    org.mockito.Mockito.verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
-    org.mockito.Mockito.verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
+  }
+
+  @Test
+  public void testWriteFn_rateLimitingDisabled() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(0)
+            .build();
+    fn.setup();
+    assertNull(fn.getRateLimiter());
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_linearRampUpRateCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(100)
+            .withMaxWriteRatePerWorker(500)
+            .withWriteRateRampUpMinutes(5)
+            .withWriteRateRampUpSteps(5)
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(100.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 1 minute elapsed (step 1/5 => 100 + 1 * 80 = 180)
+    fn.setStartTimeMs(System.currentTimeMillis() - 1 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(180.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 2 minutes elapsed (step 2/5 => 100 + 2 * 80 = 260)
+    fn.setStartTimeMs(System.currentTimeMillis() - 2 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(260.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 100 + 5 * 80 = 500)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(500.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_defaultAggressiveRampUpCalculation() {
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(5000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // Simulate 5 minutes elapsed (step 5/5 => 5000 + 5 * 4000 = 25000)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(25000.0, fn.getRateLimiter().getRate(), 0.01);
+
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteFn_multiBundleExecution_preservesClientAcrossBundles() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    @SuppressWarnings("unchecked")
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteFn fn =
+        MongoDbTransforms.WriteFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(1)
+            .withMaxWriteRetries(1)
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+
+    @SuppressWarnings("unchecked")
+    DoFn<DocumentWithMetadata, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<DocumentWithMetadata, DocumentWithMetadata>.FinishBundleContext mockFinishCtx =
+        mock(DoFn.FinishBundleContext.class);
+
+    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "users", "users");
+    when(mockCtx.element()).thenReturn(doc1);
+
+    // Bundle 1
+    fn.startBundle();
+    fn.processElement(mockCtx);
+    fn.finishBundle(mockFinishCtx);
+
+    // Verify client was NOT closed after bundle 1
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.never()).close();
+
+    // Bundle 2
+    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "users", "users");
+    when(mockCtx.element()).thenReturn(doc2);
+    fn.startBundle();
+    fn.processElement(mockCtx);
+    fn.finishBundle(mockFinishCtx);
+
+    // Verify client still was NOT closed after bundle 2
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.never()).close();
+
+    // Teardown closes the client
+    fn.teardown();
+    org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.times(1)).close();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_insertThenDelete_emitsOnlyDelete() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    Document doc1 = new Document("_id", 100).append("name", "Alice");
+    DocumentWithMetadata insertItem = DocumentWithMetadata.of(doc1, "users", "users");
+
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000, 1),
+            new Document("_id", 100).toJson());
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("users#0", Arrays.asList(insertItem, deleteItem)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof DeleteOneModel);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_multipleUpdates_emitsLatestPayload() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    Document docV1 = new Document("_id", 200).append("val", 1);
+    Document docV2 = new Document("_id", 200).append("val", 2);
+    Document docV3 = new Document("_id", 200).append("val", 3);
+
+    DocumentWithMetadata item1 = DocumentWithMetadata.of(docV1, "metrics", "metrics");
+    DocumentWithMetadata item2 = DocumentWithMetadata.of(docV2, "metrics", "metrics");
+    DocumentWithMetadata item3 = DocumentWithMetadata.of(docV3, "metrics", "metrics");
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("metrics#1", Arrays.asList(item1, item2, item3)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+    ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
+    assertEquals(3, replaceModel.getReplacement().get("val"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_mixedUniqueAndDuplicates() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    List<DocumentWithMetadata> batchItems = new ArrayList<>();
+    // 5 unique items
+    for (int i = 1; i <= 5; i++) {
+      batchItems.add(
+          DocumentWithMetadata.of(
+              new Document("_id", i).append("name", "name" + i), "items", "items"));
+    }
+    // Update to id=1 and id=2
+    batchItems.add(
+        DocumentWithMetadata.of(
+            new Document("_id", 1).append("name", "name1_updated"), "items", "items"));
+    batchItems.add(
+        DocumentWithMetadata.of(
+            new Document("_id", 2).append("name", "name2_updated"), "items", "items"));
+    // Delete for id=3
+    batchItems.add(
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "items",
+            "items",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(2000, 1),
+            new Document("_id", 3).toJson()));
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("items#0", batchItems));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(5, capturedModels.size());
+  }
+
+  /**
+   * Encodes and decodes a document through the real BSON binary codec, mirroring what the MongoDB
+   * driver does when it materializes a document off the wire.
+   */
+  private static Document bsonRoundTrip(Document doc) {
+    DocumentCodec codec = new DocumentCodec();
+    BasicOutputBuffer buffer = new BasicOutputBuffer();
+    try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
+      codec.encode(writer, doc, EncoderContext.builder().build());
+    }
+    try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(buffer.toByteArray()))) {
+      return codec.decode(reader, DecoderContext.builder().build());
+    }
+  }
+
+  /**
+   * Batch coalescing keys a {@link java.util.LinkedHashMap} on the raw {@code _id} object, so it is
+   * only correct when that object has value-based equality. A binary {@code _id} arrives off the
+   * wire as {@link Binary} (which compares its bytes), not as a raw {@code byte[]} (which would
+   * compare by identity and silently defeat coalescing). This test pins down both that decode
+   * premise and the resulting coalescing behaviour.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_binaryId_coalescesByValue() throws Exception {
+    byte[] idBytes = new byte[] {0x01, 0x02, 0x03, 0x04};
+
+    // Two independently decoded documents that share the same binary _id bytes. Decoding
+    // separately means the two _id objects are distinct instances, so coalescing them relies
+    // purely on value equality.
+    Document docV1 =
+        bsonRoundTrip(new Document("_id", idBytes.clone()).append("val", 1).append("name", "v1"));
+    Document docV2 =
+        bsonRoundTrip(new Document("_id", idBytes.clone()).append("val", 2).append("name", "v2"));
+
+    // Guard the premise: the driver decodes BSON binary to Binary, not to byte[].
+    assertTrue(docV1.get("_id") instanceof Binary);
+    assertEquals(new Binary(idBytes), docV1.get("_id"));
+    assertTrue(docV1.get("_id") != docV2.get("_id"));
+    assertEquals(docV1.get("_id"), docV2.get("_id"));
+
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    DocumentWithMetadata item1 = DocumentWithMetadata.of(docV1, "blobs", "blobs");
+    DocumentWithMetadata item2 = DocumentWithMetadata.of(docV2, "blobs", "blobs");
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of("blobs#0", Arrays.asList(item1, item2)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+
+    ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
+    assertEquals(2, replaceModel.getReplacement().get("val"));
+    assertEquals(new Binary(idBytes), replaceModel.getReplacement().get("_id"));
   }
 }

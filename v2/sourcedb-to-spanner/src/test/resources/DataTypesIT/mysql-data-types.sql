@@ -181,7 +181,7 @@ CREATE TABLE `integer_unsigned_table` (
 
 CREATE TABLE `timestamp_table` (
     `id` INT PRIMARY KEY,
-    `timestamp_col` TIMESTAMP DEFAULT NULL
+    `timestamp_col` TIMESTAMP NULL DEFAULT NULL
 );
 
 CREATE TABLE set_table (
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS datetime_to_string_table (
 
 CREATE TABLE IF NOT EXISTS timestamp_to_string_table (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  timestamp_to_string_col TIMESTAMP
+  timestamp_to_string_col TIMESTAMP NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS binary_to_string_table (
@@ -468,8 +468,8 @@ CREATE TABLE date_time_pk_table (
 );
 
 CREATE TABLE timestamp_pk_table (
-                                    id TIMESTAMP(6),
-                                    timestamp_pk_col TIMESTAMP(6) NOT NULL,
+                                    id TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+                                    timestamp_pk_col TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                                     CONSTRAINT PRIMARY KEY (id)
 );
 CREATE TABLE year_pk_table (
@@ -899,4 +899,24 @@ CREATE TABLE IF NOT EXISTS spatial_geometrycollection (
 
 INSERT INTO spatial_geometrycollection (geoms) VALUES (MultiPoint(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
 
+CREATE TABLE IF NOT EXISTS `uuid_table` (
+    `id` INT PRIMARY KEY,
+    `uuid_col` VARCHAR(36) DEFAULT NULL
+);
+
+INSERT INTO `uuid_table` (`id`, `uuid_col`) VALUES (1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'), (2, NULL);
+
+CREATE TABLE IF NOT EXISTS `uuid_pk_table` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `uuid_pk_col` VARCHAR(36) NOT NULL
+);
+
+INSERT INTO `uuid_pk_table` (`id`, `uuid_pk_col`) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'), ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12');
+
+CREATE TABLE IF NOT EXISTS `utf8mb4_pk_table` (
+    `id` VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin PRIMARY KEY,
+    `utf8mb4_pk_col` VARCHAR(200) CHARACTER SET utf8mb4 NOT NULL
+);
+
+INSERT INTO `utf8mb4_pk_table` (`id`, `utf8mb4_pk_col`) VALUES ('😀', '😀'), ('😁', '😁'), ('😂', '😂');
 

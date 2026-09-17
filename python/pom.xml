@@ -170,6 +170,54 @@
               </execution>
             </executions>
           </plugin>
+          <!-- Execute Python tests.-->
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>${exec-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>yaml-template-pip-install</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>python3.11</executable>
+                  <arguments>
+                    <argument>-m</argument>
+                    <argument>pip</argument>
+                    <argument>install</argument>
+                    <argument>-r</argument>
+                    <argument>src/main/python/yaml-template/requirements.txt</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>yaml-template-python-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>python3.11</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <environmentVariables>
+                    <PYTHONPATH>src/main/python/yaml-template</PYTHONPATH>
+                  </environmentVariables>
+                  <arguments>
+                    <argument>-m</argument>
+                    <argument>unittest</argument>
+                    <argument>discover</argument>
+                    <argument>-s</argument>
+                    <argument>src/test/python/yaml-template</argument>
+                    <argument>-p</argument>
+                    <argument>*_test.py</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>

@@ -14,6 +14,10 @@ on:
       - 'v2/datastream-to-spanner/terraform/samples/**'
       - 'v2/sourcedb-to-spanner/terraform/samples/**'
       - 'v2/spanner-to-sourcedb/terraform/samples/**'
+      - 'v2/cdc-data-generator/terraform/samples/**'
+
+permissions:
+  contents: read
 
 jobs:
   verify-terraform-samples:
@@ -25,12 +29,15 @@ jobs:
           - v2/datastream-to-spanner/terraform/samples
           - v2/spanner-common/terraform/samples
           - v2/spanner-to-sourcedb/terraform/samples
+          - v2/cdc-data-generator/terraform/samples
     steps:
-      - uses: hashicorp/setup-terraform@v4
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
       - name: Checkout Code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Verify Terraform formatting
-        uses: dflook/terraform-fmt-check@v2
+        uses: dflook/terraform-fmt-check@1946c2a46d8d3a3001998f9c769a08cedcd28f5d # v3.0.1-dockerhub
         with:
           path: ${{ matrix.terraform_paths }}
       - name: Verify Terraform template and required structure

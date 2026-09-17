@@ -7,6 +7,7 @@ CREATE TABLE date_table (id INT64, date_col DATE) PRIMARY KEY(id);
 CREATE TABLE numeric_table (id INT64, numeric_col NUMERIC) PRIMARY KEY(id);
 CREATE TABLE timestamp_table (id INT64, timestamp_col TIMESTAMP) PRIMARY KEY(id);
 CREATE TABLE json_table (id INT64, json_col JSON) PRIMARY KEY(id);
+CREATE TABLE uuid_table (id INT64, uuid_col UUID) PRIMARY KEY(id);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (

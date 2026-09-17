@@ -35,12 +35,23 @@ graph TD
 | `targetDatabase` | String | Database in the target MongoDB to write to. | Yes | |
 | `sourceCollection` | String | Collection in the source MongoDB to read from. If not provided, all collections will be migrated. | No | |
 | `targetCollection` | String | Collection in the target MongoDB to write to. If not provided, source collection names will be used. | No | |
-| `useBucketAuto` | Boolean | Enable withBucketAuto for Atlas compatibility. | No | false |
-| `numSplits` | Integer | Suggest a specific number of partitions for reading. | No | |
-| `batchSize` | Integer | Number of documents in a bulk write. | No | 5000 |
-| `dlqDirectory` | String | Base path to store failed events. | No | `tempLocation`/tmp |
+| `writeBatchSize` | Integer | Number of documents in a bulk write. | No | 5000 |
 | `maxConcurrentAsyncWrites` | Integer | Maximum number of concurrent asynchronous batch writes per worker. | No | 10 |
 | `maxWriteRetries` | Integer | Maximum number of retry attempts for transient failures during write. | No | 3 |
+| `numWriteShards` | Integer | Number of parallel shards per collection for batched writes. | No | 64 |
+| `maxBufferingDurationMs` | Integer | Maximum duration in milliseconds to buffer documents before flushing. | No | 200 |
+| `migrationMode` | String | Migration mode: BACKFILL_AND_STREAMING, STREAMING_CDC, or BACKFILL. | No | BACKFILL_AND_STREAMING |
+| `targetBackfillChunkSize` | Integer | Target document count per backfill read split. | No | 200000 |
+| `maxBackfillSplits` | Integer | Maximum backfill read splits allowed per collection. | No | 256 |
+| `maxConcurrentBackfillReads` | Integer | Maximum concurrent backfill cursors allowed across the cluster. | No | 128 |
+| `numChangeStreamSplits` | Integer | Number of parallel change stream cursors per collection for CDC. | No | 1 |
+| `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup or whenAvailable). | No | updateLookup |
+| `startAtOperationTime` | String | Optional starting clusterTime (epoch seconds or ISO-8601). | No | |
+| `initialWriteRatePerWorker` | Integer | Initial maximum documents/second per worker during ramp-up (<=0 disables). | No | 5000 |
+| `maxWriteRatePerWorker` | Integer | Maximum target documents/second per worker after completing ramp-up. | No | 25000 |
+| `writeRateRampUpMinutes` | Integer | Duration in minutes for write rate ramp-up. | No | 5 |
+| `writeRateRampUpSteps` | Integer | Number of discrete linear step increases over ramp-up. | No | 5 |
+| `dlqDirectory` | String | Base path to store failed events. | No | `tempLocation`/tmp |
 | `dlqMaxRetries` | Integer | Maximum number of times to retry events from DLQ. | No | 3 |
 | `readFromDlq` | Boolean | If true, reads only from DLQ for retry. If false, reads from MongoDB. | No | false |
 | `reconsumeDlqPath` | String | Path to read files from DLQ for reprocessing. Required if `readFromDlq` is true. | No | |
@@ -144,8 +155,12 @@ Failures are organized under the `dlqDirectory` (or `tempLocation`/tmp if not sp
 
 To optimize performance, consider the following parameters:
 
-- **`batchSize`**: Controls how many documents are sent in a single bulk write operation. Larger sizes can improve throughput but increase memory usage. Default is 5000.
-- **`maxConcurrentAsyncWrites`**: Controls the number of concurrent bulk write operations per worker. Increasing this can increase throughput if the target MongoDB cluster can handle the load. Default is 10.
-- **`numSplits`**: Suggests the number of splits for reading from MongoDB. This affects the initial parallelism of the read stage.
-- **`useBucketAuto`**: When set to `true`, uses MongoDB's `$bucketAuto` to determine split points. This is often more efficient, especially on Atlas clusters where traditional split methods might be slow or unavailable.
+- **`writeBatchSize`**: Controls how many documents are sent in a single bulk write operation. Larger sizes can improve throughput but increase memory usage. Default is 5000.
+- **`maxConcurrentAsyncWrites`**: Controls the number of concurrent asynchronous batch writes per worker. Default is 10.
+- **`numWriteShards`**: Controls the number of parallel shards per collection for batched writes to prevent Windmill single-key bottlenecks. Default is 64.
+- **`maxBufferingDurationMs`**: Maximum duration in milliseconds to buffer documents before flushing a batch to the target. Default is 200ms.
+- **`targetBackfillChunkSize`**: Target document count per backfill read split for adaptive volume-based splitting. Default is 200000.
+- **`maxBackfillSplits`**: Maximum backfill read splits allowed per collection. Default is 256.
+- **`maxConcurrentBackfillReads`**: Maximum concurrent backfill cursors allowed across the cluster, bounding source database connections. Default is 128.
+- **`numChangeStreamSplits`**: Number of parallel change stream cursors per collection for high-throughput CDC streaming. Default is 1.
 - **`numberOfWorkerHarnessThreads`**: This is a standard Dataflow flag (set via `--numberOfWorkerHarnessThreads`) that controls the number of threads per worker. Increasing this allows the worker to process more bundles in parallel, which can increase throughput but also increases memory and resource contention. It complements `maxConcurrentAsyncWrites` by allowing more concurrent work on the worker level before hitting the write throttle.

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -23,13 +24,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.api.services.datastream.v1.model.MysqlSourceConfig;
+import com.google.api.services.datastream.v1.model.OracleSourceConfig;
+import com.google.api.services.datastream.v1.model.PostgresqlSourceConfig;
+import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.cloud.teleport.v2.options.DataStreamToSpannerOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.common.io.Resources;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Rule;
@@ -43,10 +51,8 @@ public class DataStreamToSpannerTest {
   @Test
   public void testGetSourceTypeWithDatastreamSourceType() {
     String[] args = new String[] {"--datastreamSourceType=mysql"};
-    DataStreamToSpanner.Options options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
     String result = DataStreamToSpanner.getSourceType(options);
 
     assertEquals("mysql", result);
@@ -56,10 +62,8 @@ public class DataStreamToSpannerTest {
   public void testGetSourceTypeWithDatastreamInputFilePattern() {
     String[] args =
         new String[] {"--inputFilePattern=gs://test-bkt/", "--directoryWatchDurationInMinutes=42"};
-    DataStreamToSpanner.Options options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
     String inputFilePattern = options.getInputFilePattern();
     Integer directoryWatchDurationInMinutes = options.getDirectoryWatchDurationInMinutes();
     Integer expectedWatchDuration = 42;
@@ -73,10 +77,8 @@ public class DataStreamToSpannerTest {
     expectedEx.expect(IllegalArgumentException.class);
     expectedEx.expectMessage("Stream name cannot be empty.");
     String[] args = new String[] {""};
-    DataStreamToSpanner.Options options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
     String result = DataStreamToSpanner.getSourceType(options);
   }
 
@@ -88,16 +90,21 @@ public class DataStreamToSpannerTest {
         new String[] {
           "--streamName=projects/sample-project/locations/sample-location/streams/sample-stream"
         };
-    DataStreamToSpanner.Options options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataStreamToSpannerOptions.class);
     String result = DataStreamToSpanner.getSourceType(options);
   }
 
   @Test
+  public void testGetShardingContext_Empty() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    when(options.getSourceConfigURL()).thenReturn("");
+    assertNotNull(DataStreamToSpanner.getShardingContext(options));
+  }
+
+  @Test
   public void testConfigureSchemaOverrides_fileBased() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getSchemaOverridesFilePath())
         .thenReturn(
             Resources.getResource("DataStreamToSpannerFileOverridesIT/override.json").getPath());
@@ -118,7 +125,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testConfigureSchemaOverrides_stringBased() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getSchemaOverridesFilePath()).thenReturn("");
     when(options.getTableOverrides()).thenReturn("[{person1, human1}]");
     when(options.getColumnOverrides()).thenReturn("[{person1.first_name1, person1.name1}]");
@@ -137,7 +144,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testConfigureSchemaOverrides_noOverrides() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getSchemaOverridesFilePath()).thenReturn("");
     when(options.getTableOverrides()).thenReturn("");
     when(options.getColumnOverrides()).thenReturn("");
@@ -149,7 +156,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testConfigureSchemaOverrides_incorrectConfiguration() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getSchemaOverridesFilePath()).thenReturn("/path/to/overrides.json");
     when(options.getTableOverrides()).thenReturn("table1=schema1");
 
@@ -159,8 +166,44 @@ public class DataStreamToSpannerTest {
   }
 
   @Test
+  public void testConfigureSchemaOverrides_onlyTableOverrides() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("");
+    when(options.getTableOverrides()).thenReturn("[{person1, human1}]");
+    when(options.getColumnOverrides()).thenReturn("");
+
+    ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
+
+    assertEquals(SchemaStringOverridesParser.class, parser.getClass());
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_onlyColumnOverrides() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("");
+    when(options.getTableOverrides()).thenReturn("");
+    when(options.getColumnOverrides()).thenReturn("[{person1.first_name1, person1.name1}]");
+
+    ISchemaOverridesParser parser = DataStreamToSpanner.configureSchemaOverrides(options);
+
+    assertEquals(SchemaStringOverridesParser.class, parser.getClass());
+  }
+
+  @Test
+  public void testConfigureSchemaOverrides_incorrectConfiguration_columnOverrides() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    when(options.getSchemaOverridesFilePath()).thenReturn("/path/to/overrides.json");
+    when(options.getTableOverrides()).thenReturn("");
+    when(options.getColumnOverrides()).thenReturn("col1=col2");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamToSpanner.configureSchemaOverrides(options));
+  }
+
+  @Test
   public void testValidateSourceType_validSource() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getRunMode()).thenReturn("");
     when(options.getDatastreamSourceType()).thenReturn("mysql");
 
@@ -171,7 +214,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testValidateSourceType_invalidSource() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getRunMode()).thenReturn("");
     when(options.getDatastreamSourceType()).thenReturn("invalid_source");
 
@@ -181,7 +224,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testValidateSourceType_retryMode() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getRunMode()).thenReturn(Constants.RUN_MODE_RETRY_DLQ);
 
     DataStreamToSpanner.validateSourceType(options);
@@ -191,7 +234,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testGetShadowTableSpannerConfig_validInput() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getShadowTableSpannerInstanceId()).thenReturn("shadow-instance-id");
     when(options.getShadowTableSpannerDatabaseId()).thenReturn("shadow-database-id");
     when(options.getProjectId()).thenReturn("project-id");
@@ -205,7 +248,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testGetShadowTableSpannerConfig_missingInstanceId() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getShadowTableSpannerInstanceId()).thenReturn("");
     when(options.getShadowTableSpannerDatabaseId()).thenReturn("shadow-database-id");
 
@@ -216,7 +259,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testGetShadowTableSpannerConfig_missingDatabaseId() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getShadowTableSpannerInstanceId()).thenReturn("shadow-instance-id");
     when(options.getShadowTableSpannerDatabaseId()).thenReturn("");
 
@@ -227,7 +270,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testGetShadowTableSpannerConfig_defaultValues() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     when(options.getShadowTableSpannerInstanceId()).thenReturn("");
     when(options.getShadowTableSpannerDatabaseId()).thenReturn("");
     when(options.getInstanceId()).thenReturn("main-instance-id");
@@ -243,7 +286,7 @@ public class DataStreamToSpannerTest {
 
   @Test
   public void testBuildDlqManager_defaultTempLocation() {
-    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
     DataflowPipelineOptions dfOptions = mock(DataflowPipelineOptions.class);
     when(options.as(DataflowPipelineOptions.class)).thenReturn(dfOptions);
     when(dfOptions.getTempLocation()).thenReturn("/tmp/test-bucket/temp");
@@ -253,5 +296,232 @@ public class DataStreamToSpannerTest {
     DataStreamToSpanner.buildDlqManager(options);
 
     verify(options).setDeadLetterQueueDirectory("/tmp/test-bucket/temp/dlq/");
+  }
+
+  @Test
+  public void testBuildDlqManager_tempLocationWithTrailingSlash() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    DataflowPipelineOptions dfOptions = mock(DataflowPipelineOptions.class);
+    when(options.as(DataflowPipelineOptions.class)).thenReturn(dfOptions);
+    when(dfOptions.getTempLocation()).thenReturn("/tmp/test-bucket/temp/");
+    when(options.getDeadLetterQueueDirectory()).thenReturn("");
+    when(options.getDlqMaxRetryCount()).thenReturn(500);
+
+    DataStreamToSpanner.buildDlqManager(options);
+
+    verify(options).setDeadLetterQueueDirectory("/tmp/test-bucket/temp/dlq/");
+  }
+
+  @Test
+  public void testBuildDlqManager_withDlqDirectory() {
+    DataStreamToSpannerOptions options = mock(DataStreamToSpannerOptions.class);
+    DataflowPipelineOptions dfOptions = mock(DataflowPipelineOptions.class);
+    when(options.as(DataflowPipelineOptions.class)).thenReturn(dfOptions);
+    when(dfOptions.getTempLocation()).thenReturn("/tmp/test-bucket/temp");
+    when(options.getDeadLetterQueueDirectory()).thenReturn("/tmp/custom-dlq");
+    when(options.getDlqMaxRetryCount()).thenReturn(500);
+
+    DataStreamToSpanner.buildDlqManager(options);
+
+    verify(options).setDeadLetterQueueDirectory("/tmp/custom-dlq");
+  }
+
+  @Test
+  public void testBuildPipeline() throws Exception {
+    String[] args =
+        new String[] {
+          "--sessionFilePath="
+              + Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath(),
+          "--projectId=project-id",
+          "--instanceId=instance-id",
+          "--databaseId=database-id",
+          "--spannerHost=https://batch-spanner.googleapis.com",
+          "--shouldCreateShadowTables=true",
+          "--shadowTablePrefix=shadow_",
+          "--datastreamSourceType=mysql",
+          "--runMode=" + Constants.RUN_MODE_REGULAR,
+          "--dlqMaxRetryCount=500",
+          "--dlqRetryMinutes=10",
+          "--directoryWatchDurationInMinutes=10",
+          "--inputFilePattern=gs://test-bucket/events/*",
+          "--inputFileFormat=avro",
+          "--tempLocation=gs://test-bucket/temp",
+          "--workerMachineType=n1-standard-4"
+        };
+
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataStreamToSpannerOptions.class);
+
+    Pipeline pipeline = DataStreamToSpanner.buildPipeline(options);
+
+    assertNotNull(pipeline);
+  }
+
+  @Test
+  public void testBuildPipeline_retryDLQ() throws Exception {
+    String[] args =
+        new String[] {
+          "--sessionFilePath="
+              + Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath(),
+          "--projectId=project-id",
+          "--instanceId=instance-id",
+          "--databaseId=database-id",
+          "--spannerHost=https://batch-spanner.googleapis.com",
+          "--shouldCreateShadowTables=true",
+          "--shadowTablePrefix=shadow_",
+          "--datastreamSourceType=mysql",
+          "--runMode=" + Constants.RUN_MODE_RETRY_DLQ,
+          "--dlqMaxRetryCount=500",
+          "--dlqRetryMinutes=10",
+          "--directoryWatchDurationInMinutes=10",
+          "--inputFilePattern=gs://test-bucket/events/*",
+          "--inputFileFormat=avro",
+          "--tempLocation=gs://test-bucket/temp",
+          "--workerMachineType=n1-standard-4"
+        };
+
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataStreamToSpannerOptions.class);
+
+    Pipeline pipeline = DataStreamToSpanner.buildPipeline(options);
+
+    assertNotNull(pipeline);
+  }
+
+  @Test
+  public void testBuildPipeline_retryAllDLQ() throws Exception {
+    String[] args =
+        new String[] {
+          "--sessionFilePath="
+              + Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath(),
+          "--projectId=project-id",
+          "--instanceId=instance-id",
+          "--databaseId=database-id",
+          "--spannerHost=https://batch-spanner.googleapis.com",
+          "--shouldCreateShadowTables=true",
+          "--shadowTablePrefix=shadow_",
+          "--datastreamSourceType=mysql",
+          "--runMode=" + Constants.RUN_MODE_RETRY_ALL_DLQ,
+          "--dlqMaxRetryCount=500",
+          "--dlqRetryMinutes=10",
+          "--directoryWatchDurationInMinutes=10",
+          "--inputFilePattern=gs://test-bucket/events/*",
+          "--inputFileFormat=avro",
+          "--tempLocation=gs://test-bucket/temp",
+          "--workerMachineType=n1-standard-4"
+        };
+
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataStreamToSpannerOptions.class);
+
+    Pipeline pipeline = DataStreamToSpanner.buildPipeline(options);
+
+    assertNotNull(pipeline);
+  }
+
+  @Test
+  public void testBuildPipeline_withDlqGcsPubSubSubscription() throws Exception {
+    String[] args =
+        new String[] {
+          "--sessionFilePath="
+              + Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath(),
+          "--projectId=project-id",
+          "--instanceId=instance-id",
+          "--databaseId=database-id",
+          "--spannerHost=https://batch-spanner.googleapis.com",
+          "--shouldCreateShadowTables=true",
+          "--shadowTablePrefix=shadow_",
+          "--datastreamSourceType=mysql",
+          "--runMode=" + Constants.RUN_MODE_REGULAR,
+          "--dlqMaxRetryCount=500",
+          "--dlqRetryMinutes=10",
+          "--directoryWatchDurationInMinutes=10",
+          "--inputFilePattern=gs://test-bucket/events/*",
+          "--inputFileFormat=avro",
+          "--tempLocation=gs://test-bucket/temp",
+          "--workerMachineType=n1-standard-4",
+          "--dlqGcsPubSubSubscription=projects/project-id/subscriptions/sub-id"
+        };
+
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataStreamToSpannerOptions.class);
+
+    Pipeline pipeline = DataStreamToSpanner.buildPipeline(options);
+
+    assertNotNull(pipeline);
+  }
+
+  @Test
+  public void testGetSourceTypeFromConfig_mysql() {
+    SourceConfig sourceConfig = new SourceConfig();
+    sourceConfig.setMysqlSourceConfig(new MysqlSourceConfig());
+
+    String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
+
+    assertEquals(SourceConstants.MYSQL_SOURCE_TYPE, sourceType);
+  }
+
+  @Test
+  public void testGetSourceTypeFromConfig_oracle() {
+    SourceConfig sourceConfig = new SourceConfig();
+    sourceConfig.setOracleSourceConfig(new OracleSourceConfig());
+
+    String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
+
+    assertEquals(SourceConstants.ORACLE_SOURCE_TYPE, sourceType);
+  }
+
+  @Test
+  public void testGetSourceTypeFromConfig_postgres() {
+    SourceConfig sourceConfig = new SourceConfig();
+    sourceConfig.setPostgresqlSourceConfig(new PostgresqlSourceConfig());
+
+    String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
+
+    assertEquals(SourceConstants.POSTGRES_SOURCE_TYPE, sourceType);
+  }
+
+  @Test
+  public void testGetSourceTypeFromConfig_unsupported() {
+    SourceConfig sourceConfig = new SourceConfig();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig));
+  }
+
+  @Test
+  public void testBuildPipeline_withAllOptions() throws Exception {
+    String[] args =
+        new String[] {
+          "--sessionFilePath="
+              + Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath(),
+          "--projectId=project-id",
+          "--instanceId=instance-id",
+          "--databaseId=database-id",
+          "--spannerHost=https://batch-spanner.googleapis.com",
+          "--shouldCreateShadowTables=true",
+          "--shadowTablePrefix=shadow_",
+          "--datastreamSourceType=mysql",
+          "--runMode=" + Constants.RUN_MODE_REGULAR,
+          "--dlqMaxRetryCount=500",
+          "--dlqRetryMinutes=10",
+          "--directoryWatchDurationInMinutes=10",
+          "--inputFilePattern=gs://test-bucket/events/*",
+          "--inputFileFormat=avro",
+          "--tempLocation=gs://test-bucket/temp/", // Trailing slash
+          "--workerMachineType=n1-standard-4",
+          "--maxNumWorkers=5", // Non-zero
+          "--filteredEventsDirectory=gs://test-bucket/customFilteredEvents", // Non-empty
+          "--shadowTableSpannerInstanceId=shadow-instance-id", // Set shadow instance
+          "--shadowTableSpannerDatabaseId=shadow-database-id" // Set shadow database
+        };
+
+    DataStreamToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataStreamToSpannerOptions.class);
+
+    Pipeline pipeline = DataStreamToSpanner.buildPipeline(options);
+
+    assertNotNull(pipeline);
   }
 }

@@ -22,12 +22,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceCollection**: Collection in the source MongoDB to read from. If not provided, all collections in the database will be migrated.
 * **targetCollection**: Collection in the target MongoDB to write to. If not provided, source collection names will be used.
-* **useBucketAuto**: Enable withBucketAuto for Atlas compatibility. Defaults to: false.
-* **numSplits**: Suggest a specific number of partitions for reading.
+* **numReadSplits**: Number of parallel queries to generate for high-throughput reads (e.g., 16 or 32). Uses MongoDB's $sample aggregation to discover data-driven boundaries across active BSON types. Defaults to: 0.
 * **batchSize**: Number of documents in a bulk write. Defaults to: 5000.
-* **dlqDirectory**: Base path to store failed events. Events will be grouped by date and time, and separated into 'retryable' and 'permanent' subdirectories.
 * **maxConcurrentAsyncWrites**: Maximum number of concurrent asynchronous batch writes per worker. Defaults to: 10.
 * **maxWriteRetries**: Maximum number of retry attempts for transient failures during write. Defaults to: 3.
+* **initialWriteRatePerWorker**: Initial maximum documents/second written per worker thread during linear write rate ramp-up. Set to <= 0 to disable throttling. Defaults to: 5000.
+* **writeRateRampUpMinutes**: Number of minutes between linear rate limit increases during write rate ramp-up. Defaults to: 5.
+* **maxWriteRatePerWorker**: Maximum target documents/second per worker after completing ramp-up. Default is 25000.
+* **writeRateRampUpSteps**: Number of discrete linear step increases over the ramp-up period. Defaults to: 5.
+* **dlqDirectory**: Base path to store failed events. Events will be grouped by date and time, and separated into 'retryable' and 'permanent' subdirectories.
 * **dlqMaxRetries**: Maximum number of times to retry events from DLQ. Defaults to: 3.
 * **reconsumeDlqPath**: Path to read files from DLQ for reprocessing. If not provided, write DLQ path will be used.
 * **readFromDlq**: If true, reads only from DLQ for retry. If false, reads from MongoDB. Defaults to: false.
@@ -144,12 +147,15 @@ export TARGET_DATABASE=<targetDatabase>
 ### Optional
 export SOURCE_COLLECTION=<sourceCollection>
 export TARGET_COLLECTION=<targetCollection>
-export USE_BUCKET_AUTO=false
-export NUM_SPLITS=<numSplits>
+export NUM_READ_SPLITS=0
 export BATCH_SIZE=5000
-export DLQ_DIRECTORY=<dlqDirectory>
 export MAX_CONCURRENT_ASYNC_WRITES=10
 export MAX_WRITE_RETRIES=3
+export INITIAL_WRITE_RATE_PER_WORKER=5000
+export WRITE_RATE_RAMP_UP_MINUTES=5
+export MAX_WRITE_RATE_PER_WORKER=25000
+export WRITE_RATE_RAMP_UP_STEPS=5
+export DLQ_DIRECTORY=<dlqDirectory>
 export DLQ_MAX_RETRIES=3
 export RECONSUME_DLQ_PATH=<reconsumeDlqPath>
 export READ_FROM_DLQ=false
@@ -167,12 +173,15 @@ gcloud dataflow flex-template run "mongodb-to-mongodb-job" \
   --parameters "targetDatabase=$TARGET_DATABASE" \
   --parameters "sourceCollection=$SOURCE_COLLECTION" \
   --parameters "targetCollection=$TARGET_COLLECTION" \
-  --parameters "useBucketAuto=$USE_BUCKET_AUTO" \
-  --parameters "numSplits=$NUM_SPLITS" \
+  --parameters "numReadSplits=$NUM_READ_SPLITS" \
   --parameters "batchSize=$BATCH_SIZE" \
-  --parameters "dlqDirectory=$DLQ_DIRECTORY" \
   --parameters "maxConcurrentAsyncWrites=$MAX_CONCURRENT_ASYNC_WRITES" \
   --parameters "maxWriteRetries=$MAX_WRITE_RETRIES" \
+  --parameters "initialWriteRatePerWorker=$INITIAL_WRITE_RATE_PER_WORKER" \
+  --parameters "writeRateRampUpMinutes=$WRITE_RATE_RAMP_UP_MINUTES" \
+  --parameters "maxWriteRatePerWorker=$MAX_WRITE_RATE_PER_WORKER" \
+  --parameters "writeRateRampUpSteps=$WRITE_RATE_RAMP_UP_STEPS" \
+  --parameters "dlqDirectory=$DLQ_DIRECTORY" \
   --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
   --parameters "reconsumeDlqPath=$RECONSUME_DLQ_PATH" \
   --parameters "readFromDlq=$READ_FROM_DLQ" \
@@ -205,12 +214,15 @@ export TARGET_DATABASE=<targetDatabase>
 ### Optional
 export SOURCE_COLLECTION=<sourceCollection>
 export TARGET_COLLECTION=<targetCollection>
-export USE_BUCKET_AUTO=false
-export NUM_SPLITS=<numSplits>
+export NUM_READ_SPLITS=0
 export BATCH_SIZE=5000
-export DLQ_DIRECTORY=<dlqDirectory>
 export MAX_CONCURRENT_ASYNC_WRITES=10
 export MAX_WRITE_RETRIES=3
+export INITIAL_WRITE_RATE_PER_WORKER=5000
+export WRITE_RATE_RAMP_UP_MINUTES=5
+export MAX_WRITE_RATE_PER_WORKER=25000
+export WRITE_RATE_RAMP_UP_STEPS=5
+export DLQ_DIRECTORY=<dlqDirectory>
 export DLQ_MAX_RETRIES=3
 export RECONSUME_DLQ_PATH=<reconsumeDlqPath>
 export READ_FROM_DLQ=false
@@ -225,7 +237,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-mongodb-job" \
 -DtemplateName="Mongodb_To_Mongodb" \
--Dparameters="sourceUri=$SOURCE_URI,targetUri=$TARGET_URI,sourceDatabase=$SOURCE_DATABASE,targetDatabase=$TARGET_DATABASE,sourceCollection=$SOURCE_COLLECTION,targetCollection=$TARGET_COLLECTION,useBucketAuto=$USE_BUCKET_AUTO,numSplits=$NUM_SPLITS,batchSize=$BATCH_SIZE,dlqDirectory=$DLQ_DIRECTORY,maxConcurrentAsyncWrites=$MAX_CONCURRENT_ASYNC_WRITES,maxWriteRetries=$MAX_WRITE_RETRIES,dlqMaxRetries=$DLQ_MAX_RETRIES,reconsumeDlqPath=$RECONSUME_DLQ_PATH,readFromDlq=$READ_FROM_DLQ,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="sourceUri=$SOURCE_URI,targetUri=$TARGET_URI,sourceDatabase=$SOURCE_DATABASE,targetDatabase=$TARGET_DATABASE,sourceCollection=$SOURCE_COLLECTION,targetCollection=$TARGET_COLLECTION,numReadSplits=$NUM_READ_SPLITS,batchSize=$BATCH_SIZE,maxConcurrentAsyncWrites=$MAX_CONCURRENT_ASYNC_WRITES,maxWriteRetries=$MAX_WRITE_RETRIES,initialWriteRatePerWorker=$INITIAL_WRITE_RATE_PER_WORKER,writeRateRampUpMinutes=$WRITE_RATE_RAMP_UP_MINUTES,maxWriteRatePerWorker=$MAX_WRITE_RATE_PER_WORKER,writeRateRampUpSteps=$WRITE_RATE_RAMP_UP_STEPS,dlqDirectory=$DLQ_DIRECTORY,dlqMaxRetries=$DLQ_MAX_RETRIES,reconsumeDlqPath=$RECONSUME_DLQ_PATH,readFromDlq=$READ_FROM_DLQ,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -f v2/mongodb-to-mongodb
 ```
 
@@ -276,12 +288,15 @@ resource "google_dataflow_flex_template_job" "mongodb_to_mongodb" {
     targetDatabase = "<targetDatabase>"
     # sourceCollection = "<sourceCollection>"
     # targetCollection = "<targetCollection>"
-    # useBucketAuto = "false"
-    # numSplits = "<numSplits>"
+    # numReadSplits = "0"
     # batchSize = "5000"
-    # dlqDirectory = "<dlqDirectory>"
     # maxConcurrentAsyncWrites = "10"
     # maxWriteRetries = "3"
+    # initialWriteRatePerWorker = "5000"
+    # writeRateRampUpMinutes = "5"
+    # maxWriteRatePerWorker = "25000"
+    # writeRateRampUpSteps = "5"
+    # dlqDirectory = "<dlqDirectory>"
     # dlqMaxRetries = "3"
     # reconsumeDlqPath = "<reconsumeDlqPath>"
     # readFromDlq = "false"

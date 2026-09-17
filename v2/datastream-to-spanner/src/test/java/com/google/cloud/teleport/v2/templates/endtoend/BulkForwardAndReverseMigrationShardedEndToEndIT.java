@@ -161,8 +161,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
                 "",
                 "",
                 databases);
-        createAndUploadBulkShardConfigToGcs(
-            new ArrayList<>(List.of(dataShard)), gcsResourceManager);
+        createAndUploadShardConfigToGcs(List.of(dataShard), gcsResourceManager);
 
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();

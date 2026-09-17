@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.transforms.CastExpandTargetRowFn;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
@@ -41,13 +41,13 @@ import org.slf4j.LoggerFactory;
 public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextTargetToRow.class);
-  private final TargetSequence targetSequence;
+  private final StepSequence targetSequence;
   private final TargetQuerySpec targetQuerySpec;
-  private final OptionsParams optionsParams;
+  private final OverlayTokens overlayTokens;
 
   public TextTargetToRow(
-      OptionsParams optionsParams, TargetSequence targetSequence, TargetQuerySpec targetQuerySpec) {
-    this.optionsParams = optionsParams;
+      OverlayTokens overlayTokens, StepSequence targetSequence, TargetQuerySpec targetQuerySpec) {
+    this.overlayTokens = overlayTokens;
     this.targetSequence = targetSequence;
     this.targetQuerySpec = targetQuerySpec;
   }
@@ -59,41 +59,35 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
     Schema sourceSchema = targetQuerySpec.getSourceBeamSchema();
     Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(sourceSchema);
 
-    var target = targetQuerySpec.getTarget();
-    var startNodeTarget = targetQuerySpec.getStartNodeTarget();
-    var endNodeTarget = targetQuerySpec.getEndNodeTarget();
-    var targetSchema = BeamUtils.toBeamSchema(target, startNodeTarget, endNodeTarget);
-    DoFn<Row, Row> castToTargetRow =
-        new CastExpandTargetRowFn(target, startNodeTarget, endNodeTarget, targetSchema);
+    var step = targetQuerySpec.getTargetStep();
+    var targetSchema = BeamUtils.toBeamSchema(step);
+    DoFn<Row, Row> castToTargetRow = new CastExpandTargetRowFn(step, targetSchema);
 
     // conditionally apply sql to rows.
-    if (ModelUtils.targetHasTransforms(target)) {
-      String sql =
-          getRewritten(
-              ModelUtils.getTargetSql(
-                  target, startNodeTarget, endNodeTarget, sourceFieldSet, false));
+    if (ModelUtils.targetHasTransforms(step)) {
+      String sql = getRewritten(ModelUtils.getTargetSql(step, sourceFieldSet, false));
       LOG.info("Target schema: {}", targetSchema);
       LOG.info("Executing SQL on PCOLLECTION: {}", sql);
       PCollection<Row> sqlDataRow =
           sourceBeamRows.apply(
-              targetSequence.getSequenceNumber(target) + ": SQLTransform " + target.getName(),
+              targetSequence.getSequenceNumber(step) + ": SQLTransform " + step.name(),
               SqlTransform.query(sql));
       LOG.info("Sql final schema: {}", sqlDataRow.getSchema());
       return sqlDataRow
           .apply(
-              targetSequence.getSequenceNumber(target) + ": Cast " + target.getName() + " rows",
+              targetSequence.getSequenceNumber(step) + ": Cast " + step.name() + " rows",
               ParDo.of(castToTargetRow))
           .setRowSchema(targetSchema);
     }
     LOG.info("Target schema: {}", targetSchema);
     return sourceBeamRows
         .apply(
-            targetSequence.getSequenceNumber(target) + ": Cast " + target.getName() + " rows",
+            targetSequence.getSequenceNumber(step) + ": Cast " + step.name() + " rows",
             ParDo.of(castToTargetRow))
         .setRowSchema(targetSchema);
   }
 
   private String getRewritten(String sql) {
-    return ModelUtils.replaceVariableTokens(sql, optionsParams.getTokenMap());
+    return ModelUtils.replaceVariableTokens(sql, overlayTokens.tokens());
   }
 }

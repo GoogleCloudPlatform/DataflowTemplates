@@ -22,12 +22,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
@@ -108,7 +104,10 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
             SpannerToSourceDBShardedMySQLRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        createAndUploadShardConfigToGcsMulti();
+        createAndUploadShardConfigToGcs(
+            gcsResourceManager,
+            Map.of(
+                "testShardA", jdbcResourceManagerShardA, "testShardB", jdbcResourceManagerShardB));
 
         // Upload session file
         gcsResourceManager.uploadArtifact(
@@ -372,35 +371,6 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
       }
     }
     return null;
-  }
-
-  private void createAndUploadShardConfigToGcsMulti() throws IOException {
-    Shard shardA = new Shard();
-    shardA.setLogicalShardId("testShardA");
-    shardA.setUser(jdbcResourceManagerShardA.getUsername());
-    shardA.setHost(jdbcResourceManagerShardA.getHost());
-    shardA.setPassword(jdbcResourceManagerShardA.getPassword());
-    shardA.setPort(String.valueOf(jdbcResourceManagerShardA.getPort()));
-    shardA.setDbName(jdbcResourceManagerShardA.getDatabaseName());
-    JsonObject jsObjA = (JsonObject) new Gson().toJsonTree(shardA).getAsJsonObject();
-    jsObjA.remove("secretManagerUri");
-
-    Shard shardB = new Shard();
-    shardB.setLogicalShardId("testShardB");
-    shardB.setUser(jdbcResourceManagerShardB.getUsername());
-    shardB.setHost(jdbcResourceManagerShardB.getHost());
-    shardB.setPassword(jdbcResourceManagerShardB.getPassword());
-    shardB.setPort(String.valueOf(jdbcResourceManagerShardB.getPort()));
-    shardB.setDbName(jdbcResourceManagerShardB.getDatabaseName());
-    JsonObject jsObjB = (JsonObject) new Gson().toJsonTree(shardB).getAsJsonObject();
-    jsObjB.remove("secretManagerUri");
-
-    JsonArray ja = new JsonArray();
-    ja.add(jsObjA);
-    ja.add(jsObjB);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
   private void insertDataInSpanner() {

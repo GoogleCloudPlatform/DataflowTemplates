@@ -15,43 +15,28 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.PubSubNotifiedDlqIO;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
-import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchemaScanner;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
@@ -63,15 +48,10 @@ import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -85,10 +65,7 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -110,7 +87,7 @@ import org.slf4j.LoggerFactory;
     description =
         "Streaming pipeline. Reads data from Spanner Change Streams and"
             + " writes them to a source.",
-    optionsClass = Options.class,
+    optionsClass = SpannerToSourceDbOptions.class,
     flexContainerName = "spanner-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
     hidden = false,
@@ -119,441 +96,13 @@ public class SpannerToSourceDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb.class);
 
-  /**
-   * Options supported by the pipeline.
-   *
-   * <p>Inherits standard configuration options.
-   */
-  public interface Options extends PipelineOptions, StreamingOptions {
-
-    @TemplateParameter.Text(
-        order = 1,
-        optional = false,
-        description = "Name of the change stream to read from",
-        helpText =
-            "This is the name of the Spanner change stream that the pipeline will read from.")
-    String getChangeStreamName();
-
-    void setChangeStreamName(String value);
-
-    @TemplateParameter.Text(
-        order = 2,
-        optional = false,
-        description = "Cloud Spanner Instance Id.",
-        helpText =
-            "This is the name of the Cloud Spanner instance where the changestream is present.")
-    String getInstanceId();
-
-    void setInstanceId(String value);
-
-    @TemplateParameter.Text(
-        order = 3,
-        optional = false,
-        description = "Cloud Spanner Database Id.",
-        helpText =
-            "This is the name of the Cloud Spanner database that the changestream is monitoring")
-    String getDatabaseId();
-
-    void setDatabaseId(String value);
-
-    @TemplateParameter.ProjectId(
-        order = 4,
-        optional = false,
-        description = "Cloud Spanner Project Id.",
-        helpText = "This is the name of the Cloud Spanner project.")
-    String getSpannerProjectId();
-
-    void setSpannerProjectId(String projectId);
-
-    @TemplateParameter.Text(
-        order = 5,
-        optional = false,
-        description = "Cloud Spanner Instance to store metadata when reading from changestreams",
-        helpText =
-            "This is the instance to store the metadata used by the connector to control the"
-                + " consumption of the change stream API data.")
-    String getMetadataInstance();
-
-    void setMetadataInstance(String value);
-
-    @TemplateParameter.Text(
-        order = 6,
-        optional = false,
-        description = "Cloud Spanner Database to store metadata when reading from changestreams",
-        helpText =
-            "This is the database to store the metadata used by the connector to control the"
-                + " consumption of the change stream API data.")
-    String getMetadataDatabase();
-
-    void setMetadataDatabase(String value);
-
-    @TemplateParameter.Text(
-        order = 36,
-        optional = true,
-        description = "Cloud Spanner Database to store change stream connector metadata",
-        helpText =
-            "This is the database to store the metadata used by the change stream connector. "
-                + "If not provided, it defaults to the metadata database.")
-    String getChangeStreamMetadataDatabase();
-
-    void setChangeStreamMetadataDatabase(String value);
-
-    @TemplateParameter.Text(
-        order = 7,
-        optional = true,
-        description = "Cloud Spanner metadata table name",
-        helpText =
-            "The Spanner change streams connector metadata table name to use. If not provided,"
-                + " Spanner automatically creates the streams connector metadata table during the pipeline flow"
-                + " change. You must provide this parameter when updating an existing pipeline to ensure"
-                + " that the metadata table from the original job is carried over.")
-    String getSpannerMetadataTableName();
-
-    void setSpannerMetadataTableName(String value);
-
-    @TemplateParameter.Text(
-        order = 8,
-        optional = true,
-        description = "Changes are read from the given timestamp",
-        helpText = "Read changes from the given timestamp.")
-    @Default.String("")
-    String getStartTimestamp();
-
-    void setStartTimestamp(String value);
-
-    @TemplateParameter.Text(
-        order = 9,
-        optional = true,
-        description = "Changes are read until the given timestamp",
-        helpText =
-            "Read changes until the given timestamp. If no timestamp provided, reads indefinitely.")
-    @Default.String("")
-    String getEndTimestamp();
-
-    void setEndTimestamp(String value);
-
-    @TemplateParameter.Text(
-        order = 10,
-        optional = true,
-        description = "Cloud Spanner shadow table prefix.",
-        helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
-    @Default.String("rev_shadow_")
-    String getShadowTablePrefix();
-
-    void setShadowTablePrefix(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 11,
-        optional = false,
-        description = "Path to GCS file containing the the Source shard details",
-        helpText = "Path to GCS file containing connection profile info for source shards.")
-    String getSourceShardsFilePath();
-
-    void setSourceShardsFilePath(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 12,
-        optional = true,
-        description = "Session File Path in Cloud Storage",
-        helpText =
-            "Session file path in Cloud Storage that contains mapping information from"
-                + " HarbourBridge")
-    String getSessionFilePath();
-
-    void setSessionFilePath(String value);
-
-    @TemplateParameter.Enum(
-        order = 13,
-        optional = true,
-        enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
-        description = "Filtration mode",
-        helpText =
-            "Mode of Filtration, decides how to drop certain records based on a criteria. Currently"
-                + " supported modes are: none (filter nothing), forward_migration (filter records"
-                + " written via the forward migration pipeline). Defaults to forward_migration.")
-    @Default.String("forward_migration")
-    String getFiltrationMode();
-
-    void setFiltrationMode(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 14,
-        optional = true,
-        description = "Custom jar location in Cloud Storage",
-        helpText =
-            "Custom jar location in Cloud Storage that contains the customization logic"
-                + " for fetching shard id.")
-    @Default.String("")
-    String getShardingCustomJarPath();
-
-    void setShardingCustomJarPath(String value);
-
-    @TemplateParameter.Text(
-        order = 15,
-        optional = true,
-        description = "Custom class name",
-        helpText =
-            "Fully qualified class name having the custom shard id implementation.  It is a"
-                + " mandatory field in case shardingCustomJarPath is specified")
-    @Default.String("")
-    String getShardingCustomClassName();
-
-    void setShardingCustomClassName(String value);
-
-    @TemplateParameter.Text(
-        order = 16,
-        optional = true,
-        description = "Custom sharding logic parameters",
-        helpText =
-            "String containing any custom parameters to be passed to the custom sharding class.")
-    @Default.String("")
-    String getShardingCustomParameters();
-
-    void setShardingCustomParameters(String value);
-
-    @TemplateParameter.Text(
-        order = 17,
-        optional = true,
-        description = "SourceDB timezone offset",
-        helpText =
-            "This is the timezone offset from UTC for the source database. Example value: +10:00")
-    @Default.String("+00:00")
-    String getSourceDbTimezoneOffset();
-
-    void setSourceDbTimezoneOffset(String value);
-
-    @TemplateParameter.PubsubSubscription(
-        order = 18,
-        optional = true,
-        description =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
-                + " retry directory when running in regular mode.",
-        helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
-                + " retry directory when running in regular mode. The name should be in the format"
-                + " of projects/<project-id>/subscriptions/<subscription-name>. When set, the"
-                + " deadLetterQueueDirectory and dlqRetryMinutes are ignored.")
-    String getDlqGcsPubSubSubscription();
-
-    void setDlqGcsPubSubSubscription(String value);
-
-    @TemplateParameter.Text(
-        order = 19,
-        optional = true,
-        description = "Directory name for holding skipped records",
-        helpText =
-            "Records skipped from reverse replication are written to this directory. Default"
-                + " directory name is skip.")
-    @Default.String("skip")
-    String getSkipDirectoryName();
-
-    void setSkipDirectoryName(String value);
-
-    @TemplateParameter.Long(
-        order = 20,
-        optional = true,
-        description = "Maximum connections per shard.",
-        helpText = "This will come from shard file eventually.")
-    @Default.Long(10000)
-    Long getMaxShardConnections();
-
-    void setMaxShardConnections(Long value);
-
-    @TemplateParameter.Text(
-        order = 21,
-        optional = true,
-        description = "Dead letter queue directory.",
-        helpText =
-            "The file path used when storing the error queue output. "
-                + "The default file path is a directory under the Dataflow job's temp location.")
-    @Default.String("")
-    String getDeadLetterQueueDirectory();
-
-    void setDeadLetterQueueDirectory(String value);
-
-    @TemplateParameter.Integer(
-        order = 22,
-        optional = true,
-        description = "Dead letter queue maximum retry count",
-        helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to 500.")
-    @Default.Integer(500)
-    Integer getDlqMaxRetryCount();
-
-    void setDlqMaxRetryCount(Integer value);
-
-    @TemplateParameter.Enum(
-        order = 23,
-        optional = true,
-        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
-        enumOptions = {
-          @TemplateEnumOption(RUN_MODE_REGULAR),
-          @TemplateEnumOption(RUN_MODE_RETRY_DLQ),
-          @TemplateEnumOption(RUN_MODE_RETRY_ALL_DLQ)
-        },
-        helpText =
-            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
-    @Default.String(RUN_MODE_REGULAR)
-    String getRunMode();
-
-    void setRunMode(String value);
-
-    @TemplateParameter.Integer(
-        order = 24,
-        optional = true,
-        description = "Dead letter queue retry minutes",
-        helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
-    @Default.Integer(10)
-    Integer getDlqRetryMinutes();
-
-    void setDlqRetryMinutes(Integer value);
-
-    @TemplateParameter.Enum(
-        order = 25,
-        optional = true,
-        description = "Source database type, ex: mysql",
-        enumOptions = {
-          @TemplateEnumOption("mysql"),
-          @TemplateEnumOption("cassandra"),
-          @TemplateEnumOption("postgresql")
-        },
-        helpText = "The type of source database to reverse replicate to.")
-    @Default.String("mysql")
-    String getSourceType();
-
-    void setSourceType(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 26,
-        optional = true,
-        description = "Custom transformation jar location in Cloud Storage",
-        helpText =
-            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
-                + " in reverse replication.")
-    @Default.String("")
-    String getTransformationJarPath();
-
-    void setTransformationJarPath(String value);
-
-    @TemplateParameter.Text(
-        order = 27,
-        optional = true,
-        description = "Custom class name for transformation",
-        helpText =
-            "Fully qualified class name having the custom transformation logic.  It is a"
-                + " mandatory field in case transformationJarPath is specified")
-    @Default.String("")
-    String getTransformationClassName();
-
-    void setTransformationClassName(String value);
-
-    @TemplateParameter.Text(
-        order = 28,
-        optional = true,
-        description = "Custom parameters for transformation",
-        helpText =
-            "String containing any custom parameters to be passed to the custom transformation class.")
-    @Default.String("")
-    String getTransformationCustomParameters();
-
-    void setTransformationCustomParameters(String value);
-
-    @TemplateParameter.Text(
-        order = 29,
-        optional = true,
-        description = "Table name overrides from spanner to source",
-        regexes =
-            "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
-        example = "[{Singers, Vocalists}, {Albums, Records}]",
-        helpText =
-            "These are the table name overrides from spanner to source. They are written in the"
-                + "following format: [{SpannerTableName1, SourceTableName1}, {SpannerTableName2, SourceTableName2}]"
-                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
-    @Default.String("")
-    String getTableOverrides();
-
-    void setTableOverrides(String value);
-
-    @TemplateParameter.Text(
-        order = 30,
-        optional = true,
-        description = "Column name overrides from spanner to source",
-        regexes =
-            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
-        example =
-            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
-        helpText =
-            "These are the column name overrides from spanner to source. They are written in the"
-                + "following format: [{SpannerTableName1.SpannerColumnName1, SpannerTableName1.SourceColumnName1}, {SpannerTableName2.SpannerColumnName1, SpannerTableName2.SourceColumnName1}]"
-                + "Note that the SpannerTableName should remain the same in both the spanner and source pair. To override table names, use tableOverrides."
-                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
-    @Default.String("")
-    String getColumnOverrides();
-
-    void setColumnOverrides(String value);
-
-    @TemplateParameter.GcsReadFile(
-        order = 31,
-        optional = true,
-        description = "File based overrides from spanner to source",
-        helpText =
-            "A file which specifies the table and the column name overrides from spanner to source.")
-    @Default.String("")
-    String getSchemaOverridesFilePath();
-
-    void setSchemaOverridesFilePath(String value);
-
-    @TemplateParameter.Text(
-        order = 32,
-        optional = true,
-        description = "Directory name for holding filtered records",
-        helpText =
-            "Records skipped from reverse replication are written to this directory. Default"
-                + " directory name is skip.")
-    @Default.String("filteredEvents")
-    String getFilterEventsDirectoryName();
-
-    void setFilterEventsDirectoryName(String value);
-
-    @TemplateParameter.Boolean(
-        order = 33,
-        optional = true,
-        description = "Boolean setting if reverse migration is sharded",
-        helpText =
-            "Sets the template to a sharded migration. If source shard template contains more"
-                + " than one shard, the value will be set to true. This value defaults to false.")
-    @Default.Boolean(false)
-    Boolean getIsShardedMigration();
-
-    void setIsShardedMigration(Boolean value);
-
-    @TemplateParameter.Text(
-        order = 34,
-        optional = true,
-        description = "Failure injection parameter",
-        helpText = "Failure injection parameter. Only used for testing.")
-    @Default.String("")
-    String getFailureInjectionParameter();
-
-    void setFailureInjectionParameter(String value);
-
-    @TemplateParameter.Enum(
-        order = 35,
-        enumOptions = {
-          @TemplateEnumOption("LOW"),
-          @TemplateEnumOption("MEDIUM"),
-          @TemplateEnumOption("HIGH")
-        },
-        optional = true,
-        description = "Priority for Spanner RPC invocations",
-        helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of:"
-                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
-    @Default.Enum("HIGH")
-    RpcPriority getSpannerPriority();
-
-    void setSpannerPriority(RpcPriority value);
-  }
+  // JDBC Drivers
+  private static final String MYSQL_DRIVER = "com.mysql.cj.jdbc.Driver";
+  private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
+
+  // JDBC URL Prefixes
+  private static final String MYSQL_JDBC_PREFIX = "jdbc:mysql://";
+  private static final String POSTGRESQL_JDBC_PREFIX = "jdbc:postgresql://";
 
   /**
    * Main entry point for executing the pipeline.
@@ -565,7 +114,12 @@ public class SpannerToSourceDb {
 
     LOG.info("Starting Spanner change streams to sink");
 
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    SpannerToSourceDbOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToSourceDbOptions.class);
+
+    // Stage SSL certificates to extraFiles if required as per the pipeline options.
+    // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
+    new CommonTemplateJvmInitializer().beforeProcessing(options);
 
     boolean isRetryDLQMode = RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     options.setStreaming(!isRetryDLQMode);
@@ -579,7 +133,7 @@ public class SpannerToSourceDb {
    * @param options The execution parameters to the pipeline.
    * @return The result of the pipeline execution.
    */
-  public static PipelineResult run(Options options) {
+  public static PipelineResult run(SpannerToSourceDbOptions options) {
     long startTime = System.currentTimeMillis();
     Pipeline pipeline = Pipeline.create(options);
     pipeline
@@ -592,28 +146,14 @@ public class SpannerToSourceDb {
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers() > 0
             ? pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers()
             : 1;
-    int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
-    if (connectionPoolSizePerWorker < 1) {
-      // This can happen when the number of workers is more than max.
-      // This can cause overload on the source database. Error out and let the user know.
-      LOG.error(
-          "Max workers {} is more than max shard connections {}, this can lead to more database"
-              + " connections than desired",
-          maxNumWorkers,
-          options.getMaxShardConnections());
-      throw new IllegalArgumentException(
-          "Max Dataflow workers "
-              + maxNumWorkers
-              + " is more than max per shard connections: "
-              + options.getMaxShardConnections()
-              + " this can lead to more"
-              + " database connections than desired. Either reduce the max allowed workers or"
-              + " incease the max shard connections");
-    }
+    int connectionPoolSizePerWorker =
+        calculateConnectionPoolSizePerWorker(options.getMaxShardConnections(), maxNumWorkers);
 
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
+    Optional<Integer> resourceHintsMinCpus =
+        DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
@@ -657,37 +197,80 @@ public class SpannerToSourceDb {
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
-    String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
-      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-
-    } else {
-      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
-      shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
-      LOG.info("Cassandra config is: {}", shards.get(0));
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+    ISpToSrcSourceConnector sourceConnector;
+    try {
+      sourceConnector = SourceProcessorFactory.getSource(options.getSourceType());
+      shards = sourceConnector.parseShardConfig(options.getSourceShardsFilePath());
+    } catch (Exception e) {
+      throw new RuntimeException("Error parsing shard list", e);
     }
 
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
-      validateMySQLNotReadOnly(shards);
+    if (shards == null || shards.isEmpty()) {
+      LOG.error("Shard list should have at least 1 element.");
+      throw new IllegalArgumentException("Shard list should have at least 1 element.");
     }
 
-    SourceSchema sourceSchema = fetchSourceSchema(options, shards);
+    String shardingMode =
+        sourceConnector.supportsSharding()
+            ? Constants.SHARDING_MODE_MULTI_SHARD
+            : Constants.SHARDING_MODE_SINGLE_SHARD;
+
+    try {
+      sourceConnector.validate(shards, options);
+    } catch (Exception e) {
+      throw new RuntimeException("Validation failed", e);
+    }
+
+    SourceSchema sourceSchema;
+    try {
+      sourceSchema = sourceConnector.getInformationSchema(shards);
+    } catch (Exception e) {
+      throw new RuntimeException("Error fetching source schema", e);
+    }
     LOG.info("Source schema: {}", sourceSchema);
 
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
-      if (shard.getLogicalShardId() == null) {
+      if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
         shard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
         LOG.info(
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
       }
     }
 
+    buildPipeline(
+        pipeline,
+        options,
+        sourceSchema,
+        shards,
+        ddlView,
+        shadowTableDdlView,
+        spannerConfig,
+        spannerMetadataConfig,
+        connectionPoolSizePerWorker,
+        shardingMode,
+        startTime,
+        maxNumWorkers);
+
+    return pipeline.run();
+  }
+
+  static void buildPipeline(
+      Pipeline pipeline,
+      SpannerToSourceDbOptions options,
+      SourceSchema sourceSchema,
+      List<Shard> shards,
+      PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
+      SpannerConfig spannerConfig,
+      SpannerConfig spannerMetadataConfig,
+      int connectionPoolSizePerWorker,
+      String shardingMode,
+      long startTime,
+      int maxNumWorkers) {
+
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -926,12 +509,10 @@ public class SpannerToSourceDb {
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
                 .setIncludePaneInfo(true)
                 .build());
-
-    return pipeline.run();
   }
 
   public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
-      Options options, SpannerConfig spannerConfig) {
+      SpannerToSourceDbOptions options, SpannerConfig spannerConfig) {
 
     Timestamp startTime = Timestamp.now();
     if (!options.getStartTimestamp().equals("")) {
@@ -964,7 +545,7 @@ public class SpannerToSourceDb {
     return readChangeStreamDoFn;
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  static DeadLetterQueueManager buildDlqManager(SpannerToSourceDbOptions options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
@@ -978,97 +559,18 @@ public class SpannerToSourceDb {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
-  private static Connection createJdbcConnection(
-      Shard shard, String driverClassName, String jdbcUrlPrefix) {
-    try {
-      String sourceConnectionUrl =
-          new StringBuilder()
-              .append(jdbcUrlPrefix)
-              .append(shard.getHost())
-              .append(":")
-              .append(shard.getPort())
-              .append("/")
-              .append(shard.getDbName())
-              .toString();
-      HikariConfig config = new HikariConfig();
-      config.setJdbcUrl(sourceConnectionUrl);
-      config.setUsername(shard.getUserName());
-      config.setPassword(shard.getPassword());
-      config.setDriverClassName(driverClassName);
-      HikariDataSource ds = new HikariDataSource(config);
-      return ds.getConnection();
-    } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering jdbc schema: {}", e);
-      throw new RuntimeException(e);
+  static int calculateConnectionPoolSizePerWorker(Long maxShardConnections, int maxNumWorkers) {
+    int connectionPoolSizePerWorker = (int) (maxShardConnections / maxNumWorkers);
+    if (connectionPoolSizePerWorker < 1) {
+      throw new IllegalArgumentException(
+          "Max Dataflow workers "
+              + maxNumWorkers
+              + " is more than max per shard connections: "
+              + maxShardConnections
+              + " this can lead to more"
+              + " database connections than desired. Either reduce the max allowed workers or"
+              + " incease the max shard connections");
     }
-  }
-
-  /**
-   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
-   *
-   * @param cassandraShard The shard containing connection details.
-   * @return A {@link CqlSession} instance.
-   */
-  private static CqlSession createCqlSession(CassandraShard cassandraShard) {
-    CqlSessionBuilder builder = CqlSession.builder();
-    DriverConfigLoader configLoader =
-        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
-    builder.withConfigLoader(configLoader);
-    return builder.build();
-  }
-
-  private static void validateMySQLNotReadOnly(List<Shard> shards) {
-    for (Shard shard : shards) {
-      try (Connection conn =
-          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
-            }
-          }
-        }
-      } catch (SQLException e) {
-        LOG.error(
-            "Error checking MySQL read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking MySQL read-only status", e);
-      }
-    }
-  }
-
-  private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
-    SourceSchemaScanner scanner = null;
-    SourceSchema sourceSchema = null;
-    try {
-      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-        Connection connection =
-            createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
-        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
-        sourceSchema = scanner.scan();
-        connection.close();
-      } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
-        Connection connection =
-            createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://");
-        scanner =
-            new PostgreSQLInformationSchemaScanner(
-                connection, shards.get(0).getDbName(), shards.get(0).getNamespace());
-        sourceSchema = scanner.scan();
-        connection.close();
-      } else {
-        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
-          scanner =
-              new CassandraInformationSchemaScanner(
-                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
-          sourceSchema = scanner.scan();
-        }
-      }
-    } catch (SQLException e) {
-      throw new RuntimeException("Unable to discover jdbc schema", e);
-    }
-    return sourceSchema;
+    return connectionPoolSizePerWorker;
   }
 }
