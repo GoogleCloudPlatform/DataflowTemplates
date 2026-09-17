@@ -92,6 +92,7 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
             oracleResourceManager,
             "oracle/OracleSeparateShadowTableDatabaseMixedIT/oracle-schema.sql",
             oracleUser);
+        SharedOracleLiveITInstance.flushRedoLogs();
 
         OracleSource jdbcSource =
             OracleSource.builder(
@@ -104,10 +105,17 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
                     Map.of(oracleUser.toUpperCase(), List.of("Authors", "Books", "Genre")))
                 .build();
 
+        String sessionFileContent =
+            com.google.common.io.Resources.toString(
+                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
+                java.nio.charset.StandardCharsets.UTF_8);
+        sessionFileContent =
+            sessionFileContent.replace("\"Schema\": \"\"", "\"Schema\": \"" + oracleUser + "\"");
+
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
-                SESSION_FILE_RESOURCE,
+                null,
                 null,
                 "OracleSeparateShadowTableDatabaseMixedIT",
                 spannerResourceManager,
@@ -128,7 +136,7 @@ public class OracleSeparateShadowTableDatabaseMixedIT extends DataStreamToSpanne
                 null,
                 gcsResourceManager,
                 datastreamResourceManager,
-                null,
+                sessionFileContent,
                 jdbcSource);
       }
     }

@@ -29,6 +29,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +107,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
         oracleResourceManager,
         "oracle/OracleDataStreamToSpannerMixedIT/oracle-schema.sql",
         oracleUser);
+    SharedOracleLiveITInstance.flushRedoLogs();
 
     OracleSource jdbcSource =
         OracleSource.builder(
@@ -159,6 +161,22 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
         PipelineLauncher.LaunchConfig.builder(PipelineUtils.createJobName(testName), specPath)
             .setParameters(jobParams)
             .addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+
+    OracleSource oracleSource =
+        OracleSource.builder(
+                oracleResourceManager.getHost(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                1521,
+                oracleResourceManager.getDatabaseName())
+            .setAllowedTables(
+                new HashMap<>() {
+                  {
+                    put(oracleUser.toUpperCase(), Arrays.asList("Authors", "Books", "Genre"));
+                  }
+                })
+            .build();
+
     String sessionFileContent =
         com.google.common.io.Resources.toString(
             com.google.common.io.Resources.getResource(
@@ -181,7 +199,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
             gcsResourceManager,
             null,
             sessionFileContent,
-            null);
+            oracleSource);
 
     assertThatPipeline(jobInfo).isRunning();
 

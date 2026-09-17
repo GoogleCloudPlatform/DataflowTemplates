@@ -85,7 +85,7 @@ public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private GcsResourceManager gcsResourceManager;
-  private static String oracleUser;
+  private String oracleUser;
 
   @Before
   public void setUp() throws Exception {

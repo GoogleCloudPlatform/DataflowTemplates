@@ -148,7 +148,8 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         datastreamResourceManager.startStream(stream);
         streamNameA = stream.getName().substring(stream.getName().lastIndexOf('/') + 1);
 
-        String shardConfig = generateSourceConfig(streamNameA, oracleUser, "L1");
+        String shardConfig =
+            generateSourceConfig(streamNameA, oracleResourceManager.getDatabaseName(), "L1");
 
         gcsResourceManager.createArtifact(
             "input/shardingConfig.conf",
