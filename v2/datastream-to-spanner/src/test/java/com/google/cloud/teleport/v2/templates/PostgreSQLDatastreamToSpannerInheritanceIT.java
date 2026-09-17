@@ -300,12 +300,14 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
       protected CheckResult check() {
         try {
           resourceManager.runSQLUpdate(
-              "INSERT INTO parent_table (id, name) VALUES (1, 'Parent Row 1')");
+              "INSERT INTO parent_table (id, name) VALUES (1, 'Parent Row 1') ON CONFLICT (id) DO"
+                  + " NOTHING");
           resourceManager.runSQLUpdate(
-              "INSERT INTO child_table (id, name, age) VALUES (2, 'Child Row 1', 10)");
+              "INSERT INTO child_table (id, name, age) VALUES (2, 'Child Row 1', 10) ON CONFLICT"
+                  + " (id) DO NOTHING");
           resourceManager.runSQLUpdate(
               "INSERT INTO grandchild_table (id, name, age, city) VALUES (3, 'Grandchild Row 1', 5,"
-                  + " 'New York')");
+                  + " 'New York') ON CONFLICT (id) DO NOTHING");
         } catch (Exception e) {
           return new CheckResult(false, "Failed to insert CDC rows: " + e.getMessage());
         }
