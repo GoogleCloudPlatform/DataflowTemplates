@@ -638,7 +638,18 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         while (rs.next()) {
           java.util.Map<String, Object> row = new java.util.HashMap<>(columns);
           for (int i = 1; i <= columns; ++i) {
-            row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
+            Object obj = rs.getObject(i);
+            if (obj instanceof java.sql.Clob) {
+              row.put(
+                  md.getColumnName(i).toLowerCase(),
+                  ((java.sql.Clob) obj).getSubString(1, (int) ((java.sql.Clob) obj).length()));
+            } else if (obj instanceof java.sql.Blob) {
+              row.put(
+                  md.getColumnName(i).toLowerCase(),
+                  ((java.sql.Blob) obj).getBytes(1, (int) ((java.sql.Blob) obj).length()));
+            } else {
+              row.put(md.getColumnName(i).toLowerCase(), obj);
+            }
           }
           result.add(row);
         }

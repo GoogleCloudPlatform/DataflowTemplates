@@ -33,7 +33,7 @@ public class CustomShardIdFetcherForIT implements IShardIdFetcher {
   public ShardIdResponse getShardId(ShardIdRequest shardIdRequest) {
     LOG.info("Returning custom sharding function");
     ShardIdResponse shardIdResponse = new ShardIdResponse();
-    Long singerId = (Long) shardIdRequest.getSpannerRecord().get("SingerId");
+    Long singerId = Long.valueOf(shardIdRequest.getSpannerRecord().get("SingerId").toString());
     if (singerId % 2 == 0) {
       shardIdResponse.setLogicalShardId("testShardB");
     } else {

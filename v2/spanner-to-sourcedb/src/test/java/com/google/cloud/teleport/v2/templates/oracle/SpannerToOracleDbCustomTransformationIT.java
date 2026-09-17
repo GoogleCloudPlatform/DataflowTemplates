@@ -326,17 +326,6 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
   }
 
-  private String readClob(Object clobObj) throws Exception {
-    if (clobObj == null) {
-      return null;
-    }
-    if (clobObj instanceof java.sql.Clob) {
-      java.sql.Clob clob = (java.sql.Clob) clobObj;
-      return clob.getSubString(1, (int) clob.length());
-    }
-    return clobObj.toString();
-  }
-
   private void assertRowInOracle() throws Exception {
     PipelineOperator.Result result =
         pipelineOperator()
@@ -374,13 +363,12 @@ public class SpannerToOracleDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
     assertThat(((Number) rows.get(1).get("bigint_column")).longValue()).isEqualTo(1001L);
     assertThat(((Number) rows.get(1).get("int_column")).intValue()).isEqualTo(101);
-    assertThat(readClob(rows.get(1).get("text_column")))
-        .isEqualTo("Sample text for entry 2 append");
+    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2 append");
 
     assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
     assertThat(((Number) rows.get(0).get("bigint_column")).longValue()).isEqualTo(12346L);
     assertThat(((Number) rows.get(0).get("int_column")).intValue()).isEqualTo(124);
-    assertThat(readClob(rows.get(0).get("text_column"))).isEqualTo("Sample text append");
+    assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
 
     rows =
         runIsolatedSQLQuery(

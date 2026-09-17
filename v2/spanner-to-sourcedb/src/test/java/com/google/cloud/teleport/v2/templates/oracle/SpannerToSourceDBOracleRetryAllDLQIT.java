@@ -621,25 +621,10 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
 
           if (expectedValue == null) {
             assertTrue("Field " + key + " should be null", actualValue == null);
-          } else if (actualValue instanceof java.sql.Clob) {
-            try {
-              java.sql.Clob clob = (java.sql.Clob) actualValue;
-              String actualString = clob.getSubString(1, (int) clob.length());
-              assertTrue(
-                  "Field " + key + " mismatch", String.valueOf(expectedValue).equals(actualString));
-            } catch (java.sql.SQLException e) {
-              throw new RuntimeException("Failed to read Clob", e);
-            }
-          } else if (expectedValue instanceof byte[] && actualValue instanceof java.sql.Blob) {
-            try {
-              java.sql.Blob blob = (java.sql.Blob) actualValue;
-              byte[] actualBytes = blob.getBytes(1, (int) blob.length());
-              assertTrue(
-                  "Field " + key + " mismatch",
-                  java.util.Arrays.equals((byte[]) expectedValue, actualBytes));
-            } catch (java.sql.SQLException e) {
-              throw new RuntimeException("Failed to read Blob", e);
-            }
+          } else if (expectedValue instanceof byte[] && actualValue instanceof byte[]) {
+            assertTrue(
+                "Field " + key + " mismatch",
+                java.util.Arrays.equals((byte[]) expectedValue, (byte[]) actualValue));
 
           } else if (expectedValue instanceof Boolean && actualValue instanceof java.lang.Number) {
             boolean expectedBool = (Boolean) expectedValue;
