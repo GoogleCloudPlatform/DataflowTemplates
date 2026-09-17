@@ -30,8 +30,8 @@ public class SharedOracleReverseITContainer {
       synchronized (lock) {
         if (instance == null) {
           LOG.info("Initializing global Singleton Static Oracle pool.");
-          String host = System.getProperty("oracleStaticHost", "10.128.0.108");
-          String password = System.getProperty("oracleStaticPassword", "TestPassword123");
+          String host = System.getProperty("oracleStaticHost", "10.128.0.106");
+          String password = System.getProperty("oracleStaticPassword", "Test@Password123");
           CloudOracleResourceManager.Builder builder =
               CloudOracleResourceManager.builder("oracle_static");
           builder.setUsername("system");
