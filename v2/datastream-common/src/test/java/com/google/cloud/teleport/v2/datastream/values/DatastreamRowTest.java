@@ -16,7 +16,11 @@
 package com.google.cloud.teleport.v2.datastream.values;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -76,5 +80,44 @@ public class DatastreamRowTest {
     assertEquals(2, sortFields.size());
     assertEquals("_metadata_timestamp", sortFields.get(0));
     assertEquals("_metadata_lsn", sortFields.get(1));
+  }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_nullSafeWhenNoMetadataField() throws IOException {
+    JsonNode jsonNode = new ObjectMapper().readTree("{\"id\": 123}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    assertTrue(pks.isEmpty());
+    assertNull(row.getSourceType());
+  }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_withPrimaryKeysArray() throws IOException {
+    JsonNode jsonNode =
+        new ObjectMapper()
+            .readTree(
+                "{\"_metadata_source_type\": \"oracle\", \"_metadata_primary_keys\":"
+                    + " [\"id\", \"name\"]}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    assertEquals(2, pks.size());
+    assertEquals("id", pks.get(0));
+    assertEquals("name", pks.get(1));
+  }
+
+  @Test
+  public void testGetPrimaryKeysJsonNode_nonArrayPrimaryKeysNode() throws IOException {
+    JsonNode jsonNode =
+        new ObjectMapper()
+            .readTree(
+                "{\"_metadata_source_type\": \"oracle\", \"_metadata_primary_keys\": \"id\"}");
+    DatastreamRow row = DatastreamRow.of(jsonNode);
+    List<String> pks = row.getPrimaryKeys();
+
+    // Non-array node should not be treated as array, falls back to default oracle PK
+    assertEquals(1, pks.size());
+    assertEquals(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY, pks.get(0));
   }
 }
