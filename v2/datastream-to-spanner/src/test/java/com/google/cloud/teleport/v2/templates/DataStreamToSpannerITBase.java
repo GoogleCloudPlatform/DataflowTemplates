@@ -423,6 +423,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     String jobName = PipelineUtils.createJobName(identifierSuffix);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
+    params.put("targetParallelism", "5");
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
