@@ -13,13 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
+package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOptions;
+import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.spanner.v1.DirectedReadOptions;
 import com.google.spanner.v1.DirectedReadOptions.IncludeReplicas;
@@ -30,11 +30,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test class for {@link SpannerChangeStreamsToBigQuery}. */
+/**
+ * Test class for the {@link SpannerChangeStreamsToPubSub} pipeline options.
+ *
+ * <p>These tests are kept separate from {@link SpannerChangeStreamsToPubSubTest} because that class
+ * declares a {@code TestPubsubSignal} rule, which creates real Pub/Sub topics before every test and
+ * therefore requires a GCP project to run.
+ */
 @RunWith(JUnit4.class)
-public final class SpannerChangeStreamsToBigQueryTest extends SpannerTestHelper {
+public final class SpannerChangeStreamsToPubSubOptionsTest extends SpannerTestHelper {
 
-  private static final String TEST_LABEL = "cs2bq";
+  private static final String TEST_LABEL = "cs2pubsub";
   private static final String DIRECTED_READ_OPTIONS_JSON =
       "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}";
   private static final DirectedReadOptions EXPECTED_DIRECTED_READ_OPTIONS =
@@ -49,14 +55,14 @@ public final class SpannerChangeStreamsToBigQueryTest extends SpannerTestHelper 
                   .build())
           .build();
 
-  public SpannerChangeStreamsToBigQueryTest() {
+  public SpannerChangeStreamsToPubSubOptionsTest() {
     super(TEST_LABEL);
   }
 
   @Test
   public void testSpannerDirectedReadOptions() {
-    SpannerChangeStreamsToBigQueryOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToBigQueryOptions.class);
+    SpannerChangeStreamsToPubSubOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
     options.setSpannerDirectedReadOptions(DIRECTED_READ_OPTIONS_JSON);
 
     // The template forwards the raw option value to SpannerIO.readChangeStream(), which parses it
@@ -69,8 +75,8 @@ public final class SpannerChangeStreamsToBigQueryTest extends SpannerTestHelper 
 
   @Test
   public void testSpannerDirectedReadOptionsNotSet() {
-    SpannerChangeStreamsToBigQueryOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToBigQueryOptions.class);
+    SpannerChangeStreamsToPubSubOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
 
     // The option is optional, so an unset value must leave the SpannerConfig untouched.
     SpannerConfig spannerConfig =
@@ -81,8 +87,8 @@ public final class SpannerChangeStreamsToBigQueryTest extends SpannerTestHelper 
 
   @Test
   public void testInvalidSpannerDirectedReadOptions() {
-    SpannerChangeStreamsToBigQueryOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToBigQueryOptions.class);
+    SpannerChangeStreamsToPubSubOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
     options.setSpannerDirectedReadOptions("this-is-not-valid-json");
 
     assertThrows(

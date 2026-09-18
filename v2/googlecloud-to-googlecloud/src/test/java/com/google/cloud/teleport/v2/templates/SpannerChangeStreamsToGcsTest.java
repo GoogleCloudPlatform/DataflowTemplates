@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToGcs.run;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
@@ -32,6 +34,9 @@ import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStr
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
 import com.google.gson.Gson;
+import com.google.spanner.v1.DirectedReadOptions;
+import com.google.spanner.v1.DirectedReadOptions.IncludeReplicas;
+import com.google.spanner.v1.DirectedReadOptions.ReplicaSelection;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -81,6 +86,19 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   private static final String TEST_INSTANCE = "change-stream-test";
   private static final String TEST_TABLE = "Users";
   private static final String TEST_CHANGE_STREAM = "UsersStream";
+  private static final String DIRECTED_READ_OPTIONS_JSON =
+      "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}";
+  private static final DirectedReadOptions EXPECTED_DIRECTED_READ_OPTIONS =
+      DirectedReadOptions.newBuilder()
+          .setIncludeReplicas(
+              IncludeReplicas.newBuilder()
+                  .addReplicaSelections(
+                      ReplicaSelection.newBuilder()
+                          .setLocation("us-central1")
+                          .setType(ReplicaSelection.Type.READ_ONLY)
+                          .build())
+                  .build())
+          .build();
 
   private static String fakeDir;
   private static String fakeTempLocation;
@@ -246,26 +264,41 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
 
   @Test
   public void testSpannerDirectedReadOptions() {
-    mockGetDialect();
-
-    exception.expect(SpannerException.class);
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
-    options.setOutputFileFormat(FileFormat.AVRO);
-    options.setGcsOutputDirectory(fakeDir);
-    options.setOutputFilenamePrefix(FILENAME_PREFIX);
-    options.setNumShards(NUM_SHARDS);
-    options.setTempLocation(fakeTempLocation);
-    options.setSpannerProjectId(TEST_PROJECT);
-    options.setSpannerInstanceId(TEST_INSTANCE);
-    options.setSpannerDatabase(TEST_TABLE);
-    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
-    options.setSpannerMetadataDatabase(TEST_TABLE);
-    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
-    options.setSpannerDirectedReadOptions(
-        "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}}");
+    options.setSpannerDirectedReadOptions(DIRECTED_READ_OPTIONS_JSON);
 
-    run(options);
+    // The template forwards the raw option value to SpannerIO.readChangeStream(), which parses it
+    // onto the SpannerConfig that is used to read the change stream.
+    SpannerConfig spannerConfig =
+        getFakeSpannerConfig().withDirectedReadOptions(options.getSpannerDirectedReadOptions());
+
+    assertEquals(EXPECTED_DIRECTED_READ_OPTIONS, spannerConfig.getDirectedReadOptions().get());
+  }
+
+  @Test
+  public void testSpannerDirectedReadOptionsNotSet() {
+    SpannerChangeStreamsToGcsOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
+
+    // The option is optional, so an unset value must leave the SpannerConfig untouched.
+    SpannerConfig spannerConfig =
+        getFakeSpannerConfig().withDirectedReadOptions(options.getSpannerDirectedReadOptions());
+
+    assertNull(spannerConfig.getDirectedReadOptions());
+  }
+
+  @Test
+  public void testInvalidSpannerDirectedReadOptions() {
+    SpannerChangeStreamsToGcsOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
+    options.setSpannerDirectedReadOptions("this-is-not-valid-json");
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            getFakeSpannerConfig()
+                .withDirectedReadOptions(options.getSpannerDirectedReadOptions()));
   }
 
   @Test

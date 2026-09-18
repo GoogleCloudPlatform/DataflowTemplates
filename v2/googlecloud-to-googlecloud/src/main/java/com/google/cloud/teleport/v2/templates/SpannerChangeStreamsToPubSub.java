@@ -50,21 +50,11 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Pub/Sub",
     description = {
-      "The Cloud Spanner change streams to the Pub/Sub template is a streaming pipeline that"
-          + " streams Cloud Spanner data change records and writes them into Pub/Sub topics using"
-          + " Dataflow Runner V2.\n",
-      "To output your data to a new Pub/Sub topic, you need to first create the topic. After"
-          + " creation, Pub/Sub automatically generates and attaches a subscription to the new"
-          + " topic. If you try to output data to a Pub/Sub topic that doesn't exist, the dataflow"
-          + " pipeline throws an exception, and the pipeline gets stuck as it continuously tries to"
-          + " make a connection.\n",
+      "The Cloud Spanner change streams to the Pub/Sub template is a streaming pipeline that streams Cloud Spanner data change records and writes them into Pub/Sub topics using Dataflow Runner V2.\n",
+      "To output your data to a new Pub/Sub topic, you need to first create the topic. After creation, Pub/Sub automatically generates and attaches a subscription to the new topic. "
+          + "If you try to output data to a Pub/Sub topic that doesn't exist, the dataflow pipeline throws an exception, and the pipeline gets stuck as it continuously tries to make a connection.\n",
       "If the necessary Pub/Sub topic already exists, you can output data to that topic.",
-      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change"
-          + " streams</a>, <a"
-          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to"
-          + " build change streams Dataflow pipelines</a>, and <a"
-          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best"
-          + " practices</a>."
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = SpannerChangeStreamsToPubSubOptions.class,
     flexContainerName = "googlecloud-to-googlecloud",
