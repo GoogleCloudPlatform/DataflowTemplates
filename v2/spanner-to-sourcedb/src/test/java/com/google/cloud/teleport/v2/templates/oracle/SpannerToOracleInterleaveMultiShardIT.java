@@ -374,7 +374,7 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
     // Delete records
     List<Mutation> mutations = new ArrayList<>();
     Mutation c1 = Mutation.delete("child11", Key.of(11));
-    Mutation c2 = Mutation.delete("child21", Key.of(22));
+    Mutation c2 = Mutation.delete("child21", Key.of(2, 22));
     Mutation p1 = Mutation.delete("parent1", Key.of(1));
     Mutation p2 = Mutation.delete("parent2", Key.of(2));
     mutations.add(c1);

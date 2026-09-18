@@ -187,8 +187,12 @@ public class SpannerToSourceDbOracleStringOverridesSchemaMapperIT extends Spanne
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () ->
-                    (oracleResourceManager.getRowCount("\"source_table1\"") == 2
-                        && oracleResourceManager.getRowCount("\"source_table2\"") == 2));
+                    (runIsolatedGetRowCount(
+                                oracleResourceManager, testUsername, "\"source_table1\"")
+                            == 2
+                        && runIsolatedGetRowCount(
+                                oracleResourceManager, testUsername, "\"source_table2\"")
+                            == 2));
     assertThatResult(result).meetsConditions();
 
     // Assert Oracle table1 (should be source_table1, with column name_col1 renamed)

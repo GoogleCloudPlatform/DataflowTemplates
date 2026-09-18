@@ -92,7 +92,9 @@ public class SpannerToOracleDataTypesPGDialectIT extends SpannerToSourceDbITBase
       gcsResourceManager.uploadArtifact(
           "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
     } catch (Exception e) {
-      gcsResourceManager.createArtifact("input/session.json", "{}");
+      gcsResourceManager.createArtifact(
+          "input/session.json",
+          "{\"SessionName\":\"NewSession\",\"EditorName\":\"\",\"DatabaseType\":\"mysql\",\"DatabaseName\":\"test\",\"Dialect\":\"postgresql\",\"SpSchema\":{}}");
     }
 
     pubsubResourceManager = setUpPubSubResourceManager();

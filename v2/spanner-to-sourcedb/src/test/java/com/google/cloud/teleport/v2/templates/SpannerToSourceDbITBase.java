@@ -173,11 +173,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setNamespace(testUsername);
       shard.setUser(testUsername);
       shard.setPassword("TestPassword123");
-    } else if (shardId.equals("shardA") && testUsernameShardA != null) {
+    } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
+        && testUsernameShardA != null) {
       shard.setNamespace(testUsernameShardA);
       shard.setUser(testUsernameShardA);
       shard.setPassword("TestPassword123");
-    } else if (shardId.equals("shardB") && testUsernameShardB != null) {
+    } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
+        && testUsernameShardB != null) {
       shard.setNamespace(testUsernameShardB);
       shard.setUser(testUsernameShardB);
       shard.setPassword("TestPassword123");
@@ -350,6 +352,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     if (jobParameters != null) {
       params.putAll(jobParameters);
+      params.put("workerMachineType", "n1-standard-4");
     }
     if (shardingCustomJarPath != null) {
       params.put(
@@ -698,9 +701,42 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected void createOracleTableWithNColumns(
       com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
           jdbcResourceManager,
-      String arg1,
-      int arg2,
-      String arg3) {}
+      String tableName,
+      int n,
+      String stringSize) {
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("table name blank");
+    }
+    if (n < 1) {
+      throw new IllegalArgumentException("n<1");
+    }
+    if (stringSize == null || stringSize.isBlank()) {
+      throw new IllegalArgumentException("stringSize blank");
+    }
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder
+        .append("CREATE TABLE ")
+        .append(testUsername)
+        .append(".")
+        .append(tableName)
+        .append(" (\n");
+    ddlBuilder.append("    id VARCHAR2(").append(stringSize).append(") NOT NULL PRIMARY KEY,\n");
+
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" VARCHAR2(").append(stringSize).append(")");
+      if (i < n) {
+        ddlBuilder.append(",\n");
+      }
+    }
+    ddlBuilder.append("\n)");
+
+    try {
+      jdbcResourceManager.runSQLUpdate(ddlBuilder.toString());
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing Oracle DDL statement", e);
+    }
+  }
 
   @org.junit.After
   public void clearIsolatedUser() {
