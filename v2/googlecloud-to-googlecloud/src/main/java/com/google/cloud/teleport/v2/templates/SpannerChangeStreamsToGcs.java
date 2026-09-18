@@ -174,7 +174,8 @@ public class SpannerChangeStreamsToGcs {
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
                 .withMetadataTable(metadataTableName)
-                .withTvfNameList(tvfNameList))
+                .withTvfNameList(tvfNameList)
+                .withDirectedReadOptions(options.getSpannerDirectedReadOptions()))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
