@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
@@ -54,7 +53,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBase {
@@ -169,6 +168,8 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         jobParameters.put(
             "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));
         jobParameters.put("datastreamSourceType", "oracle");
+        jobParameters.put("workerMachineType", "n1-standard-4");
+        jobParameters.put("inputFileFormat", "avro");
         jobParameters.put("dlqRetryMinutes", "1");
 
         jobInfo =
@@ -288,6 +289,20 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     retryJobParameters.put(
         "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
     retryJobParameters.put("datastreamSourceType", "oracle");
+    retryJobParameters.put("workerMachineType", "n1-standard-4");
+    retryJobParameters.put("workerMachineType", "n1-standard-4");
+    retryJobParameters.put("inputFileFormat", "avro");
+
+    try {
+      java.lang.reflect.Field field =
+          com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher
+              .class
+              .getDeclaredField("spannerMigrationTransformer");
+      field.setAccessible(true);
+      field.set(null, null);
+    } catch (Exception e) {
+      LOG.warn("Failed to clear CustomTransformationImplFetcher static cache", e);
+    }
 
     PipelineLauncher.LaunchInfo retryJobInfo =
         launchDataflowJob(

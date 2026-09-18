@@ -122,6 +122,7 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                   {
                     put("inputFileFormat", "avro");
                     put("datastreamSourceType", "oracle");
+                    put("workerMachineType", "n1-standard-4");
                   }
                 },
                 null,
@@ -263,7 +264,10 @@ public class OracleDataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
 
     sb.append(", PRIMARY KEY (\"").append(String.join("\", \"", COLUMNS)).append("\"))");
 
-    return sb.toString();
+    return sb.toString()
+        + "; ALTER TABLE \""
+        + tableName
+        + "\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;";
   }
 
   /** Creates Spanner tables dynamically with 16 columns as a composite primary key. */

@@ -264,7 +264,10 @@ public class DataStreamToSpannerOracleWideRowForMaxColumnsPerTablesIT
       }
     }
     sb.append(", PRIMARY KEY (").append(COLUMNS.get(0)).append("))");
-    return sb.toString();
+    return sb.toString()
+        + "; ALTER TABLE \""
+        + tableName
+        + "\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;";
   }
 
   private void createSpannerTables() {

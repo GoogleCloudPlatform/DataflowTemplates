@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
@@ -51,7 +50,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBase {
@@ -418,7 +417,13 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
             "oracle-datastream-to-spanner-data-types",
             spannerResourceManager,
             pubsubResourceManager,
-            new HashMap<>(),
+            new HashMap<>() {
+              {
+                put("inputFileFormat", "avro");
+                put("datastreamSourceType", "oracle");
+                put("workerMachineType", "n1-standard-4");
+              }
+            },
             null,
             null,
             gcsResourceManager,

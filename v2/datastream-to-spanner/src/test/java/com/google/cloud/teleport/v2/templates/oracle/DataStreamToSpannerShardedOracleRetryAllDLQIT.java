@@ -154,6 +154,9 @@ public class DataStreamToSpannerShardedOracleRetryAllDLQIT extends DataStreamToS
         jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
         jobParameters.put("transformationCustomParameters", "mode=bad");
         jobParameters.put("dlqMaxRetryCount", "20");
+        jobParameters.put("inputFileFormat", "avro");
+        jobParameters.put("datastreamSourceType", "oracle");
+        jobParameters.put("workerMachineType", "n1-standard-4");
         jobParameters.put("dlqRetryMinutes", "60");
         jobParameters.put(
             "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));

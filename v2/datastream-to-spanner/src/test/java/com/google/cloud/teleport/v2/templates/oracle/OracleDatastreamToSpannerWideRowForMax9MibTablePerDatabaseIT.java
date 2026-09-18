@@ -126,7 +126,13 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
                 "OracleDataStreamToSpannerWideRowFor9MibTablePerDatabaseIT",
                 spannerResourceManager,
                 pubsubResourceManager,
-                new HashMap<>(),
+                new HashMap<>() {
+                  {
+                    put("inputFileFormat", "avro");
+                    put("datastreamSourceType", "oracle");
+                    put("workerMachineType", "n1-standard-4");
+                  }
+                },
                 null,
                 null,
                 gcsResourceManager,
@@ -179,7 +185,13 @@ public class OracleDatastreamToSpannerWideRowForMax9MibTablePerDatabaseIT
                   + ROW_ID
                   + "\"))";
           try {
-            executeOracleSql(oracleResourceManager, createSql, oracleUser);
+            executeOracleSql(
+                oracleResourceManager,
+                createSql
+                    + "; ALTER TABLE \""
+                    + tableName
+                    + "\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;",
+                oracleUser);
           } catch (Exception e) {
             throw new RuntimeException(e);
           }

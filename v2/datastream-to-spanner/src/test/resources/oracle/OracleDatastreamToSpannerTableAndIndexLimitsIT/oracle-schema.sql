@@ -8,6 +8,7 @@ CREATE TABLE "LargeKey" (
     "value_col" CLOB,
     PRIMARY KEY ("pk_col1", "pk_col2", "pk_col3")
 );
+ALTER TABLE "LargeKey" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
 CREATE INDEX "large_index" ON "LargeKey" ("col1", "col2", "col3");
 
@@ -26,3 +27,4 @@ CREATE TABLE "LargeCell" (
   "max_string_col_to_bytes" BLOB,
   "max_string_col_to_str" CLOB
 );
+ALTER TABLE "LargeCell" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;

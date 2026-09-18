@@ -140,3 +140,4 @@ CREATE TABLE "true" (
 );
 INSERT INTO "true" ("id", "ALL", "AND", "AS") VALUES (1, 'all', 'and', 'as');
 COMMIT;
+ALTER TABLE "true" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;

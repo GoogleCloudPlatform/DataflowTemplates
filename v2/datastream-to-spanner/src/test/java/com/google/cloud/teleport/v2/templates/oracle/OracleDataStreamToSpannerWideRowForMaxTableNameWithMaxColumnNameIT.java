@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
@@ -46,17 +45,15 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Triaging flaky test") // TODO(b/424087505)
 public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     extends DataStreamToSpannerITBase {
 
@@ -125,6 +122,8 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
+                    put("datastreamSourceType", "oracle");
+                    put("workerMachineType", "n1-standard-4");
                   }
                 },
                 null,
@@ -161,7 +160,11 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   private void setupSchema() {
     TABLE_NAMES.forEach(
         tableName -> {
-          oracleResourceManager.runSQLUpdate(getJDBCSchema(tableName));
+          try {
+            executeOracleSql(oracleResourceManager, getJDBCSchema(tableName), oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
         });
     createSpannerTables();
   }
@@ -254,7 +257,10 @@ public class OracleDataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
       }
     }
     sb.append(", PRIMARY KEY (\"").append(COLUMNS.get(0)).append("\"))");
-    return sb.toString();
+    return sb.toString()
+        + "; ALTER TABLE \""
+        + tableName
+        + "\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;";
   }
 
   private void createSpannerTables() {

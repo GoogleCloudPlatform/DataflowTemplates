@@ -197,7 +197,7 @@ public class OracleDataStreamToSpannerMixedIT extends DataStreamToSpannerITBase 
             null,
             null,
             gcsResourceManager,
-            null,
+            datastreamResourceManager,
             sessionFileContent,
             oracleSource);
 
