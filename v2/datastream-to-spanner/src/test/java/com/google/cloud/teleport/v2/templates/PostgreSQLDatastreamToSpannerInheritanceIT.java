@@ -71,8 +71,11 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
   private static CloudPostgresResourceManager.ReplicationInfo pgDialectReplicationInfo;
 
   private static boolean initialized = false;
+  // PostgreSQL sources that Datastream reads via CDC; a separate database per test method keeps the
+  // GoogleSQL-dialect and PG-dialect runs independent (own source data and replication stream).
   private static CloudPostgresResourceManager postgresResourceManager;
   private static CloudPostgresResourceManager pgDialectPostgresResourceManager;
+  // Spanner destinations the rows replicate into: one GoogleSQL-dialect, one PostgreSQL-dialect.
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager pgDialectSpannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
