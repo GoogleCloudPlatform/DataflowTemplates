@@ -1,0 +1,42 @@
+digraph G {
+  node [shape=box, style=filled, color=lightblue];
+  
+  Spanner [label="Cloud Spanner\n(Change Streams)", shape=cylinder, color=lightgrey];
+  MetadataDb [label="Spanner Metadata DB\n(Shadow Tables)", shape=cylinder, color=lightgrey];
+  SourceDb [label="Source Database\n(MySQL / PostgreSQL / Cassandra)", shape=cylinder, color=lightyellow];
+  DLQ [label="GCS Dead Letter Queue\n(DLQ)", shape=cylinder, color=lightpink];
+  PubSub [label="Pub/Sub (DLQ Retry)"];
+
+  SpannerIOReader [label="SpannerIO\nChange Stream Reader"];
+  InformationSchema [label="SpannerInformationSchemaProcessor"];
+  Filter [label="FilterRecordsFn\n(Forward Migration Filter)"];
+  Preprocess [label="PreprocessRecordsFn"];
+  Reshuffle [label="Reshuffle\n(Random Key)"];
+  
+  SourceWriter [label="SourceWriterTransform"];
+  Processor [label="InputRecordProcessor"];
+  DMLGenerator [label="DMLGenerator\n(MySQL, PG, Cassandra)"];
+  DAO [label="Source DAOs\n(JdbcDao, CassandraDao)"];
+  DLQWriter [label="DLQWriteTransform"];
+  DLQReconsumer [label="DLQ Reconsumer\n(PubSub or Continuous)"];
+
+  Spanner -> SpannerIOReader [label=" CDC Events"];
+  MetadataDb -> InformationSchema [label=" DDL / Metadata"];
+  SpannerIOReader -> Reshuffle;
+  Reshuffle -> Filter;
+  Filter -> Preprocess;
+  
+  DLQReconsumer -> Preprocess [label=" Retryable DLQ Events"];
+  PubSub -> DLQReconsumer;
+  DLQ -> DLQReconsumer;
+  
+  Preprocess -> SourceWriter [label=" TrimmedShardedDataChangeRecord"];
+  SourceWriter -> Processor;
+  Processor -> DMLGenerator;
+  Processor -> MetadataDb [label=" Check/Update Shadow Table (processed_commit_ts)"];
+  DMLGenerator -> DAO;
+  DAO -> SourceDb [label=" Apply Mutations"];
+  
+  SourceWriter -> DLQWriter [label=" Errors / Exceptions"];
+  DLQWriter -> DLQ;
+}
