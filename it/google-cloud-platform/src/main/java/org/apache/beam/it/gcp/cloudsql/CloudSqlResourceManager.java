@@ -51,6 +51,32 @@ public abstract class CloudSqlResourceManager
   private static final Duration CONNECTION_RETRY_DELAY = Duration.ofSeconds(5);
   private static final Duration CONNECTION_RETRY_MAX_DELAY = Duration.ofSeconds(60);
 
+  private static final RetryPolicy<Object> CONNECTION_RETRY_POLICY =
+      RetryPolicy.builder()
+          .handleIf(
+              exception ->
+                  ExceptionUtils.containsMessage(exception, "The connection attempt failed")
+                      || ExceptionUtils.containsMessage(exception, "Communications link failure")
+                      || ExceptionUtils.containsMessage(
+                          exception, "Data source rejected establishment of connection")
+                      || ExceptionUtils.containsMessage(exception, "Connection refused")
+                      || ExceptionUtils.containsMessage(exception, "Connection reset")
+                      || ExceptionUtils.containsMessage(exception, "Connect timed out"))
+          .withMaxRetries(CONNECTION_MAX_RETRIES)
+          .withBackoff(CONNECTION_RETRY_DELAY, CONNECTION_RETRY_MAX_DELAY)
+          .onRetry(
+              event ->
+                  LOG.warn(
+                      "Transient Cloud SQL connection failure, retrying (attempt {}).",
+                      event.getAttemptCount(),
+                      event.getLastException()))
+          .build();
+
+  @SuppressWarnings("unchecked")
+  private static <T> RetryPolicy<T> connectionRetryPolicy() {
+    return (RetryPolicy<T>) CONNECTION_RETRY_POLICY;
+  }
+
   protected final List<String> createdTables;
   protected boolean createdDatabase;
   protected boolean usingCustomDb;
@@ -69,38 +95,16 @@ public abstract class CloudSqlResourceManager
   }
 
   @Override
-  public synchronized void runSQLUpdate(@NonNull String sql) {
+  public void runSQLUpdate(@NonNull String sql) {
     // Retried failures are pre-statement connection failures, so this is safe even for
     // non-idempotent DDL like CREATE DATABASE.
     Failsafe.with(connectionRetryPolicy()).run(() -> super.runSQLUpdate(sql));
   }
 
   @Override
-  public synchronized List<Map<String, Object>> runSQLQuery(@NonNull String sql) {
-    return Failsafe.with(this.<List<Map<String, Object>>>connectionRetryPolicy())
+  public List<Map<String, Object>> runSQLQuery(@NonNull String sql) {
+    return Failsafe.with(CloudSqlResourceManager.<List<Map<String, Object>>>connectionRetryPolicy())
         .get(() -> super.runSQLQuery(sql));
-  }
-
-  private <T> RetryPolicy<T> connectionRetryPolicy() {
-    return RetryPolicy.<T>builder()
-        .handleIf(
-            exception ->
-                ExceptionUtils.containsMessage(exception, "The connection attempt failed")
-                    || ExceptionUtils.containsMessage(exception, "Communications link failure")
-                    || ExceptionUtils.containsMessage(
-                        exception, "Data source rejected establishment of connection")
-                    || ExceptionUtils.containsMessage(exception, "Connection refused")
-                    || ExceptionUtils.containsMessage(exception, "Connection reset")
-                    || ExceptionUtils.containsMessage(exception, "Connect timed out"))
-        .withMaxRetries(CONNECTION_MAX_RETRIES)
-        .withBackoff(CONNECTION_RETRY_DELAY, CONNECTION_RETRY_MAX_DELAY)
-        .onRetry(
-            event ->
-                LOG.warn(
-                    "Transient Cloud SQL connection failure, retrying (attempt {}).",
-                    event.getAttemptCount(),
-                    event.getLastException()))
-        .build();
   }
 
   @Override
