@@ -209,6 +209,7 @@ jobs:
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        IS_PR: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
@@ -217,6 +218,8 @@ jobs:
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
+        --it-direct-runner=$IS_PR \
+        --it-integration-test-parallelism="20" \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -227,6 +230,7 @@ jobs:
           **/surefire-reports/TEST-*.xml
           **/surefire-reports/*.html
           **/surefire-reports/html/**
+          **/surefire-reports/*-output.txt
         retention-days: 10
     - name: Integration Test report on GitHub
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
