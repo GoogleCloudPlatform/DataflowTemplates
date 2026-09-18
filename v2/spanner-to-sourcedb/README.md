@@ -105,7 +105,7 @@ A few prerequisites must be considered before starting with reverse replication.
     - **For Spanner:**
       [Source shards file](#sample-source-shards-file-for-spanner) already uploaded to GCS.
 10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped.
+11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard. The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration. The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql). In the event that the shard identifier column is not an existing column, the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations (including all Spanner targets), this step is skipped.
 12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
 13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
@@ -245,7 +245,7 @@ gcloud dataflow flex-template run "spanner-to-spanner-replication" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "changeStreamName=allstream" \
+  --parameters "changeStreamName=<changestream-name>" \
   --parameters "instanceId=<source-spanner-instance>" \
   --parameters "databaseId=<source-spanner-database>" \
   --parameters "spannerProjectId=$PROJECT" \
