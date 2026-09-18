@@ -89,7 +89,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2") // Use the parameter
+            .setPrivateConnectivity(getPrivateConnectivity())
             .build();
 
     cloudSqlSourceResourceManager =
