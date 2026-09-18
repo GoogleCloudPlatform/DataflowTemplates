@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SQLSERVER;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
@@ -47,6 +48,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +56,30 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+
+  private static MSSQLResourceManager staticMSSQLResourceManager;
+
+  private static synchronized MSSQLResourceManager getStaticMSSQLResourceManager(String testId) {
+    synchronized (SpannerToSourceDbITBase.class) {
+      if (staticMSSQLResourceManager == null) {
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        staticMSSQLResourceManager = builder.build();
+      }
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testId);
+      builder.setUsername(staticMSSQLResourceManager.getUsername());
+      builder.setPassword(staticMSSQLResourceManager.getPassword());
+      builder.setHost(staticMSSQLResourceManager.getHost());
+      builder.setPort(staticMSSQLResourceManager.getPort());
+      builder.useStaticContainer();
+      return builder.build();
+    }
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManager(String testId) {
+    return getStaticMSSQLResourceManager(testId);
+  }
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -174,6 +200,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
@@ -299,7 +329,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                             && !Objects.equals(
                                 sourceType,
                                 com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                                    .SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, SOURCE_SQLSERVER))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -308,6 +339,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("workerMachineType", "n2-standard-4");
             put("sourceType", sourceType);
             // Query Spanner server time to bypass local clock skew and set as startTimestamp
             // to ensure the DirectRunner catches all test mutations during initialization.
@@ -559,6 +591,22 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       jdbcResourceManager.runSQLUpdate(ddl);
     } catch (Exception e) {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
+  }
+
+  protected void createSQLServerSchema(
+      MSSQLResourceManager jdbcResourceManager, String sqlServerSchemaFile) throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(sqlServerSchemaFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        jdbcResourceManager.runSQLUpdate(d);
+      }
     }
   }
 }

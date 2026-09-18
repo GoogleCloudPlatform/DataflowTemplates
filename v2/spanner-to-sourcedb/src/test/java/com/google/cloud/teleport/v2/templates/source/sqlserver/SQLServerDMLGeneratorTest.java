@@ -674,6 +674,12 @@ public final class SQLServerDMLGeneratorTest {
         "CAST(0x48656c6c6f AS VARCHAR(MAX))",
         SQLServerDMLGenerator.getColumnValueByType("varchar", "0x48656c6c6f", "+00:00", "BYTES"));
     assertEquals(
+        "CAST(CAST(0x48656c6c6f AS VARCHAR(MAX)) AS NVARCHAR(MAX))",
+        SQLServerDMLGenerator.getColumnValueByType("nvarchar", "0x48656c6c6f", "+00:00", "BYTES"));
+    assertEquals(
+        "CAST(CAST(0x48656c6c6f AS VARCHAR(MAX)) AS NVARCHAR(MAX))",
+        SQLServerDMLGenerator.getColumnValueByType("nchar", "0x48656c6c6f", "+00:00", "PG_BYTEA"));
+    assertEquals(
         "NULL", SQLServerDMLGenerator.getColumnValueByType("varchar", null, "+00:00", "PG_BYTEA"));
   }
 
@@ -812,5 +818,93 @@ public final class SQLServerDMLGeneratorTest {
         defaultInsertResp
             .getDmlStatement()
             .contains("WHEN NOT MATCHED THEN INSERT DEFAULT VALUES;"));
+  }
+
+  @Test
+  public void testFloatAndIntegerAlternativeMappings() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("types_table")
+            .column("f_col")
+            .float64()
+            .endColumn()
+            .column("num_col")
+            .numeric()
+            .endColumn()
+            .column("pg_num_col")
+            .pgNumeric()
+            .endColumn()
+            .column("pg_f8_col")
+            .pgFloat8()
+            .endColumn()
+            .primaryKey()
+            .asc("f_col")
+            .end()
+            .endTable()
+            .build();
+    Table table = ddl.table("types_table");
+
+    // float to numeric: Spanner NUMERIC -> SQL Server FLOAT
+    Column numCol = table.column("num_col");
+    SourceColumn srcFloatCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("num_col").type("float").build();
+    JSONObject numJson = new JSONObject("{\"num_col\":\"52.67\"}");
+    assertEquals(
+        "52.67",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            numCol, srcFloatCol, numJson, "+00:00", new ArrayList<>()));
+
+    // float to numeric (PG dialect): Spanner pgNumeric -> SQL Server FLOAT
+    Column pgNumCol = table.column("pg_num_col");
+    JSONObject pgNumJson = new JSONObject("{\"pg_num_col\":\"52.67\"}");
+    assertEquals(
+        "52.67",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgNumCol, srcFloatCol, pgNumJson, "+00:00", new ArrayList<>()));
+
+    // tinyint to float: Spanner FLOAT64 -> SQL Server TINYINT
+    Column floatCol = table.column("f_col");
+    SourceColumn srcTinyintCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("f_col").type("tinyint").build();
+    JSONObject floatJson = new JSONObject("{\"f_col\":10.0}");
+    assertEquals(
+        "10.0",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            floatCol, srcTinyintCol, floatJson, "+00:00", new ArrayList<>()));
+
+    // smallint to float: Spanner FLOAT64 -> SQL Server SMALLINT
+    SourceColumn srcSmallintCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("f_col").type("smallint").build();
+    JSONObject smallintJson = new JSONObject("{\"f_col\":15.0}");
+    assertEquals(
+        "15.0",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            floatCol, srcSmallintCol, smallintJson, "+00:00", new ArrayList<>()));
+
+    // int to float: Spanner FLOAT64 -> SQL Server INT
+    SourceColumn srcIntCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("f_col").type("int").build();
+    JSONObject intJson = new JSONObject("{\"f_col\":30.0}");
+    assertEquals(
+        "30.0",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            floatCol, srcIntCol, intJson, "+00:00", new ArrayList<>()));
+
+    // bigint to float: Spanner FLOAT64 -> SQL Server BIGINT
+    SourceColumn srcBigintCol =
+        SourceColumn.builder(SourceDatabaseType.SQLSERVER).name("f_col").type("bigint").build();
+    JSONObject bigintJson = new JSONObject("{\"f_col\":40.0}");
+    assertEquals(
+        "40.0",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            floatCol, srcBigintCol, bigintJson, "+00:00", new ArrayList<>()));
+
+    // tinyint to float (PG dialect): Spanner pgFloat8 -> SQL Server TINYINT
+    Column pgFloat8Col = table.column("pg_f8_col");
+    JSONObject pgFloat8Json = new JSONObject("{\"pg_f8_col\":10.0}");
+    assertEquals(
+        "10.0",
+        SQLServerDMLGenerator.getMappedColumnValue(
+            pgFloat8Col, srcTinyintCol, pgFloat8Json, "+00:00", new ArrayList<>()));
   }
 }
