@@ -35,9 +35,9 @@ public class CreateMongoDbChangeEventContextFn
       LoggerFactory.getLogger(CreateMongoDbChangeEventContextFn.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  public static TupleTag<MongoDbChangeEventContext> successfulCreationTag =
+  public static final TupleTag<MongoDbChangeEventContext> SUCCESSFUL_CREATION_TAG =
       new TupleTag<>("successfulCreation");
-  public static TupleTag<FailsafeElement<String, String>> failedCreationTag =
+  public static final TupleTag<FailsafeElement<String, String>> FAILED_CREATION_TAG =
       new TupleTag<>("failedCreation");
 
   private final String shadowCollectionPrefix;
@@ -56,12 +56,12 @@ public class CreateMongoDbChangeEventContextFn
       JsonNode originalNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
       MongoDbChangeEventContext changeEventContext =
           new MongoDbChangeEventContext(jsonNode, originalNode, shadowCollectionPrefix);
-      out.get(successfulCreationTag).output(changeEventContext);
+      out.get(SUCCESSFUL_CREATION_TAG).output(changeEventContext);
     } catch (Exception e) {
       LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);
       element.setErrorMessage(e.getMessage());
       element.setStacktrace(Throwables.getStackTraceAsString(e));
-      out.get(failedCreationTag).output(element);
+      out.get(FAILED_CREATION_TAG).output(element);
       contextCreationFailures.inc();
       LOG.info("Failed element sent to DLQ");
     }
