@@ -43,7 +43,9 @@ public class CustomShardIdFetcherForRetryIT implements IShardIdFetcher {
     // Use the Primary Key to identify the correct logical shard
     if (keys != null) {
       if (keys.containsKey("CustomerId")) {
-        long customerId = Long.parseLong(keys.get("CustomerId").toString());
+        Object val = keys.get("CustomerId");
+        long customerId =
+            (val instanceof Number) ? ((Number) val).longValue() : Long.parseLong(val.toString());
         long shardIdx = customerId % 2;
 
         ShardIdResponse response = new ShardIdResponse();
@@ -55,7 +57,22 @@ public class CustomShardIdFetcherForRetryIT implements IShardIdFetcher {
         return response;
       } else if (keys.containsKey("id")) {
         // Handle AllDataTypes which uses 'id' instead of 'CustomerId'
-        long id = Long.parseLong(keys.get("id").toString());
+        Object val = keys.get("id");
+        long id =
+            (val instanceof Number) ? ((Number) val).longValue() : Long.parseLong(val.toString());
+        long shardIdx = id % 2;
+
+        ShardIdResponse response = new ShardIdResponse();
+        if (shardIdx == 0) {
+          response.setLogicalShardId("testShardB");
+        } else {
+          response.setLogicalShardId("testShardA");
+        }
+        return response;
+      } else if (keys.containsKey("OrderId")) {
+        Object val = keys.get("OrderId");
+        long id =
+            (val instanceof Number) ? ((Number) val).longValue() : Long.parseLong(val.toString());
         long shardIdx = id % 2;
 
         ShardIdResponse response = new ShardIdResponse();
