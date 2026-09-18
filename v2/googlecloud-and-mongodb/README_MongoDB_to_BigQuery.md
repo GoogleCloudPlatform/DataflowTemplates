@@ -28,6 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **KMSEncryptionKey**: Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
 * **filter**: Bson filter in json format. For example, `{ "val": { $gt: 0, $lt: 9 }}`.
+* **useIso8601DateFormat**: If true, MongoDB date and timestamp values are serialized as ISO-8601 strings (for example, `2026-02-03T15:31:41.924Z`), preserving millisecond precision. If false (the default), the previous serialization format is used, which trims timestamps to second precision and depends on the JVM locale.
 * **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 * **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. For example, `gs://your-bucket/your-schema.json`.
@@ -134,6 +135,7 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 ### Optional
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export FILTER=<filter>
+export USE_ISO8601DATE_FORMAT=false
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
@@ -150,6 +152,7 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
   --parameters "userOption=$USER_OPTION" \
   --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
   --parameters "filter=$FILTER" \
+  --parameters "useIso8601DateFormat=$USE_ISO8601DATE_FORMAT" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
@@ -183,6 +186,7 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 ### Optional
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export FILTER=<filter>
+export USE_ISO8601DATE_FORMAT=false
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
@@ -196,7 +200,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-bigquery-job" \
 -DtemplateName="MongoDB_to_BigQuery" \
--Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,filter=$FILTER,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,filter=$FILTER,useIso8601DateFormat=$USE_ISO8601DATE_FORMAT,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-and-mongodb
 ```
 
@@ -248,6 +252,7 @@ resource "google_dataflow_flex_template_job" "mongodb_to_bigquery" {
     outputTableSpec = "<outputTableSpec>"
     # KMSEncryptionKey = "<KMSEncryptionKey>"
     # filter = "<filter>"
+    # useIso8601DateFormat = "false"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
     # bigQuerySchemaPath = "<bigQuerySchemaPath>"
