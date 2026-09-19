@@ -82,7 +82,6 @@ import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -128,7 +127,7 @@ import org.slf4j.LoggerFactory;
  *  spanner-export.json
  * </code>
  */
-public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>> {
+public class ExportTransform extends PTransform<PBegin, org.apache.beam.sdk.values.PDone> {
   private static final Logger LOG = LoggerFactory.getLogger(ExportTransform.class);
 
   private static final String EMPTY_EXPORT_FILE = "empty-cloud-spanner-export";
@@ -209,7 +208,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
    * write the exported Avro files to GCS.
    */
   @Override
-  public WriteFilesResult<String> expand(PBegin begin) {
+  public org.apache.beam.sdk.values.PDone expand(PBegin begin) {
     Pipeline p = begin.getPipeline();
 
     /*
@@ -513,18 +512,14 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             eitherOrValueProvider(avroTempDirectory, outputDir),
             (SerializableFunction<String, ResourceId>) s -> FileSystems.matchNewResource(s, true));
 
-    WriteFilesResult<String> fileWriteResults =
+    PCollection<KV<String, String>> fileWriteResults =
         rows.apply(
             "Store Avro files",
-            AvroIO.<Struct>writeCustomTypeToGenericRecords()
-                .to(
-                    new SchemaBasedDynamicDestinations(
-                        avroSchemas, outputDirectoryName, dialectView, resource))
-                .withTempDirectory(tempResource));
+            new AvroWriter(avroSchemas, outputDirectoryName, dialectView, resource, tempResource));
 
     // Generate the manifest file.
     PCollection<KV<String, Iterable<String>>> tableFiles =
-        fileWriteResults.getPerDestinationOutputFilenames().apply(GroupByKey.create());
+        fileWriteResults.apply(GroupByKey.create());
 
     final TupleTag<Void> allTables = new TupleTag<>();
     final TupleTag<Iterable<String>> nonEmptyTables = new TupleTag<>();
@@ -830,7 +825,60 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .withNaming(
                 Contextful.of(manifestNaming, Requirements.requiresSideInputs(outputDirectoryName)))
             .withTempDirectory(eitherOrValueProvider(avroTempDirectory, outputDir)));
-    return fileWriteResults;
+    return org.apache.beam.sdk.values.PDone.in(begin.getPipeline());
+  }
+
+  static class AvroWriter extends PTransform<PCollection<Struct>, PCollection<KV<String, String>>> {
+    private final PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas;
+    private final PCollectionView<String> uniqueIdView;
+    private final PCollectionView<Dialect> dialectView;
+    private final ValueProvider<ResourceId> baseDir;
+    private final ValueProvider<ResourceId> tempDir;
+
+    public AvroWriter(
+        PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
+        PCollectionView<String> uniqueIdView,
+        PCollectionView<Dialect> dialectView,
+        ValueProvider<ResourceId> baseDir,
+        ValueProvider<ResourceId> tempDir) {
+      this.avroSchemas = avroSchemas;
+      this.uniqueIdView = uniqueIdView;
+      this.dialectView = dialectView;
+      this.baseDir = baseDir;
+      this.tempDir = tempDir;
+    }
+
+    @Override
+    public PCollection<KV<String, String>> expand(PCollection<Struct> input) {
+      PCollectionList<Struct> partitionedRows =
+          input.apply(
+              "Partition by table",
+              org.apache.beam.sdk.transforms.Partition.of(
+                  128,
+                  new org.apache.beam.sdk.transforms.Partition.PartitionFn<Struct>() {
+                    @Override
+                    public int partitionFor(Struct elem, int numPartitions) {
+                      return Math.abs(elem.getString(0).hashCode()) % numPartitions;
+                    }
+                  }));
+
+      PCollectionList<KV<String, String>> allResults = PCollectionList.empty(input.getPipeline());
+      for (int i = 0; i < 128; i++) {
+        org.apache.beam.sdk.io.WriteFilesResult<String> res =
+            partitionedRows
+                .get(i)
+                .apply(
+                    "Write lane " + i,
+                    AvroIO.<Struct>writeCustomTypeToGenericRecords()
+                        .to(
+                            new SchemaBasedDynamicDestinations(
+                                avroSchemas, uniqueIdView, dialectView, baseDir))
+                        .withTempDirectory(tempDir)
+                        .withNoSpilling());
+        allResults = allResults.and(res.getPerDestinationOutputFilenames());
+      }
+      return allResults.apply("Flatten filenames", Flatten.pCollections());
+    }
   }
 
   /** Saves {@link Struct} elements (rows from Spanner) to destination Avro files. */
