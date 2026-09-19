@@ -528,7 +528,6 @@ class _PollChangeHistoryFn(beam.DoFn, beam.transforms.core.RestrictionProvider):
     Metrics.counter('BigQueryChangeHistory', 'polls').inc()
 
     watermark_estimator.advance_poll_cursor(end_ts)
-    watermark_estimator.set_watermark(start_ts)
     _LOGGER.info(
         '[Poll] Watermark=%s (start_ts), cursor=%s (end_ts)',
         _utc(start_ts),
@@ -537,6 +536,7 @@ class _PollChangeHistoryFn(beam.DoFn, beam.transforms.core.RestrictionProvider):
     for chunk_start, chunk_end in ranges:
       yield TimestampedValue(
           _QueryRange(chunk_start=chunk_start, chunk_end=chunk_end), start_ts)
+    watermark_estimator.set_watermark(end_ts)
 
   @beam.DoFn.unbounded_per_element()
   def process(
