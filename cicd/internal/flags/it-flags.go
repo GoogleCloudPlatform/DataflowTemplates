@@ -39,6 +39,7 @@ var (
 	dCloudProxyPassword                 string
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
+	dCloudOraclePassword                string
 	dUnifiedWorkerHarnessContainerImage string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
@@ -61,6 +62,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
+	flag.StringVar(&dCloudOraclePassword, "it-oracle-password", "oracle", "app password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
@@ -147,6 +149,10 @@ func StaticOracleHost() string {
 
 func StaticOracleSysPassword() string {
 	return "-DcloudOracleSysPassword=" + dCloudOracleSysPassword
+}
+
+func StaticOraclePassword() string {
+	return "-DcloudOraclePassword=" + dCloudOraclePassword
 }
 
 func UnifiedWorkerHarnessContainerImage() string {
