@@ -61,6 +61,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
+  protected String oracleUser;
+
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
@@ -613,5 +615,55 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       }
     }
     return combinedCondition;
+  }
+
+  protected void executeOracleSqlFileScript(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String resourceName,
+      String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            org.testcontainers.shaded.com.google.common.io.Resources.readLines(
+                org.testcontainers.shaded.com.google.common.io.Resources.getResource(resourceName),
+                java.nio.charset.StandardCharsets.UTF_8));
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    executeOracleSql(jdbcResourceManager, sql, targetUsername);
+  }
+
+  protected void executeOracleSql(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String sqlString,
+      String targetUsername)
+      throws Exception {
+    String sql = sqlString;
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    String[] statements = sql.split(";");
+
+    try (java.sql.Connection connection =
+        java.sql.DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (java.sql.Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = \"" + targetUsername + "\"");
+        }
+      }
+
+      try (java.sql.Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isBlank()) {
+            if (stmt.toLowerCase().trim().startsWith("select")) {
+              statement.executeQuery(stmt);
+            } else {
+              statement.executeUpdate(stmt);
+            }
+          }
+        }
+      }
+    }
   }
 }
