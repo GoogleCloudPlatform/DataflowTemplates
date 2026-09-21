@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -70,7 +71,11 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
   private static CloudPostgresResourceManager.ReplicationInfo pgDialectReplicationInfo;
 
   private static boolean initialized = false;
+  // PostgreSQL sources that Datastream reads via CDC; a separate database per test method keeps the
+  // GoogleSQL-dialect and PG-dialect runs independent (own source data and replication stream).
   private static CloudPostgresResourceManager postgresResourceManager;
+  private static CloudPostgresResourceManager pgDialectPostgresResourceManager;
+  // Spanner destinations the rows replicate into: one GoogleSQL-dialect, one PostgreSQL-dialect.
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager pgDialectSpannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -90,6 +95,12 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
         postgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
         LOG.info(
             "PostgreSQL resource manager created with URI: {}", postgresResourceManager.getUri());
+        // Each method uses its own source database to keep the two tests independent.
+        LOG.info("Setting up PG dialect PostgreSQL resource manager...");
+        pgDialectPostgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
+        LOG.info(
+            "PG dialect PostgreSQL resource manager created with URI: {}",
+            pgDialectPostgresResourceManager.getUri());
         LOG.info("Setting up Spanner resource manager...");
         spannerResourceManager = setUpSpannerResourceManager();
         LOG.info(
@@ -116,9 +127,10 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
         LOG.info("Executing PostgreSQL DDL script...");
         executeSqlScript(postgresResourceManager, POSTGRESQL_DDL_RESOURCE);
+        executeSqlScript(pgDialectPostgresResourceManager, POSTGRESQL_DDL_RESOURCE);
 
         replicationInfo = postgresResourceManager.createLogicalReplication();
-        pgDialectReplicationInfo = postgresResourceManager.createLogicalReplication();
+        pgDialectReplicationInfo = pgDialectPostgresResourceManager.createLogicalReplication();
 
         initialized = true;
       }
@@ -140,6 +152,7 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
     ResourceManagerUtils.cleanResources(
         datastreamResourceManager,
         postgresResourceManager,
+        pgDialectPostgresResourceManager,
         spannerResourceManager,
         pgDialectSpannerResourceManager,
         gcsResourceManager,
@@ -183,7 +196,13 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ConditionCheck condition = buildBaseConditionCheck(spannerResourceManager, expectedData);
+    // Insert rows after the pipeline is running so they replicate as CDC events.
+    ConditionCheck condition =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeCdcData(postgresResourceManager),
+                    buildBaseConditionCheck(spannerResourceManager, expectedData)))
+            .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -200,11 +219,11 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     PostgresqlSource postgresqlSource =
         PostgresqlSource.builder(
-                postgresResourceManager.getHost(),
-                postgresResourceManager.getUsername(),
-                postgresResourceManager.getPassword(),
-                postgresResourceManager.getPort(),
-                postgresResourceManager.getDatabaseName(),
+                pgDialectPostgresResourceManager.getHost(),
+                pgDialectPostgresResourceManager.getUsername(),
+                pgDialectPostgresResourceManager.getPassword(),
+                pgDialectPostgresResourceManager.getPort(),
+                pgDialectPostgresResourceManager.getDatabaseName(),
                 pgDialectReplicationInfo.getReplicationSlotName(),
                 pgDialectReplicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
@@ -230,8 +249,13 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
+    // Insert rows after the pipeline is running so they replicate as CDC events.
     ConditionCheck condition =
-        buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData);
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeCdcData(pgDialectPostgresResourceManager),
+                    buildBaseConditionCheck(pgDialectSpannerResourceManager, expectedData)))
+            .build();
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -260,9 +284,40 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
       for (Struct row : rows) {
         LOG.info("Found row: {}", row.toString());
       }
+      // Assert the exact row count so inherited rows are not counted in parent_table.
+      SpannerAsserts.assertThatStructs(rows).hasRows(entry.getValue().size());
       SpannerAsserts.assertThatStructs(rows)
           .hasRecordsUnorderedCaseInsensitiveColumns(entry.getValue());
     }
+  }
+
+  /** Returns a ConditionCheck that inserts the inheritance rows into the PostgreSQL source. */
+  private ConditionCheck writeCdcData(CloudPostgresResourceManager resourceManager) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send CDC inserts to PostgreSQL inheritance tables.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        try {
+          resourceManager.runSQLUpdate(
+              "INSERT INTO parent_table (id, name) VALUES (1, 'Parent Row 1') ON CONFLICT (id) DO"
+                  + " NOTHING");
+          resourceManager.runSQLUpdate(
+              "INSERT INTO child_table (id, name, age) VALUES (2, 'Child Row 1', 10) ON CONFLICT"
+                  + " (id) DO NOTHING");
+          resourceManager.runSQLUpdate(
+              "INSERT INTO grandchild_table (id, name, age, city) VALUES (3, 'Grandchild Row 1', 5,"
+                  + " 'New York') ON CONFLICT (id) DO NOTHING");
+        } catch (Exception e) {
+          return new CheckResult(false, "Failed to insert CDC rows: " + e.getMessage());
+        }
+        return new CheckResult(
+            true, "Inserted CDC rows into parent_table, child_table and grandchild_table.");
+      }
+    };
   }
 
   private List<String> getAllowedTables() {
@@ -271,10 +326,6 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
     HashMap<String, List<Map<String, Object>>> result = new HashMap<>();
-
-    // According to PostgreSQL logical replication, inserts to child_table replicate as child_table
-    // events.
-    // The parent_table only receives its own events. So the tables are independent in replication.
 
     List<Map<String, Object>> parentRows = new ArrayList<>();
     Map<String, Object> parentRow1 = new HashMap<>();
