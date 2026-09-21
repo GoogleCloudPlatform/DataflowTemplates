@@ -151,11 +151,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
-      if ("NULL".equals(sqlValue) || "?".equals(sqlValue)) {
-        if (sourceTable != null && sourceTable.column(colName) != null) {
-          sqlValue = "CAST(" + sqlValue + " AS " + sourceTable.column(colName).type() + ")";
-        }
-      }
       usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
       if (index + 1 < queryColumns.size()) {
         usingSelect.append(", ");
