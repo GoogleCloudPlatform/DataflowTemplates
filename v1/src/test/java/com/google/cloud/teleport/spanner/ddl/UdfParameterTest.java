@@ -159,4 +159,22 @@ public class UdfParameterTest {
         NullPointerException.class,
         () -> UdfParameter.parse(null, "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
   }
+
+  @Test
+  public void testUdfParameterParseLeadingAndTrailingWhitespace() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("  \"pQ\" integer DEFAULT 1  ", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(
+        udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"pQ\" integer DEFAULT 1"));
+    assertThat(udfParameter.name(), equalToCompressingWhiteSpace("\"pQ\""));
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("1"));
+  }
+
+  @Test
+  public void testUdfParameterParsePgMissingDefaultExpression() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> UdfParameter.parse("p1 text DEFAULT", "s1.foo", Dialect.POSTGRESQL));
+  }
 }

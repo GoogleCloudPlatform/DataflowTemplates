@@ -89,6 +89,23 @@ public class UdfTest {
   }
 
   @Test
+  public void testPgUdfCaseInsensitiveDeterminism() {
+    Udf udf =
+        Udf.builder(Dialect.POSTGRESQL)
+            .name("foo")
+            .specificName("s1.foo")
+            .type("text")
+            .definition("(SELECT 1)")
+            .spannerDeterminism("deterministic")
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"() RETURNS text IMMUTABLE RETURN (SELECT 1)"));
+  }
+
+  @Test
   public void testUdfWithInvalidParameter() {
     Udf.Builder udf =
         Udf.builder()

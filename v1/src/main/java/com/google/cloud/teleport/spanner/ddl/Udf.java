@@ -118,7 +118,7 @@ public abstract class Udf implements Serializable {
       }
       appendable.append(" ").append(determinism);
     } else if (spannerDeterminism() != null && dialect() == Dialect.POSTGRESQL) {
-      switch (spannerDeterminism()) {
+      switch (spannerDeterminism().toUpperCase()) {
         case "DETERMINISTIC":
           appendable.append(" IMMUTABLE");
           break;

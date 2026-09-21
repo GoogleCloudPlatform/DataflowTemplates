@@ -50,6 +50,7 @@ public abstract class UdfParameter implements Serializable {
   }
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
+    parameter = parameter.trim();
     String quote = identifierQuote(dialect);
 
     // Regex to extract the name (quoted or unquoted) and the rest of the parameter string.
@@ -57,9 +58,7 @@ public abstract class UdfParameter implements Serializable {
     // Group 2: Quoted Name
     // Group 3: Unquoted Name
     // Group 4: The rest (type and optional DEFAULT)
-    String regex =
-        String.format(
-            "^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", java.util.regex.Pattern.quote(quote));
+    String regex = String.format("^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", quote);
     java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(parameter);
 
     if (!matcher.find()) {
@@ -73,7 +72,7 @@ public abstract class UdfParameter implements Serializable {
     String rest = matcher.group(4).trim();
 
     // Split 'rest' into type and defaultExpression using a case-insensitive 'DEFAULT' keyword.
-    String[] parts = rest.split("(?i)\\s+DEFAULT\\s+", 2);
+    String[] parts = rest.split("(?i)\\s+DEFAULT\\b", 2);
     String type = parts[0].trim();
     String defaultExpression = parts.length > 1 ? parts[1].trim() : null;
 
