@@ -424,7 +424,7 @@ public class InformationSchemaScannerTest {
     String expectedDdl =
         "CREATE TABLE \"singer\" (\n"
             + "\t\"singerId\"                              bigint NOT NULL,\n"
-            + "\t\"singerName\"                            character varying(50) NOT NULL OPTIONS (option1='SomeName'),\n"
+            + "\t\"singerName\"                            character varying(50) NOT NULL,\n"
             + "\t\"age\"                                   bigint NOT NULL,\n"
             + "\tPRIMARY KEY ()\n"
             + ")\n"
