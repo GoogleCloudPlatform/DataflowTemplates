@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.time.Duration;
@@ -162,7 +163,7 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(45)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 SpannerRowsCheck.builder(spannerResourceManager, "`true`").setMinRows(1).build());
     assertThatResult(result).meetsConditions();
 

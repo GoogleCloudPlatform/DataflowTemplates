@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.oracle;
 
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,9 +93,10 @@ public class SharedOracleLiveITInstance {
   public static void flushRedoLogs() {
     LOG.info("Flushing REDO logs via CDB Admin...");
     // getCdbAdmin().runSQLUpdate("ALTER SYSTEM SWITCH LOGFILE");
-    String url = "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost") + ":1521/XE";
+    String url =
+        "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XE";
     String user = System.getProperty("cloudOracleUsername", "system");
-    String pass = System.getProperty("cloudOraclePassword", "Test@Password123");
+    String pass = System.getProperty("cloudOraclePassword", "TestPassword123");
     try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
         java.sql.Statement stmt = conn.createStatement()) {
       stmt.execute("ALTER SYSTEM SWITCH LOGFILE");

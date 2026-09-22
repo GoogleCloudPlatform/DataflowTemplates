@@ -656,11 +656,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       try (java.sql.Statement statement = connection.createStatement()) {
         for (String stmt : statements) {
           if (!stmt.trim().isBlank()) {
-            if (stmt.toLowerCase().trim().startsWith("select")) {
-              statement.executeQuery(stmt);
-            } else {
-              statement.executeUpdate(stmt);
-            }
+            statement.execute(stmt);
           }
         }
       }

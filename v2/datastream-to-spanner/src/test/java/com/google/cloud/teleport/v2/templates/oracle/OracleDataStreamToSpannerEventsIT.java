@@ -21,6 +21,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.collect.ImmutableList;
@@ -167,7 +168,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 
@@ -192,7 +193,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
     assertMovieTableContents();
@@ -220,7 +221,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(45)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
 

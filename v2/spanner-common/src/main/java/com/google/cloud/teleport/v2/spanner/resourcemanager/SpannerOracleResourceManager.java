@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.oracle;
+package com.google.cloud.teleport.v2.spanner.resourcemanager;
 
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -37,31 +37,5 @@ public class SpannerOracleResourceManager extends CloudOracleResourceManager {
     return String.format(
         "jdbc:%s:thin:@//%s:%d/%s",
         getJDBCPrefix(), this.getHost(), this.getPort(getJDBCPort()), this.getDatabaseName());
-  }
-
-  public void runSQLUpdate(String sql, String user) {}
-
-  @Override
-  public void cleanupAll() {
-    super.cleanupAll();
-
-    String userToDrop = this.getUsername();
-    if (userToDrop != null
-        && !userToDrop.equalsIgnoreCase("system")
-        && !userToDrop.contains("sysdba")) {
-      LOG.info("Attempting to dynamically drop isolated Oracle user: {}", userToDrop);
-      try {
-        if (userToDrop.toUpperCase().startsWith("C##")) {
-          SharedOracleLiveITInstance.getInstance()
-              .runSQLUpdate("DROP USER " + userToDrop + " CASCADE");
-        } else {
-          SharedOracleLiveITInstance.getInstance()
-              .runSQLUpdate("DROP USER " + userToDrop + " CASCADE");
-        }
-        LOG.info("Successfully dropped Oracle schema: {}", userToDrop);
-      } catch (Exception e) {
-        LOG.warn("Failed to drop schema: " + userToDrop, e);
-      }
-    }
   }
 }

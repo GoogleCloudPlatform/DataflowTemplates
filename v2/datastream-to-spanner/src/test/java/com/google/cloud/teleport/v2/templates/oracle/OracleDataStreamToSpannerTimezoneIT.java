@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
@@ -65,6 +66,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   private static HashSet<OracleDataStreamToSpannerTimezoneIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static java.util.TimeZone originalTimeZone;
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
@@ -75,7 +77,10 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   @Before
   public void setUp() throws Exception {
-    java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+    if (originalTimeZone == null) {
+      originalTimeZone = java.util.TimeZone.getDefault();
+      java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+    }
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerTimezoneIT.class) {
       testInstances.add(this);
@@ -134,6 +139,9 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   @AfterClass
   public static void cleanUp() throws IOException {
+    if (originalTimeZone != null) {
+      java.util.TimeZone.setDefault(originalTimeZone);
+    }
     for (OracleDataStreamToSpannerTimezoneIT instance : testInstances) {
       instance.tearDownBase();
     }
@@ -190,7 +198,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(35)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
     assertUsersBackfillContents();
