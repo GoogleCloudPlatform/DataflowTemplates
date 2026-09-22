@@ -68,10 +68,18 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
   /**
    * The released flex template under test. Overridable with {@code -DspecPath} to point a run at a
    * release candidate or a locally staged build.
+   *
+   * <p>The published artifact is named {@code GCS_Spanner_Data_Validator}, which no longer matches
+   * the {@code name = "Avro_to_Spanner_Data_Validator"} in {@link
+   * com.google.cloud.teleport.v2.templates.GCSSpannerDV}'s {@code @Template} annotation: the rename
+   * exists in source but has not yet reached a release. When it does, {@code latest/flex} will
+   * switch to the new name and this constant must be updated — the symptom will be a {@code 404} at
+   * launch. Verified against the bucket, and consistent with the {@code
+   * goog-dataflow-provided-template-name: gcs_spanner_data_validator} label on released jobs.
    */
   protected static final String SPEC_PATH =
       System.getProperty(
-          "specPath", "gs://dataflow-templates/latest/flex/Avro_to_Spanner_Data_Validator");
+          "specPath", "gs://dataflow-templates/latest/flex/GCS_Spanner_Data_Validator");
 
   /**
    * Index into {@code TestConstants.SPANNER_TEST_INSTANCES}, which resolves to {@code teleport4}.
@@ -147,7 +155,12 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     parameters.put("gcsInputDirectory", gcsInputDirectory);
     parameters.put("runId", jobName);
 
-    LOG.info("{} Launching job {} with parameters {}", LOG_TAG, jobName, parameters);
+    LOG.info(
+        "{} Launching job {} from spec {} with parameters {}",
+        LOG_TAG,
+        jobName,
+        SPEC_PATH,
+        parameters);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, SPEC_PATH)
