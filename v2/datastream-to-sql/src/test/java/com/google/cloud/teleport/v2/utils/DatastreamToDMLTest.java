@@ -1281,4 +1281,35 @@ public class DatastreamToDMLTest {
     String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
     assertEquals(expectedJsonb, actualJsonb);
   }
+
+  /**
+   * Verifies that {@link DatastreamToDML#getColumnsValuesSql} applies {@code columnCasing} when
+   * looking up destination column types in {@code tableSchema}.
+   */
+  @Test
+  public void testGetValueSql_withColumnCasing_appliesDataTypeCleaning() {
+    String json =
+        "{\"JSON_COLUMN\": {\"a\": 1, \"b\": \"test\"},"
+            + "\"JSONB_COLUMN\": {\"c\": true, \"d\": [1, 2]},"
+            + "\"BYTEA_COLUMN\": \"aGVsbG9fd29ybGQ=\","
+            + "\"LTREE_COLUMN\": \"Top.Science.Astronomy\"}";
+    JsonNode rowObj = getRowObj(json);
+
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("json_column", "JSON");
+    tableSchema.put("jsonb_column", "JSONB");
+    tableSchema.put("bytea_column", "BYTEA");
+    tableSchema.put("ltree_column", "LTREE");
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    dml.withColumnCasing("LOWERCASE");
+
+    assertEquals(
+        "\"json_column\",\"jsonb_column\",\"bytea_column\",\"ltree_column\"",
+        dml.getColumnsListSql(rowObj, tableSchema));
+    assertEquals(
+        "'{\"a\":1,\"b\":\"test\"}','{\"c\":true,\"d\":[1,2]}',"
+            + "decode('aGVsbG9fd29ybGQ=','base64'),'Top.Science.Astronomy'::ltree",
+        dml.getColumnsValuesSql(rowObj, tableSchema));
+  }
 }
