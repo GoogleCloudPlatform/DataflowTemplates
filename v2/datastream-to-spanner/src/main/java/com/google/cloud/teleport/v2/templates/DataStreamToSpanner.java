@@ -291,6 +291,12 @@ public class DataStreamToSpanner {
             .apply("Cloud Spanner shadow tables DDL as view", View.asSingleton());
 
     PCollection<FailsafeElement<String, String>> jsonRecords = null;
+    // Fall back to "skip" if skipDirectoryName is set to empty, so the DLQ reconsumer does not
+    // ignore every path ("/") and skipped records are not written to the DLQ root directory.
+    String skipDirectoryName =
+        Strings.isNullOrEmpty(options.getSkipDirectoryName())
+            ? "skip"
+            : options.getSkipDirectoryName();
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
@@ -305,7 +311,13 @@ public class DataStreamToSpanner {
                       options.getDlqGcsPubSubSubscription(),
                       // file paths to ignore when re-consuming for retry
                       new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+                          Arrays.asList(
+                              "/severe/",
+                              "/tmp_retry",
+                              "/tmp_severe/",
+                              ".temp",
+                              "/tmp_skip/",
+                              "/" + skipDirectoryName)))));
     } else {
       if (isRegularMode) {
         reconsumedElements =
@@ -413,7 +425,8 @@ public class DataStreamToSpanner {
                     TupleTagList.of(
                         Arrays.asList(
                             DatastreamToSpannerConstants.FILTERED_EVENT_TAG,
-                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
+                            DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))));
 
     /*
      * Stage 3: Write filtered records to GCS
@@ -515,6 +528,28 @@ public class DataStreamToSpanner {
                 .withTmpDirectory((options).getDeadLetterQueueDirectory() + "/tmp_severe/")
                 .setIncludePaneInfo(true)
                 .build());
+
+    /*
+     * Stage 6: Write skipped table events to the skip directory. These come from the transformer
+     * (table dropped in the session file) and from the Spanner writer (table not present in
+     * Spanner, e.g. when no session file is provided).
+     */
+    PCollectionList.of(transformedRecords.get(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))
+        .and(spannerWriteResults.skippedTableEvents())
+        .apply("Flatten skipped table events", Flatten.pCollections())
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            "GCS: Write skipped tables to GCS directory",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write skipped tables to GCS",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(options.getDeadLetterQueueDirectory() + "/" + skipDirectoryName)
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
+                .setIncludePaneInfo(true)
+                .build());
+
     return pipeline;
   }
 

@@ -456,4 +456,15 @@ public interface DataStreamToSpannerOptions
   String getFailureInjectionParameter();
 
   void setFailureInjectionParameter(String value);
+
+  @TemplateParameter.Text(
+      order = 36,
+      optional = true,
+      description = "Directory name for holding skipped records",
+      helpText =
+          "Records skipped from migration are written to this directory. Default directory name is skip.")
+  @Default.String("skip")
+  String getSkipDirectoryName();
+
+  void setSkipDirectoryName(String value);
 }

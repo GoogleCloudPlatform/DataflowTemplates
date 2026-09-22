@@ -111,7 +111,9 @@ public abstract class ChangeEventTransformerDoFn
       Metrics.counter(ChangeEventTransformerDoFn.class, "Invalid events");
 
   private final Counter droppedTableExceptions =
-      Metrics.counter(ChangeEventTransformerDoFn.class, "Dropped table exceptions");
+      Metrics.counter(
+          ChangeEventTransformerDoFn.class,
+          DatastreamToSpannerConstants.DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME);
   private final Counter failedEvents =
       Metrics.counter(ChangeEventTransformerDoFn.class, "Other permanent errors");
 
@@ -174,9 +176,12 @@ public abstract class ChangeEventTransformerDoFn
     Instant startTimestamp = Instant.now();
     Ddl ddl = c.sideInput(ddlView());
     String migrationShardId = null;
+    String tableName = null;
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
+      JsonNode tableNameNode = changeEvent.get(EVENT_TABLE_NAME_KEY);
+      tableName = tableNameNode != null ? tableNameNode.asText() : null;
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
@@ -241,10 +246,13 @@ public abstract class ChangeEventTransformerDoFn
           DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
           FailsafeElement.of(msg.getOriginalPayload(), changeEvent.toString()));
     } catch (DroppedTableException e) {
-      // Errors when table exists in source but was dropped during conversion. We do not output any
-      // errors to dlq for this.
-      // Note that this message is not added to DLQ!!
-      LOG.error("Dropped Table for changeEventMessage {}", msg, e.getMessage());
+      // Errors when table exists in source but was dropped during conversion.
+      LOG.warn(
+          "Skipping change event for dropped table, tableName={}, changeEventMessage={}, error: {}",
+          tableName,
+          msg,
+          e.getMessage());
+      outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG);
       droppedTableExceptions.inc();
     } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
