@@ -15,13 +15,24 @@
  */
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -73,6 +84,9 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
   protected SpannerResourceManager spannerResourceManager;
 
+  /** Destination for the pipeline's own validation output, and the source of all assertions. */
+  protected BigQueryResourceManager bigQueryResourceManager;
+
   private final Map<String, Duration> phaseTimings = new LinkedHashMap<>();
   private Instant testStart;
 
@@ -93,15 +107,62 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
             .setSuppressVerboseLogs(true)
             .build();
 
+    bigQueryResourceManager =
+        BigQueryResourceManager.builder(testName, project, CREDENTIALS).build();
+    bigQueryResourceManager.createDataset(region);
+
     LOG.info(
         "{} Resources resolved: project={} region={} spannerInstance={} spannerDatabase={}"
-            + " specPath={}",
+            + " bigQueryDataset={} specPath={}",
         LOG_TAG,
         project,
         region,
         spannerResourceManager.getInstanceId(),
         spannerResourceManager.getDatabaseId(),
+        bigQueryResourceManager.getDatasetId(),
         SPEC_PATH);
+  }
+
+  /**
+   * Launches the validation template against the fixture built by the subclass and blocks until the
+   * job reaches a terminal state.
+   *
+   * <p>No wait is needed between populating Spanner and launching: {@code SpannerReaderTransform}
+   * reads at an exact staleness of a few seconds, but Dataflow worker startup alone takes minutes,
+   * so the read timestamp is always well after the fixture was committed. The integration tests
+   * sleep here only because the direct runner starts reading almost immediately.
+   *
+   * @param gcsInputDirectory the Avro source directory to validate against
+   * @param jobTimeout how long to wait for the job to finish before failing the test
+   */
+  protected LaunchInfo launchValidationJob(String gcsInputDirectory, Duration jobTimeout)
+      throws IOException {
+    String jobName = PipelineUtils.createJobName(testName);
+
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("projectId", project);
+    parameters.put("instanceId", spannerResourceManager.getInstanceId());
+    parameters.put("databaseId", spannerResourceManager.getDatabaseId());
+    parameters.put("bigQueryDataset", bigQueryResourceManager.getDatasetId());
+    parameters.put("gcsInputDirectory", gcsInputDirectory);
+    parameters.put("runId", jobName);
+
+    LOG.info("{} Launching job {} with parameters {}", LOG_TAG, jobName, parameters);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, SPEC_PATH)
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
+            .setParameters(parameters);
+
+    LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    assertThatPipeline(jobInfo).isRunning();
+    LOG.info("{} Job launched: id={} state={}", LOG_TAG, jobInfo.jobId(), jobInfo.state());
+
+    Result result = pipelineOperator.waitUntilDone(createConfig(jobInfo, jobTimeout));
+    LOG.info("{} Job {} finished with result {}", LOG_TAG, jobInfo.jobId(), result);
+    assertThatResult(result).isLaunchFinished();
+
+    return jobInfo;
   }
 
   /**
@@ -133,7 +194,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
       // leaked database is worth a WARN, but it is not evidence of a pipeline defect and should
       // not turn a green run red. On a static instance this drops the database only; the pooled
       // instance survives. Null managers are skipped by the helper.
-      ResourceManagerUtils.cleanResources(spannerResourceManager);
+      ResourceManagerUtils.cleanResources(spannerResourceManager, bigQueryResourceManager);
     } finally {
       phaseTimings.put("cleanup", Duration.between(cleanupStart, Instant.now()));
       logPhaseSummary();
