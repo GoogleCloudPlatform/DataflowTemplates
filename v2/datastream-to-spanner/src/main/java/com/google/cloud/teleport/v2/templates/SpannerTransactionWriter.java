@@ -108,7 +108,10 @@ public class SpannerTransactionWriter
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG,
-                    TupleTagList.of(List.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+                    TupleTagList.of(
+                        List.of(
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
+                            DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))));
     PCollectionTuple spannerWriteResults =
         keyedEvents
             .get(DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG)
@@ -134,7 +137,8 @@ public class SpannerTransactionWriter
                         TupleTagList.of(
                             Arrays.asList(
                                 DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
-                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG,
+                                DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))));
 
     PCollection<FailsafeElement<String, String>> keyedEventsErrorRecords =
         keyedEvents.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
@@ -145,17 +149,24 @@ public class SpannerTransactionWriter
             .and(keyedEventsErrorRecords)
             .apply(Flatten.pCollections());
 
+    PCollection<FailsafeElement<String, String>> skippedTableEventRecords =
+        PCollectionList.of(keyedEvents.get(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))
+            .and(spannerWriteResults.get(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG))
+            .apply("Flatten skipped table events", Flatten.pCollections())
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
     return Result.create(
         spannerWriteResults.get(DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG),
         permanentErrorRecords,
-        spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG));
+        spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG),
+        skippedTableEventRecords);
   }
 
   /**
    * Container class for the results of this transform.
    *
-   * <p>Use {@link #successfulSpannerWrites()}, {@link #permanentErrors()} and {@link
-   * #retryableErrors()} to get the three output streams.
+   * <p>Use {@link #successfulSpannerWrites()}, {@link #permanentErrors()}, {@link
+   * #retryableErrors()} and {@link #skippedTableEvents()} to get the four output streams.
    */
   @AutoValue
   public abstract static class Result implements POutput {
@@ -163,12 +174,14 @@ public class SpannerTransactionWriter
     private static Result create(
         PCollection<Timestamp> successfulSpannerWrites,
         PCollection<FailsafeElement<String, String>> permanentErrors,
-        PCollection<FailsafeElement<String, String>> retryableErrors) {
+        PCollection<FailsafeElement<String, String>> retryableErrors,
+        PCollection<FailsafeElement<String, String>> skippedTableEvents) {
       Preconditions.checkNotNull(successfulSpannerWrites);
       Preconditions.checkNotNull(permanentErrors);
       Preconditions.checkNotNull(retryableErrors);
+      Preconditions.checkNotNull(skippedTableEvents);
       return new AutoValue_SpannerTransactionWriter_Result(
-          successfulSpannerWrites, permanentErrors, retryableErrors);
+          successfulSpannerWrites, permanentErrors, retryableErrors, skippedTableEvents);
     }
 
     public abstract PCollection<Timestamp> successfulSpannerWrites();
@@ -176,6 +189,8 @@ public class SpannerTransactionWriter
     public abstract PCollection<FailsafeElement<String, String>> permanentErrors();
 
     public abstract PCollection<FailsafeElement<String, String>> retryableErrors();
+
+    public abstract PCollection<FailsafeElement<String, String>> skippedTableEvents();
 
     @Override
     public void finishSpecifyingOutput(
@@ -196,7 +211,9 @@ public class SpannerTransactionWriter
           DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
           permanentErrors(),
           DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG,
-          retryableErrors());
+          retryableErrors(),
+          DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG,
+          skippedTableEvents());
     }
   }
 }

@@ -30,6 +30,7 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
@@ -776,7 +777,7 @@ public class ChangeEventSessionConvertorTest {
     assertEquals("", shardId);
   }
 
-  @Test(expected = Exception.class)
+  @Test(expected = DroppedTableException.class)
   public void testTransformChangeEventData_TableNotFound() throws Exception {
     ChangeEventSessionConvertor convertor =
         new ChangeEventSessionConvertor(null, null, null, null, "", true);
