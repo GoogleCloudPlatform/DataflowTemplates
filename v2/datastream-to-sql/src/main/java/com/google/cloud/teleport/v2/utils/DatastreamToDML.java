@@ -30,6 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -503,11 +504,25 @@ public abstract class DatastreamToDML
     return onUpdateSql;
   }
 
+  private List<String> getSourcePrimaryKeys(JsonNode rowObj) {
+    if (rowObj == null) {
+      return Collections.emptyList();
+    }
+    JsonNode pksNode = rowObj.get("_metadata_primary_keys");
+    if (pksNode != null && pksNode.isArray()) {
+      List<String> primaryKeys = new ArrayList<>();
+      for (JsonNode node : pksNode) {
+        primaryKeys.add(node.asText());
+      }
+      return primaryKeys;
+    }
+    return Collections.emptyList();
+  }
+
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
 
-    DatastreamRow row = DatastreamRow.of(rowObj);
-    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+    List<String> sourcePrimaryKeys = getSourcePrimaryKeys(rowObj);
     String pkToValueSql = "";
 
     for (String sourcePkName : sourcePrimaryKeys) {
