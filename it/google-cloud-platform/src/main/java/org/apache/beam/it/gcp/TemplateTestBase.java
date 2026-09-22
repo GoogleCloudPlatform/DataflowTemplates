@@ -28,6 +28,7 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageRetryStrategy;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
@@ -246,6 +247,7 @@ public abstract class TemplateTestBase {
     if (artifactBucketName != null) {
       gcsClient =
           GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+              .setStorageRetryStrategy(StorageRetryStrategy.getUniformStorageRetryStrategy())
               .build();
 
       // Keep name compatibility, for now
@@ -528,6 +530,7 @@ public abstract class TemplateTestBase {
       String randomBucketName = bucketList.get(randomIndex);
       spannerTestsGcsClient =
           GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .setStorageRetryStrategy(StorageRetryStrategy.getUniformStorageRetryStrategy())
               .build();
     } else {
       spannerTestsGcsClient = gcsClient;

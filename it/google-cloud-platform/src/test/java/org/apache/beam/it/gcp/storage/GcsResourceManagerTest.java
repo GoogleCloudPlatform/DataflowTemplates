@@ -39,6 +39,7 @@ import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.Storage.BucketListOption;
+import com.google.cloud.storage.StorageRetryStrategy;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -381,6 +382,87 @@ public final class GcsResourceManagerTest {
 
       // Assert
       verify(mockStorage, never()).create(any(BucketInfo.class));
+    }
+  }
+
+  @Test
+  public void testConstructor_withCustomStorageRetryStrategy() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+    StorageRetryStrategy mockStrategy = mock(StorageRetryStrategy.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(
+              () ->
+                  ArtifactUtils.createStorageClient(
+                      any(Credentials.class), any(StorageRetryStrategy.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+
+      // Act
+      GcsResourceManager.builder("test-bucket", "TestClass", mockCredentials)
+          .setStorageRetryStrategy(mockStrategy)
+          .build();
+
+      // Assert
+      mockedArtifactUtils.verify(
+          () -> ArtifactUtils.createStorageClient(mockCredentials, mockStrategy));
+      verify(mockStorage, never()).create(any(BucketInfo.class));
+    }
+  }
+
+  @Test
+  public void testBuilder_withStorageRetryStrategy() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+    StorageRetryStrategy mockStrategy = mock(StorageRetryStrategy.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(
+              () ->
+                  ArtifactUtils.createStorageClient(
+                      any(Credentials.class), any(StorageRetryStrategy.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+
+      // Act
+      GcsResourceManager.builder("test-bucket", "TestClass", mockCredentials, mockStrategy).build();
+
+      // Assert
+      mockedArtifactUtils.verify(
+          () -> ArtifactUtils.createStorageClient(mockCredentials, mockStrategy));
+      verify(mockStorage, never()).create(any(BucketInfo.class));
+    }
+  }
+
+  @Test
+  public void testBuilder_withoutBucket_withStorageRetryStrategy() {
+    // Arrange
+    Storage mockStorage = mock(Storage.class);
+    Credentials mockCredentials = mock(Credentials.class);
+    StorageRetryStrategy mockStrategy = mock(StorageRetryStrategy.class);
+
+    try (MockedStatic<ArtifactUtils> mockedArtifactUtils = mockStatic(ArtifactUtils.class)) {
+      mockedArtifactUtils
+          .when(
+              () ->
+                  ArtifactUtils.createStorageClient(
+                      any(Credentials.class), any(StorageRetryStrategy.class)))
+          .thenReturn(mockStorage);
+      mockedArtifactUtils.when(ArtifactUtils::createRunId).thenReturn("runId");
+      when(mockStorage.create(any(BucketInfo.class))).thenReturn(null);
+
+      // Act
+      GcsResourceManager.builder("TestClass", mockCredentials, mockStrategy).build();
+
+      // Assert
+      mockedArtifactUtils.verify(
+          () -> ArtifactUtils.createStorageClient(mockCredentials, mockStrategy));
+      verify(mockStorage).create(BucketInfo.of("testclass-runid"));
     }
   }
 
