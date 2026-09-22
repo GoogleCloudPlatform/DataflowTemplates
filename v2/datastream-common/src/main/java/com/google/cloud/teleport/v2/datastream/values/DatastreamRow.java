@@ -90,8 +90,7 @@ public class DatastreamRow {
 
   public String getStringValue(String field) {
     if (this.jsonRow != null) {
-      JsonNode node = jsonRow.get(field);
-      return node != null ? node.textValue() : null;
+      return jsonRow.get(field).textValue();
     } else {
       return (String) tableRow.get(field);
     }
@@ -109,11 +108,8 @@ public class DatastreamRow {
   public List<String> getPrimaryKeys() {
     List<String> primaryKeys = new ArrayList<>();
     if (this.jsonRow != null) {
-      JsonNode pksNode = jsonRow.get("_metadata_primary_keys");
-      if (pksNode != null && pksNode.isArray()) {
-        for (JsonNode node : pksNode) {
-          primaryKeys.add(node.asText());
-        }
+      for (JsonNode node : jsonRow.get("_metadata_primary_keys")) {
+        primaryKeys.add(node.asText());
       }
     } else {
       if (tableRow.get("_metadata_primary_keys") != null) {
@@ -141,7 +137,7 @@ public class DatastreamRow {
       }
     }
 
-    if ("oracle".equalsIgnoreCase(this.getSourceType()) && primaryKeys.isEmpty()) {
+    if (this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
       primaryKeys.add(DEFAULT_ORACLE_PRIMARY_KEY);
     }
 
