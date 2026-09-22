@@ -24,10 +24,14 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -100,16 +104,91 @@ public class GCSSpannerDV5KTablesLT extends GCSSpannerDVLTBase {
 
   private static final int FULL_ROW_CHECK_TABLE = 7;
 
+  /** The pre-generated Avro source. Static and shared; this test never writes to it. */
+  private static final String GCS_INPUT_DIRECTORY = "gs://nokill-avro-to-spanner-dv/5k_table_test";
+
   /**
-   * Provisions a 5,000-table Spanner fixture that mirrors the static Avro source, then verifies the
-   * fixture landed correctly. Launching the validation job and asserting on its BigQuery output are
-   * added in a later change.
+   * Wall-clock budget for the validation job. A manual 5,000-table run finished in under 11
+   * minutes, so this is deliberately generous rather than tuned.
+   */
+  private static final Duration JOB_TIMEOUT = Duration.ofMinutes(60);
+
+  /**
+   * Provisions a 5,000-table Spanner fixture that mirrors the static Avro source, runs the
+   * validation template against it, and asserts that the pipeline reports every table as a match.
    */
   @Test
   public void validate5KTablesWithMatchingRecords() throws Exception {
     createSpannerSchema();
     populateSpannerRows();
     verifySpannerFixture();
+    runValidationJob();
+    assertValidationResults();
+  }
+
+  /** Runs the released validation template against the static Avro source. */
+  private void runValidationJob() throws Exception {
+    phase("dataflow-job", () -> launchValidationJob(GCS_INPUT_DIRECTORY, JOB_TIMEOUT));
+  }
+
+  /**
+   * Asserts on the pipeline's BigQuery output.
+   *
+   * <p>{@code MismatchedRecords} is deliberately not read. It is written with {@code FILE_LOADS},
+   * which issues no load job for an empty input, so on a fully matching run the table may never be
+   * created and {@code readTable} would throw on a passing pipeline. The summary's {@code
+   * totalRowsMismatched} already proves the absence of mismatches.
+   */
+  private void assertValidationResults() throws Exception {
+    phase(
+        "assert-bigquery",
+        () -> {
+          // Log the real shape of both tables before asserting. If an expectation is wrong, the
+          // log shows the actual field values directly, instead of leaving us to infer them from
+          // a Truth diff that may span thousands of elements.
+          LOG.info(
+              "{} Actual ValidationSummary rows: {}",
+              LOG_TAG,
+              BigQueryAsserts.tableResultToRecords(
+                  bigQueryResourceManager.readTable("ValidationSummary")));
+          LOG.info(
+              "{} Sample TableValidationStats rows: {}",
+              LOG_TAG,
+              BigQueryAsserts.tableResultToRecords(
+                  bigQueryResourceManager.readTable("TableValidationStats", 3)));
+
+          // status and tablesWithMismatches are derived in ValidationSummaryCombineFn as
+          // `totalMismatched == 0 ? "MATCH" : "MISMATCH"` and a comma-join of an empty set.
+          GCSSpannerDVTestAsserts.assertValidationSummary(
+              bigQueryResourceManager,
+              List.of(
+                  new ValidationSummaryDto(
+                      /* status= */ "MATCH",
+                      /* totalTablesValidated= */ (long) NUM_TABLES,
+                      /* totalRowsMatched= */ (long) NUM_TABLES * ROWS_PER_TABLE,
+                      /* totalRowsMismatched= */ 0L,
+                      /* tablesWithMismatches= */ "")));
+          LOG.info("{} Validation summary matched expectations", LOG_TAG);
+
+          // Every table is asserted individually. containsExactlyElementsIn reports only the
+          // delta, so a single bad table produces a short, readable failure rather than a dump
+          // of all 5,000 rows.
+          List<TableValidationStatsDto> expectedStats = new ArrayList<>(NUM_TABLES);
+          for (int table = 0; table < NUM_TABLES; table++) {
+            expectedStats.add(
+                new TableValidationStatsDto(
+                    /* schemaName= */ null,
+                    /* tableName= */ tableName(table),
+                    /* status= */ "MATCH",
+                    /* sourceRowCount= */ (long) ROWS_PER_TABLE,
+                    /* destinationRowCount= */ (long) ROWS_PER_TABLE,
+                    /* matchedRowCount= */ (long) ROWS_PER_TABLE,
+                    /* mismatchRowCount= */ 0L));
+          }
+          GCSSpannerDVTestAsserts.assertTableValidationStats(
+              bigQueryResourceManager, expectedStats);
+          LOG.info("{} All {} per-table stats matched expectations", LOG_TAG, NUM_TABLES);
+        });
   }
 
   /** Creates {@value #NUM_TABLES} tables in sequential batches of {@value #DDL_BATCH_SIZE}. */
