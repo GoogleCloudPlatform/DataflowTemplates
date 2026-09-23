@@ -73,7 +73,7 @@ pipeline:
       input: ConvertStringsToBytes
       config:
         windowing: {{ windowing }}
-    - type: WriteToBigtable
+    - type: WriteToBigTable
       name: WriteGoodMessagesToBigtable
       input: WindowInto
       config:
