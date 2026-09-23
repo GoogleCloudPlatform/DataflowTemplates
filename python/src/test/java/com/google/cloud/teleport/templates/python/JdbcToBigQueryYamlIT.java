@@ -104,6 +104,17 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     JDBCResourceManager.JDBCSchema jdbcSchema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
     postgresResourceManager.createTable(JDBC_TABLE_NAME, jdbcSchema);
 
+    // Write data to JDBC before pipeline starts (for batch)
+    List<Map<String, Object>> expectedData = new ArrayList<>();
+    Random random = new Random();
+    for (int i = 1; i <= ROW_COUNT; i++) {
+      Map<String, Object> row =
+          ImmutableMap.of(
+              ROW_ID, i, NAME, RandomStringUtils.randomAlphabetic(10), AGE, random.nextInt(100));
+      expectedData.add(row);
+    }
+    postgresResourceManager.write(JDBC_TABLE_NAME, expectedData);
+
     // Arrange BigQuery destination
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -148,17 +159,6 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    // Write data to JDBC after pipeline starts (for batch)
-    List<Map<String, Object>> expectedData = new ArrayList<>();
-    Random random = new Random();
-    for (int i = 1; i <= ROW_COUNT; i++) {
-      Map<String, Object> row =
-          ImmutableMap.of(
-              ROW_ID, i, NAME, RandomStringUtils.randomAlphabetic(10), AGE, random.nextInt(100));
-      expectedData.add(row);
-    }
-    postgresResourceManager.write(JDBC_TABLE_NAME, expectedData);
-
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
@@ -176,6 +176,17 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER NOT NULL");
     JDBCResourceManager.JDBCSchema jdbcSchema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
     postgresResourceManager.createTable(JDBC_TABLE_NAME, jdbcSchema);
+
+    // Write data to JDBC before pipeline starts (for batch)
+    List<Map<String, Object>> expectedData = new ArrayList<>();
+    Random random = new Random();
+    for (int i = 1; i <= ROW_COUNT; i++) {
+      Map<String, Object> row =
+          ImmutableMap.of(
+              ROW_ID, i, NAME, RandomStringUtils.randomAlphabetic(10), AGE, random.nextInt(100));
+      expectedData.add(row);
+    }
+    postgresResourceManager.write(JDBC_TABLE_NAME, expectedData);
 
     // Arrange BigQuery destination
     List<Field> bqSchemaFields =
@@ -213,17 +224,6 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-
-    // Write data to JDBC after pipeline starts (for batch)
-    List<Map<String, Object>> expectedData = new ArrayList<>();
-    Random random = new Random();
-    for (int i = 1; i <= ROW_COUNT; i++) {
-      Map<String, Object> row =
-          ImmutableMap.of(
-              ROW_ID, i, NAME, RandomStringUtils.randomAlphabetic(10), AGE, random.nextInt(100));
-      expectedData.add(row);
-    }
-    postgresResourceManager.write(JDBC_TABLE_NAME, expectedData);
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
