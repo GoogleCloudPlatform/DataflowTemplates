@@ -32,25 +32,58 @@ import org.slf4j.LoggerFactory;
  */
 @RunWith(JUnit4.class)
 public class DataStreamIOTest {
-
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIOTest.class);
-
   public static final String BUCKET = "gs://ds-fileio-tests/";
   public static final String ROOT_PATH_WITH_DIRECTORIES = "path-with-directories/";
   public static final String ROOT_PATH_WITH_FILES = "path-with-files/";
-
+  @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
   @Ignore
   @Test
   public void testFullContinuous() {
     Pipeline pipeline = Pipeline.create();
     DataStreamIO dsIo = new DataStreamIO(null, BUCKET, "avro", null, null);
-
     pipeline.apply(dsIo);
-
     PAssert.that(dsIo.directories)
         .containsInAnyOrder(
             "gs://ds-fileio-tests/path-with-files/HR_JOBS/2020/07/14/11/03/",
             "gs://ds-fileio-tests/path-with-files/HR_JOBS/2020/07/14/12/16/");
     pipeline.run().waitUntilFinish();
+  }
+  @Test
+  public void testExtractGcsFileIgnoresMessageWithNullAttributes() {
+    PubsubMessage message = new PubsubMessage(new byte[0], Collections.emptyMap());
+    PCollection<Metadata> results =
+        testPipeline
+            .apply(Create.of(message))
+            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+    PAssert.that(results).empty();
+    testPipeline.run();
+  }
+  @Test
+  public void testExtractGcsFileIgnoresMessageWithMissingObjectId() {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("eventType", "OBJECT_FINALIZE");
+    attributes.put("bucketId", "my-bucket");
+    PubsubMessage message = new PubsubMessage(new byte[0], attributes);
+    PCollection<Metadata> results =
+        testPipeline
+            .apply(Create.of(message))
+            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+    PAssert.that(results).empty();
+    testPipeline.run();
+  }
+  @Test
+  public void testExtractGcsFileIgnoresNonFinalizeEvents() {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("eventType", "OBJECT_DELETE");
+    attributes.put("bucketId", "my-bucket");
+    attributes.put("objectId", "some/path/file.avro");
+    PubsubMessage message = new PubsubMessage(new byte[0], attributes);
+    PCollection<Metadata> results =
+        testPipeline
+            .apply(Create.of(message))
+            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+    PAssert.that(results).empty();
+    testPipeline.run();
   }
 }

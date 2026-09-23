@@ -325,7 +325,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     }
   }
 
-  static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
+    static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
     @ProcessElement
     public void process(ProcessContext context) throws IOException {
       PubsubMessage message = context.element();
@@ -334,7 +334,17 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
       String bucketId = message.getAttribute("bucketId");
       String objectId = message.getAttribute("objectId");
 
-      if (eventType.equals("OBJECT_FINALIZE") && !objectId.endsWith("/")) {
+      if (eventType == null || bucketId == null || objectId == null) {
+        LOG.warn(
+            "Ignoring Pub/Sub message missing required GCS notification attributes: "
+                + "eventType={}, bucketId={}, objectId={}",
+            eventType,
+            bucketId,
+            objectId);
+        return;
+      }
+
+      if ("OBJECT_FINALIZE".equals(eventType) && !objectId.endsWith("/")) {
         String fileName = "gs://" + bucketId + "/" + objectId;
         try {
           Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
