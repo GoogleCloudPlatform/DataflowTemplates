@@ -997,4 +997,54 @@ public class MongoDbChangeStreamReaderTest {
     verify(mockStream, times(1)).cursor();
     fn.teardown();
   }
+
+  @Test
+  public void testBuildChangeStreamPipeline_singleStream_includesUnsetUpdateDescription() {
+    ChangeStreamPartition partition =
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            "users",
+            "users",
+            0,
+            1,
+            null,
+            0,
+            0,
+            "whenAvailable");
+
+    List<org.bson.conversions.Bson> pipeline =
+        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+
+    assertEquals(1, pipeline.size());
+    assertEquals(
+        new BsonDocument("$unset", new BsonString("updateDescription")),
+        pipeline.get(0).toBsonDocument());
+  }
+
+  @Test
+  public void testBuildChangeStreamPipeline_withMatchFilter_ordersMatchBeforeUnset() {
+    String matchJson = MongoDbChangeStreamReader.generateHashedMatchFilter(4, 1).toJson();
+    ChangeStreamPartition partition =
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            "users",
+            "users",
+            1,
+            4,
+            matchJson,
+            0,
+            0,
+            "whenAvailable");
+
+    List<org.bson.conversions.Bson> pipeline =
+        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+
+    assertEquals(2, pipeline.size());
+    assertTrue(pipeline.get(0).toBsonDocument().containsKey("$match"));
+    assertEquals(
+        new BsonDocument("$unset", new BsonString("updateDescription")),
+        pipeline.get(1).toBsonDocument());
+  }
 }

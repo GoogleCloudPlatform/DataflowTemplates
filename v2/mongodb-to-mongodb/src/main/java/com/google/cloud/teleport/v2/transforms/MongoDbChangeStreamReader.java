@@ -314,6 +314,22 @@ public class MongoDbChangeStreamReader {
     return new BsonDocument("$match", exprDoc);
   }
 
+  /**
+   * Builds the Change Stream aggregation pipeline for a partition, applying any partition {@code
+   * $match} filter followed by {@code {$unset: "updateDescription"}} to strip redundant modified
+   * field deltas when {@code fullDocument} is already returned.
+   */
+  static List<Bson> buildChangeStreamPipeline(ChangeStreamPartition partition) {
+    List<Bson> pipeline = new ArrayList<>(2);
+    if (partition != null
+        && partition.getMatchFilterJson() != null
+        && !partition.getMatchFilterJson().isEmpty()) {
+      pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
+    }
+    pipeline.add(new BsonDocument("$unset", new BsonString("updateDescription")));
+    return pipeline;
+  }
+
   /** Generates partition descriptors for a collection using server-side keyset hashing. */
   public static List<ChangeStreamPartition> generatePartitions(
       MongoClient client,
@@ -1027,10 +1043,7 @@ public class MongoDbChangeStreamReader {
 
           MongoDatabase db = mongoClient.getDatabase(partition.getSourceDatabase());
 
-          List<Bson> pipeline = new ArrayList<>();
-          if (partition.getMatchFilterJson() != null && !partition.getMatchFilterJson().isEmpty()) {
-            pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
-          }
+          List<Bson> pipeline = buildChangeStreamPipeline(partition);
 
           ChangeStreamIterable<Document> stream;
           if (partition.isDatabaseLevel()) {
