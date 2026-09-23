@@ -40,7 +40,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
   protected static final String SPEC_PATH =
       System.getProperty(
-          "specPath", "gs://dataflow-templates/latest/flex/GCS_Spanner_Data_Validator");
+          "specPath", "gs://dataflow-templates/latest/flex/Avro_to_Spanner_Data_Validator");
 
   protected SpannerResourceManager spannerResourceManager;
   protected BigQueryResourceManager bigQueryResourceManager;
