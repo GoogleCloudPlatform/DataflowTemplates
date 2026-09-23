@@ -827,15 +827,16 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
   // TODO(b/485601737): Add PG UDFs.
 
   private SharedTestCase pgSimpleUdf() {
-    String namedSchemaDef = "CREATE SCHEMA s_pgSimpleUdf";
-    String udfDef1 = "CREATE FUNCTION s_pgSimpleUdf.u_pgSimpleUdf_foo() RETURNS bigint RETURN (1)";
+    String namedSchemaDef = "CREATE SCHEMA \"s_pgSimpleUdf\"";
+    String udfDef1 =
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_foo\"() RETURNS bigint RETURN (1)";
     String udfDef2 =
-        "CREATE FUNCTION s_pgSimpleUdf.u_pgSimpleUdf_default_values("
-            + "A text, "
-            + "B text DEFAULT NULL, "
-            + "C text DEFAULT 'NULL', "
-            + "D text DEFAULT '') "
-            + "RETURNS text RETURN (CONCAT(A, '::', B, '::', C, '::', D))";
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_default_values\"("
+            + "a text, "
+            + "b text DEFAULT NULL, "
+            + "c text DEFAULT 'NULL', "
+            + "d text DEFAULT '') "
+            + "RETURNS text RETURN (CONCAT(a, '::', b, '::', c, '::', d))";
 
     return new SharedTestCase(
         Arrays.asList(namedSchemaDef, udfDef1, udfDef2),
@@ -850,39 +851,40 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
           assertThat(udf1.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_foo"));
           assertThat(udf1.type(), equalTo("bigint"));
-          assertThat(udf1.definition(), equalTo("1"));
+          assertThat(udf1.definition(), equalTo("'1'::bigint"));
           assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
 
           assertThat(udf2.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_default_values"));
-          assertThat(udf2.type(), equalTo("text"));
-          assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+          assertThat(udf2.type(), equalTo("character varying"));
+          assertThat(
+              udf2.definition(), equalTo("concat(a, '::'::text, b, '::'::text, c, '::'::text, d)"));
           assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
           assertThat(
               udf2.parameters(),
               hasItems(
                   UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
-                      .name("A")
-                      .type("text")
+                      .name("a")
+                      .type("character varying")
                       .defaultExpression(null)
                       .autoBuild(),
                   UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
-                      .name("B")
-                      .type("text")
-                      .defaultExpression("NULL")
+                      .name("b")
+                      .type("character varying")
+                      .defaultExpression("NULL::text")
                       .autoBuild(),
                   UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
-                      .name("C")
-                      .type("text")
-                      .defaultExpression("'NULL'")
+                      .name("c")
+                      .type("character varying")
+                      .defaultExpression("'NULL'::text")
                       .autoBuild(),
                   UdfParameter.builder(Dialect.POSTGRESQL)
                       .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
-                      .name("D")
-                      .type("text")
-                      .defaultExpression("''")
+                      .name("d")
+                      .type("character varying")
+                      .defaultExpression("''::text")
                       .autoBuild()));
         });
   }

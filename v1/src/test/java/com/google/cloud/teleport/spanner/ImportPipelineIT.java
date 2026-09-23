@@ -146,6 +146,12 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   private void uploadImportPipelineArtifactsUdf(String subdirectory) throws IOException {
     gcsClient.uploadArtifact(
+        "input/UdfSchema.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/postgres/UdfSchema.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/UdfSchema-manifest.json",
+        Resources.getResource("ImportPipelineIT/postgres/UdfSchema-manifest.json").getPath());
+    gcsClient.uploadArtifact(
         "input/pg_add.avro-00000-of-00001",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_add.avro").getPath());
     gcsClient.uploadArtifact(

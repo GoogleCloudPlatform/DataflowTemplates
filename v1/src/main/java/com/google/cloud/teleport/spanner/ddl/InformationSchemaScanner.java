@@ -1176,14 +1176,14 @@ public class InformationSchemaScanner {
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
                 + " WHERE p.specific_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name = r.specific_name and"
-                + " r.routine_type = 'FUNCTION' ORDER BY"
+                + " r.routine_type = 'FUNCTION' and r.routine_body != 'EXTERNAL' ORDER BY"
                 + " p.specific_schema, p.specific_name, p.ordinal_position");
       case POSTGRESQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
                 + " WHERE p.specific_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog') and p.specific_schema = r.specific_schema and p.specific_name ="
-                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body != 'EXTERNAL' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);

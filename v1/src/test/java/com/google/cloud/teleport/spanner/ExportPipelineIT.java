@@ -282,7 +282,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "NoPkTable")));
     List<Artifact> udfArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "gsql_add")));
+            "output/",
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "UdfSchema.gsql_add")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(udfRemoteArtifacts).isNotEmpty();
@@ -387,10 +388,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "NoPkTable")));
     List<Artifact> udfArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "pg_add")));
+            "output/",
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "UdfSchema.pg_add")));
     List<Artifact> udfMultiplyArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "pg_multiply")));
+            "output/",
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "UdfSchema.pg_multiply")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();
@@ -407,12 +410,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 new org.apache.avro.generic.GenericDatumReader<>())
             .getSchema();
     assertThat(udfSchema.getProp("spannerEntity")).isEqualTo("spannerUdf");
-    assertThat(udfSchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_add");
-    assertThat(udfSchema.getProp("spannerUdfDefinition")).isEqualTo("a + b");
+    assertThat(udfSchema.getProp("spannerUdfName")).isEqualTo(prefix + "UdfSchema.pg_add");
+    assertThat(udfSchema.getProp("spannerUdfDefinition")).isEqualTo("(a + b)");
     assertThat(udfSchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
     assertThat(udfSchema.getProp("spannerUdfSpannerDeterminism")).isEqualTo("DETERMINISTIC");
-    assertThat(udfSchema.getProp("spannerUdfParameter_0")).isEqualTo("\"a\" integer");
-    assertThat(udfSchema.getProp("spannerUdfParameter_1")).isEqualTo("\"b\" integer");
+    assertThat(udfSchema.getProp("spannerUdfParameter_0")).isEqualTo("\"a\" bigint");
+    assertThat(udfSchema.getProp("spannerUdfParameter_1")).isEqualTo("\"b\" bigint");
 
     Schema udfMultiplySchema =
         new org.apache.avro.file.DataFileReader<>(
@@ -421,13 +424,14 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 new org.apache.avro.generic.GenericDatumReader<>())
             .getSchema();
     assertThat(udfMultiplySchema.getProp("spannerEntity")).isEqualTo("spannerUdf");
-    assertThat(udfMultiplySchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_multiply");
-    assertThat(udfMultiplySchema.getProp("spannerUdfDefinition")).isEqualTo("SELECT a * b");
+    assertThat(udfMultiplySchema.getProp("spannerUdfName"))
+        .isEqualTo(prefix + "UdfSchema.pg_multiply");
+    assertThat(udfMultiplySchema.getProp("spannerUdfDefinition")).isEqualTo("(SELECT (a * b))");
     assertThat(udfMultiplySchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
     assertThat(udfMultiplySchema.getProp("spannerUdfSpannerDeterminism"))
         .isEqualTo("DETERMINISTIC");
-    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_0")).isEqualTo("\"a\" integer");
-    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_1")).isEqualTo("\"b\" integer");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_0")).isEqualTo("\"a\" bigint");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_1")).isEqualTo("\"b\" bigint");
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);

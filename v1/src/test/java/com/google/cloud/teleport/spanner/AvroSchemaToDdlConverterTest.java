@@ -959,6 +959,14 @@ public class AvroSchemaToDdlConverterTest {
 
   @Test
   public void pgUdfsFromImportPipelineResources() throws java.io.IOException {
+    Schema udfSchema =
+        new org.apache.avro.file.DataFileReader<>(
+                new java.io.File(
+                    com.google.common.io.Resources.getResource(
+                            "ImportPipelineIT/postgres/UdfSchema.avro")
+                        .getFile()),
+                new org.apache.avro.generic.GenericDatumReader<>())
+            .getSchema();
     Schema pgAddSchema =
         new org.apache.avro.file.DataFileReader<>(
                 new java.io.File(
@@ -977,15 +985,17 @@ public class AvroSchemaToDdlConverterTest {
             .getSchema();
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
-    Ddl ddl = converter.toDdl(java.util.Arrays.asList(pgAddSchema, pgMultiplySchema));
+    Ddl ddl = converter.toDdl(java.util.Arrays.asList(udfSchema, pgAddSchema, pgMultiplySchema));
+    assertThat(ddl.schemas(), hasSize(1));
     assertThat(ddl.udfs(), hasSize(2));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "CREATE FUNCTION \"pg_add\"(\"a\" integer, \"b\" integer)"
-                + " RETURNS integer IMMUTABLE SECURITY INVOKER RETURN a + b\n"
-                + "CREATE FUNCTION \"pg_multiply\"(\"a\" integer, \"b\" integer)"
-                + " RETURNS integer IMMUTABLE LANGUAGE SQL SECURITY INVOKER RETURN SELECT a * b"));
+            "CREATE SCHEMA \"UdfSchema\"\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_add\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE LANGUAGE SQL SECURITY INVOKER RETURN (a + b)\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_multiply\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE LANGUAGE SQL SECURITY INVOKER RETURN (SELECT (a * b))"));
   }
 
   @Test
