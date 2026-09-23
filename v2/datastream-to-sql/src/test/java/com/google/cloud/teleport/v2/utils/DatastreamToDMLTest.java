@@ -1123,6 +1123,44 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} resolves _metadata_row_id when
+   * primaryKeys has cased ROWID and rowObj has _metadata_row_id.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_resolvesMetadataRowIdWithCasedRowIdPk() {
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String json = "{\"_metadata_deleted\": true, \"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = Arrays.asList("ROWID");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("ROWID", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"ROWID\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} resolves _metadata_row_id when
+   * _metadata_primary_keys contains ROWID and rowObj has _metadata_row_id.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_resolvesMetadataRowIdWithSourcePKs() {
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String json =
+        "{\"_metadata_primary_keys\": [\"ROWID\"], \"_metadata_deleted\": true,"
+            + " \"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = Arrays.asList("ROWID");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("ROWID", "VARCHAR");
+
+    String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
+    assertEquals("\"ROWID\"='AAAEARAAEAAAAC9AAS'", filterSql);
+  }
+
+  /**
    * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} generates a rowid filter even
    * when destination primaryKeys list is empty (table without PK).
    */
@@ -1190,39 +1228,6 @@ public class DatastreamToDMLTest {
     tableSchema.put("ROWID", "VARCHAR");
 
     String valueSql = dml.getValueSql(rowObj, "ROWID", tableSchema);
-    assertEquals("'AAAEARAAEAAAAC9AAS'", valueSql);
-  }
-
-  /**
-   * Tests that {@link DatastreamToDML#getValueSql} resolves _metadata_row_id when column is
-   * _metadata_row_id and record contains rowid.
-   */
-  @Test
-  public void testGetValueSql_supportsMetadataRowIdFallbackFromRowId() {
-    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
-    String json = "{\"rowid\": \"AAAEARAAEAAAAC9AAS\"}";
-    JsonNode rowObj = getRowObj(json);
-    Map<String, String> tableSchema = new HashMap<>();
-    tableSchema.put("_metadata_row_id", "VARCHAR");
-
-    String valueSql = dml.getValueSql(rowObj, "_metadata_row_id", tableSchema);
-    assertEquals("'AAAEARAAEAAAAC9AAS'", valueSql);
-  }
-
-  /**
-   * Tests that {@link DatastreamToDML#getValueSql} resolves _metadata_row_id when column is
-   * _metadata_row_id and record contains cased ROWID.
-   */
-  @Test
-  public void testGetValueSql_supportsMetadataRowIdFallbackFromCasedRowId() {
-    DatastreamToPostgresDML dml =
-        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
-    String json = "{\"ROWID\": \"AAAEARAAEAAAAC9AAS\"}";
-    JsonNode rowObj = getRowObj(json);
-    Map<String, String> tableSchema = new HashMap<>();
-    tableSchema.put("_metadata_row_id", "VARCHAR");
-
-    String valueSql = dml.getValueSql(rowObj, "_metadata_row_id", tableSchema);
     assertEquals("'AAAEARAAEAAAAC9AAS'", valueSql);
   }
 

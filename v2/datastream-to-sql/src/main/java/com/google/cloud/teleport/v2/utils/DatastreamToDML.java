@@ -36,6 +36,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -270,6 +271,9 @@ public abstract class DatastreamToDML
 
     for (String destPk : destinationPrimaryKeys) {
       if (!casedSourceFieldNames.contains(destPk)) {
+        if (destPk.equalsIgnoreCase(this.rowIdColumnName) && rowObj.has("_metadata_row_id")) {
+          continue;
+        }
         return this.getDefaultPrimaryKeys();
       }
     }
@@ -373,29 +377,19 @@ public abstract class DatastreamToDML
   }
 
   public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
-    String columnValue;
+    if (columnName.equalsIgnoreCase(this.rowIdColumnName)
+        && !rowObj.has(columnName)
+        && rowObj.has("_metadata_row_id")) {
+      columnName = "_metadata_row_id";
+    }
+
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
-      String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
-      if ((columnName.equals(this.rowIdColumnName) || columnName.equals(casedRowId))
-          && rowObj.has("_metadata_row_id")) {
-        columnObj = rowObj.get("_metadata_row_id");
-      } else if (columnName.equals("_metadata_row_id")
-          && (rowObj.has(this.rowIdColumnName) || rowObj.has(casedRowId))) {
-        columnObj =
-            rowObj.has(this.rowIdColumnName)
-                ? rowObj.get(this.rowIdColumnName)
-                : rowObj.get(casedRowId);
-      } else {
-        LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
-        return "";
-      }
+      LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
+      return "";
     }
-    if (columnObj.isTextual()) {
-      columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
-    } else {
-      columnValue = columnObj.toString();
-    }
+    String columnValue =
+        columnObj.isTextual() ? "'" + cleanSql(columnObj.textValue()) + "'" : columnObj.toString();
     return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
   }
 
@@ -556,9 +550,21 @@ public abstract class DatastreamToDML
           }
         }
       }
+
+      if (pkToValueSql.isEmpty() && rowObj.has("_metadata_row_id")) {
+        for (String pk : primaryKeys) {
+          if (pk.equalsIgnoreCase(this.rowIdColumnName)) {
+            String columnValue = getValueSql(rowObj, pk, tableSchema);
+            pkToValueSql = quote(pk) + "=" + columnValue;
+            break;
+          }
+        }
+      }
     }
 
-    if (pkToValueSql.isEmpty() && hasRowId(rowObj)) {
+    boolean isDelete =
+        rowObj.has("_metadata_deleted") && rowObj.get("_metadata_deleted").asBoolean();
+    if (isDelete && pkToValueSql.isEmpty() && primaryKeys.isEmpty()) {
       String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
       if (!tableSchema.containsKey(casedRowId)) {
         throw new DeletedWithoutPrimaryKey(
@@ -566,14 +572,11 @@ public abstract class DatastreamToDML
                 "Cannot replicate DELETE for table without primary keys: target schema lacks '%s' column.",
                 casedRowId));
       }
-      String sourceRowIdField = null;
-      if (rowObj.has(this.rowIdColumnName)) {
-        sourceRowIdField = this.rowIdColumnName;
-      } else if (rowObj.has(casedRowId)) {
-        sourceRowIdField = casedRowId;
-      } else if (rowObj.has("_metadata_row_id")) {
-        sourceRowIdField = "_metadata_row_id";
-      }
+      String sourceRowIdField =
+          Stream.of(casedRowId, this.rowIdColumnName, "_metadata_row_id")
+              .filter(rowObj::has)
+              .findFirst()
+              .orElse(null);
 
       if (sourceRowIdField != null) {
         String columnValue = getValueSql(rowObj, sourceRowIdField, tableSchema);
