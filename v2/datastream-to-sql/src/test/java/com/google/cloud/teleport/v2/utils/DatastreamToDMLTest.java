@@ -1493,4 +1493,178 @@ public class DatastreamToDMLTest {
             + "decode('aGVsbG9fd29ybGQ=','base64'),'Top.Science.Astronomy'::ltree",
         dml.getColumnsValuesSql(rowObj, tableSchema));
   }
+
+  @Test
+  public void testMySqlCleanDataTypeValueSql_dateTimeAndTimestamp() {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> schema = new HashMap<>();
+    schema.put("col_datetime", "DATETIME");
+    schema.put("col_datetime_6", "DATETIME(6)");
+    schema.put("col_timestamp", "TIMESTAMP");
+
+    // ISO-8601 Zulu timestamps
+    assertEquals(
+        "'2023-10-31 04:59:27.000000'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.000000Z'", "col_datetime", schema));
+    assertEquals(
+        "'2023-10-31 04:59:27'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27Z'", "col_timestamp", schema));
+
+    // Zero timezone offsets (+00:00, -00:00, +0000, +00)
+    assertEquals(
+        "'2023-10-31 04:59:27.000000'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.000000+00:00'", "col_datetime_6", schema));
+    assertEquals(
+        "'2023-10-31 04:59:27'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27+0000'", "col_timestamp", schema));
+    assertEquals(
+        "'2023-10-31 04:59:27'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27+00'", "col_timestamp", schema));
+
+    // Non-UTC timezone offsets converted to UTC
+    assertEquals(
+        "'2023-10-31 09:59:27.123456'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.123456-05:00'", "col_datetime", schema));
+    assertEquals(
+        "'2023-10-30 23:30:00'",
+        dml.cleanDataTypeValueSql("'2023-10-31T01:30:00+02:00'", "col_timestamp", schema));
+    assertEquals(
+        "'2023-10-31 02:59:27'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27+0200'", "col_datetime", schema));
+    assertEquals(
+        "'2023-10-31T04:59:27+19:00'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27+19:00'", "col_datetime", schema));
+
+    // Lowercase ISO-8601 delimiters ('t' and 'z')
+    assertEquals(
+        "'2023-10-31 04:59:27.000000'",
+        dml.cleanDataTypeValueSql("'2023-10-31t04:59:27.000000z'", "col_datetime", schema));
+
+    // Nanoseconds truncated to microseconds
+    assertEquals(
+        "'2023-10-31 04:59:27.123456'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.123456789Z'", "col_datetime", schema));
+    assertEquals(
+        "'2023-10-31 04:59:27.123456'",
+        dml.cleanDataTypeValueSql("'2023-10-31 04:59:27.123456789'", "col_datetime", schema));
+
+    // Standard MySQL datetime and date-only strings preserved without truncation
+    assertEquals(
+        "'2023-10-31 04:59:27'",
+        dml.cleanDataTypeValueSql("'2023-10-31 04:59:27'", "col_datetime", schema));
+    assertEquals("'2023-10-31'", dml.cleanDataTypeValueSql("'2023-10-31'", "col_datetime", schema));
+    assertEquals(
+        "'2023-10-31'", dml.cleanDataTypeValueSql("'2023-10-31'", "col_timestamp", schema));
+
+    // Null and empty strings
+    assertEquals("NULL", dml.cleanDataTypeValueSql("", "col_datetime", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_datetime", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("NULL", "col_datetime", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("'NULL'", "col_datetime", schema));
+  }
+
+  @Test
+  public void testMySqlCleanDataTypeValueSql_dateAndTimeAndYear() {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> schema = new HashMap<>();
+    schema.put("col_date", "DATE");
+    schema.put("col_time", "TIME");
+    schema.put("col_year", "YEAR");
+
+    // DATE
+    assertEquals(
+        "'2023-10-31'",
+        dml.cleanDataTypeValueSql("'2023-10-31T04:59:27.000000Z'", "col_date", schema));
+    assertEquals("'2023-10-31'", dml.cleanDataTypeValueSql("'2023-10-31'", "col_date", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_date", schema));
+
+    // TIME: ISO-8601 datetime, Duration (LogicalTypes.TimeMicros), negative time, and day-hour
+    assertEquals(
+        "'04:59:27.123456'",
+        dml.cleanDataTypeValueSql("'1970-01-01T04:59:27.123456Z'", "col_time", schema));
+    assertEquals(
+        "'04:59:27.123456'",
+        dml.cleanDataTypeValueSql("'1970-01-01t04:59:27.123456z'", "col_time", schema));
+    assertEquals(
+        "'04:59:27.123456'", dml.cleanDataTypeValueSql("'PT4H59M27.123456S'", "col_time", schema));
+    assertEquals("'-04:59:27'", dml.cleanDataTypeValueSql("'-PT4H59M27S'", "col_time", schema));
+    assertEquals("'04:59:27'", dml.cleanDataTypeValueSql("'04:59:27'", "col_time", schema));
+    assertEquals(
+        "'-12:30:00.123456'",
+        dml.cleanDataTypeValueSql("'-12:30:00.123456789'", "col_time", schema));
+    assertEquals("'-12:30'", dml.cleanDataTypeValueSql("'-12:30'", "col_time", schema));
+    assertEquals("'-838:59:59'", dml.cleanDataTypeValueSql("'-838:59:59'", "col_time", schema));
+    assertEquals("'1 12:00:00'", dml.cleanDataTypeValueSql("'1 12:00:00'", "col_time", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_time", schema));
+
+    // YEAR: date prefix extracted, unquoted numeric 0 preserved (avoids 0 -> '0' -> 2000 bug)
+    assertEquals("'2023'", dml.cleanDataTypeValueSql("'2023-10-31'", "col_year", schema));
+    assertEquals("'2023'", dml.cleanDataTypeValueSql("'2023'", "col_year", schema));
+    assertEquals("2023", dml.cleanDataTypeValueSql("2023", "col_year", schema));
+    assertEquals("0", dml.cleanDataTypeValueSql("0", "col_year", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_year", schema));
+  }
+
+  @Test
+  public void testMySqlCleanDataTypeValueSql_numericBooleanJsonAndString() {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> schema = new HashMap<>();
+    schema.put("col_int", "INT");
+    schema.put("col_int_uz", "INT(10) UNSIGNED ZEROFILL");
+    schema.put("col_bool", "BOOLEAN");
+    schema.put("col_json", "JSON");
+    schema.put("col_varchar", "VARCHAR(255)");
+    schema.put("col_blob", "BLOB");
+
+    // Numeric: empty strings become NULL, quoted strings remain quoted (no unquoting/SQL injection)
+    assertEquals("NULL", dml.cleanDataTypeValueSql("", "col_int", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_int", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_int_uz", schema));
+    assertEquals("123", dml.cleanDataTypeValueSql("123", "col_int", schema));
+    assertEquals("'123'", dml.cleanDataTypeValueSql("'123'", "col_int", schema));
+    assertEquals(
+        "'0 OR 1=1; -- ''x'", dml.cleanDataTypeValueSql("'0 OR 1=1; -- ''x'", "col_int", schema));
+
+    // Boolean
+    assertEquals("true", dml.cleanDataTypeValueSql("true", "col_bool", schema));
+    assertEquals("false", dml.cleanDataTypeValueSql("false", "col_bool", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_bool", schema));
+
+    // JSON: objects and JSON literal 'null' stay quoted, SQL NULL and empty string become NULL
+    assertEquals("'{\"a\":1}'", dml.cleanDataTypeValueSql("{\"a\":1}", "col_json", schema));
+    assertEquals("'{\"a\":1}'", dml.cleanDataTypeValueSql("'{\"a\":1}'", "col_json", schema));
+    assertEquals(
+        "'{\"name\":\"O''Reilly\"}'",
+        dml.cleanDataTypeValueSql("'{\"name\":\"O''Reilly\"}'", "col_json", schema));
+    assertEquals("'null'", dml.cleanDataTypeValueSql("'null'", "col_json", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("null", "col_json", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("''", "col_json", schema));
+
+    // String: preserves empty string literal '' and literal string 'NULL'
+    assertEquals("''", dml.cleanDataTypeValueSql("''", "col_varchar", schema));
+    assertEquals("'NULL'", dml.cleanDataTypeValueSql("'NULL'", "col_varchar", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("NULL", "col_varchar", schema));
+    assertEquals("NULL", dml.cleanDataTypeValueSql("null", "col_varchar", schema));
+    assertEquals("'hello'", dml.cleanDataTypeValueSql("'hello'", "col_varchar", schema));
+
+    // Binary / BLOB: preserves empty string literal ''
+    assertEquals("''", dml.cleanDataTypeValueSql("''", "col_blob", schema));
+  }
+
+  @Test
+  public void testMySqlGetColumnsValuesSql_withCasingAndDateTime() throws Exception {
+    DatastreamToMySQLDML dml = DatastreamToMySQLDML.of(null);
+    dml.withColumnCasing("UPPERCASE");
+    Map<String, String> schema = new HashMap<>();
+    schema.put("ID", "INT");
+    schema.put("CREATIONDATE", "DATETIME");
+    schema.put("BIRTH_YEAR", "YEAR");
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rowObj =
+        mapper.readTree(
+            "{\"id\": 1, \"creationdate\": \"2023-10-31T04:59:27.000000Z\", \"birth_year\": 0}");
+
+    assertEquals("1,'2023-10-31 04:59:27.000000',0", dml.getColumnsValuesSql(rowObj, schema));
+  }
 }
