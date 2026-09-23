@@ -68,7 +68,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
   }
 
   protected LaunchInfo launchValidationJob(String gcsInputDirectory, Duration jobTimeout)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException {
     return launchValidationJob(gcsInputDirectory, jobTimeout, Map.of(), Map.of());
   }
 
@@ -77,7 +77,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
       Duration jobTimeout,
       Map<String, String> additionalParameters,
       Map<String, Object> environmentOptions)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException {
     String jobName = PipelineUtils.createJobName(testName);
 
     Map<String, String> parameters = new HashMap<>();
@@ -102,7 +102,6 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
     Result result = pipelineOperator.waitUntilDone(createConfig(jobInfo, jobTimeout));
     assertThatResult(result).isLaunchFinished();
-    collectAndExportMetrics(jobInfo);
 
     return jobInfo;
   }

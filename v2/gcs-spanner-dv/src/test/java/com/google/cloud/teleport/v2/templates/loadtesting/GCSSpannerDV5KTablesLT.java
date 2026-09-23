@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.Validation
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -102,7 +103,8 @@ public class GCSSpannerDV5KTablesLT extends GCSSpannerDVLTBase {
         .isEqualTo((long) ROWS_PER_TABLE);
 
     // 4. Launch validation pipeline and wait for completion
-    launchValidationJob(GCS_INPUT_DIRECTORY, JOB_TIMEOUT);
+    LaunchInfo jobInfo = launchValidationJob(GCS_INPUT_DIRECTORY, JOB_TIMEOUT);
+    collectAndExportMetrics(jobInfo);
 
     // 5. Assert BigQuery validation results
     GCSSpannerDVTestAsserts.assertValidationSummary(
