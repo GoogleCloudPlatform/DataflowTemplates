@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +43,10 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
       System.getProperty(
           "specPath", "gs://dataflow-templates/latest/flex/Avro_to_Spanner_Data_Validator");
 
+  private static final int SPANNER_NODE_COUNT = 10;
+  private static final int NUM_WORKERS = 1;
+  private static final int MAX_WORKERS = 100;
+
   protected SpannerResourceManager spannerResourceManager;
   protected BigQueryResourceManager bigQueryResourceManager;
 
@@ -52,6 +57,8 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
             .maybeUseStaticInstance(Optional.of(4))
+            .setNodeCount(SPANNER_NODE_COUNT)
+            .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
             .build();
 
@@ -61,7 +68,16 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
   }
 
   protected LaunchInfo launchValidationJob(String gcsInputDirectory, Duration jobTimeout)
-      throws IOException {
+      throws IOException, ParseException, InterruptedException {
+    return launchValidationJob(gcsInputDirectory, jobTimeout, Map.of(), Map.of());
+  }
+
+  protected LaunchInfo launchValidationJob(
+      String gcsInputDirectory,
+      Duration jobTimeout,
+      Map<String, String> additionalParameters,
+      Map<String, Object> environmentOptions)
+      throws IOException, ParseException, InterruptedException {
     String jobName = PipelineUtils.createJobName(testName);
 
     Map<String, String> parameters = new HashMap<>();
@@ -71,19 +87,31 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     parameters.put("bigQueryDataset", bigQueryResourceManager.getDatasetId());
     parameters.put("gcsInputDirectory", gcsInputDirectory);
     parameters.put("runId", jobName);
+    parameters.putAll(additionalParameters);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, SPEC_PATH)
+            .addEnvironment("numWorkers", NUM_WORKERS)
+            .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .setParameters(parameters);
+    environmentOptions.forEach(options::addEnvironment);
 
     LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
     assertThatPipeline(jobInfo).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(jobInfo, jobTimeout));
     assertThatResult(result).isLaunchFinished();
+    collectAndExportMetrics(jobInfo);
 
     return jobInfo;
+  }
+
+  protected void collectAndExportMetrics(LaunchInfo jobInfo)
+      throws ParseException, IOException, InterruptedException {
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    spannerResourceManager.collectMetrics(metrics);
+    exportMetricsToBigQuery(jobInfo, metrics);
   }
 
   @After
