@@ -51,7 +51,7 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.76.0</beam.version>
+    <beam.version>2.78.0-SNAPSHOT</beam.version>
     <beam-python.version>2.76.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
@@ -127,6 +127,16 @@
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
+    <repositories>
+        <repository>
+            <id>Maven-Snapshot</id>
+            <name>maven snapshot repository</name>
+            <url>https://repository.apache.org/content/groups/snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+    </repositories>
 
   <dependencyManagement>
     <dependencies>
