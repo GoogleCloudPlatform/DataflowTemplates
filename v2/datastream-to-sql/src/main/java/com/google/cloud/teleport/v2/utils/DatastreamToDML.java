@@ -122,7 +122,11 @@ public abstract class DatastreamToDML
     return applyCasingLogic(name, this.defaultCasing);
   }
 
-  private String applyCasingLogic(String name, String casingOption) {
+  protected String applyColumnCasing(String name) {
+    return applyCasingLogic(name, this.columnCasing);
+  }
+
+  protected String applyCasingLogic(String name, String casingOption) {
     if (name == null || name.isEmpty()) {
       return name;
     }
