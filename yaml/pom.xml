@@ -324,5 +324,30 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>templatesIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <launcherMachineType>n2-standard-4</launcherMachineType>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemProperties combine.children="append">
+                <property>
+                  <name>launcherMachineType</name>
+                  <value>${launcherMachineType}</value>
+                </property>
+              </systemProperties>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>
