@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -236,8 +237,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setNamespace(testUsernameShardB);
       shard.setUser(testUsernameShardB);
       shard.setPassword("TestPassword123");
-    } else if (jdbcResourceManager
-        instanceof com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager) {
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
       shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
@@ -252,10 +252,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(msSqlRm.getHost());
       shard.setPort(String.valueOf(msSqlRm.getPort()));
       shard.setDbName(msSqlRm.getDatabaseName());
-    } else if (jdbcResourceManager
-        instanceof
-        com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
-        oracleRm) {
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager oracleRm) {
       shard.setHost(oracleRm.getHost());
       shard.setPort(String.valueOf(oracleRm.getPort()));
       shard.setDbName(oracleRm.getDatabaseName());
@@ -704,9 +701,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                 jdbcResourceManager.getUri(), testUsername, "TestPassword123");
         java.sql.Statement stmt = connection.createStatement()) {
       if (!"SYSTEM".equalsIgnoreCase(testUsername)
-          && jdbcResourceManager
-              instanceof
-              com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager) {
+          && jdbcResourceManager instanceof SpannerOracleResourceManager) {
         stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
       }
       java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
@@ -739,8 +734,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createOracleSchema(
-      com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
-          jdbcResourceManager,
+      SpannerOracleResourceManager jdbcResourceManager,
       String mySqlSchemaFile,
       String targetUsername)
       throws java.io.IOException {
@@ -774,8 +768,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createOracleTableWithNColumns(
-      com.google.cloud.teleport.v2.templates.oracle.SpannerOracleResourceManager
-          jdbcResourceManager,
+      SpannerOracleResourceManager jdbcResourceManager,
       String tableName,
       int n,
       String stringSize) {

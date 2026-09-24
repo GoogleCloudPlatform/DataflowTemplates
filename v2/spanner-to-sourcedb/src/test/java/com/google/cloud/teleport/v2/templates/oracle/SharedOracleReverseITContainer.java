@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.oracle;
 
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,14 +30,14 @@ public class SharedOracleReverseITContainer {
     if (instance == null) {
       synchronized (lock) {
         if (instance == null) {
-          LOG.info("Initializing global Singleton Static Oracle pool.");
-          String host = System.getProperty("oracleStaticHost", "10.128.0.108");
-          String password = System.getProperty("oracleStaticPassword", "TestPassword123");
+          LOG.info("Initializing global Singleton PDB Admin Oracle pool (XEPDB1).");
+          String host = System.getProperty("cloudOracleHost", "localhost");
+          String password = System.getProperty("cloudOraclePassword", "TestPassword123");
           CloudOracleResourceManager.Builder builder =
               CloudOracleResourceManager.builder("oracle_static");
           builder.setUsername("system");
           builder.setPassword(password);
-          builder.setDatabaseName("XE");
+          builder.setDatabaseName("XEPDB1");
           builder.setHost(host);
           builder.setPort(1521);
           instance = new SpannerOracleResourceManager(builder);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,11 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.oracle;
+package com.google.cloud.teleport.v2.spanner.resourcemanager;
 
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+/**
+ * Custom class for Oracle implementations that require Service Name format (//host:port/Service)
+ * instead of the legacy SID format. Specifically built for Spanner integration tests hitting
+ * Pluggable Databases (PDBs) through GCP Datastream.
+ */
 public class SpannerOracleResourceManager extends CloudOracleResourceManager {
 
   private static final org.slf4j.Logger LOG =
@@ -42,10 +47,5 @@ public class SpannerOracleResourceManager extends CloudOracleResourceManager {
     } catch (Exception e) {
       LOG.error("Failed to execute SQL: " + sql, e);
     }
-  }
-
-  @Override
-  public void cleanupAll() {
-    super.cleanupAll();
   }
 }

@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
