@@ -268,7 +268,7 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     // These types are not mapped as expected, ignore them to avoid failing the
     // test.
     Set<String> ignoredTypeMappings =
-        Set.of("bit_to_string", "date_to_string", "set_to_array", "spatial_geometrycollection");
+        Set.of("bit_to_string", "set_to_array", "spatial_geometrycollection");
     // Validate supported data types.
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
@@ -425,7 +425,12 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
     expectedData.put(
         "date_to_string",
-        createRows("date_to_string", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
+        createRows(
+            "date_to_string",
+            "2012-09-17T00:00:00Z",
+            "1000-01-01T00:00:00Z",
+            "9999-12-31T00:00:00Z",
+            "NULL"));
     expectedData.put(
         "datetime",
         createRows(
