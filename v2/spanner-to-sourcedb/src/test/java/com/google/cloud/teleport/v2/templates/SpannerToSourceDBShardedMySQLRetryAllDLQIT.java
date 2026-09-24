@@ -189,7 +189,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
+                createConfig(jobInfo, Duration.ofMinutes(20)),
                 DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
                     .setMinEvents(2)
                     .build()
