@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
 import com.google.pubsub.v1.SubscriptionName;
