@@ -551,14 +551,12 @@ public abstract class DatastreamToDML
         }
       }
 
-      if (pkToValueSql.isEmpty() && rowObj.has("_metadata_row_id")) {
-        for (String pk : primaryKeys) {
-          if (pk.equalsIgnoreCase(this.rowIdColumnName)) {
-            String columnValue = getValueSql(rowObj, pk, tableSchema);
-            pkToValueSql = quote(pk) + "=" + columnValue;
-            break;
-          }
-        }
+      if (pkToValueSql.isEmpty()
+          && primaryKeys.size() == 1
+          && primaryKeys.get(0).equalsIgnoreCase(this.rowIdColumnName)
+          && rowObj.has("_metadata_row_id")) {
+        String pk = primaryKeys.get(0);
+        pkToValueSql = quote(pk) + "=" + getValueSql(rowObj, pk, tableSchema);
       }
     }
 
