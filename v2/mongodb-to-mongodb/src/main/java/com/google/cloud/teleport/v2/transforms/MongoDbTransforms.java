@@ -1455,12 +1455,17 @@ public class MongoDbTransforms {
           if (id != null) {
             LinkedHashMap<Object, CoalescedOp> colMap =
                 coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-            CoalescedOp prev =
-                colMap.put(
-                    id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
+            CoalescedOp prev = colMap.get(id);
             if (prev != null) {
               writeBatchesCoalesced.inc();
+              if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
+                if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+                  continue;
+                }
+              }
             }
+            colMap.put(
+                id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1482,17 +1487,22 @@ public class MongoDbTransforms {
             if (id != null) {
               LinkedHashMap<Object, CoalescedOp> colMap =
                   coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-              CoalescedOp prev =
-                  colMap.put(
-                      id,
-                      new CoalescedOp(
-                          new ReplaceOneModel<>(
-                              new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
-                          item,
-                          false));
+              CoalescedOp prev = colMap.get(id);
               if (prev != null) {
                 writeBatchesCoalesced.inc();
+                if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
+                  if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+                    continue;
+                  }
+                }
               }
+              colMap.put(
+                  id,
+                  new CoalescedOp(
+                      new ReplaceOneModel<>(
+                          new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                      item,
+                      false));
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
