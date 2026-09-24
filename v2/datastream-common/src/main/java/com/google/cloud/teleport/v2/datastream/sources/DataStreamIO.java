@@ -325,7 +325,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     }
   }
 
-    static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
+  static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
     @ProcessElement
     public void process(ProcessContext context) throws IOException {
       PubsubMessage message = context.element();
