@@ -126,7 +126,7 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     // Prepare Jinja variables
-    String jdbcUrl = postgresResourceManager.getUri();
+    String jdbcUrl = postgresResourceManager.getUri() + "&connectTimeout=2";
     String username = postgresResourceManager.getUsername();
     String password = postgresResourceManager.getPassword();
     String query = String.format("SELECT %s, %s, %s FROM %s", ROW_ID, NAME, AGE, JDBC_TABLE_NAME);
@@ -199,7 +199,7 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     // Prepare Jinja variables
-    String jdbcUrl = postgresResourceManager.getUri();
+    String jdbcUrl = postgresResourceManager.getUri() + "&connectTimeout=2";
     String username = postgresResourceManager.getUsername();
     String password = postgresResourceManager.getPassword();
     String query = String.format("SELECT %s, %s, %s FROM %s", ROW_ID, NAME, AGE, JDBC_TABLE_NAME);
