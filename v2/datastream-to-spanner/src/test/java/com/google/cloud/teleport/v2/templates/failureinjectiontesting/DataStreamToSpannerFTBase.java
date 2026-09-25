@@ -232,7 +232,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addEnvironmentVariable(
                 "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .addEnvironmentVariable(
-                "additionalExperiments", List.of("enable_streaming_rightfitting"));
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     if (shadowTableSpannerResourceManager != null) {
       flexTemplateBuilder.addParameter(

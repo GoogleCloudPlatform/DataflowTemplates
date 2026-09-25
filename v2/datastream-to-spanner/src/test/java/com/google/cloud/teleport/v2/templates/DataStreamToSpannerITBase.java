@@ -433,7 +433,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
-    options.addEnvironment("additionalExperiments", List.of("enable_streaming_rightfitting"));
+    options.addEnvironment(
+        "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);

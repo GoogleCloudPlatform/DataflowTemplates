@@ -327,7 +327,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
                             ? "avro"
                             : "json"))
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
-            .addEnvironment("additionalExperiments", List.of("enable_streaming_rightfitting"));
+            .addEnvironment(
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
