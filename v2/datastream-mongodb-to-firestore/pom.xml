@@ -63,7 +63,7 @@
         <dependency>
             <groupId>dnsjava</groupId>
             <artifactId>dnsjava</artifactId>
-            <version>3.6.3</version>
+            <version>3.6.5</version>
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
