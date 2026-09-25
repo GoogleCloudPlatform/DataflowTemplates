@@ -96,6 +96,20 @@ public class MongoDbToBigQueryOptions {
     String getFilter();
 
     void setFilter(String jsonFilter);
+
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Use ISO-8601 date format",
+        helpText =
+            "If true, MongoDB date and timestamp values are serialized as ISO-8601 strings"
+                + " (for example, `2026-02-03T15:31:41.924Z`), preserving millisecond precision."
+                + " If false (the default), the previous serialization format is used, which trims"
+                + " timestamps to second precision and depends on the JVM locale.")
+    @Default.Boolean(false)
+    Boolean getUseIso8601DateFormat();
+
+    void setUseIso8601DateFormat(Boolean useIso8601DateFormat);
   }
 
   /** Options for reading from PubSub. */
