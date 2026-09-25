@@ -36,7 +36,7 @@ options:
         name: "location"
         description: "The name of the table to read from."
         help: "The name of the database table to read data from."
-        example: "public.my_table"
+        example: "my_table"
         required: false
         type: text
       - order: 2
