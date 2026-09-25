@@ -199,7 +199,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addEnvironmentVariable(
                 "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"))
             .build();
 
     // Run
@@ -253,7 +253,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addEnvironmentVariable(
                 "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"));
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
       flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);

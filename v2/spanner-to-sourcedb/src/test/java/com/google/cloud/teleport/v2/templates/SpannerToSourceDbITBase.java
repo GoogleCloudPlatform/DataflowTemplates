@@ -350,7 +350,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    options.addEnvironment(
+        "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run

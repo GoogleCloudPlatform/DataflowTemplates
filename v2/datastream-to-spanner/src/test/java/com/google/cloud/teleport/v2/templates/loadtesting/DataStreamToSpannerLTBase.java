@@ -231,6 +231,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+    options.addEnvironment("additionalExperiments", List.of("enable_streaming_rightfitting"));
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
