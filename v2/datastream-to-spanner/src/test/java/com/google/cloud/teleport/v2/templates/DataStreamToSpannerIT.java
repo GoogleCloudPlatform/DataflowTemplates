@@ -316,6 +316,10 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
                         "deadLetterQueueDirectory",
                         getGcsPath(testName, gcsResourceManager) + "/dlq/")
                     .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
+                    // Streaming right fitting requires horizontal autoscaling to be enabled.
+                    .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
+                    .addParameter("maxNumWorkers", "1")
+                    .addParameter("numWorkers", "1")
                     .addParameter(
                         "inputFileFormat",
                         fileFormat.equals(
