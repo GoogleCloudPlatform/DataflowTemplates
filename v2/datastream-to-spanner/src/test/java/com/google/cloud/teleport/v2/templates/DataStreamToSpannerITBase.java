@@ -416,8 +416,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     // Streaming right fitting requires horizontal autoscaling to be enabled explicitly.
     params.put("autoscalingAlgorithm", "THROUGHPUT_BASED");
-    params.put("maxNumWorkers", "1");
-    params.put("numWorkers", "1");
 
     // overridden parameters
     if (jobParameters != null) {
