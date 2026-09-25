@@ -51,9 +51,9 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.76.0</beam.version>
-    <beam-python.version>2.76.0</beam-python.version>
-    <beam-maven-repo></beam-maven-repo>
+    <beam.version>2.77.0</beam.version>
+    <beam-python.version>2.77.0</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1438</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -68,7 +68,7 @@
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-configuration2.version>2.15.1</commons-configuration2.version>
     <commons-text.version>1.10.0</commons-text.version>
-    <conscrypt.version>2.5.2</conscrypt.version>
+    <conscrypt.version>2.6.3</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <dlp.version>3.90.0</dlp.version>
     <failsafe.version>3.3.2</failsafe.version>
@@ -998,7 +998,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <repositories>
         <repository>
