@@ -272,6 +272,8 @@ public class ElasticsearchIO {
 
     public abstract String getUserAgent();
 
+    public abstract boolean isCompressionEnabled();
+
     abstract Builder builder();
 
     @AutoValue.Builder
@@ -304,6 +306,8 @@ public class ElasticsearchIO {
 
       abstract Builder setUserAgent(String userAgent);
 
+      abstract Builder setCompressionEnabled(boolean compressionEnabled);
+
       abstract ConnectionConfiguration build();
     }
 
@@ -330,6 +334,7 @@ public class ElasticsearchIO {
           .setTrustSelfSignedCerts(false)
           .setDisableCertificateValidation(false)
           .setUserAgent(userAgent)
+          .setCompressionEnabled(true)
           .build();
     }
 
@@ -485,6 +490,19 @@ public class ElasticsearchIO {
       return builder().setConnectTimeout(connectTimeout).build();
     }
 
+    /**
+     * Configure whether the REST client should compress requests using gzip content encoding and
+     * add the "Accept-Encoding: gzip". The default is true.
+     *
+     * @param compressionEnabled Whether to compress requests using gzip content encoding and add
+     *     the "Accept-Encoding: gzip"
+     * @return a {@link ConnectionConfiguration} describes a connection configuration to
+     *     Elasticsearch.
+     */
+    public ConnectionConfiguration withCompressionEnabled(boolean compressionEnabled) {
+      return builder().setCompressionEnabled(compressionEnabled).build();
+    }
+
     private void populateDisplayData(DisplayData.Builder builder) {
       builder.add(DisplayData.item("address", getAddresses().toString()));
       builder.add(DisplayData.item("index", getIndex()));
@@ -516,6 +534,9 @@ public class ElasticsearchIO {
       }
 
       restClientBuilder.setDefaultHeaders(this.configureDefaultHeaders());
+      if (isCompressionEnabled()) {
+        restClientBuilder.setCompressionEnabled(true);
+      }
 
       if (isDisableCertificateValidation()) {
         try {
