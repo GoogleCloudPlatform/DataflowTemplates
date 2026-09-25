@@ -82,6 +82,7 @@ public class PostgreSQLToBigQueryYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("connectionProperties", "connectTimeout=2")
             .addParameter("postgresTable", TABLE_NAME)
             .addParameter(
                 "table",

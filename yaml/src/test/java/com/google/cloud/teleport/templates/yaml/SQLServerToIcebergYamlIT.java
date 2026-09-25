@@ -118,6 +118,7 @@ public class SQLServerToIcebergYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", mssqlResourceManager.getUri())
             .addParameter("username", mssqlResourceManager.getUsername())
             .addParameter("password", mssqlResourceManager.getPassword())
+            .addParameter("connectionProperties", "loginTimeout=2")
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)

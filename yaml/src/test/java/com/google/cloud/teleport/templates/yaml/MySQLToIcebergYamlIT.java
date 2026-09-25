@@ -115,6 +115,7 @@ public class MySQLToIcebergYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", mySQLResourceManager.getUri())
             .addParameter("username", mySQLResourceManager.getUsername())
             .addParameter("password", mySQLResourceManager.getPassword())
+            .addParameter("connectionProperties", "connectTimeout=2000")
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
