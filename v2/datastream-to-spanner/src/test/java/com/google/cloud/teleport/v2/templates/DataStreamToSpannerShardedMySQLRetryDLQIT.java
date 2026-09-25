@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
-import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
  *   <li>Spanner schema has a dedicated ShardIdColumn migration_shard_id
  * </ul>
  */
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpannerITBase {
