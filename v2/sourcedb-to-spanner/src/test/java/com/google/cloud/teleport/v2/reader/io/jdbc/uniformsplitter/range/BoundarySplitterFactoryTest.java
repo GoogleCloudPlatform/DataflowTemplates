@@ -760,6 +760,59 @@ public class BoundarySplitterFactoryTest {
     assertThat(split).startsWith("😀b");
   }
 
+  @Test
+  public void testStringBoundarySplitterPadLengthInCodePoints() {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("VARCHAR")
+            .setColumnName("col1")
+            .setColumnClass(String.class)
+            .setStringMaxLength(4)
+            .setStringCollation(
+                CollationReference.builder()
+                    .setDbCharacterSet("utf8mb4")
+                    .setDbCollation("utf8mb4_bin")
+                    .setPadSpace(true)
+                    .build())
+            .build();
+    PadLengthRecordingTypeMapper typeMapper = new PadLengthRecordingTypeMapper();
+
+    // 4 supplementary characters = 4 code points but 8 UTF-16 code units.
+    BoundarySplitterFactory.splitStrings("😀😀😀😀", null, partitionColumn, typeMapper, null);
+    assertThat(typeMapper.lengthsToPad).containsExactly(4, 4);
+
+    // Common prefix of 2 supplementary characters leaves 2 code points for the suffix.
+    typeMapper.lengthsToPad.clear();
+    BoundarySplitterFactory.splitStrings("😀😀a", "😀😀c", partitionColumn, typeMapper, null);
+    assertThat(typeMapper.lengthsToPad).containsExactly(2, 2);
+  }
+
+  /* Records the lengthToPad passed by splitStrings. */
+  private static class PadLengthRecordingTypeMapper implements BoundaryTypeMapper {
+    final java.util.List<Integer> lengthsToPad = new java.util.ArrayList<>();
+
+    @Override
+    public BigInteger mapStringToBigInteger(
+        String element,
+        int lengthToPad,
+        PartitionColumn partitionColumn,
+        ProcessContext processContext) {
+      lengthsToPad.add(lengthToPad);
+      return BigInteger.ZERO;
+    }
+
+    @Override
+    public String unMapStringFromBigInteger(
+        BigInteger element, PartitionColumn partitionColumn, ProcessContext processContext) {
+      return "";
+    }
+
+    @Override
+    public PCollectionView<Map<CollationReference, CollationMapper>> getCollationMapperView() {
+      return null;
+    }
+  }
+
   /* Not for production as it does not look at collation ordering */
   private class TestBoundaryTypeMapper implements BoundaryTypeMapper {
 
