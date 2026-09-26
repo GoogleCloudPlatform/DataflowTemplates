@@ -414,6 +414,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       LOG.info("No custom transformation provided.");
     }
 
+    // Streaming right fitting requires horizontal autoscaling to be enabled explicitly.
+    params.put("autoscalingAlgorithm", "THROUGHPUT_BASED");
+
     // overridden parameters
     if (jobParameters != null) {
       for (Entry<String, String> entry : jobParameters.entrySet()) {
@@ -428,6 +431,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+    options.addEnvironment(
+        "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
