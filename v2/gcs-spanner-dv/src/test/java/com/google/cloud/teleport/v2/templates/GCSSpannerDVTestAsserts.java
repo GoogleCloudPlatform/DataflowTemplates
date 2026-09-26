@@ -21,11 +21,14 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.google.cloud.bigquery.TableResult;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test helper class for verifying BigQuery output from the gcs-spanner-dv pipeline.
@@ -34,6 +37,8 @@ import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
  * safely compare expected validation results against the actual rows written to BigQuery.
  */
 public final class GCSSpannerDVTestAsserts {
+
+  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVTestAsserts.class);
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper()
@@ -75,6 +80,53 @@ public final class GCSSpannerDVTestAsserts {
   }
 
   /**
+   * Reads the MismatchedRecords table aggregated by (table, mismatch type, shard) and logs every
+   * group. Use this instead of {@link #assertMismatchedRecords} when the table is too large to read
+   * in full (for example in load tests). A NULL {@code shard_id} maps to a {@code null} {@link
+   * MismatchedRecordCountDto#shardId()}.
+   */
+  public static List<MismatchedRecordCountDto> readMismatchedRecordCounts(
+      BigQueryResourceManager bigQueryResourceManager) {
+    String query =
+        String.format(
+            "SELECT TO_JSON_STRING(t) FROM (SELECT table_name, mismatch_type, shard_id,"
+                + " COUNT(*) AS record_count FROM `%s.%s.MismatchedRecords`"
+                + " GROUP BY table_name, mismatch_type, shard_id) AS t",
+            bigQueryResourceManager.getProjectId(), bigQueryResourceManager.getDatasetId());
+    LOG.info("[DV-LT] Running MismatchedRecords aggregate query: {}", query);
+    TableResult result = bigQueryResourceManager.runQuery(query);
+    List<MismatchedRecordCountDto> counts =
+        BigQueryAsserts.tableResultToRecords(result).stream()
+            .map(row -> MAPPER.convertValue(row, MismatchedRecordCountDto.class))
+            .sorted(
+                Comparator.comparing(
+                        MismatchedRecordCountDto::tableName,
+                        Comparator.nullsFirst(Comparator.naturalOrder()))
+                    .thenComparing(
+                        MismatchedRecordCountDto::mismatchType,
+                        Comparator.nullsFirst(Comparator.naturalOrder()))
+                    .thenComparing(
+                        MismatchedRecordCountDto::shardId,
+                        Comparator.nullsFirst(Comparator.naturalOrder())))
+            .collect(Collectors.toList());
+    LOG.info("[DV-LT] MismatchedRecords aggregate returned {} group(s)", counts.size());
+    counts.forEach(c -> LOG.info("[DV-LT] MismatchedRecords group: {}", c));
+    return counts;
+  }
+
+  /** Logs every row of a (small) BigQuery output table. Used for debugging load test runs. */
+  public static void logTableRows(BigQueryResourceManager bigQueryResourceManager, String table) {
+    try {
+      List<Map<String, Object>> rows =
+          BigQueryAsserts.tableResultToRecords(bigQueryResourceManager.readTable(table));
+      LOG.info("[DV-LT] BigQuery table {} has {} row(s)", table, rows.size());
+      rows.forEach(row -> LOG.info("[DV-LT] {} row: {}", table, row));
+    } catch (Exception e) {
+      LOG.warn("[DV-LT] Failed to read BigQuery table {} for logging", table, e);
+    }
+  }
+
+  /**
    * These DTOs contain only the core columns necessary to assert the functional correctness of the
    * validation pipeline. Transient or dynamic fields (such as `run_id`) that are not strictly
    * required to verify the core logic should be intentionally excluded. This principle should serve
@@ -98,4 +150,8 @@ public final class GCSSpannerDVTestAsserts {
 
   public record MismatchedRecordDto(
       String shardId, String schemaName, String tableName, String recordKey, String mismatchType) {}
+
+  /** One group of {@link #readMismatchedRecordCounts}: row count per table, type and shard. */
+  public record MismatchedRecordCountDto(
+      String tableName, String mismatchType, String shardId, Long recordCount) {}
 }
