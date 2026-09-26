@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all SQL Server data
  * types migration to PostgreSQL dialect Spanner.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 @Ignore(

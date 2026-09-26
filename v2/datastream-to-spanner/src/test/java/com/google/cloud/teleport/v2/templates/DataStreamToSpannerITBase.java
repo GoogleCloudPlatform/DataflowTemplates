@@ -425,6 +425,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     String jobName = PipelineUtils.createJobName(identifierSuffix);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
+    params.put("targetParallelism", "15");
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
@@ -615,6 +616,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       }
     }
     return combinedCondition;
+  }
+
+  @Override
+  protected org.apache.beam.it.common.PipelineOperator.Config.Builder wrapConfiguration(
+      org.apache.beam.it.common.PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(25));
+    }
+    return builder;
   }
 
   protected void executeOracleSqlFileScript(

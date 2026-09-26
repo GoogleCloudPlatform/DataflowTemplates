@@ -56,6 +56,7 @@ func main() {
 		mvnFlags.RunIntegrationTests(flags.UnifiedWorkerHarnessContainerImage() != ""),
 		mvnFlags.ThreadCount(flags.ThreadCount()),
 		mvnFlags.IntegrationTestParallelism(flags.IntegrationTestParallelism()),
+		"-Dmaven.test.redirectTestOutputToFile=true",
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
@@ -78,7 +79,8 @@ func main() {
 		flags.UnifiedWorkerHarnessContainerImage(),
 		flags.CloudProxyPassword(),
 		mvnFlags.SpecificTest(flags.TestToRun()),
-		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""),
+		mvnFlags.DirectRunnerTest(flags.DirectRunner()))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

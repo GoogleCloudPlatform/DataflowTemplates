@@ -64,6 +64,7 @@ type MavenFlags interface {
 	InternalMaven() string
 	SpecificTest(string) string
 	FailIfNoTests(bool) string
+	DirectRunnerTest(bool) string
 }
 
 type mvnFlags struct{}
@@ -175,6 +176,13 @@ func (*mvnFlags) SpecificTest(test string) string {
 		return ""
 	}
 	return "-Dtest=" + test
+}
+
+func (*mvnFlags) DirectRunnerTest(direct bool) string {
+	if direct {
+		return "-DdirectRunnerTest=true"
+	}
+	return ""
 }
 
 func (*mvnFlags) FailIfNoTests(skip bool) string {
