@@ -31,6 +31,7 @@ import com.google.cloud.storage.NotificationInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageException;
+import com.google.cloud.storage.StorageRetryStrategy;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.io.IOException;
@@ -80,7 +81,10 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
   private static final double CREATE_BACKOFF_JITTER = 0.1;
 
   public GcsResourceManager(Builder builder) {
-    this.client = ArtifactUtils.createStorageClient(builder.credentials);
+    this.client =
+        builder.storageRetryStrategy == null
+            ? ArtifactUtils.createStorageClient(builder.credentials)
+            : ArtifactUtils.createStorageClient(builder.credentials, builder.storageRetryStrategy);
     this.testClassName = builder.testClassName;
     this.runId = ArtifactUtils.createRunId();
     if (builder.bucket == null || builder.bucket.isBlank()) {
@@ -130,9 +134,24 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     return new Builder(bucket, testClassName, credentials);
   }
 
+  /** Returns a new {@link Builder} for configuring a client with a custom retry strategy. */
+  public static Builder builder(
+      String bucket,
+      String testClassName,
+      Credentials credentials,
+      StorageRetryStrategy storageRetryStrategy) {
+    return builder(bucket, testClassName, credentials)
+        .setStorageRetryStrategy(storageRetryStrategy);
+  }
+
   public static Builder builder(String testClassName, Credentials credentials) {
     checkArgument(!testClassName.equals(""));
     return new Builder(null, testClassName, credentials);
+  }
+
+  public static Builder builder(
+      String testClassName, Credentials credentials, StorageRetryStrategy storageRetryStrategy) {
+    return builder(testClassName, credentials).setStorageRetryStrategy(storageRetryStrategy);
   }
 
   public static String generateBucketName(String testClassName, String runId) {
@@ -383,6 +402,7 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     private final String bucket;
     private final String testClassName;
     private Credentials credentials;
+    private StorageRetryStrategy storageRetryStrategy;
 
     private Builder(String bucket, String testClassName, Credentials credentials) {
       this.bucket = bucket;
@@ -392,6 +412,11 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
 
     public Builder setCredentials(Credentials credentials) {
       this.credentials = credentials;
+      return this;
+    }
+
+    public Builder setStorageRetryStrategy(StorageRetryStrategy storageRetryStrategy) {
+      this.storageRetryStrategy = storageRetryStrategy;
       return this;
     }
 
