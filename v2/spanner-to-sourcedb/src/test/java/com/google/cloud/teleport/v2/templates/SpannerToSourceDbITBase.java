@@ -22,6 +22,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -54,6 +55,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  protected String testUsername;
+  protected String testUsernameShardA;
+  protected String testUsernameShardB;
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -166,6 +170,23 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
+    if (shardId.equals("Shard1") && testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword("TestPassword123");
+    } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
+        && testUsernameShardA != null) {
+      shard.setNamespace(testUsernameShardA);
+      shard.setUser(testUsernameShardA);
+      shard.setPassword("TestPassword123");
+    } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
+        && testUsernameShardB != null) {
+      shard.setNamespace(testUsernameShardB);
+      shard.setUser(testUsernameShardB);
+      shard.setPassword("TestPassword123");
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
@@ -174,7 +195,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
     } else {
+
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
     return shard;
@@ -299,13 +326,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                             && !Objects.equals(
                                 sourceType,
                                 com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                                    .SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, "oracle"))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
+            put("maxShardConnections", "oracle".equalsIgnoreCase(sourceType) ? "2" : "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
@@ -321,6 +349,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     if (jobParameters != null) {
       params.putAll(jobParameters);
+      params.put("workerMachineType", "n1-standard-4");
     }
     if (shardingCustomJarPath != null) {
       params.put(
@@ -560,5 +589,150 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     } catch (Exception e) {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
     }
+  }
+
+  protected static String setupOracleIsolatedUser(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager) {
+    String username =
+        "C##REV_"
+            + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    LOG.info("Creating isolated Oracle user: {}", username);
+    jdbcResourceManager.runSQLUpdate(
+        "CREATE USER " + username + " IDENTIFIED BY \"TestPassword123\"");
+    jdbcResourceManager.runSQLUpdate("GRANT ALL PRIVILEGES TO " + username);
+    jdbcResourceManager.runSQLUpdate("GRANT UNLIMITED TABLESPACE TO " + username);
+    jdbcResourceManager.runSQLUpdate("GRANT DBA TO " + username);
+    return username;
+  }
+
+  public static long runIsolatedGetRowCount(
+      org.apache.beam.it.jdbc.JDBCResourceManager manager, String testUsername, String tableName) {
+    String fullTableName = testUsername + "." + tableName;
+    return manager.getRowCount(fullTableName);
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> runIsolatedReadTable(
+      org.apache.beam.it.jdbc.JDBCResourceManager manager, String testUsername, String tableName) {
+    String fullTableName = testUsername + "." + tableName;
+    return manager.readTable(fullTableName);
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> runIsolatedSQLQuery(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String testUsername,
+      String query) {
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(), testUsername, "TestPassword123");
+        java.sql.Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)
+          && jdbcResourceManager instanceof SpannerOracleResourceManager) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
+      java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+      try (java.sql.ResultSet rs = stmt.executeQuery(query)) {
+        java.sql.ResultSetMetaData md = rs.getMetaData();
+        int columns = md.getColumnCount();
+        while (rs.next()) {
+          java.util.Map<String, Object> row = new java.util.HashMap<>(columns);
+          for (int i = 1; i <= columns; ++i) {
+            Object obj = rs.getObject(i);
+            if (obj instanceof java.sql.Clob) {
+              row.put(
+                  md.getColumnName(i).toLowerCase(),
+                  ((java.sql.Clob) obj).getSubString(1, (int) ((java.sql.Clob) obj).length()));
+            } else if (obj instanceof java.sql.Blob) {
+              row.put(
+                  md.getColumnName(i).toLowerCase(),
+                  ((java.sql.Blob) obj).getBytes(1, (int) ((java.sql.Blob) obj).length()));
+            } else {
+              row.put(md.getColumnName(i).toLowerCase(), obj);
+            }
+          }
+          result.add(row);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException("Error running isolated query", e);
+    }
+  }
+
+  protected void createOracleSchema(
+      SpannerOracleResourceManager jdbcResourceManager,
+      String mySqlSchemaFile,
+      String targetUsername)
+      throws java.io.IOException {
+    String ddl =
+        String.join(
+            " ",
+            com.google.common.io.Resources.readLines(
+                com.google.common.io.Resources.getResource(mySqlSchemaFile),
+                java.nio.charset.StandardCharsets.UTF_8));
+    ddl = ddl.replaceAll("\r\n", " ").replaceAll("\n", " ");
+    String[] ddls = ddl.split(";");
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(), targetUsername, "TestPassword123");
+        java.sql.Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+      }
+      for (String d : ddls) {
+        if (!d.trim().isEmpty() && !d.trim().toUpperCase().startsWith("SELECT")) {
+          try {
+            stmt.executeUpdate(d);
+          } catch (Exception e) {
+            throw new RuntimeException("Failed to execute schema DDL: " + d, e);
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("failed creating isolated oracle schema", e);
+    }
+  }
+
+  protected void createOracleTableWithNColumns(
+      SpannerOracleResourceManager jdbcResourceManager,
+      String tableName,
+      int n,
+      String stringSize) {
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("table name blank");
+    }
+    if (n < 1) {
+      throw new IllegalArgumentException("n<1");
+    }
+    if (stringSize == null || stringSize.isBlank()) {
+      throw new IllegalArgumentException("stringSize blank");
+    }
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder
+        .append("CREATE TABLE ")
+        .append(testUsername)
+        .append(".")
+        .append(tableName)
+        .append(" (\n");
+    ddlBuilder.append("    id VARCHAR2(").append(stringSize).append(") NOT NULL PRIMARY KEY,\n");
+
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" VARCHAR2(").append(stringSize).append(")");
+      if (i < n) {
+        ddlBuilder.append(",\n");
+      }
+    }
+    ddlBuilder.append("\n)");
+
+    try {
+      jdbcResourceManager.runSQLUpdate(ddlBuilder.toString());
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing Oracle DDL statement", e);
+    }
+  }
+
+  @org.junit.After
+  public void clearIsolatedUser() {
+    testUsername = null;
   }
 }
