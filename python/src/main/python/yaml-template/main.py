@@ -33,6 +33,9 @@ DEFAULT_DEPENDENCIES = [
     # Customer transforms used by Job builder.
     # When updating this, also update the container dependency in `python/default_base_yaml_requirements.txt`
     'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-20/job_builder_util_transforms-0.2.2.tar.gz',
+    # Packages for Dataflow ML support.
+    'sentence-transformers>=2.2.2',
+    'tensorflow',
 ]
 
 
