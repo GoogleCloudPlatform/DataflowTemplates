@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.TableConfig;
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 public final class FetchSizeCalculator {
   private static final Logger LOG = LoggerFactory.getLogger(FetchSizeCalculator.class);
 
+  @VisibleForTesting static final int DEFAULT_FETCH_SIZE = 50_000;
   private static final int MIN_FETCH_SIZE = 1;
   private static final int MAX_FETCH_SIZE = Integer.MAX_VALUE;
   private static final int SAFETY_FACTOR = 4; // 2 * 2 = 4 (Safety factor)
@@ -34,9 +36,9 @@ public final class FetchSizeCalculator {
 
   /**
    * @param estimatedRowSize Estimated size of a row in bytes.
-   * @param workerMemoryGB The Dataflow worker memory in GB.
+   * @param workerMemoryBytes The Dataflow worker memory in bytes.
    * @param workerCores The Dataflow worker cores.
-   * @return The calculated fetch size, or 0 if it cannot be calculated.
+   * @return The calculated fetch size, or {@link #DEFAULT_FETCH_SIZE} if it cannot be calculated.
    */
   public static Integer getFetchSize(
       TableConfig tableConfig, long estimatedRowSize, Long workerMemoryBytes, Integer workerCores) {
@@ -53,12 +55,12 @@ public final class FetchSizeCalculator {
         LOG.info(
             "Estimated row size is 0 for table {}. FetchSize cannot be calculated.",
             tableConfig.tableName());
-        return 0;
+        return DEFAULT_FETCH_SIZE;
       }
 
       if (workerMemoryBytes == null || workerCores == null) {
         LOG.warn("Worker memory or cores unavailable. FetchSize cannot be calculated.");
-        return 0;
+        return DEFAULT_FETCH_SIZE;
       }
 
       // Formula: (Memory of Dataflow worker VM) / (SAFETY_FACTOR * (Number of cores
@@ -71,7 +73,7 @@ public final class FetchSizeCalculator {
         LOG.warn(
             "Denominator for fetch size calculation is zero for table {}. FetchSize cannot be calculated.",
             tableConfig.tableName());
-        return 0;
+        return DEFAULT_FETCH_SIZE;
       }
 
       long calculatedFetchSize = workerMemoryBytes / resultSetReservedSizeAcrossCores;
@@ -97,7 +99,7 @@ public final class FetchSizeCalculator {
           "Failed to auto-infer fetch size for table {}, error: {}.",
           tableConfig.tableName(),
           e.getMessage());
-      return 0;
+      return DEFAULT_FETCH_SIZE;
     }
   }
 }
