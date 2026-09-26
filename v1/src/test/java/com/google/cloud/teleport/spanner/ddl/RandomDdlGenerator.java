@@ -251,10 +251,14 @@ public abstract class RandomDdlGenerator {
     if (getRandom().nextInt(100) <= getRemoteUdfChance()) {
       udfBuilder.language("REMOTE");
     }
-
     if (!"REMOTE".equals(udfBuilder.language())) {
       if (getRandom().nextBoolean()) {
         udfBuilder.security(SqlSecurity.INVOKER);
+      }
+      if (getDialect() == Dialect.POSTGRESQL) {
+        if (getRandom().nextBoolean()) {
+          udfBuilder.spannerDeterminism("DETERMINISTIC");
+        }
       }
     } else {
       if (getDialect() == Dialect.GOOGLE_STANDARD_SQL) {
@@ -266,7 +270,6 @@ public abstract class RandomDdlGenerator {
             "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"}");
       }
     }
-
     int numUdfParameters = getRandom().nextInt(getMaxUdfParameters() + 1);
     for (int i = 0; i < numUdfParameters; i++) {
       String paramName = generateIdentifier(getMaxIdLength());
