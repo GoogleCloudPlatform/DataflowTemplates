@@ -28,6 +28,8 @@ import org.apache.beam.sdk.options.Validation;
 public interface BigtableChangeStreamToBigQueryOptions
     extends DataflowPipelineOptions, ReadChangeStreamOptions {
 
+  long DEFAULT_MAX_DECODED_VALUE_BYTES = 83_886_080L - (1L << 20);
+
   @TemplateParameter.Text(
       order = 1,
       groupName = "Target",
@@ -149,4 +151,62 @@ public interface BigtableChangeStreamToBigQueryOptions
   String getDlqDirectory();
 
   void setDlqDirectory(String value);
+
+  @TemplateParameter.Text(
+      order = 11,
+      optional = true,
+      description = "Column value transforms",
+      helpText =
+          "A comma-separated list of column value transforms. Each entry has the format "
+              + "column_family:column_qualifier:TRANSFORM_TYPE. Supported TRANSFORM_TYPE values: "
+              + "BIG_ENDIAN_TIMESTAMP (interprets 8-byte big-endian values as Unix epoch millis), "
+              + "PROTO_DECODE(package.MessageName) (decodes protobuf-encoded values to JSON; "
+              + "requires protoSchemaPath). For complex transformations, consider using a "
+              + "JavaScript UDF. Note that column qualifiers containing commas are not supported "
+              + "since comma is used as the entry delimiter.")
+  @Default.String("")
+  String getColumnTransforms();
+
+  void setColumnTransforms(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 12,
+      optional = true,
+      description = "Cloud Storage path to the proto schema file",
+      helpText =
+          "The Cloud Storage location of the self-contained proto schema file. "
+              + "For example, gs://path/to/my/file.pb. This file can be generated with the "
+              + "--descriptor_set_out flag of the protoc command. The --include_imports flag "
+              + "guarantees that the file is self-contained. Required whenever a "
+              + "PROTO_DECODE() entry is used in columnTransforms.")
+  @Default.String("")
+  String getProtoSchemaPath();
+
+  void setProtoSchemaPath(String value);
+
+  @TemplateParameter.Boolean(
+      order = 13,
+      optional = true,
+      description = "Preserve proto field names in JSON output",
+      helpText =
+          "When set to true, preserves original proto field names (snake_case) in the "
+              + "JSON output. When set to false, uses lowerCamelCase. Defaults to false.")
+  @Default.Boolean(false)
+  Boolean getPreserveProtoFieldNames();
+
+  void setPreserveProtoFieldNames(Boolean value);
+
+  @TemplateParameter.Long(
+      order = 14,
+      optional = true,
+      description = "Maximum decoded proto JSON size in bytes",
+      helpText =
+          "Maximum allowed UTF-8 byte size of a PROTO_DECODE() result written to the BigQuery "
+              + "`value` column. Larger decoded values are routed to the severe DLQ instead of "
+              + "being written. Defaults to a conservative value below Dataflow Streaming "
+              + "Engine's per-element commit limit and cannot be set above that default.")
+  @Default.Long(DEFAULT_MAX_DECODED_VALUE_BYTES)
+  Long getMaxDecodedValueBytes();
+
+  void setMaxDecodedValueBytes(Long value);
 }
