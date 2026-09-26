@@ -58,6 +58,7 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
@@ -114,9 +115,33 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> pool.maxSize(256).minSize(0).maxWaitTime(30, TimeUnit.SECONDS));
+        pool -> {
+          int maxSize =
+              connectionString.getMaxConnectionPoolSize() != null
+                  ? connectionString.getMaxConnectionPoolSize()
+                  : 256;
+          int minSize =
+              connectionString.getMinConnectionPoolSize() != null
+                  ? connectionString.getMinConnectionPoolSize()
+                  : 0;
+          int maxWait =
+              connectionString.getMaxWaitTime() != null ? connectionString.getMaxWaitTime() : 30000;
+          pool.maxSize(maxSize).minSize(minSize).maxWaitTime(maxWait, TimeUnit.MILLISECONDS);
+        });
     builder.applyToSocketSettings(
-        socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS));
+        socket -> {
+          int connectTimeout =
+              connectionString.getConnectTimeout() != null
+                  ? connectionString.getConnectTimeout()
+                  : 15000;
+          int readTimeout =
+              connectionString.getSocketTimeout() != null
+                  ? connectionString.getSocketTimeout()
+                  : 60000;
+          socket
+              .connectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
+              .readTimeout(readTimeout, TimeUnit.MILLISECONDS);
+        });
     return MongoClients.create(builder.build());
   }
 
@@ -1124,6 +1149,8 @@ public class MongoDbTransforms {
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
     private final Counter writeBatchesCoalesced =
         Metrics.counter(WriteWithDlq.class, "writeBatchesCoalesced");
+    private final Distribution bulkWriteLatencyMs =
+        Metrics.distribution(WriteWithDlq.class, "bulkWriteLatencyMs");
 
     private transient MongoClient mongoClient;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
@@ -1428,12 +1455,17 @@ public class MongoDbTransforms {
           if (id != null) {
             LinkedHashMap<Object, CoalescedOp> colMap =
                 coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-            CoalescedOp prev =
-                colMap.put(
-                    id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
+            CoalescedOp prev = colMap.get(id);
             if (prev != null) {
               writeBatchesCoalesced.inc();
+              if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
+                if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+                  continue;
+                }
+              }
             }
+            colMap.put(
+                id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1455,17 +1487,22 @@ public class MongoDbTransforms {
             if (id != null) {
               LinkedHashMap<Object, CoalescedOp> colMap =
                   coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-              CoalescedOp prev =
-                  colMap.put(
-                      id,
-                      new CoalescedOp(
-                          new ReplaceOneModel<>(
-                              new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
-                          item,
-                          false));
+              CoalescedOp prev = colMap.get(id);
               if (prev != null) {
                 writeBatchesCoalesced.inc();
+                if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
+                  if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+                    continue;
+                  }
+                }
               }
+              colMap.put(
+                  id,
+                  new CoalescedOp(
+                      new ReplaceOneModel<>(
+                          new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                      item,
+                      false));
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
@@ -1536,13 +1573,17 @@ public class MongoDbTransforms {
       Sleeper sleeper = Sleeper.DEFAULT;
 
       while (true) {
+        long writeStartMs = System.currentTimeMillis();
         try {
           col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
+          long writeLatency = System.currentTimeMillis() - writeStartMs;
+          bulkWriteLatencyMs.update(writeLatency);
           successfulCount.addAndGet(currentItemList.size());
           LOG.debug(
-              "Successfully bulk-wrote {} documents to collection '{}'",
+              "Successfully bulk-wrote {} documents to collection '{}' in {}ms",
               currentItemList.size(),
-              colName);
+              colName,
+              writeLatency);
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();

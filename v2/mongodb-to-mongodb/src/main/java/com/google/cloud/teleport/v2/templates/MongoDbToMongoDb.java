@@ -776,7 +776,7 @@ public class MongoDbToMongoDb {
                   retryableDlqPath,
                   permanentDlqPath,
                   tmpDirectory,
-                  includeBackfill && includeCdc));
+                  includeCdc));
 
       validDocs.apply(
           "WriteDocuments",
@@ -820,9 +820,9 @@ public class MongoDbToMongoDb {
     public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
       PCollection<DocumentWithMetadata> documents = input;
 
-      // Stateful Deduplication Stage: Only needed when reconciling historical backfill records
-      // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
-      // for any given document are already strictly ordered and sequential from the oplog.
+      // Stateful Deduplication Stage: Required whenever CDC mutations are processed (standalone
+      // or combined with backfill) to enforce strict monotonic event ordering and drop stale
+      // out-of-order mutations per document key across change streams and retries.
       if (requiresDeduplication) {
         Integer retentionHours = options.getDedupStateRetentionHours();
         Duration dedupStateRetention =
