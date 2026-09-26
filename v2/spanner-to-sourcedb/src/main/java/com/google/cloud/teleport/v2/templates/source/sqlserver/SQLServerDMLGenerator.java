@@ -423,7 +423,9 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       return "NULL";
     }
     if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
-      return "CAST(" + input + " AS " + (isNational ? "NVARCHAR(MAX)" : "VARCHAR(MAX)") + ")";
+      return isNational
+          ? "CAST(CAST(" + input + " AS VARCHAR(MAX)) AS NVARCHAR(MAX))"
+          : "CAST(" + input + " AS VARCHAR(MAX))";
     }
     String cleanedString = escapeString(input);
     return (isNational ? "N'" : "'") + cleanedString + "'";
