@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -121,16 +122,18 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
                       DataflowPipelineWorkerPoolOptions poolOptions =
                           options.as(DataflowPipelineWorkerPoolOptions.class);
-                      int maxWorkers =
-                          poolOptions.getMaxNumWorkers() > 0
-                              ? poolOptions.getMaxNumWorkers()
-                              : 1000;
+                      int maxNumWorkers =
+                          Optional.ofNullable(poolOptions.getMaxNumWorkers()).orElse(0);
+                      int maxWorkers = maxNumWorkers > 0 ? maxNumWorkers : 1000;
 
                       DataflowPipelineDebugOptions debugOptions =
                           options.as(DataflowPipelineDebugOptions.class);
+                      int numWorkerHarnessThreads =
+                          Optional.ofNullable(debugOptions.getNumberOfWorkerHarnessThreads())
+                              .orElse(0);
                       int threadsPerWorker =
-                          debugOptions.getNumberOfWorkerHarnessThreads() > 0
-                              ? debugOptions.getNumberOfWorkerHarnessThreads()
+                          numWorkerHarnessThreads > 0
+                              ? numWorkerHarnessThreads
                               : Runtime.getRuntime().availableProcessors();
 
                       long maxParallelism = (long) maxWorkers * threadsPerWorker;
@@ -153,13 +156,12 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   @VisibleForTesting
   long resolveMaxDataBoostParallelism(PipelineOptions options) {
     try {
-      if (maxDataBoostParallelism != null
-          && maxDataBoostParallelism.isAccessible()
-          && maxDataBoostParallelism.get() != null
-          && maxDataBoostParallelism.get() > 0) {
-        long configuredLimit = maxDataBoostParallelism.get();
-        LOG.info("Using user-configured maxDataBoostParallelism: {}", configuredLimit);
-        return configuredLimit;
+      if (maxDataBoostParallelism != null && maxDataBoostParallelism.isAccessible()) {
+        Integer configuredLimit = maxDataBoostParallelism.get();
+        if (configuredLimit != null && configuredLimit > 0) {
+          LOG.info("Using user-configured maxDataBoostParallelism: {}", configuredLimit);
+          return configuredLimit;
+        }
       }
 
       String projectId = resolveProjectId(options);
@@ -178,18 +180,20 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   String resolveProjectId(PipelineOptions options) {
     try {
       ValueProvider<String> configProject = spannerConfig.getProjectId();
-      if (configProject != null
-          && configProject.isAccessible()
-          && !Strings.isNullOrEmpty(configProject.get())) {
-        return configProject.get();
+      if (configProject != null && configProject.isAccessible()) {
+        String projectId = configProject.get();
+        if (!Strings.isNullOrEmpty(projectId)) {
+          return projectId;
+        }
       }
     } catch (Exception e) {
       LOG.debug("Unable to resolve project ID from SpannerConfig", e);
     }
     try {
       DataflowPipelineOptions dataflowOptions = options.as(DataflowPipelineOptions.class);
-      if (!Strings.isNullOrEmpty(dataflowOptions.getProject())) {
-        return dataflowOptions.getProject();
+      String projectId = dataflowOptions.getProject();
+      if (!Strings.isNullOrEmpty(projectId)) {
+        return projectId;
       }
     } catch (Exception e) {
       LOG.debug("Unable to resolve project ID from DataflowPipelineOptions", e);
@@ -200,36 +204,38 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   @VisibleForTesting
   Set<String> resolveRegions() {
     ValueProvider<String> instanceId = spannerConfig.getInstanceId();
-    if (instanceId != null
-        && instanceId.isAccessible()
-        && !Strings.isNullOrEmpty(instanceId.get())) {
-      try {
-        SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    if (instanceId != null && instanceId.isAccessible()) {
+      String instanceIdValue = instanceId.get();
+      if (!Strings.isNullOrEmpty(instanceIdValue)) {
         try {
-          String instanceConfigId = spannerAccessor.getInstanceConfigId();
-          if (!Strings.isNullOrEmpty(instanceConfigId) && !"unknown".equals(instanceConfigId)) {
-            if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
-              return Collections.singleton(
-                  instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length()));
-            }
-            InstanceConfig instanceConfig =
-                spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
-            if (instanceConfig != null && instanceConfig.getReplicas() != null) {
-              Set<String> replicaRegions = new LinkedHashSet<>();
-              for (ReplicaInfo replica : instanceConfig.getReplicas()) {
-                if (replica.getType() != ReplicaInfo.ReplicaType.WITNESS
-                    && !Strings.isNullOrEmpty(replica.getLocation())) {
-                  replicaRegions.add(replica.getLocation());
-                }
+          SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+          try {
+            String instanceConfigId = spannerAccessor.getInstanceConfigId();
+            if (!Strings.isNullOrEmpty(instanceConfigId) && !"unknown".equals(instanceConfigId)) {
+              if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
+                return Collections.singleton(
+                    instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length()));
               }
-              return replicaRegions;
+              InstanceConfig instanceConfig =
+                  spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
+              if (instanceConfig != null && instanceConfig.getReplicas() != null) {
+                Set<String> replicaRegions = new LinkedHashSet<>();
+                for (ReplicaInfo replica : instanceConfig.getReplicas()) {
+                  if (replica != null
+                      && replica.getType() != ReplicaInfo.ReplicaType.WITNESS
+                      && !Strings.isNullOrEmpty(replica.getLocation())) {
+                    replicaRegions.add(replica.getLocation());
+                  }
+                }
+                return replicaRegions;
+              }
             }
+          } finally {
+            spannerAccessor.close();
           }
-        } finally {
-          spannerAccessor.close();
+        } catch (Exception e) {
+          LOG.debug("Unable to resolve region from Spanner instance config", e);
         }
-      } catch (Exception e) {
-        LOG.debug("Unable to resolve region from Spanner instance config", e);
       }
     }
     return Collections.emptySet();
@@ -254,9 +260,10 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   @VisibleForTesting
   static long getDataBoostQuota(
       String projectId, Set<String> regions, HttpRequestFactory requestFactory) {
-    if (Strings.isNullOrEmpty(projectId)) {
+    if (Strings.isNullOrEmpty(projectId) || requestFactory == null) {
       LOG.warn(
-          "Project ID is null or empty when querying Spanner Data Boost quota; defaulting to {}",
+          "Project ID or HttpRequestFactory is null or empty when querying Spanner Data Boost"
+              + " quota; defaulting to {}",
           DEFAULT_DATA_BOOST_QUOTA);
       return DEFAULT_DATA_BOOST_QUOTA;
     }
@@ -274,8 +281,11 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         response.disconnect();
       }
 
-      JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
-      JsonArray quotaBuckets = root.getAsJsonArray("quotaBuckets");
+      JsonObject root = JsonParser.parseString(Strings.nullToEmpty(jsonResponse)).getAsJsonObject();
+      JsonArray quotaBuckets =
+          root.has("quotaBuckets") && root.get("quotaBuckets").isJsonArray()
+              ? root.getAsJsonArray("quotaBuckets")
+              : null;
       if (quotaBuckets == null) {
         LOG.warn(
             "No quotaBuckets found in ConsumerQuotaLimit response for project={}, regions={};"
@@ -286,18 +296,21 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         return DEFAULT_DATA_BOOST_QUOTA;
       }
 
-      long defaultLimit = -1;
+      long defaultLimit = 0;
       Map<String, Long> regionalLimits = new HashMap<>();
       for (JsonElement element : quotaBuckets) {
         JsonObject bucket = element.getAsJsonObject();
-        if (!bucket.has("effectiveLimit")) {
+        if (!bucket.has("effectiveLimit") || bucket.get("effectiveLimit").isJsonNull()) {
           continue;
         }
-        long effectiveLimit = bucket.get("effectiveLimit").getAsLong();
+        long rawLimit = bucket.get("effectiveLimit").getAsLong();
+        long effectiveLimit = rawLimit == -1 ? Long.MAX_VALUE : rawLimit;
 
-        if (bucket.has("dimensions")) {
+        if (bucket.has("dimensions") && bucket.get("dimensions").isJsonObject()) {
           JsonObject dimensions = bucket.getAsJsonObject("dimensions");
-          if (dimensions.has("region") && effectiveLimit > 0) {
+          if (dimensions.has("region")
+              && !dimensions.get("region").isJsonNull()
+              && effectiveLimit > 0) {
             regionalLimits.put(dimensions.get("region").getAsString(), effectiveLimit);
           }
         } else {
@@ -308,15 +321,17 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
       if (regions != null && !regions.isEmpty()) {
         long minRegionLimit = Long.MAX_VALUE;
+        boolean foundValidLimit = false;
         for (String region : regions) {
           if (!Strings.isNullOrEmpty(region)) {
             long regionLimit = regionalLimits.getOrDefault(region, defaultLimit);
             if (regionLimit > 0) {
               minRegionLimit = Math.min(minRegionLimit, regionLimit);
+              foundValidLimit = true;
             }
           }
         }
-        if (minRegionLimit != Long.MAX_VALUE) {
+        if (foundValidLimit) {
           LOG.info(
               "Fetched Spanner Data Boost quota for project={}, regions={}: {}",
               projectId,

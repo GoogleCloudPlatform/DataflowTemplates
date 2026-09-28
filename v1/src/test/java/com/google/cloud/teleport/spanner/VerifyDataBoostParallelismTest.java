@@ -41,7 +41,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -201,7 +200,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             ImmutableSet.of("us-central1", "europe-west2"),
             standardFactory));
 
-    // 2. Null or empty projectId returns 400 without making a request
+    // 2. Null or empty projectId or null requestFactory returns 400 without making a request
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
@@ -210,26 +209,39 @@ public class VerifyDataBoostParallelismTest implements Serializable {
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
             "", Collections.singleton("us-central1"), standardFactory));
+    assertEquals(
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.singleton("us-central1"), null));
 
-    // 3. Missing quotaBuckets field returns 400
+    // 3. Missing or null quotaBuckets field returns 400
     HttpRequestFactory missingBucketsFactory = createFakeRequestFactory(200, "{}");
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
             "test-project", Collections.singleton("us-central1"), missingBucketsFactory));
+    HttpRequestFactory nullBucketsFactory =
+        createFakeRequestFactory(200, "{\"quotaBuckets\": null}");
+    assertEquals(
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.singleton("us-central1"), nullBucketsFactory));
 
-    // 4. Bucket without effectiveLimit, bucket with non-region dimension, buckets with multiple
-    // regional overrides, bucket with matching region but non-positive effectiveLimit (0), and
-    // default bucket
+    // 4. Bucket without effectiveLimit, bucket with null effectiveLimit, bucket with non-region
+    // dimension, bucket with null region dimension, buckets with multiple regional overrides,
+    // bucket with matching region but non-positive effectiveLimit (0), and default bucket
     String complexJson =
         "{"
             + "\"quotaBuckets\": ["
             + "  {\"defaultLimit\": \"500\"},"
+            + "  {\"effectiveLimit\": null},"
             + "  {\"effectiveLimit\": \"800\", \"dimensions\": {\"zone\": \"us-central1-a\"}},"
+            + "  {\"effectiveLimit\": \"700\", \"dimensions\": {\"region\": null}},"
             + "  {\"effectiveLimit\": \"900\", \"dimensions\": {\"region\": \"us-east1\"}},"
             + "  {\"effectiveLimit\": \"1200\", \"dimensions\": {\"region\": \"us-east4\"}},"
+            + "  {\"effectiveLimit\": \"-1\", \"dimensions\": {\"region\": \"us-west1\"}},"
             + "  {\"effectiveLimit\": \"0\", \"dimensions\": {\"region\": \"us-central1\"}},"
-            + "  {\"effectiveLimit\": \"650\"}"
+            + "  {\"effectiveLimit\": \"650\", \"dimensions\": null}"
             + "]"
             + "}";
     HttpRequestFactory complexFactory = createFakeRequestFactory(200, complexJson);
@@ -242,6 +254,10 @@ public class VerifyDataBoostParallelismTest implements Serializable {
         VerifyDataBoostParallelism.getDataBoostQuota(
             "test-project", ImmutableSet.of("us-east1", "us-east4"), complexFactory));
     assertEquals(
+        Long.MAX_VALUE,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.singleton("us-west1"), complexFactory));
+    assertEquals(
         650L, VerifyDataBoostParallelism.getDataBoostQuota("test-project", null, complexFactory));
     assertEquals(
         650L,
@@ -252,6 +268,14 @@ public class VerifyDataBoostParallelismTest implements Serializable {
         900L,
         VerifyDataBoostParallelism.getDataBoostQuota(
             "test-project", setWithEmptyAndValid, complexFactory));
+
+    // Unlimited default quota (-1) returns Long.MAX_VALUE
+    HttpRequestFactory unlimitedDefaultFactory =
+        createFakeRequestFactory(200, "{\"quotaBuckets\": [{\"effectiveLimit\": \"-1\"}]}");
+    assertEquals(
+        Long.MAX_VALUE,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.emptySet(), unlimitedDefaultFactory));
 
     // 5. Empty quotaBuckets or non-positive defaultLimit falls back to 400
     HttpRequestFactory nonPositiveDefaultFactory =
@@ -438,7 +462,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
 
     InstanceConfig nam3Config = mock(InstanceConfig.class);
     when(nam3Config.getReplicas())
-        .thenReturn(ImmutableList.of(rwReplica, roReplica, witnessReplica, emptyLocReplica));
+        .thenReturn(Arrays.asList(rwReplica, roReplica, witnessReplica, emptyLocReplica, null));
 
     ServiceFactory<Spanner, SpannerOptions> multiRegionServiceFactory =
         createMockServiceFactory("nam3", nam3Config);
