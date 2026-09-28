@@ -82,6 +82,8 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
   /** Builder for {@link CloudOracleResourceManager}. */
   public static final class Builder extends CloudSqlResourceManager.Builder {
 
+    private static final String DEFAULT_ORACLE_USERNAME = "system";
+
     private String systemIdentifier;
 
     public Builder(String testId) {
@@ -89,6 +91,11 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
 
       this.setSystemIdentifier(DEFAULT_SYSTEM_IDENTIFIER);
       this.setDatabaseName(this.systemIdentifier);
+    }
+
+    @Override
+    protected String getDefaultUsername() {
+      return DEFAULT_ORACLE_USERNAME;
     }
 
     @Override
@@ -114,7 +121,7 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
       if (System.getProperty("cloudOracleUsername") != null) {
         this.setUsername(System.getProperty("cloudOracleUsername"));
       } else {
-        super.configureUsername();
+        this.setUsername(getDefaultUsername());
       }
     }
 
@@ -123,8 +130,32 @@ public class CloudOracleResourceManager extends CloudSqlResourceManager {
       if (System.getProperty("cloudOraclePassword") != null) {
         this.setPassword(System.getProperty("cloudOraclePassword"));
       } else {
-        super.configurePassword();
+        LOG.warn("Missing -DcloudOraclePassword.");
       }
+    }
+
+    @Override
+    public Builder setHost(String host) {
+      super.setHost(host);
+      return this;
+    }
+
+    @Override
+    public Builder setPort(int port) {
+      super.setPort(port);
+      return this;
+    }
+
+    @Override
+    public Builder setUsername(String username) {
+      super.setUsername(username);
+      return this;
+    }
+
+    @Override
+    public Builder setPassword(String password) {
+      super.setPassword(password);
+      return this;
     }
 
     public Builder setSystemIdentifier(String systemIdentifier) {

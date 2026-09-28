@@ -38,6 +38,7 @@ var (
 	dCloudProxyPostgresPort             string
 	dCloudProxyPassword                 string
 	dOracleHost                         string
+	dCloudOracleUsername                string
 	dCloudOracleSysPassword             string
 	dCloudOraclePassword                string
 	dUnifiedWorkerHarnessContainerImage string
@@ -61,6 +62,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgres-port", "33136", "Postgres port number on static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
+	flag.StringVar(&dCloudOracleUsername, "it-oracle-username", "system", "Username of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 	flag.StringVar(&dCloudOraclePassword, "it-oracle-password", "oracle", "app password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
@@ -145,6 +147,10 @@ func CloudProxyPassword() string {
 
 func StaticOracleHost() string {
 	return "-DcloudOracleHost=" + dOracleHost
+}
+
+func StaticOracleUsername() string {
+	return "-DcloudOracleUsername=" + dCloudOracleUsername
 }
 
 func StaticOracleSysPassword() string {

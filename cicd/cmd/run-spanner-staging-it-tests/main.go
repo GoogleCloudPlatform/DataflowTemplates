@@ -71,6 +71,7 @@ func main() {
 		flags.FailureMode(),
 		flags.RetryFailures(),
 		flags.StaticOracleHost(),
+		flags.StaticOracleUsername(),
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),

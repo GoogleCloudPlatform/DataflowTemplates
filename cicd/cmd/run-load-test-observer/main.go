@@ -70,6 +70,7 @@ func main() {
 		flags.ExportDataset(),
 		flags.ExportTable(),
 		flags.StaticOracleHost(),
+		flags.StaticOracleUsername(),
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),

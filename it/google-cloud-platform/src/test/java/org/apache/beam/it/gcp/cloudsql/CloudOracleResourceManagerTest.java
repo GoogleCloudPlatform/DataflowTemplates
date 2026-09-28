@@ -62,4 +62,28 @@ public class CloudOracleResourceManagerTest {
   public void testGeUriReturnsCorrectValue() {
     assertThat(testManager.getUri()).isEqualTo("jdbc:oracle:thin:@127.0.0.1:1521:xe");
   }
+
+  @Test
+  public void testDefaultUsernameReturnsSystem() {
+    CloudOracleResourceManager defaultManager =
+        CloudOracleResourceManager.builder("default_user_test").setHost("127.0.0.1").build();
+    assertThat(defaultManager.getUsername()).isEqualTo("system");
+  }
+
+  @Test
+  public void testCustomUsernameViaProperty() {
+    String original = System.getProperty("cloudOracleUsername");
+    try {
+      System.setProperty("cloudOracleUsername", "custom_user");
+      CloudOracleResourceManager propertyManager =
+          CloudOracleResourceManager.builder("prop_user_test").setHost("127.0.0.1").build();
+      assertThat(propertyManager.getUsername()).isEqualTo("custom_user");
+    } finally {
+      if (original != null) {
+        System.setProperty("cloudOracleUsername", original);
+      } else {
+        System.clearProperty("cloudOracleUsername");
+      }
+    }
+  }
 }
