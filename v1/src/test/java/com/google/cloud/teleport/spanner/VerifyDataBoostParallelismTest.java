@@ -19,8 +19,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,17 +32,26 @@ import com.google.api.client.http.LowLevelHttpResponse;
 import com.google.cloud.ServiceFactory;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
+import com.google.cloud.spanner.InstanceConfig;
 import com.google.cloud.spanner.InstanceConfigId;
+import com.google.cloud.spanner.ReplicaInfo;
+import com.google.cloud.spanner.ReplicaInfo.ReplicaType;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -171,37 +180,54 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     HttpRequestFactory standardFactory =
         createFakeRequestFactory(200, STANDARD_QUOTA_RESPONSE_JSON);
 
-    // 1. Regional match (us-central1 -> 1000) and default bucket fallback (europe-west2 -> 400)
+    // 1. Regional match (us-central1 -> 1000), default bucket fallback (europe-west2 -> 400),
+    // and multi-region minimum across replica regions ([us-central1, europe-west2] -> 400)
     assertEquals(
         1000L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "span-cloud-ck-testing-external", "us-central1", standardFactory));
+            "span-cloud-ck-testing-external",
+            Collections.singleton("us-central1"),
+            standardFactory));
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "span-cloud-ck-testing-external", "europe-west2", standardFactory));
+            "span-cloud-ck-testing-external",
+            Collections.singleton("europe-west2"),
+            standardFactory));
+    assertEquals(
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "span-cloud-ck-testing-external",
+            ImmutableSet.of("us-central1", "europe-west2"),
+            standardFactory));
 
     // 2. Null or empty projectId returns 400 without making a request
     assertEquals(
-        400L, VerifyDataBoostParallelism.getDataBoostQuota(null, "us-central1", standardFactory));
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            null, Collections.singleton("us-central1"), standardFactory));
     assertEquals(
-        400L, VerifyDataBoostParallelism.getDataBoostQuota("", "us-central1", standardFactory));
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "", Collections.singleton("us-central1"), standardFactory));
 
     // 3. Missing quotaBuckets field returns 400
     HttpRequestFactory missingBucketsFactory = createFakeRequestFactory(200, "{}");
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "test-project", "us-central1", missingBucketsFactory));
+            "test-project", Collections.singleton("us-central1"), missingBucketsFactory));
 
-    // 4. Bucket without effectiveLimit, bucket with non-region dimension, bucket with non-matching
-    // region, bucket with matching region but non-positive effectiveLimit (0), and default bucket
+    // 4. Bucket without effectiveLimit, bucket with non-region dimension, buckets with multiple
+    // regional overrides, bucket with matching region but non-positive effectiveLimit (0), and
+    // default bucket
     String complexJson =
         "{"
             + "\"quotaBuckets\": ["
             + "  {\"defaultLimit\": \"500\"},"
             + "  {\"effectiveLimit\": \"800\", \"dimensions\": {\"zone\": \"us-central1-a\"}},"
             + "  {\"effectiveLimit\": \"900\", \"dimensions\": {\"region\": \"us-east1\"}},"
+            + "  {\"effectiveLimit\": \"1200\", \"dimensions\": {\"region\": \"us-east4\"}},"
             + "  {\"effectiveLimit\": \"0\", \"dimensions\": {\"region\": \"us-central1\"}},"
             + "  {\"effectiveLimit\": \"650\"}"
             + "]"
@@ -210,11 +236,22 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     assertEquals(
         650L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "test-project", "us-central1", complexFactory));
+            "test-project", Collections.singleton("us-central1"), complexFactory));
+    assertEquals(
+        900L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", ImmutableSet.of("us-east1", "us-east4"), complexFactory));
     assertEquals(
         650L, VerifyDataBoostParallelism.getDataBoostQuota("test-project", null, complexFactory));
     assertEquals(
-        650L, VerifyDataBoostParallelism.getDataBoostQuota("test-project", "", complexFactory));
+        650L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.emptySet(), complexFactory));
+    Set<String> setWithEmptyAndValid = new HashSet<>(Arrays.asList("", null, "us-east1"));
+    assertEquals(
+        900L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", setWithEmptyAndValid, complexFactory));
 
     // 5. Empty quotaBuckets or non-positive defaultLimit falls back to 400
     HttpRequestFactory nonPositiveDefaultFactory =
@@ -222,7 +259,11 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "test-project", "us-central1", nonPositiveDefaultFactory));
+            "test-project", Collections.singleton("us-central1"), nonPositiveDefaultFactory));
+    assertEquals(
+        400L,
+        VerifyDataBoostParallelism.getDataBoostQuota(
+            "test-project", Collections.emptySet(), nonPositiveDefaultFactory));
 
     // 6. HTTP 403 error and malformed JSON fall back to 400 without throwing
     HttpRequestFactory forbiddenFactory =
@@ -230,21 +271,27 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "test-project", "us-central1", forbiddenFactory));
+            "test-project", Collections.singleton("us-central1"), forbiddenFactory));
 
     HttpRequestFactory malformedJsonFactory = createFakeRequestFactory(200, "not-valid-json{{{");
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "test-project", "us-central1", malformedJsonFactory));
+            "test-project", Collections.singleton("us-central1"), malformedJsonFactory));
   }
 
   @Test
   public void testResolveMaxDataBoostParallelismBranches() {
     DataflowPipelineOptions options =
         PipelineOptionsFactory.create().as(DataflowPipelineOptions.class);
-    options.setRegion("us-central1");
-    SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
+    ServiceFactory<Spanner, SpannerOptions> regionalServiceFactory =
+        createMockServiceFactory("regional-us-central1", null);
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId("test-project")
+            .withInstanceId("regional-inst-quota")
+            .withDatabaseId("test-db")
+            .withServiceFactory(regionalServiceFactory);
 
     VerifyDataBoostParallelism.HttpRequestFactorySupplier mockedQuotaSupplier =
         () -> createFakeRequestFactory(200, STANDARD_QUOTA_RESPONSE_JSON);
@@ -346,30 +393,22 @@ public class VerifyDataBoostParallelismTest implements Serializable {
   }
 
   @Test
-  public void testResolveRegionBranches() {
-    // 1. Region from DataflowPipelineOptions
-    DataflowPipelineOptions optionsWithRegion =
-        PipelineOptionsFactory.create().as(DataflowPipelineOptions.class);
-    optionsWithRegion.setRegion("europe-west2");
-    assertEquals(
-        "europe-west2",
-        new VerifyDataBoostParallelism(SpannerConfig.create()).resolveRegion(optionsWithRegion));
-
-    // 2. Empty region on options (or null options) and null/inaccessible/empty instanceId -> null
-    DataflowPipelineOptions emptyOptions =
-        PipelineOptionsFactory.create().as(DataflowPipelineOptions.class);
-    assertNull(new VerifyDataBoostParallelism(SpannerConfig.create()).resolveRegion(emptyOptions));
-    assertNull(
+  public void testResolveRegionsBranches() {
+    // 1. Null, inaccessible, or empty instanceId -> empty set
+    assertTrue(new VerifyDataBoostParallelism(SpannerConfig.create()).resolveRegions().isEmpty());
+    assertTrue(
         new VerifyDataBoostParallelism(
                 SpannerConfig.create().withInstanceId(new InaccessibleValueProvider<>()))
-            .resolveRegion(emptyOptions));
-    assertNull(
+            .resolveRegions()
+            .isEmpty());
+    assertTrue(
         new VerifyDataBoostParallelism(SpannerConfig.create().withInstanceId(""))
-            .resolveRegion(null));
+            .resolveRegions()
+            .isEmpty());
 
-    // 3. Region resolved from SpannerAccessor regional instance config ("regional-us-west1")
+    // 2. Regional instance config ("regional-us-west1") returns singleton ["us-west1"]
     ServiceFactory<Spanner, SpannerOptions> regionalServiceFactory =
-        createMockServiceFactory("regional-us-west1");
+        createMockServiceFactory("regional-us-west1", null);
     SpannerConfig regionalConfig =
         SpannerConfig.create()
             .withProjectId("test-proj")
@@ -377,20 +416,87 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withDatabaseId("test-db")
             .withServiceFactory(regionalServiceFactory);
     assertEquals(
-        "us-west1", new VerifyDataBoostParallelism(regionalConfig).resolveRegion(emptyOptions));
+        Collections.singleton("us-west1"),
+        new VerifyDataBoostParallelism(regionalConfig).resolveRegions());
 
-    // 4. Non-regional instance config ("nam3") returns null
+    // 3. Multi-region instance config ("nam3") returns non-witness replica regions
+    ReplicaInfo rwReplica = mock(ReplicaInfo.class);
+    when(rwReplica.getType()).thenReturn(ReplicaType.READ_WRITE);
+    when(rwReplica.getLocation()).thenReturn("us-east4");
+
+    ReplicaInfo roReplica = mock(ReplicaInfo.class);
+    when(roReplica.getType()).thenReturn(ReplicaType.READ_ONLY);
+    when(roReplica.getLocation()).thenReturn("us-central1");
+
+    ReplicaInfo witnessReplica = mock(ReplicaInfo.class);
+    when(witnessReplica.getType()).thenReturn(ReplicaType.WITNESS);
+    when(witnessReplica.getLocation()).thenReturn("us-west2");
+
+    ReplicaInfo emptyLocReplica = mock(ReplicaInfo.class);
+    when(emptyLocReplica.getType()).thenReturn(ReplicaType.READ_WRITE);
+    when(emptyLocReplica.getLocation()).thenReturn("");
+
+    InstanceConfig nam3Config = mock(InstanceConfig.class);
+    when(nam3Config.getReplicas())
+        .thenReturn(ImmutableList.of(rwReplica, roReplica, witnessReplica, emptyLocReplica));
+
     ServiceFactory<Spanner, SpannerOptions> multiRegionServiceFactory =
-        createMockServiceFactory("nam3");
+        createMockServiceFactory("nam3", nam3Config);
     SpannerConfig multiRegionConfig =
         SpannerConfig.create()
             .withProjectId("test-proj")
             .withInstanceId("multiregion-inst")
             .withDatabaseId("test-db")
             .withServiceFactory(multiRegionServiceFactory);
-    assertNull(new VerifyDataBoostParallelism(multiRegionConfig).resolveRegion(emptyOptions));
+    assertEquals(
+        ImmutableSet.of("us-east4", "us-central1"),
+        new VerifyDataBoostParallelism(multiRegionConfig).resolveRegions());
 
-    // 5. Exception when creating SpannerAccessor is caught and returns null
+    // 4. Multi-region instance config with null InstanceConfig or null replicas returns empty set
+    ServiceFactory<Spanner, SpannerOptions> nullConfigFactory =
+        createMockServiceFactory("nam6", null);
+    SpannerConfig nullInstanceConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("null-config-inst")
+            .withDatabaseId("test-db")
+            .withServiceFactory(nullConfigFactory);
+    assertTrue(new VerifyDataBoostParallelism(nullInstanceConfig).resolveRegions().isEmpty());
+
+    InstanceConfig nullReplicasInstanceConfig = mock(InstanceConfig.class);
+    when(nullReplicasInstanceConfig.getReplicas()).thenReturn(null);
+    ServiceFactory<Spanner, SpannerOptions> nullReplicasFactory =
+        createMockServiceFactory("eur3", nullReplicasInstanceConfig);
+    SpannerConfig nullReplicasConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("null-replicas-inst")
+            .withDatabaseId("test-db")
+            .withServiceFactory(nullReplicasFactory);
+    assertTrue(new VerifyDataBoostParallelism(nullReplicasConfig).resolveRegions().isEmpty());
+
+    // 5. Unknown or empty instanceConfigId returns empty set
+    ServiceFactory<Spanner, SpannerOptions> unknownConfigFactory =
+        createMockServiceFactory("unknown", null);
+    SpannerConfig unknownConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("unknown-inst")
+            .withDatabaseId("test-db")
+            .withServiceFactory(unknownConfigFactory);
+    assertTrue(new VerifyDataBoostParallelism(unknownConfig).resolveRegions().isEmpty());
+
+    ServiceFactory<Spanner, SpannerOptions> emptyConfigIdFactory =
+        createMockServiceFactory("", null);
+    SpannerConfig emptyConfigId =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("empty-config-inst")
+            .withDatabaseId("test-db")
+            .withServiceFactory(emptyConfigIdFactory);
+    assertTrue(new VerifyDataBoostParallelism(emptyConfigId).resolveRegions().isEmpty());
+
+    // 6. Exception when creating SpannerAccessor is caught and returns empty set
     @SuppressWarnings("unchecked")
     ServiceFactory<Spanner, SpannerOptions> throwingFactory = mock(ServiceFactory.class);
     when(throwingFactory.create(any())).thenThrow(new RuntimeException("Connection failed"));
@@ -400,11 +506,11 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withInstanceId("failing-inst")
             .withDatabaseId("test-db")
             .withServiceFactory(throwingFactory);
-    assertNull(new VerifyDataBoostParallelism(failingConfig).resolveRegion(emptyOptions));
+    assertTrue(new VerifyDataBoostParallelism(failingConfig).resolveRegions().isEmpty());
   }
 
   private static ServiceFactory<Spanner, SpannerOptions> createMockServiceFactory(
-      String instanceConfigName) {
+      String instanceConfigName, InstanceConfig instanceConfig) {
     @SuppressWarnings("unchecked")
     ServiceFactory<Spanner, SpannerOptions> serviceFactory = mock(ServiceFactory.class);
     Spanner spanner = mock(Spanner.class);
@@ -415,6 +521,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     when(instanceAdminClient.getInstance(any())).thenReturn(instance);
     when(instance.getInstanceConfigId())
         .thenReturn(InstanceConfigId.of("test-proj", instanceConfigName));
+    when(instanceAdminClient.getInstanceConfig(instanceConfigName)).thenReturn(instanceConfig);
     return serviceFactory;
   }
 
@@ -504,9 +611,6 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     assertNotNull(new ExportTransform(spannerConfig, dir, empty));
     assertNotNull(
         new ExportTransform(spannerConfig, dir, empty, empty, empty, boolFalse, boolFalse, dir));
-    assertNotNull(
-        new ExportTransform(
-            spannerConfig, dir, empty, empty, empty, boolFalse, boolFalse, dir, md5));
     ExportTransform exportTransform =
         new ExportTransform(
             spannerConfig,

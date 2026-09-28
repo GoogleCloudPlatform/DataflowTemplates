@@ -22,6 +22,8 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.spanner.InstanceConfig;
+import com.google.cloud.spanner.ReplicaInfo;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.spanner.spannerio.SpannerAccessor;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
@@ -34,6 +36,10 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -157,8 +163,8 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
       }
 
       String projectId = resolveProjectId(options);
-      String region = resolveRegion(options);
-      return getDataBoostQuota(projectId, region, requestFactorySupplier.get());
+      Set<String> regions = resolveRegions();
+      return getDataBoostQuota(projectId, regions, requestFactorySupplier.get());
     } catch (Exception e) {
       LOG.warn(
           "Unexpected error resolving Spanner Data Boost quota; defaulting to {}: {}",
@@ -192,15 +198,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   }
 
   @VisibleForTesting
-  String resolveRegion(PipelineOptions options) {
-    try {
-      DataflowPipelineOptions dataflowOptions = options.as(DataflowPipelineOptions.class);
-      if (!Strings.isNullOrEmpty(dataflowOptions.getRegion())) {
-        return dataflowOptions.getRegion();
-      }
-    } catch (Exception e) {
-      LOG.debug("Unable to resolve region from DataflowPipelineOptions", e);
-    }
+  Set<String> resolveRegions() {
     ValueProvider<String> instanceId = spannerConfig.getInstanceId();
     if (instanceId != null
         && instanceId.isAccessible()
@@ -209,8 +207,23 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         try {
           String instanceConfigId = spannerAccessor.getInstanceConfigId();
-          if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
-            return instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length());
+          if (!Strings.isNullOrEmpty(instanceConfigId) && !"unknown".equals(instanceConfigId)) {
+            if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
+              return Collections.singleton(
+                  instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length()));
+            }
+            InstanceConfig instanceConfig =
+                spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
+            if (instanceConfig != null && instanceConfig.getReplicas() != null) {
+              Set<String> replicaRegions = new LinkedHashSet<>();
+              for (ReplicaInfo replica : instanceConfig.getReplicas()) {
+                if (replica.getType() != ReplicaInfo.ReplicaType.WITNESS
+                    && !Strings.isNullOrEmpty(replica.getLocation())) {
+                  replicaRegions.add(replica.getLocation());
+                }
+              }
+              return replicaRegions;
+            }
           }
         } finally {
           spannerAccessor.close();
@@ -219,7 +232,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         LOG.debug("Unable to resolve region from Spanner instance config", e);
       }
     }
-    return null;
+    return Collections.emptySet();
   }
 
   @VisibleForTesting
@@ -233,13 +246,14 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
   /**
    * Fetches the Spanner Data Boost concurrent requests quota ({@code
-   * spanner.googleapis.com/data_boost_quota}) for a given project and region from the Service Usage
-   * Consumer Quota API. If any error occurs while fetching or parsing the quota, defaults to {@link
-   * #DEFAULT_DATA_BOOST_QUOTA} (400) without throwing an exception.
+   * spanner.googleapis.com/data_boost_quota}) for a given project and set of Spanner regions from
+   * the Service Usage Consumer Quota API. For multi-region instances, returns the minimum effective
+   * quota across the serving replica regions. If any error occurs while fetching or parsing the
+   * quota, defaults to {@link #DEFAULT_DATA_BOOST_QUOTA} (400) without throwing an exception.
    */
   @VisibleForTesting
   static long getDataBoostQuota(
-      String projectId, String region, HttpRequestFactory requestFactory) {
+      String projectId, Set<String> regions, HttpRequestFactory requestFactory) {
     if (Strings.isNullOrEmpty(projectId)) {
       LOG.warn(
           "Project ID is null or empty when querying Spanner Data Boost quota; defaulting to {}",
@@ -264,15 +278,16 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
       JsonArray quotaBuckets = root.getAsJsonArray("quotaBuckets");
       if (quotaBuckets == null) {
         LOG.warn(
-            "No quotaBuckets found in ConsumerQuotaLimit response for project={}, region={};"
+            "No quotaBuckets found in ConsumerQuotaLimit response for project={}, regions={};"
                 + " defaulting to {}",
             projectId,
-            region,
+            regions,
             DEFAULT_DATA_BOOST_QUOTA);
         return DEFAULT_DATA_BOOST_QUOTA;
       }
 
       long defaultLimit = -1;
+      Map<String, Long> regionalLimits = new HashMap<>();
       for (JsonElement element : quotaBuckets) {
         JsonObject bucket = element.getAsJsonObject();
         if (!bucket.has("effectiveLimit")) {
@@ -282,17 +297,8 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
         if (bucket.has("dimensions")) {
           JsonObject dimensions = bucket.getAsJsonObject("dimensions");
-          if (!Strings.isNullOrEmpty(region)
-              && dimensions.has("region")
-              && region.equals(dimensions.get("region").getAsString())) {
-            if (effectiveLimit > 0) {
-              LOG.info(
-                  "Fetched Spanner Data Boost quota for project={}, region={}: {}",
-                  projectId,
-                  region,
-                  effectiveLimit);
-              return effectiveLimit;
-            }
+          if (dimensions.has("region") && effectiveLimit > 0) {
+            regionalLimits.put(dimensions.get("region").getAsString(), effectiveLimit);
           }
         } else {
           // Bucket without region dimension is the default limit across all other regions
@@ -300,27 +306,45 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         }
       }
 
-      if (defaultLimit > 0) {
+      if (regions != null && !regions.isEmpty()) {
+        long minRegionLimit = Long.MAX_VALUE;
+        for (String region : regions) {
+          if (!Strings.isNullOrEmpty(region)) {
+            long regionLimit = regionalLimits.getOrDefault(region, defaultLimit);
+            if (regionLimit > 0) {
+              minRegionLimit = Math.min(minRegionLimit, regionLimit);
+            }
+          }
+        }
+        if (minRegionLimit != Long.MAX_VALUE) {
+          LOG.info(
+              "Fetched Spanner Data Boost quota for project={}, regions={}: {}",
+              projectId,
+              regions,
+              minRegionLimit);
+          return minRegionLimit;
+        }
+      } else if (defaultLimit > 0) {
         LOG.info(
-            "Fetched Spanner Data Boost default quota for project={}, region={}: {}",
+            "Fetched Spanner Data Boost default quota for project={}, regions={}: {}",
             projectId,
-            region,
+            regions,
             defaultLimit);
         return defaultLimit;
       }
 
       LOG.warn(
-          "Quota API returned non-positive limit ({}) for project={}, region={}; defaulting to {}",
+          "Quota API returned non-positive limit ({}) for project={}, regions={}; defaulting to {}",
           defaultLimit,
           projectId,
-          region,
+          regions,
           DEFAULT_DATA_BOOST_QUOTA);
     } catch (Exception e) {
       LOG.warn(
-          "Failed to fetch Spanner Data Boost quota for project={}, region={}; defaulting to {}:"
+          "Failed to fetch Spanner Data Boost quota for project={}, regions={}; defaulting to {}:"
               + " {}",
           projectId,
-          region,
+          regions,
           DEFAULT_DATA_BOOST_QUOTA,
           e.getMessage());
     }

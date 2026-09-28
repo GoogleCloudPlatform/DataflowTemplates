@@ -159,7 +159,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
         outputDir,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
+        /* maxDataBoostParallelism= */ null);
   }
 
   public ExportTransform(
@@ -181,29 +182,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         shouldExportTimestampAsLogicalType,
         avroTempDirectory,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
-  }
-
-  public ExportTransform(
-      SpannerConfig spannerConfig,
-      ValueProvider<String> outputDir,
-      ValueProvider<String> testJobId,
-      ValueProvider<String> snapshotTime,
-      ValueProvider<String> tableNames,
-      ValueProvider<Boolean> exportRelatedTables,
-      ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
-      ValueProvider<String> avroTempDirectory,
-      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
-    this(
-        spannerConfig,
-        outputDir,
-        testJobId,
-        snapshotTime,
-        tableNames,
-        exportRelatedTables,
-        shouldExportTimestampAsLogicalType,
-        avroTempDirectory,
-        checksumAlgorithm,
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
         /* maxDataBoostParallelism= */ null);
   }
 
