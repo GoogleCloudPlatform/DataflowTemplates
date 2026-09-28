@@ -38,4 +38,14 @@ public class SpannerOracleResourceManager extends CloudOracleResourceManager {
         "jdbc:%s:thin:@//%s:%d/%s",
         getJDBCPrefix(), this.getHost(), this.getPort(getJDBCPort()), this.getDatabaseName());
   }
+
+  public void runSQLUpdate(String sql) {
+    try (java.sql.Connection conn =
+            java.sql.DriverManager.getConnection(getUri(), getUsername(), getPassword());
+        java.sql.Statement stmt = conn.createStatement()) {
+      stmt.execute(sql);
+    } catch (Exception e) {
+      LOG.error("Failed to execute SQL: " + sql, e);
+    }
+  }
 }
