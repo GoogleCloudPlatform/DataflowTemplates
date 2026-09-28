@@ -111,8 +111,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
                 return new LowLevelHttpResponse() {
                   @Override
                   public InputStream getContent() {
-                    return new ByteArrayInputStream(
-                        responseBody.getBytes(StandardCharsets.UTF_8));
+                    return new ByteArrayInputStream(responseBody.getBytes(StandardCharsets.UTF_8));
                   }
 
                   @Override
@@ -256,8 +255,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
 
     // 1. Positive user-configured maxDataBoostParallelism skips Quota API (even if supplier fails)
     VerifyDataBoostParallelism withPositiveParam =
-        new VerifyDataBoostParallelism(
-            spannerConfig, StaticValueProvider.of(750), failingSupplier);
+        new VerifyDataBoostParallelism(spannerConfig, StaticValueProvider.of(750), failingSupplier);
     assertEquals(750L, withPositiveParam.resolveMaxDataBoostParallelism(options));
 
     // 2. Null, inaccessible, null-value, or non-positive maxDataBoostParallelism calls Quota API
@@ -305,7 +303,8 @@ public class VerifyDataBoostParallelismTest implements Serializable {
 
       // 1. Project ID from SpannerConfig
       VerifyDataBoostParallelism fromSpannerConfig =
-          new VerifyDataBoostParallelism(SpannerConfig.create().withProjectId("spanner-project-id"));
+          new VerifyDataBoostParallelism(
+              SpannerConfig.create().withProjectId("spanner-project-id"));
       assertEquals("spanner-project-id", fromSpannerConfig.resolveProjectId(options));
 
       // 2. SpannerConfig projectId is null, inaccessible, empty, or throws -> falls back to options
@@ -336,8 +335,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
           new VerifyDataBoostParallelism(SpannerConfig.create());
       assertEquals(
           SpannerOptions.getDefaultProjectId(), fallbackTransform.resolveProjectId(emptyOptions));
-      assertEquals(
-          SpannerOptions.getDefaultProjectId(), fallbackTransform.resolveProjectId(null));
+      assertEquals(SpannerOptions.getDefaultProjectId(), fallbackTransform.resolveProjectId(null));
     } finally {
       if (previousDefaultProject == null) {
         System.clearProperty("google.cloud.project");
@@ -505,8 +503,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
 
     assertNotNull(new ExportTransform(spannerConfig, dir, empty));
     assertNotNull(
-        new ExportTransform(
-            spannerConfig, dir, empty, empty, empty, boolFalse, boolFalse, dir));
+        new ExportTransform(spannerConfig, dir, empty, empty, empty, boolFalse, boolFalse, dir));
     assertNotNull(
         new ExportTransform(
             spannerConfig, dir, empty, empty, empty, boolFalse, boolFalse, dir, md5));
