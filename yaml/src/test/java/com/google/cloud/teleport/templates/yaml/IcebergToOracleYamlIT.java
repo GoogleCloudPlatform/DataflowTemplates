@@ -27,11 +27,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -57,35 +58,31 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
+  private final String namespace =
+      "iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String ICEBERG_TABLE_NAME = "source_table";
-  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
 
   // Oracle Setup
   private static final String ORACLE_TABLE_NAME = "target_table";
-  private static final String ORACLE_DRIVER_GCS_PATH = "libs/ojdbc17.jar";
 
-  private GcsResourceManager gcsResourceManager; // For artifacts
   private OracleResourceManager oracleResourceManager;
   private IcebergResourceManager icebergResourceManager;
-  private GcsResourceManager warehouseGcsResourceManager; // For Iceberg warehouse
-  // GCS artifact bucket used to upload driver jars and other artifacts
-  protected final String artifactBucket = TestProperties.artifactBucket();
+  private GcsResourceManager warehouseGcsResourceManager;
 
   @Before
   public void setUp() throws IOException {
-    // Initialize GCS resource manager for artifacts
-    // artifactBucket is inherited from TemplateTestBase
-    gcsResourceManager =
-      GcsResourceManager.builder(artifactBucket, testName + "-artifacts", credentials).build();
-
     // Initialize Oracle resource manager
     oracleResourceManager = OracleResourceManager.builder(testName).build();
 
     // Initialize GCS for Iceberg warehouse
     warehouseGcsResourceManager =
-        GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
-    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+        artifactBucketName != null && !artifactBucketName.isEmpty()
+            ? GcsResourceManager.builder(
+                    artifactBucketName, getClass().getSimpleName(), credentials)
+                .build()
+            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(namespace);
     LOG.info("Warehouse bucket created: {}", warehouseGcsResourceManager.getBucket());
 
     // Initialize Iceberg resource manager
@@ -94,37 +91,23 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
-
-    // Upload Oracle JDBC Driver to GCS
-    try {
-      ClasspathResourceManager.create()
-          .uploadArtifact(artifactBucket, ORACLE_DRIVER_GCS_PATH, "ojdbc17.jar");
-      LOG.info("Uploaded Oracle driver to gs://{}/{}", artifactBucket, ORACLE_DRIVER_GCS_PATH);
-    } catch (Exception e) {
-      throw new IOException("Failed to upload Oracle driver", e);
-    }
+    icebergResourceManager.createNamespace(namespace);
   }
 
   @After
   public void tearDown() {
-    if (oracleResourceManager != null) {
-      oracleResourceManager.cleanupAll();
-    }
-    if (icebergResourceManager != null) {
-      icebergResourceManager.cleanupAll();
-    }
-    if (warehouseGcsResourceManager != null) {
-      warehouseGcsResourceManager.cleanupAll();
-    }
+    ResourceManagerUtils.cleanResources(
+        oracleResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
   public void testIcebergToOracle() throws IOException {
     // Iceberg setup
 
-    // Create namespace in the REST catalog
-    icebergResourceManager.createNamespace(NAMESPACE);
-    LOG.info("Namespace '{}' created successfully", NAMESPACE);
+    // Re-invoke createNamespace to act as a propagation barrier and cache-warming step for BigLake
+    // REST catalog before Dataflow launches. Do not remove: prevents eventual consistency failures.
+    icebergResourceManager.createNamespace(namespace);
+    LOG.info("Namespace '{}' created/verified successfully", namespace);
 
     // Define Iceberg table schema
     Schema icebergSchema =
@@ -134,7 +117,7 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
             Types.NestedField.optional(3, "active", Types.IntegerType.get()));
 
     // Create Iceberg table
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
+    icebergResourceManager.createTable(icebergTableIdentifier, icebergSchema);
 
     List<Map<String, Object>> icebergRecords =
         List.of(
@@ -142,7 +125,7 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
             Map.of("id", 2, "name", "Bob", "active", 0),
             Map.of("id", 3, "name", "Charlie", "active", 1));
 
-    icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
+    icebergResourceManager.write(icebergTableIdentifier, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
     // Oracle setup
@@ -158,7 +141,7 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
     // Pipeline execution
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
@@ -220,10 +203,9 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
   private Map<String, String> getCatalogProperties() {
     return Map.of(
         "type", "rest",
-        "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
+        "uri", "https://biglake.googleapis.com/iceberg/v1/restcatalog",
         "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project", PROJECT,
-        "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
-        "rest-metrics-reporting-enabled", "false");
+        "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager");
   }
 }

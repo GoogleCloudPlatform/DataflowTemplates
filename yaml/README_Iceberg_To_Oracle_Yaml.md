@@ -18,20 +18,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
 * **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **jdbcUrl**: The JDBC connection URL. For example, `jdbc:oracle://your-host:1521/serviceName`.
-* **location**: The name of the database table to write data to. For example, `public.my_table`.
+* **location**: The name of the database table to write data to. For example, `public.my_destination_table`.
 
 ### Optional parameters
 
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **drop**: A list of field names to drop from the source record. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
 * **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
-* **keep**: A list of field names to keep in the source record. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
-* **batchSize**: The number of records to group together for each write. For example, `1000`.
-* **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `false`.
+* **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
+* **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
 
 
 
@@ -137,13 +137,9 @@ export FILTER=<filter>
 export KEEP=<keep>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=oracle.jdbc.driver.OracleDriver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=oracle
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
 gcloud dataflow flex-template run "iceberg-to-oracle-yaml-job" \
@@ -160,13 +156,9 @@ gcloud dataflow flex-template run "iceberg-to-oracle-yaml-job" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "location=$LOCATION" \
-  --parameters "writeStatement=$WRITE_STATEMENT" \
+  --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autosharding=$AUTOSHARDING"
 ```
@@ -200,13 +192,9 @@ export FILTER=<filter>
 export KEEP=<keep>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=oracle.jdbc.driver.OracleDriver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=oracle
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
 mvn clean package -PtemplatesRun \
@@ -216,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-oracle-yaml-job" \
 -DtemplateName="Iceberg_To_Oracle_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
 -f yaml
 ```
 
@@ -234,7 +222,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/yaml/terraform/Iceberg_To_Oracle_Yaml
+cd yaml/terraform/Iceberg_To_Oracle_Yaml
 terraform init
 terraform apply
 ```
@@ -272,13 +260,9 @@ resource "google_dataflow_flex_template_job" "iceberg_to_oracle_yaml" {
     # keep = "<keep>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "oracle.jdbc.driver.OracleDriver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "oracle"
-    # writeStatement = "<writeStatement>"
-    # batchSize = "<batchSize>"
+    # query = "<query>"
+    # batchSize = "1000"
     # autosharding = "<autosharding>"
   }
 }
