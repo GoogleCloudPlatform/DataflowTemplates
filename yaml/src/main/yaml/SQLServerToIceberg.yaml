@@ -35,7 +35,6 @@ pipeline:
     - type: ReadFromSqlServer
       name: ReadFromSqlServer
       config:
-        driver_class_name: {{ driverClassName | default("com.microsoft.sqlserver.jdbc.SQLServerDriver")}}
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
@@ -49,7 +48,6 @@ pipeline:
         connection_init_sql: {{ connectionInitSql }}
         disable_auto_commit: {{ disableAutoCommit }}
         output_parallelization: {{ outputParallelization }}
-        type: {{ jdbcType | default("mssql") }}
 
     - type: WriteToIceberg
       name: WriteToIceberg

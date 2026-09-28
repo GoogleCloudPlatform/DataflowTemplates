@@ -26,7 +26,7 @@ public class Shard implements Serializable {
   private String host = "";
   private String port = "";
   private String user = "";
-  private String password = "";
+  private String password = null;
   private String dbName = "";
   private String namespace = "";
   private String secretManagerUri = "";

@@ -26,6 +26,10 @@ on:
         description: 'Specific Load Test (passed to -Dtest=)'
         required: false
         type: string
+      spec_path:
+        description: 'Custom template spec GCS path (passed to -DspecPath=)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -51,6 +55,7 @@ jobs:
     - name: Run Load Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        SPEC_PATH: ${{ github.event.inputs.spec_path }}
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
@@ -61,6 +66,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
+        --lt-spec-path="$SPEC_PATH" \
         --test="$SPECIFIC_TEST"
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -51,6 +51,7 @@ import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
@@ -151,6 +152,26 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
     return PostgresResourceManager.builder(testName).build();
+  }
+
+  private static MSSQLResourceManager sharedMssqlResourceManager;
+
+  public MSSQLResourceManager setUpMSSQLResourceManager() {
+    synchronized (SourceDbToSpannerITBase.class) {
+      if (sharedMssqlResourceManager == null) {
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        sharedMssqlResourceManager = builder.build();
+      }
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testName);
+      builder.setUsername(sharedMssqlResourceManager.getUsername());
+      builder.setPassword(sharedMssqlResourceManager.getPassword());
+      builder.setHost(sharedMssqlResourceManager.getHost());
+      builder.setPort(sharedMssqlResourceManager.getPort());
+      builder.useStaticContainer();
+      return builder.build();
+    }
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
@@ -350,6 +371,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (!params.containsKey("outputDirectory")) {
       params.put("outputDirectory", "gs://" + artifactBucketName);
     }
+    if (System.getProperty("directRunnerTest") != null) {
+      params.put("resourceHints", "cpu_count=4");
+    }
 
     if (sessionFileResourceName != null) {
       String sessionPath = gcsPathPrefix + "/session.json";
@@ -373,7 +397,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         ipConfig = jobParameters.get("ipConfiguration");
       }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
-        if ("namespace".equals(entry.getKey()) || "ipConfiguration".equals(entry.getKey())) {
+        if ("namespace".equals(entry.getKey())
+            || "ipConfiguration".equals(entry.getKey())
+            || "dbUser".equals(entry.getKey())
+            || "dbPassword".equals(entry.getKey())
+            || "connectionProperties".equals(entry.getKey())) {
           continue;
         }
         params.put(entry.getKey(), entry.getValue());
@@ -415,6 +443,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.SSLMySQLResourceManager sslRm) {
+      shard.setHost(sslRm.getHost());
+      shard.setPort(String.valueOf(sslRm.getPort()));
+      shard.setDbName(sslRm.getDatabaseName());
     } else if (jdbcResourceManager
         instanceof org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager cloudRm) {
       shard.setHost(cloudRm.getHost());
@@ -438,8 +475,19 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
     }
 
-    if (jobParameters != null && jobParameters.containsKey("namespace")) {
-      shard.setNamespace(jobParameters.get("namespace"));
+    if (jobParameters != null) {
+      if (jobParameters.containsKey("namespace")) {
+        shard.setNamespace(jobParameters.get("namespace"));
+      }
+      if (jobParameters.containsKey("dbUser")) {
+        shard.setUser(jobParameters.get("dbUser"));
+      }
+      if (jobParameters.containsKey("dbPassword")) {
+        shard.setPassword(jobParameters.get("dbPassword"));
+      }
+      if (jobParameters.containsKey("connectionProperties")) {
+        shard.setConnectionProperties(jobParameters.get("connectionProperties"));
+      }
     }
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
@@ -572,6 +620,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (resourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
       return "ORACLE";
     }
+    if (resourceManager instanceof MSSQLResourceManager) {
+      return SQLDialect.SQLSERVER.name();
+    }
     return SQLDialect.MYSQL.name();
   }
 
@@ -582,6 +633,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       }
       if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
         return "oracle.jdbc.OracleDriver";
+      }
+      if (jdbcResourceManager instanceof MSSQLResourceManager) {
+        return Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").getCanonicalName();
       }
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {

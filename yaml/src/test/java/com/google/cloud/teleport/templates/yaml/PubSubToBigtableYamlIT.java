@@ -53,20 +53,20 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link PubSubToBigTableYaml}. */
+/** Integration test for {@link PubSubToBigtableYaml}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PubSubToBigTableYaml.class)
+@TemplateIntegrationTest(PubSubToBigtableYaml.class)
 @RunWith(JUnit4.class)
-public final class PubSubToBigTableYamlIT extends TemplateTestBase {
+public final class PubSubToBigtableYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigTableYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigtableYamlIT.class);
 
   private PubsubResourceManager pubsubResourceManager;
   private BigtableResourceManager bigtableResourceManager;
 
   @Before
   public void setup() throws IOException {
-    // Pubsub and BigTable resource managers
+    // Pubsub and Bigtable resource managers
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigtableResourceManager =
@@ -82,16 +82,16 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubSubToBigTable() throws IOException {
-    pubSubToBigTable(Function.identity());
+  public void testPubSubToBigtable() throws IOException {
+    pubSubToBigtable(Function.identity());
   }
 
-  public void pubSubToBigTable(
+  public void pubSubToBigtable(
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)
       throws IOException {
 
-    LOG.info("Starting pubSubToBigTable test. Test name: {}. Spec path: {}", testName, specPath);
+    LOG.info("Starting pubSubToBigtable test. Test name: {}. Spec path: {}", testName, specPath);
 
     /******************************* Arrange ********************************/
 
@@ -179,7 +179,7 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
           pipelineOperator()
               .waitForConditionsAndFinish(
                   createConfig(info),
-                  // Publish messages and check that 20 rows are in the BigTable
+                  // Publish messages and check that 20 rows are in the Bigtable
                   () -> {
                     LOG.info(
                         "Publishing messages to the topic to ensure pipeline has messages to"
@@ -227,11 +227,11 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
       }
     }
 
-    LOG.info("Verifying 20 rows in the BigTable still exist...");
+    LOG.info("Verifying 20 rows in the Bigtable still exist...");
     List<Row> tableRows = bigtableResourceManager.readTable(tableId);
     assertThat(tableRows).hasSize(20);
 
-    LOG.info("Verifying the exact 20 rows in BigTable...");
+    LOG.info("Verifying the exact 20 rows in Bigtable...");
     Map<String, Row> rowMap =
         tableRows.stream()
             .collect(Collectors.toMap(row -> row.getKey().toStringUtf8(), row -> row));

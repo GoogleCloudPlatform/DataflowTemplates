@@ -89,7 +89,8 @@ public abstract class Column implements Serializable {
         appendable.append(" STORED");
       }
     }
-    if (columnOptions() == null) {
+    // PostgreSQL has no inline OPTIONS clause in a column definition.
+    if (dialect() == Dialect.POSTGRESQL || columnOptions().isEmpty()) {
       return;
     }
     String optionsString = String.join(",", columnOptions());

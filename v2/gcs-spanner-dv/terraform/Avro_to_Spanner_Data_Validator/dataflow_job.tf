@@ -123,6 +123,20 @@ variable "transformationCustomParameters" {
   default = null
 }
 
+variable "tables" {
+  type = string
+  description = "A comma-separated list of source tables to include in the validation run. Defaults to empty."
+  default = null
+}
+
+variable "tableConfigurationFilePath" {
+  type = string
+  description = <<EOT
+A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{"tableNames": ["table1", "table2"]}`. Defaults to empty.
+EOT
+  default = null
+}
+
 
 provider "google" {
     project = var.project
@@ -263,6 +277,8 @@ resource "google_dataflow_flex_template_job" "generated" {
         transformationJarPath = var.transformationJarPath
         transformationClassName = var.transformationClassName
         transformationCustomParameters = var.transformationCustomParameters
+        tables = var.tables
+        tableConfigurationFilePath = var.tableConfigurationFilePath
     }
     
 	additional_experiments = var.additional_experiments

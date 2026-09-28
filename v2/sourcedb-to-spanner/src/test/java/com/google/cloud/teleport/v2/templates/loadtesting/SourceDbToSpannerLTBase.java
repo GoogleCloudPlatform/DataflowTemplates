@@ -180,26 +180,34 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   protected Map<String, String> getJdbcParameters(StaticJDBCResource jdbcResource) {
-    try {
-      return getJdbcParameters(
-          createAndUploadShardConfigToGcs(jdbcResource),
-          jdbcResource.username(),
-          jdbcResource.password(),
-          driverClassName());
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to create and upload shard config", e);
-    }
+    return getJdbcParameters(
+        jdbcResource.hostname(),
+        jdbcResource.port(),
+        jdbcResource.username(),
+        jdbcResource.password(),
+        jdbcResource.database(),
+        driverClassName());
   }
 
   protected String createAndUploadShardConfigToGcs(StaticJDBCResource jdbcResource)
       throws IOException {
+    return createAndUploadShardConfigToGcs(
+        jdbcResource.hostname(),
+        jdbcResource.port(),
+        jdbcResource.username(),
+        jdbcResource.password(),
+        jdbcResource.database());
+  }
+
+  protected String createAndUploadShardConfigToGcs(
+      String host, int port, String username, String password, String dbName) throws IOException {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
-    shard.setUser(jdbcResource.username());
-    shard.setPassword(jdbcResource.password());
-    shard.setHost(jdbcResource.hostname());
-    shard.setPort(String.valueOf(jdbcResource.port()));
-    shard.setDbName(jdbcResource.database());
+    shard.setUser(username);
+    shard.setPassword(password);
+    shard.setHost(host);
+    shard.setPort(String.valueOf(port));
+    shard.setDbName(dbName);
 
     JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
     jdbcShardConfig.setShardConfigs(Collections.singletonList(shard));
@@ -217,12 +225,23 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   protected Map<String, String> getJdbcParameters(
-      String connectionUrl, String username, String password, String driverClassName) {
-    Map<String, String> params = new HashMap<>();
-    params.put("sourceDbDialect", dialect.name());
-    params.put("sourceConfigURL", connectionUrl);
-    params.put("jdbcDriverClassName", driverClassName);
-    return params;
+      String host,
+      int port,
+      String username,
+      String password,
+      String dbName,
+      String driverClassName) {
+    try {
+      Map<String, String> params = new HashMap<>();
+      params.put("sourceDbDialect", dialect.name());
+      params.put(
+          "sourceConfigURL",
+          createAndUploadShardConfigToGcs(host, port, username, password, dbName));
+      params.put("jdbcDriverClassName", driverClassName);
+      return params;
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create and upload shard config", e);
+    }
   }
 
   /**
