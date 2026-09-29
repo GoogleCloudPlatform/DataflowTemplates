@@ -186,21 +186,15 @@ public class VerifyDataBoostParallelismTest implements Serializable {
     assertEquals(
         1000L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "span-cloud-ck-testing-external",
-            Collections.singleton("us-central1"),
-            standardFactory));
+            "test-project", Collections.singleton("us-central1"), standardFactory));
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "span-cloud-ck-testing-external",
-            Collections.singleton("europe-west2"),
-            standardFactory));
+            "test-project", Collections.singleton("europe-west2"), standardFactory));
     assertEquals(
         400L,
         VerifyDataBoostParallelism.getDataBoostQuota(
-            "span-cloud-ck-testing-external",
-            ImmutableSet.of("us-central1", "europe-west2"),
-            standardFactory));
+            "test-project", ImmutableSet.of("us-central1", "europe-west2"), standardFactory));
 
     // 2. Null or empty projectId or null requestFactory returns 400 without making a request
     assertEquals(

@@ -140,12 +140,14 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                       long allowedParallelism = resolveMaxDataBoostParallelism(options);
 
                       if (maxParallelism > allowedParallelism) {
-                        throw new IllegalArgumentException(
+                        String errorMessage =
                             String.format(
                                 "Job max parallelism (%d workers * %d threads/worker = %d"
                                     + " concurrent requests) exceeds Spanner Data Boost quota"
-                                    + " (%d). Reduce --maxWorkers or increase quota.",
-                                maxWorkers, threadsPerWorker, maxParallelism, allowedParallelism));
+                                    + " (%d). Reduce --maxNumWorkers or increase quota.",
+                                maxWorkers, threadsPerWorker, maxParallelism, allowedParallelism);
+                        LOG.error(errorMessage);
+                        throw new IllegalArgumentException(errorMessage);
                       }
                     }
                     c.output(c.element());
