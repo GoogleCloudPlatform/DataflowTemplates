@@ -199,7 +199,8 @@ public class SpannerChangeStreamsToPubSub {
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
                 .withMetadataTable(metadataTableName)
-                .withTvfNameList(tvfNameList))
+                .withTvfNameList(tvfNameList)
+                .withDirectedReadOptions(options.getSpannerDirectedReadOptions()))
         .apply(
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()

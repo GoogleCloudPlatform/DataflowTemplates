@@ -318,7 +318,8 @@ public final class SpannerChangeStreamsToBigQuery {
             .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
-            .withRpcPriority(options.getRpcPriority());
+            .withRpcPriority(options.getRpcPriority())
+            .withDirectedReadOptions(options.getSpannerDirectedReadOptions());
 
     String spannerMetadataTableName = options.getSpannerMetadataTableName();
     if (spannerMetadataTableName != null) {
