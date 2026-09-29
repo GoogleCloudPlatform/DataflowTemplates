@@ -180,10 +180,10 @@ public interface IcebergToOracleYaml {
 
   @TemplateParameter.Boolean(
       order = 15,
-      name = "autosharding",
+      name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
       example = "False")
-  Boolean getAutosharding();
+  Boolean getAutoSharding();
 }
