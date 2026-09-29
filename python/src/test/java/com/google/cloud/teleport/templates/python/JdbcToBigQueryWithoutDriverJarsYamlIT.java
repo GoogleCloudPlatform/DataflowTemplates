@@ -28,8 +28,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -152,6 +150,7 @@ public class JdbcToBigQueryWithoutDriverJarsYamlIT extends TemplateTestBase {
   }
 
   private String readYamlPipelineFile(String yamlPipeline) throws IOException {
-    return Files.readString(Paths.get(Resources.getResource(yamlPipeline).getPath()));
+    return Resources.toString(
+        Resources.getResource(yamlPipeline), java.nio.charset.StandardCharsets.UTF_8);
   }
 }
