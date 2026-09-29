@@ -175,6 +175,7 @@ jobs:
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
         --it-oracle-host="10.128.0.108" \
+        --it-integration-test-parallelism="10" \
         --it-oracle-sys-password="TestPassword123" \
         --it-oracle-password="TestPassword123"
     - name: Upload Smoke Tests Report
@@ -222,7 +223,7 @@ jobs:
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
         --it-direct-runner=$IS_PR \
-        --it-integration-test-parallelism="20" \
+        --it-integration-test-parallelism="10" \
         --it-oracle-host="10.128.0.108" \
         --it-oracle-sys-password="TestPassword123" \
         --it-oracle-password="TestPassword123" \
