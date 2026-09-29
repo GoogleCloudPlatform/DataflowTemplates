@@ -86,4 +86,14 @@ public class CloudOracleResourceManagerTest {
       }
     }
   }
+
+  @Test
+  public void testCustomUsernameViaBuilder() {
+    CloudOracleResourceManager manager =
+        CloudOracleResourceManager.builder("custom_user_test")
+            .setHost("127.0.0.1")
+            .setUsername("custom_user")
+            .build();
+    assertThat(manager.getUsername()).isEqualTo("custom_user");
+  }
 }
