@@ -243,11 +243,16 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
   @VisibleForTesting
   static HttpRequestFactory createDefaultRequestFactory() throws IOException {
-    GoogleCredentials credentials =
-        GoogleCredentials.getApplicationDefault()
-            .createScoped(
-                Collections.singletonList("https://www.googleapis.com/auth/cloud-platform"));
-    return new NetHttpTransport().createRequestFactory(new HttpCredentialsAdapter(credentials));
+    return createRequestFactory(GoogleCredentials.getApplicationDefault());
+  }
+
+  @VisibleForTesting
+  static HttpRequestFactory createRequestFactory(GoogleCredentials credentials) {
+    GoogleCredentials scopedCredentials =
+        credentials.createScoped(
+            Collections.singletonList("https://www.googleapis.com/auth/cloud-platform"));
+    return new NetHttpTransport()
+        .createRequestFactory(new HttpCredentialsAdapter(scopedCredentials));
   }
 
   /**

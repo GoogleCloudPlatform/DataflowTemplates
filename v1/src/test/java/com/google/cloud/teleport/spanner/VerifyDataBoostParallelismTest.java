@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +30,7 @@ import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.LowLevelHttpRequest;
 import com.google.api.client.http.LowLevelHttpResponse;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceFactory;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
@@ -315,6 +317,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-project")
             .withInstanceId("regional-inst-quota")
             .withDatabaseId("test-db")
+            .withCredentials(mock(GoogleCredentials.class))
             .withServiceFactory(regionalServiceFactory);
 
     VerifyDataBoostParallelism.HttpRequestFactorySupplier mockedQuotaSupplier =
@@ -418,6 +421,8 @@ public class VerifyDataBoostParallelismTest implements Serializable {
 
   @Test
   public void testResolveRegionsBranches() {
+    GoogleCredentials mockCredentials = mock(GoogleCredentials.class);
+
     // 1. Null, inaccessible, or empty instanceId -> empty set
     assertTrue(new VerifyDataBoostParallelism(SpannerConfig.create()).resolveRegions().isEmpty());
     assertTrue(
@@ -438,6 +443,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("regional-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(regionalServiceFactory);
     assertEquals(
         Collections.singleton("us-west1"),
@@ -471,6 +477,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("multiregion-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(multiRegionServiceFactory);
     assertEquals(
         ImmutableSet.of("us-east4", "us-central1"),
@@ -484,6 +491,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("null-config-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(nullConfigFactory);
     assertTrue(new VerifyDataBoostParallelism(nullInstanceConfig).resolveRegions().isEmpty());
 
@@ -496,6 +504,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("null-replicas-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(nullReplicasFactory);
     assertTrue(new VerifyDataBoostParallelism(nullReplicasConfig).resolveRegions().isEmpty());
 
@@ -507,6 +516,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("unknown-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(unknownConfigFactory);
     assertTrue(new VerifyDataBoostParallelism(unknownConfig).resolveRegions().isEmpty());
 
@@ -517,6 +527,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("empty-config-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(emptyConfigIdFactory);
     assertTrue(new VerifyDataBoostParallelism(emptyConfigId).resolveRegions().isEmpty());
 
@@ -529,6 +540,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withProjectId("test-proj")
             .withInstanceId("failing-inst")
             .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
             .withServiceFactory(throwingFactory);
     assertTrue(new VerifyDataBoostParallelism(failingConfig).resolveRegions().isEmpty());
   }
@@ -617,8 +629,16 @@ public class VerifyDataBoostParallelismTest implements Serializable {
   }
 
   @Test
-  public void testCreateDefaultRequestFactoryAndExportPipelineConstructors() throws IOException {
-    assertNotNull(VerifyDataBoostParallelism.createDefaultRequestFactory());
+  public void testCreateDefaultRequestFactoryAndExportPipelineConstructors() {
+    GoogleCredentials mockCredentials = mock(GoogleCredentials.class);
+    when(mockCredentials.createScoped(anyCollection())).thenReturn(mockCredentials);
+    assertNotNull(VerifyDataBoostParallelism.createRequestFactory(mockCredentials));
+
+    try {
+      assertNotNull(VerifyDataBoostParallelism.createDefaultRequestFactory());
+    } catch (IOException ignored) {
+      // Expected in CI/CD environments without Application Default Credentials configured
+    }
 
     ExportPipelineOptions options =
         PipelineOptionsFactory.fromArgs("--maxDataBoostParallelism=600")
