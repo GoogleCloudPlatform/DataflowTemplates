@@ -40,7 +40,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.JDBCBaseIT;
+import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
@@ -52,16 +52,18 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link YAMLTemplate} using a JDBC to BigQuery pipeline. */
+/**
+ * Integration test for {@link YAMLTemplate} using a JDBC to BigQuery pipeline without driver jars.
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(YAMLTemplate.class)
 @RunWith(JUnit4.class)
-public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
+public class JdbcToBigQueryWithoutDriverJarsYamlIT extends TemplateTestBase {
 
   private PostgresResourceManager postgresResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
-  private static final String YAML_PIPELINE = "JdbcToBigQueryYamlIT.yaml";
+  private static final String YAML_PIPELINE = "JdbcToBigQueryYamlITWithoutDriverJars.yaml";
   private static final String YAML_PIPELINE_GCS_PATH = "input/" + YAML_PIPELINE;
   private static final String JDBC_TABLE_NAME = "source_table";
   private static final int ROW_COUNT = 10;
@@ -72,9 +74,6 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
 
   @Before
   public void setUp() throws IOException {
-    // We need a real JDBC URL for the test, so we use the one from JDBCBaseIT constants
-    // For a real test against a specific DB, ensure its Docker container is running or accessible.
-    // For this example, we'll use Postgres.
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
@@ -88,7 +87,7 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testJdbcToBigQuery() throws IOException {
+  public void testJdbcToBigQueryWithoutDriverJars() throws IOException {
     // Arrange JDBC source
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
@@ -131,17 +130,9 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
                 + "\"JDBC_USERNAME\": \"%s\", "
                 + "\"JDBC_PASSWORD\": \"%s\", "
                 + "\"JDBC_QUERY\": \"%s\", "
-                + "\"BQ_TABLE_SPEC\": \"%s\", "
-                + "\"JDBC_DRIVER_JARS\": \"%s\", "
-                + "\"JDBC_DRIVER_CLASS_NAME\": \"%s\""
+                + "\"BQ_TABLE_SPEC\": \"%s\""
                 + "}",
-            jdbcUrl,
-            username,
-            password,
-            query,
-            toTableSpecStandard(table),
-            postgresDriverGCSPath(),
-            POSTGRES_DRIVER);
+            jdbcUrl, username, password, query, toTableSpecStandard(table));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
