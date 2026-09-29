@@ -47,6 +47,7 @@ public class DataStreamIOTest {
   public static final String ROOT_PATH_WITH_DIRECTORIES = "path-with-directories/";
   public static final String ROOT_PATH_WITH_FILES = "path-with-files/";
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
+
   @Ignore
   @Test
   public void testFullContinuous() {
@@ -59,16 +60,16 @@ public class DataStreamIOTest {
             "gs://ds-fileio-tests/path-with-files/HR_JOBS/2020/07/14/12/16/");
     pipeline.run().waitUntilFinish();
   }
+
   @Test
   public void testExtractGcsFileIgnoresMessageWithNullAttributes() {
     PubsubMessage message = new PubsubMessage(new byte[0], Collections.emptyMap());
     PCollection<Metadata> results =
-        testPipeline
-            .apply(Create.of(message))
-            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+        testPipeline.apply(Create.of(message)).apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
     PAssert.that(results).empty();
     testPipeline.run();
   }
+
   @Test
   public void testExtractGcsFileIgnoresMessageWithMissingObjectId() {
     Map<String, String> attributes = new HashMap<>();
@@ -76,12 +77,11 @@ public class DataStreamIOTest {
     attributes.put("bucketId", "my-bucket");
     PubsubMessage message = new PubsubMessage(new byte[0], attributes);
     PCollection<Metadata> results =
-        testPipeline
-            .apply(Create.of(message))
-            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+        testPipeline.apply(Create.of(message)).apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
     PAssert.that(results).empty();
     testPipeline.run();
   }
+
   @Test
   public void testExtractGcsFileIgnoresNonFinalizeEvents() {
     Map<String, String> attributes = new HashMap<>();
@@ -90,9 +90,7 @@ public class DataStreamIOTest {
     attributes.put("objectId", "some/path/file.avro");
     PubsubMessage message = new PubsubMessage(new byte[0], attributes);
     PCollection<Metadata> results =
-        testPipeline
-            .apply(Create.of(message))
-            .apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
+        testPipeline.apply(Create.of(message)).apply(ParDo.of(new DataStreamIO.ExtractGcsFile()));
     PAssert.that(results).empty();
     testPipeline.run();
   }
