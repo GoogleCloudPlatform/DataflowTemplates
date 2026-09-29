@@ -81,22 +81,27 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
         new LaunchFlexTemplateRequest().setLaunchParameter(parameter);
     LOG.info("Sending request:\n{}", formatForLogging(request));
 
-    LaunchFlexTemplateResponse response =
-        Failsafe.with(clientRetryPolicy())
-            .get(
-                () ->
-                    client
-                        .projects()
-                        .locations()
-                        .flexTemplates()
-                        .launch(project, region, request)
-                        .execute());
-    Job job = response.getJob();
-    printJobResponse(job);
+    ActiveJob activeJob =
+        submitAndWaitUntilActive(
+            project,
+            region,
+            () -> {
+              LaunchFlexTemplateResponse response =
+                  Failsafe.with(clientRetryPolicy())
+                      .get(
+                          () ->
+                              client
+                                  .projects()
+                                  .locations()
+                                  .flexTemplates()
+                                  .launch(project, region, request)
+                                  .execute());
+              return response.getJob();
+            });
 
     // Wait until the job is active to get more information
-    JobState state = waitUntilActive(project, region, job.getId());
-    job = getJob(project, region, job.getId(), "JOB_VIEW_DESCRIPTION");
+    JobState state = activeJob.state;
+    Job job = getJob(project, region, activeJob.job.getId(), "JOB_VIEW_DESCRIPTION");
     LOG.info("Received flex template job {}: {}", job.getId(), formatForLogging(job));
 
     launchedJobs.add(job.getId());

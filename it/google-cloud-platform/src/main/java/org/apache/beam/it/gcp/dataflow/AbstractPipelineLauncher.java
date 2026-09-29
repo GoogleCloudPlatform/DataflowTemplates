@@ -71,6 +71,19 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   public static final int DEFAULT_BACKOFF_MAX_DELAY_SECONDS = 60;
   public static final int DEFAULT_MAX_RETRIES = 3;
 
+  /**
+   * System property controlling how many times a job is re-submitted when it fails before launch
+   * because Dataflow could not schedule a backend (temporary capacity stockout). Defaults to 0,
+   * which disables the retry and preserves the original behavior.
+   */
+  public static final String CAPACITY_RETRIES_PROPERTY = "dataflowCapacityRetries";
+
+  /** Substring of the job error message emitted by Dataflow on a backend capacity stockout. */
+  static final String CAPACITY_ERROR_MESSAGE = "Dataflow failed to schedule a backend";
+
+  static final int CAPACITY_RETRY_START_DELAY_SECONDS = 60;
+  static final int CAPACITY_RETRY_MAX_DELAY_SECONDS = 300;
+
   protected final List<String> launchedJobs = new ArrayList<>();
 
   protected final Dataflow client;
@@ -337,6 +350,99 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
               region, jobId, project));
     }
     return state;
+  }
+
+  /** Submits a Dataflow job and returns the created {@link Job}. */
+  @FunctionalInterface
+  protected interface JobSubmitter {
+    Job submit() throws IOException;
+  }
+
+  /** A submitted job together with the state it reached after leaving the pending states. */
+  protected static final class ActiveJob {
+    final Job job;
+    final JobState state;
+
+    ActiveJob(Job job, JobState state) {
+      this.job = job;
+      this.state = state;
+    }
+  }
+
+  /**
+   * Submits a job via {@code submitter} and waits until it is no longer pending.
+   *
+   * <p>If {@link #CAPACITY_RETRIES_PROPERTY} is set to a positive value and the job fails before
+   * launch because Dataflow could not schedule a backend (temporary capacity stockout), the job is
+   * re-submitted with exponential backoff up to that many times. With the property unset (the
+   * default), this behaves exactly like calling {@code submitter} followed by {@link
+   * #waitUntilActive}.
+   */
+  protected ActiveJob submitAndWaitUntilActive(
+      String project, String region, JobSubmitter submitter) throws IOException {
+    int maxRetries = capacityRetries();
+    long delaySeconds = CAPACITY_RETRY_START_DELAY_SECONDS;
+    for (int attempt = 0; ; attempt++) {
+      Job job = submitter.submit();
+      printJobResponse(job);
+      try {
+        return new ActiveJob(job, waitUntilActive(project, region, job.getId()));
+      } catch (RuntimeException e) {
+        if (attempt >= maxRetries || !isCapacityFailure(project, region, job.getId())) {
+          throw e;
+        }
+        LOG.warn(
+            "Job {} failed before launch due to a Dataflow capacity issue. Re-submitting in {}s"
+                + " (retry {}/{}).",
+            job.getId(),
+            delaySeconds,
+            attempt + 1,
+            maxRetries);
+        try {
+          sleepBeforeCapacityRetry(delaySeconds);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw e;
+        }
+        delaySeconds = Math.min(delaySeconds * 2, CAPACITY_RETRY_MAX_DELAY_SECONDS);
+      }
+    }
+  }
+
+  /** Sleeps before re-submitting a job after a capacity failure. Overridable for tests. */
+  void sleepBeforeCapacityRetry(long seconds) throws InterruptedException {
+    TimeUnit.SECONDS.sleep(seconds);
+  }
+
+  /** Returns the configured number of capacity retries, or 0 if unset or invalid. */
+  static int capacityRetries() {
+    String value = System.getProperty(CAPACITY_RETRIES_PROPERTY);
+    if (Strings.isNullOrEmpty(value)) {
+      return 0;
+    }
+    try {
+      return Math.max(0, Integer.parseInt(value.trim()));
+    } catch (NumberFormatException e) {
+      LOG.warn("Ignoring invalid -D{}={}", CAPACITY_RETRIES_PROPERTY, value);
+      return 0;
+    }
+  }
+
+  /** Returns true if the job's error messages indicate a Dataflow backend capacity stockout. */
+  boolean isCapacityFailure(String project, String region, String jobId) {
+    try {
+      List<JobMessage> messages = listMessages(project, region, jobId, "JOB_MESSAGE_ERROR");
+      return messages != null
+          && messages.stream()
+              .anyMatch(
+                  m ->
+                      m.getMessageText() != null
+                          && m.getMessageText().contains(CAPACITY_ERROR_MESSAGE));
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to fetch error messages for job {} to check for capacity failure.", jobId, e);
+      return false;
+    }
   }
 
   @Override
