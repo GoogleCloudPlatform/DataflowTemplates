@@ -49,6 +49,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
@@ -646,8 +647,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   @Override
   protected PipelineOperator.Config.Builder wrapConfiguration(
       PipelineOperator.Config.Builder builder) {
-    if (System.getProperty("directRunnerTest") != null) {
-      return builder.setTimeoutAfter(Duration.ofMinutes(25));
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      return builder.setTimeoutAfter(Duration.ofMinutes(15));
     }
     return builder;
   }

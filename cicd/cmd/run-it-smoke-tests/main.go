@@ -56,6 +56,7 @@ func main() {
 		mvnFlags.RunIntegrationSmokeTests(),
 		mvnFlags.ThreadCount(32),
 		mvnFlags.IntegrationTestParallelism(10),
+		"-Dmaven.test.redirectTestOutputToFile=true",
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
