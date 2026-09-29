@@ -37,14 +37,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a migration from a
- * PostgreSQL database whose Spanner schema, as produced by Spanner Migration Tool, contains
- * generated columns and column defaults. Both are omitted from the mutation as "auto-value" columns
- * so that Spanner populates them.
+ * An integration test for {@link SourceDbToSpanner} Flex template which migrates PostgreSQL tables
+ * whose Spanner schema has generated columns and column defaults. The pipeline must not write
+ * either, so that Spanner populates them.
  *
- * <p>Each dialect is covered because Spanner Migration Tool does not produce the same schema for
- * both: the PostgreSQL dialect accepts "::" casts, so degraded_gencol.label stays generated there
- * while GoogleSQL degrades it to a plain column. The migrated values must match regardless.
+ * <p>Both dialects are tested because degraded_gencol.label is generated in the PostgreSQL dialect
+ * but a plain column in GoogleSQL.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -157,9 +155,8 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
   }
 
   /**
-   * doubled is generated but not STORED. IS_GENERATED does not distinguish the two, so it is
-   * skipped like any other generated column. The source column is STORED only because the
-   * testcontainer is PostgreSQL 15 and VIRTUAL needs 18; the Spanner side drives the skip.
+   * doubled is a non-stored generated column in Spanner. It is STORED at source because the
+   * PostgreSQL test container is version 15, and VIRTUAL needs 18.
    */
   private void assertNonStoredGeneratedColumn(SpannerResourceManager spannerResourceManager) {
     ImmutableList<Struct> rows =
@@ -175,7 +172,7 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     assertThat(rows.get(1).getLong("doubled")).isEqualTo(50L);
   }
 
-  /** A null input makes the expression null, matching what PostgreSQL stored. */
+  /** sum_xy is null when an input is null, the same as at source. */
   private void assertGeneratedColumnWithNullInput(SpannerResourceManager spannerResourceManager) {
     ImmutableList<Struct> rows =
         spannerResourceManager.runQuery("SELECT id, x, y, sum_xy FROM gc_nullable ORDER BY id");
@@ -186,7 +183,7 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     assertThat(rows.get(1).isNull("sum_xy")).isTrue();
   }
 
-  /** k is a generated primary key: rows land under the right keys only if Spanner computes them. */
+  /** k is a generated primary key, so rows get the right keys only if Spanner computes it. */
   private void assertGeneratedPrimaryKey(SpannerResourceManager spannerResourceManager) {
     ImmutableList<Struct> rows =
         spannerResourceManager.runQuery("SELECT k, tag, a FROM gc_pk ORDER BY k");
@@ -202,8 +199,8 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
   }
 
   /**
-   * Columns present at source carry the source value. The d_spanner_* columns have no source
-   * counterpart, so Spanner applies its own defaults; d_derived is generated from one of them.
+   * Columns that exist at source keep the source value. d_spanner_* exist only in Spanner, so
+   * Spanner fills them from their DEFAULT, and d_derived is generated from one of them.
    */
   private void assertDefaultsApplied(SpannerResourceManager spannerResourceManager) {
     ImmutableList<Struct> rows = defaultsRows(spannerResourceManager);
@@ -233,7 +230,7 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     }
   }
 
-  /** An explicit null at source must stay null rather than falling back to the Spanner DEFAULT. */
+  /** An explicit null at source stays null instead of taking the Spanner DEFAULT. */
   private void assertSourceNullsBeatDefaults(SpannerResourceManager spannerResourceManager) {
     Struct nulls = defaultsRows(spannerResourceManager).get(3);
     assertThat(nulls.getString("payload")).isEqualTo("row-four");
@@ -251,8 +248,8 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
   }
 
   /**
-   * label is generated at source but plain in GoogleSQL Spanner, so it is copied verbatim there and
-   * recomputed in the PostgreSQL dialect. The migrated value must match the source either way.
+   * label is copied from source in GoogleSQL, where it is a plain column, and computed by Spanner
+   * in the PostgreSQL dialect. Both must match the source.
    */
   private void assertLabelMatchesSource(SpannerResourceManager spannerResourceManager) {
     ImmutableList<Struct> rows =

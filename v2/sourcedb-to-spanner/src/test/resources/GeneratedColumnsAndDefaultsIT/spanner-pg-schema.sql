@@ -1,6 +1,5 @@
--- Spanner PostgreSQL dialect counterpart of spanner-gsql-schema.sql. The dialect
--- accepts "::" casts, so Spanner Migration Tool keeps degraded_gencol.label
--- generated here instead of degrading it to a plain column.
+-- PostgreSQL-dialect version of spanner-gsql-schema.sql. degraded_gencol.label
+-- stays generated here because this dialect accepts :: casts.
 CREATE TABLE products (
     id        bigint      NOT NULL,
     price     bigint      NOT NULL,
@@ -48,9 +47,7 @@ CREATE TABLE degraded_gencol (
     PRIMARY KEY (id)
 );
 
--- Non-stored generated column. The PostgreSQL dialect requires the VIRTUAL
--- keyword, which is what Spanner Migration Tool emits for a PG 18 source column
--- declared GENERATED ALWAYS AS (...) VIRTUAL.
+-- doubled is a non-stored generated column (VIRTUAL in this dialect).
 CREATE TABLE gc_virtual (
     id      bigint      NOT NULL,
     a       bigint      NOT NULL,
