@@ -21,14 +21,14 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PubSub_To_BigTable_Yaml",
+    name = "PubSub_To_Bigtable_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Pub/Sub to BigTable (YAML)",
+    displayName = "Pub/Sub to Bigtable (YAML)",
     description =
-        "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+        "The PubSub to Bigtable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to Bigtable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubSubToBigTable.yaml",
+    yamlTemplateFile = "PubSubToBigtable.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
@@ -36,11 +36,11 @@ import org.apache.beam.sdk.options.Validation;
     requirements = {
       "The input Pub/Sub topic must exist.",
       "The mapToField Pub/Sub error topic must exist.",
-      "The output BigTable table must exist."
+      "The output Bigtable table must exist."
     },
     streaming = true,
     hidden = false)
-public interface PubSubToBigTableYaml {
+public interface PubSubToBigtableYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -158,8 +158,8 @@ public interface PubSubToBigTableYaml {
       order = 12,
       name = "projectId",
       optional = false,
-      description = "BigTable project ID",
-      helpText = "The Google Cloud project ID of the BigTable instance.",
+      description = "Bigtable project ID",
+      helpText = "The Google Cloud project ID of the Bigtable instance.",
       example = "")
   @Validation.Required
   String getProjectId();
@@ -168,8 +168,8 @@ public interface PubSubToBigTableYaml {
       order = 13,
       name = "instanceId",
       optional = false,
-      description = "BigTable instance ID",
-      helpText = "The BigTable instance ID.",
+      description = "Bigtable instance ID",
+      helpText = "The Bigtable instance ID.",
       example = "")
   @Validation.Required
   String getInstanceId();
@@ -178,8 +178,8 @@ public interface PubSubToBigTableYaml {
       order = 14,
       name = "tableId",
       optional = false,
-      description = "BigTable output table",
-      helpText = "BigTable table ID to write the output to.",
+      description = "Bigtable output table",
+      helpText = "Bigtable table ID to write the output to.",
       example = "")
   @Validation.Required
   String getTableId();

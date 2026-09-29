@@ -183,7 +183,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     // Generate a runId for the validation run
     String runId = PipelineUtils.createJobName(testId);
     params.put("runId", runId);
-    params.put("workerMachineType", "n2-standard-4");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // overridden parameters
     if (jobParameters != null) {

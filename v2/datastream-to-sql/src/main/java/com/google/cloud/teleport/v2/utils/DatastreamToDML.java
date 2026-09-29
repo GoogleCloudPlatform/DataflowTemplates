@@ -405,7 +405,8 @@ public abstract class DatastreamToDML
     }
     String columnValue =
         columnObj.isTextual() ? "'" + cleanSql(columnObj.textValue()) + "'" : columnObj.toString();
-    return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
+    return cleanDataTypeValueSql(
+        columnValue, applyCasingLogic(columnName, this.columnCasing), tableSchema);
   }
 
   public String cleanDataTypeValueSql(
