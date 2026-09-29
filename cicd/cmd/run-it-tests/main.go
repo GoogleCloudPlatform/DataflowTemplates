@@ -76,6 +76,7 @@ func main() {
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
 		flags.UnifiedWorkerHarnessContainerImage(),
+		flags.DataflowCapacityRetries(),
 		flags.CloudProxyPassword(),
 		mvnFlags.SpecificTest(flags.TestToRun()),
 		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))

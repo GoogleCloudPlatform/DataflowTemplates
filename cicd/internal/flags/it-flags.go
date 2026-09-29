@@ -43,6 +43,7 @@ var (
 	dUnifiedWorkerHarnessContainerImage string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
+	dDataflowCapacityRetries            string
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -66,6 +67,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
+	flag.StringVar(&dDataflowCapacityRetries, "it-dataflow-capacity-retries", "0", "(optional) Number of times to re-submit a Dataflow job that fails before launch due to a temporary Dataflow capacity issue. 0 disables it.")
 }
 
 func Region() string {
@@ -158,6 +160,13 @@ func StaticOraclePassword() string {
 func UnifiedWorkerHarnessContainerImage() string {
 	if dUnifiedWorkerHarnessContainerImage != "" {
 		return "-DunifiedWorkerHarnessContainerImage=" + dUnifiedWorkerHarnessContainerImage
+	}
+	return ""
+}
+
+func DataflowCapacityRetries() string {
+	if dDataflowCapacityRetries != "" && dDataflowCapacityRetries != "0" {
+		return "-DdataflowCapacityRetries=" + dDataflowCapacityRetries
 	}
 	return ""
 }

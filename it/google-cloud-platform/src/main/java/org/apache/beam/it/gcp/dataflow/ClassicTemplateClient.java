@@ -77,21 +77,24 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
             .setEnvironment(buildEnvironment(options));
     LOG.info("Sending request:\n{}", formatForLogging(parameter));
 
-    Job job =
-        Failsafe.with(clientRetryPolicy())
-            .get(
-                () ->
-                    client
-                        .projects()
-                        .locations()
-                        .templates()
-                        .create(project, region, parameter)
-                        .execute());
-    printJobResponse(job);
+    ActiveJob activeJob =
+        submitAndWaitUntilActive(
+            project,
+            region,
+            () ->
+                Failsafe.with(clientRetryPolicy())
+                    .get(
+                        () ->
+                            client
+                                .projects()
+                                .locations()
+                                .templates()
+                                .create(project, region, parameter)
+                                .execute()));
 
     // Wait until the job is active to get more information
-    JobState state = waitUntilActive(project, region, job.getId());
-    job = getJob(project, region, job.getId(), "JOB_VIEW_DESCRIPTION");
+    JobState state = activeJob.state;
+    Job job = getJob(project, region, activeJob.job.getId(), "JOB_VIEW_DESCRIPTION");
     LOG.info("Received classic template job {}: {}", job.getId(), formatForLogging(job));
 
     launchedJobs.add(job.getId());
