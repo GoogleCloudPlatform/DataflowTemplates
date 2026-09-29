@@ -619,7 +619,7 @@ public class VerifyDataBoostParallelismTest implements Serializable {
         assertThrows(PipelineExecutionException.class, () -> pipeline.run());
     assertThat(
         thrown.getMessage(),
-        containsString("exceeds Spanner Data Boost quota (500). Reduce --maxWorkers"));
+        containsString("exceeds Spanner Data Boost quota (500). Reduce --maxNumWorkers"));
   }
 
   @Test
