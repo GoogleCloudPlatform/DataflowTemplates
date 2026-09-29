@@ -36,7 +36,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -376,14 +375,30 @@ public abstract class DatastreamToDML
     return sqlTemplateValues;
   }
 
-  public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
-    if (columnName.equalsIgnoreCase(this.rowIdColumnName)
-        && !rowObj.has(columnName)
-        && rowObj.has("_metadata_row_id")) {
-      columnName = "_metadata_row_id";
-    }
-
+  private JsonNode getFieldFromRowObj(JsonNode rowObj, String columnName) {
     JsonNode columnObj = rowObj.get(columnName);
+    if (columnObj != null) {
+      return columnObj;
+    }
+    if (columnName.equalsIgnoreCase(this.rowIdColumnName)) {
+      if (rowObj.has("_metadata_row_id")) {
+        return rowObj.get("_metadata_row_id");
+      }
+      if (rowObj.has(this.rowIdColumnName)) {
+        return rowObj.get(this.rowIdColumnName);
+      }
+    }
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String fieldName = it.next();
+      if (applyCasingLogic(fieldName, this.columnCasing).equals(columnName)) {
+        return rowObj.get(fieldName);
+      }
+    }
+    return null;
+  }
+
+  public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
+    JsonNode columnObj = getFieldFromRowObj(rowObj, columnName);
     if (columnObj == null) {
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
       return "";
@@ -498,91 +513,37 @@ public abstract class DatastreamToDML
     return onUpdateSql;
   }
 
-  private List<String> getSourcePrimaryKeys(JsonNode rowObj) {
-    if (rowObj == null) {
-      return Collections.emptyList();
-    }
-    JsonNode pksNode = rowObj.get("_metadata_primary_keys");
-    if (pksNode != null && pksNode.isArray()) {
-      List<String> primaryKeys = new ArrayList<>();
-      for (JsonNode node : pksNode) {
-        primaryKeys.add(node.asText());
-      }
-      return primaryKeys;
-    }
-    return Collections.emptyList();
-  }
-
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
 
-    List<String> sourcePrimaryKeys = getSourcePrimaryKeys(rowObj);
-    String pkToValueSql = "";
-
-    for (String sourcePkName : sourcePrimaryKeys) {
-      String destinationPkName = applyCasingLogic(sourcePkName, this.columnCasing);
-
-      if (primaryKeys.contains(destinationPkName)) {
-        String columnValue = getValueSql(rowObj, sourcePkName, tableSchema);
-        String quotedDestinationPkName = quote(destinationPkName);
-
-        if (pkToValueSql.isEmpty()) {
-          pkToValueSql = quotedDestinationPkName + "=" + columnValue;
-        } else {
-          pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
-        }
+    List<String> targetPrimaryKeys = primaryKeys;
+    if (targetPrimaryKeys.isEmpty()) {
+      boolean isDelete =
+          rowObj.has("_metadata_deleted") && rowObj.get("_metadata_deleted").asBoolean();
+      if (!isDelete) {
+        return "";
       }
-    }
-
-    if (pkToValueSql.isEmpty()) {
-      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
-        String sourceFieldName = it.next();
-        String destinationPkName = applyCasingLogic(sourceFieldName, this.columnCasing);
-
-        if (primaryKeys.contains(destinationPkName)) {
-          String columnValue = getValueSql(rowObj, sourceFieldName, tableSchema);
-          String quotedDestinationPkName = quote(destinationPkName);
-
-          if (pkToValueSql.isEmpty()) {
-            pkToValueSql = quotedDestinationPkName + "=" + columnValue;
-          } else {
-            pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
-          }
-        }
-      }
-
-      if (pkToValueSql.isEmpty()
-          && primaryKeys.size() == 1
-          && primaryKeys.get(0).equalsIgnoreCase(this.rowIdColumnName)
-          && rowObj.has("_metadata_row_id")) {
-        String pk = primaryKeys.get(0);
-        pkToValueSql = quote(pk) + "=" + getValueSql(rowObj, pk, tableSchema);
-      }
-    }
-
-    boolean isDelete =
-        rowObj.has("_metadata_deleted") && rowObj.get("_metadata_deleted").asBoolean();
-    if (isDelete && pkToValueSql.isEmpty() && primaryKeys.isEmpty()) {
       String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
-      if (!tableSchema.containsKey(casedRowId)) {
+      boolean schemaHasRowId =
+          tableSchema.containsKey(casedRowId)
+              || tableSchema.keySet().stream().anyMatch(k -> k.equalsIgnoreCase(casedRowId));
+      if (!schemaHasRowId) {
         throw new DeletedWithoutPrimaryKey(
             String.format(
                 "Cannot replicate DELETE for table without primary keys: target schema lacks '%s' column.",
                 casedRowId));
       }
-      String sourceRowIdField =
-          Stream.of(casedRowId, this.rowIdColumnName, "_metadata_row_id")
-              .filter(rowObj::has)
-              .findFirst()
-              .orElse(null);
-
-      if (sourceRowIdField != null) {
-        String columnValue = getValueSql(rowObj, sourceRowIdField, tableSchema);
-        pkToValueSql = quote(casedRowId) + "=" + columnValue;
-      }
+      targetPrimaryKeys = Collections.singletonList(casedRowId);
     }
 
-    return pkToValueSql;
+    List<String> filters = new ArrayList<>();
+    for (String destPk : targetPrimaryKeys) {
+      String columnValue = getValueSql(rowObj, destPk, tableSchema);
+      if (!columnValue.isEmpty()) {
+        filters.add(quote(destPk) + "=" + columnValue);
+      }
+    }
+    return String.join(" AND ", filters);
   }
 
   private static Connection getConnection(
