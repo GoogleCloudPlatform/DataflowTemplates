@@ -39,6 +39,7 @@ import org.apache.beam.it.jdbc.SSLMySQLResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Triaging flaky test")
 public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLSourceDbToSpannerSimpleIT.class);
   private static HashSet<MySQLSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();

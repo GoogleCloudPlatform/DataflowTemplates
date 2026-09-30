@@ -427,6 +427,14 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
     params.put("targetParallelism", "15");
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
+      // element per transform, which is very costly for large elements such as CollationMapper
+      // and causes heavy GC when many pipelines share one test JVM.
+      params.putIfAbsent("enforceImmutability", "false");
+      params.putIfAbsent("enforceEncodability", "false");
+    }
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
