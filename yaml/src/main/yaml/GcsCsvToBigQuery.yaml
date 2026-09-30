@@ -1,0 +1,47 @@
+template:
+  name: "GCS_CSV_to_BigQuery_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "CSV files on Cloud Storage to BigQuery (YAML)"
+  description: >
+    The CSV files on Cloud Storage to BigQuery template is a batch pipeline that reads CSV files from Cloud Storage and writes them to a BigQuery table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "GcsCsvToBigQuery.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/csv_options.yaml", "options/bigquery_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input CSV files must exist on Cloud Storage and have a header row.",
+    "The target BigQuery dataset and table must exist or be creatable."
+  }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "csv_options"
+    - "bigquery_options"
+
+  parameters:
+    - csv_read_options
+    - bigquery_common_options
+    - bigquery_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromCsv
+      name: ReadFromCsv
+      config:
+        path: {{ csvPath }}
+        delimiter: {{ delimiter }}
+
+    - type: WriteToBigQuery
+      name: WriteToBigQuery
+      config:
+        table: {{ table }}
+        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
+        num_streams: {{ numStreams | default(1) }}
+
+options:
+  streaming: false

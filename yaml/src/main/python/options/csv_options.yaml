@@ -1,0 +1,38 @@
+options:
+  - name: "csv_read_options"
+    parameters:
+      - order: 1
+        name: "csvPath"
+        description: "Cloud Storage CSV path"
+        help: >
+          The Cloud Storage path or file pattern to the CSV file(s) to read.
+          For example: gs://my-bucket/path/*.csv
+        required: true
+        type: text
+      - order: 2
+        name: "delimiter"
+        description: "CSV delimiter character"
+        help: >
+          A single character string used to separate fields, e.g. ',' or '\t'.
+          Defaults to ','.
+        required: false
+        type: text
+
+  - name: "csv_write_options"
+    parameters:
+      - order: 1
+        name: "csvPath"
+        description: "Cloud Storage CSV path"
+        help: >
+          The Cloud Storage path or file prefix to write CSV to.
+          For example: gs://my-bucket/output/result.csv
+        required: true
+        type: text
+      - order: 2
+        name: "delimiter"
+        description: "CSV delimiter character"
+        help: >
+          A single character string used to separate fields, e.g. ',' or '\t'.
+          Defaults to ','.
+        required: false
+        type: text
