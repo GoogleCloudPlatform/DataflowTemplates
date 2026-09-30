@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -31,7 +30,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -50,13 +48,13 @@ import org.slf4j.LoggerFactory;
 public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToJdbcLTBase.class);
-  private static final String READER_SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(),
-          "gs://dataflow-templates/latest/flex/Spanner_Change_Streams_to_Sharded_File_Sink");
-  private static final String WRITER_SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/GCS_to_Sourcedb");
+  // The reader template lives in a sibling module which is not a dependency of this one, so it is
+  // staged from source by name/container rather than via its class.
+  private static final String READER_TEMPLATE_NAME = "Spanner_Change_Streams_to_Sharded_File_Sink";
+  private static final String READER_FLEX_CONTAINER_NAME =
+      "spanner-change-streams-to-sharded-file-sink";
+  private static final String READER_POM_PATH =
+      "../spanner-change-streams-to-sharded-file-sink/pom.xml";
   public SpannerResourceManager spannerResourceManager;
   public SpannerResourceManager spannerMetadataResourceManager;
   public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
@@ -173,7 +171,9 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
         };
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), READER_SPEC_PATH);
+        LaunchConfig.builder(
+            getClass().getSimpleName(),
+            getTemplateSpecPath(READER_TEMPLATE_NAME, READER_FLEX_CONTAINER_NAME, READER_POM_PATH));
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
@@ -204,7 +204,7 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
           }
         };
     String jobName = PipelineUtils.createJobName(testName);
-    LaunchConfig.Builder options = LaunchConfig.builder(jobName, WRITER_SPEC_PATH);
+    LaunchConfig.Builder options = LaunchConfig.builder(jobName, getTemplateSpecPath());
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
     options.setParameters(params);
     // Run

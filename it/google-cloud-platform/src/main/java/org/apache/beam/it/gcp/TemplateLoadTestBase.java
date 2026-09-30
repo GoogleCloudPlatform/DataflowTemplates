@@ -20,16 +20,78 @@ package org.apache.beam.it.gcp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import java.util.Collections;
+import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Base class for Template Load Tests. */
 public class TemplateLoadTestBase extends LoadTestBase {
 
+  private static final Logger LOG = LoggerFactory.getLogger(TemplateLoadTestBase.class);
+
   public PipelineLauncher launcher() {
-    // If there is a TemplateLoadTest annotation, return appropriate dataflow template client
+    // Return the appropriate dataflow template client for the template under test
+    String flexContainerName = getTemplateAnnotation().flexContainerName();
+    if (flexContainerName != null && !flexContainerName.isEmpty()) {
+      return FlexTemplateClient.builder(CREDENTIALS).build();
+    }
+    return ClassicTemplateClient.builder(CREDENTIALS).build();
+  }
+
+  /**
+   * Returns the template spec path to launch for the template under test (specified via {@link
+   * TemplateLoadTest}).
+   *
+   * <p>If {@code -DspecPath} is provided, it is used as is (e.g. to run against a released
+   * template). Otherwise, the template is built and staged from the checked out source code (i.e.
+   * mainline), the same way integration tests do. Staging is cached per JVM, so this can be called
+   * multiple times cheaply.
+   */
+  protected String getTemplateSpecPath() {
+    String specPath = TestProperties.specPath();
+    if (specPath != null && !specPath.isEmpty()) {
+      LOG.info("A spec path was given, not staging template: {}", specPath);
+      return specPath;
+    }
+    try {
+      return TemplateTestBase.stageTemplate(getTemplateAnnotation(), "pom.xml", CREDENTIALS);
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Error staging template for " + getClass().getSimpleName(), e);
+    }
+  }
+
+  /**
+   * Same as {@link #getTemplateSpecPath()}, but for a template other than the one specified via
+   * {@link TemplateLoadTest}, e.g. an additional template used by a multi-template load test whose
+   * class may live in a different Maven module (and not be on the test classpath).
+   *
+   * @param templateName the {@link Template#name()} of the template.
+   * @param flexContainerName the {@link Template#flexContainerName()} of the template, or null /
+   *     empty for Classic templates.
+   * @param pomPath path to the pom.xml of the Maven module containing the template, relative to the
+   *     current module directory (e.g. {@code "../other-module/pom.xml"}).
+   */
+  protected String getTemplateSpecPath(
+      String templateName, String flexContainerName, String pomPath) {
+    String specPath = TestProperties.specPath();
+    if (specPath != null && !specPath.isEmpty()) {
+      LOG.info("A spec path was given, not staging template {}: {}", templateName, specPath);
+      return specPath;
+    }
+    try {
+      return TemplateTestBase.stageTemplate(
+          templateName, flexContainerName, false, pomPath, CREDENTIALS);
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Error staging template " + templateName, e);
+    }
+  }
+
+  private Template getTemplateAnnotation() {
     TemplateLoadTest annotation = getClass().getAnnotation(TemplateLoadTest.class);
     if (annotation == null) {
       throw new RuntimeException(
@@ -44,12 +106,19 @@ public class TemplateLoadTestBase extends LoadTestBase {
               "Template mentioned in @TemplateLoadTest for %s does not contain a @Template"
                   + " annotation.",
               getClass()));
-    } else if (templateAnnotations[0].flexContainerName() != null
-        && !templateAnnotations[0].flexContainerName().isEmpty()) {
-      return FlexTemplateClient.builder(CREDENTIALS).build();
-    } else {
-      return ClassicTemplateClient.builder(CREDENTIALS).build();
     }
+    if (templateAnnotations.length == 1 || annotation.template().isEmpty()) {
+      return templateAnnotations[0];
+    }
+    for (Template template : templateAnnotations) {
+      if (template.name().equals(annotation.template())) {
+        return template;
+      }
+    }
+    throw new RuntimeException(
+        String.format(
+            "template '%s' in @TemplateLoadTest for %s does not match any @Template annotation.",
+            annotation.template(), getClass()));
   }
 
   protected LaunchConfig.Builder enableRunnerV2(LaunchConfig.Builder config) {
