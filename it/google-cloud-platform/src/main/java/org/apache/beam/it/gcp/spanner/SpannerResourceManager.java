@@ -731,18 +731,12 @@ public final class SpannerResourceManager implements ResourceManager {
   public void collectMetrics(@NonNull Map<String, Double> metrics) {
     hasMonitoringClient();
     checkHasInstanceAndDatabase();
-    Double avgCpu = getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MEAN);
-    if (avgCpu != null) {
-      metrics.put("Spanner_AverageCpuUtilization", avgCpu);
-    } else {
-      LOG.warn("No value for metric Spanner_AverageCpuUtilization");
-    }
-    Double maxCpu = getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MAX);
-    if (maxCpu != null) {
-      metrics.put("Spanner_MaxCpuUtilization", maxCpu);
-    } else {
-      LOG.warn("No value for metric Spanner_MaxCpuUtilization");
-    }
+    metrics.put(
+        "Spanner_AverageCpuUtilization",
+        getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MEAN));
+    metrics.put(
+        "Spanner_MaxCpuUtilization",
+        getAggregateCpuUtilization(monitoringClient, Aligner.ALIGN_MAX));
   }
 
   private void hasMonitoringClient() {

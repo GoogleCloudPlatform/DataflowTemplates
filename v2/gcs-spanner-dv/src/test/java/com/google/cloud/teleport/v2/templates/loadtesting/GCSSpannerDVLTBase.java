@@ -40,8 +40,6 @@ import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.After;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Base class for Load Tests (LT) of the GCS-to-Spanner Data Validation ({@code gcs-spanner-dv})
@@ -63,8 +61,6 @@ import org.slf4j.LoggerFactory;
  * </ul>
  */
 public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVLTBase.class);
 
   protected static final String SPEC_PATH =
       MoreObjects.firstNonNull(
@@ -135,7 +131,6 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
       Map<String, Object> environmentOptions)
       throws IOException {
     Objects.requireNonNull(customTransformation, "customTransformation");
-    LOG.info("Custom transformation provided: {}", customTransformation.classPath());
     Map<String, String> allParameters = new HashMap<>();
     allParameters.put("transformationJarPath", getGcsPath(customTransformation.jarPath()));
     allParameters.put("transformationClassName", customTransformation.classPath());
@@ -176,17 +171,10 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     environmentOptions.forEach(options::addEnvironment);
 
     // Launch the pipeline and wait until it finishes.
-    LaunchConfig launchConfig = options.build();
-    LOG.info(
-        "Launching validation job {} with parameters {} and environment {}",
-        jobName,
-        parameters,
-        launchConfig.environment());
-    LaunchInfo jobInfo = pipelineLauncher.launch(project, region, launchConfig);
+    LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
     assertThatPipeline(jobInfo).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(jobInfo, jobTimeout));
-    LOG.info("Validation job {} finished with result {}", jobInfo.jobId(), result);
     assertThatResult(result).isLaunchFinished();
 
     return jobInfo;
