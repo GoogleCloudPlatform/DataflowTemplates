@@ -23,7 +23,7 @@
                 "type": "enum",
                 "symbols": ["TYPE_CODE_UNSPECIFIED", "BOOL", "INT64", "FLOAT64",
                   "TIMESTAMP", "DATE", "STRING", "BYTES", "ARRAY", "STRUCT",
-                  "NUMERIC", "JSON"]
+                  "NUMERIC", "JSON", "UUID"]
               }
             },
             { "name" : "arrayElementType", "type" : ["null", "com.google.cloud.teleport.v2.TypeCode"], "default" : null },
