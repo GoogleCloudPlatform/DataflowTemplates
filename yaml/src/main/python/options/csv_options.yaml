@@ -17,6 +17,22 @@ options:
           Defaults to ','.
         required: false
         type: text
+      - order: 3
+        name: "comment"
+        description: "CSV comment character"
+        help: >
+          A single character string indicating that the remainder of the line should not be parsed, e.g. '#'.
+        example: "#"
+        required: false
+        type: text
+      - order: 4
+        name: "filenameColumn"
+        description: "Column name for source filename"
+        help: >
+          If not None, the name of the column to add to each record, containing the filename of the source file.
+        example: "source_file"
+        required: false
+        type: text
 
   - name: "csv_write_options"
     parameters:

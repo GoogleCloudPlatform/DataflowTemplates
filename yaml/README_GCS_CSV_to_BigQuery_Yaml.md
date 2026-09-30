@@ -20,6 +20,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional parameters
 
 * **delimiter**: A single character string used to separate fields, e.g. ',' or '	'. Defaults to ','.
+* **comment**: A single character string indicating that the remainder of the line should not be parsed, e.g. '#'. For example, `#`.
+* **filenameColumn**: If not None, the name of the column to add to each record, containing the filename of the source file. For example, `source_file`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'. Defaults to: CREATE_IF_NEEDED.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
@@ -120,6 +122,8 @@ export TABLE=<table>
 
 ### Optional
 export DELIMITER=<delimiter>
+export COMMENT=<comment>
+export FILENAME_COLUMN=<filenameColumn>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -130,6 +134,8 @@ gcloud dataflow flex-template run "gcs-csv-to-bigquery-yaml-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "csvPath=$CSV_PATH" \
   --parameters "delimiter=$DELIMITER" \
+  --parameters "comment=$COMMENT" \
+  --parameters "filenameColumn=$FILENAME_COLUMN" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -157,6 +163,8 @@ export TABLE=<table>
 
 ### Optional
 export DELIMITER=<delimiter>
+export COMMENT=<comment>
+export FILENAME_COLUMN=<filenameColumn>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -168,7 +176,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-csv-to-bigquery-yaml-job" \
 -DtemplateName="GCS_CSV_to_BigQuery_Yaml" \
--Dparameters="csvPath=$CSV_PATH,delimiter=$DELIMITER,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="csvPath=$CSV_PATH,delimiter=$DELIMITER,comment=$COMMENT,filenameColumn=$FILENAME_COLUMN,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -216,6 +224,8 @@ resource "google_dataflow_flex_template_job" "gcs_csv_to_bigquery_yaml" {
     csvPath = "<csvPath>"
     table = "<table>"
     # delimiter = "<delimiter>"
+    # comment = "<comment>"
+    # filenameColumn = "<filenameColumn>"
     # createDisposition = "CREATE_IF_NEEDED"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"

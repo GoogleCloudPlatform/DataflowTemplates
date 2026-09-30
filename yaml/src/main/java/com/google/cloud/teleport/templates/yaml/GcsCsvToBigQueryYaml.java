@@ -69,6 +69,26 @@ public interface GcsCsvToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 3,
+      name = "comment",
+      optional = true,
+      description = "CSV comment character",
+      helpText =
+          "A single character string indicating that the remainder of the line should not be parsed, e.g. '#'.",
+      example = "#")
+  String getComment();
+
+  @TemplateParameter.Text(
+      order = 4,
+      name = "filenameColumn",
+      optional = true,
+      description = "Column name for source filename",
+      helpText =
+          "If not None, the name of the column to add to each record, containing the filename of the source file.",
+      example = "source_file")
+  String getFilenameColumn();
+
+  @TemplateParameter.Text(
+      order = 5,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -79,7 +99,7 @@ public interface GcsCsvToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 6,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -90,7 +110,7 @@ public interface GcsCsvToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 7,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -101,7 +121,7 @@ public interface GcsCsvToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 6,
+      order = 8,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
