@@ -23,11 +23,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mysql-42.2.23.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mysql`.
 * **location**: The name of the database table to read data from. For example, `public.my_table`.
 * **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
@@ -141,11 +138,8 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mysql
 export LOCATION=<location>
 export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
@@ -167,11 +161,8 @@ gcloud dataflow flex-template run "mysql-to-iceberg-yaml-job" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "location=$LOCATION" \
   --parameters "readQuery=$READ_QUERY" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
@@ -214,11 +205,8 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mysql
 export LOCATION=<location>
 export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
@@ -240,7 +228,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mysql-to-iceberg-yaml-job" \
 -DtemplateName="MySQL_To_Iceberg_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -291,11 +279,8 @@ resource "google_dataflow_flex_template_job" "mysql_to_iceberg_yaml" {
     catalogProperties = "<catalogProperties>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "com.mysql.jdbc.Driver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "mysql"
     # location = "<location>"
     # readQuery = "<readQuery>"
     # partitionColumn = "<partitionColumn>"
