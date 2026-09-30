@@ -215,5 +215,6 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
   public final void cleanUp() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, bigQueryResourceManager, gcsResourceManager);
+
   }
 }

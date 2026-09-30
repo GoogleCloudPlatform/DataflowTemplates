@@ -299,7 +299,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"))
+        .addEnvironment(
+            "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"))
         .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     options.setParameters(params);

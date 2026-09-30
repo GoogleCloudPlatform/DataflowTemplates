@@ -215,6 +215,7 @@ jobs:
           --modules-to-build="YAML" \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
+          --it-retry-failures=2 \
           --it-integration-test-parallelism=6 \
           --it-thread-count=6 \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
