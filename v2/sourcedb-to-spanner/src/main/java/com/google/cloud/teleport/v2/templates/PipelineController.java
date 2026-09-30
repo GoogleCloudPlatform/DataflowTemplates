@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
@@ -132,6 +133,15 @@ public class PipelineController {
                   tableSelector.getSchemaMapper(),
                   reader));
       levelVsOutputMap.put(currentLevel, output);
+    }
+
+    if (levelVsOutputMap.isEmpty() && !levelToSpannerTableList.isEmpty()) {
+      throw new InvalidOptionsException(
+          String.format(
+              "aborting migration as none of the Spanner tables %s were found at the source"
+                  + " database. Please verify that the source database and the Spanner database"
+                  + " (or session file / overrides) refer to the same schema.",
+              levelToSpannerTableList.values()));
     }
 
     // Add transform to increment table counter

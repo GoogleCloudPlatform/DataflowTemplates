@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +34,7 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.jdbc.ShardedJdbcDbConfigContainer;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
@@ -40,6 +42,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverri
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -521,6 +525,102 @@ public class PipelineControllerTest {
 
     // Verify it returns early or doesn't call IOWrapper
     org.mockito.Mockito.verifyNoInteractions(mockConfigContainer);
+  }
+
+  @Test
+  public void testSetupLogicalDbMigration_NoSpannerTablesFoundAtSource_Throws() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSourceTableName(any(), any()))
+        .thenAnswer(invocation -> invocation.getArgument(1));
+
+    TableSelector mockTableSelector = mock(TableSelector.class);
+    when(mockTableSelector.getSchemaMapper()).thenReturn(mockSchemaMapper);
+
+    DbConfigContainer mockConfigContainer = mock(DbConfigContainer.class);
+    when(mockConfigContainer.getIOWrapper(any(), any())).thenReturn(mockJdbcIoWrapper);
+
+    // None of the Spanner tables exist at the source.
+    when(mockJdbcIoWrapper.getTableReaders()).thenReturn(ImmutableMap.of());
+
+    Map<Integer, List<String>> levelToSpannerTableList = new HashMap<>();
+    levelToSpannerTableList.put(0, List.of("new_people"));
+    levelToSpannerTableList.put(1, List.of("new_cart"));
+
+    InvalidOptionsException exception =
+        assertThrows(
+            InvalidOptionsException.class,
+            () ->
+                PipelineController.setupLogicalDbMigration(
+                    mockOptions,
+                    mockPipeline,
+                    spannerConfig,
+                    mockTableSelector,
+                    levelToSpannerTableList,
+                    mockConfigContainer));
+
+    assertThat(exception).hasMessageThat().contains("new_people");
+    assertThat(exception).hasMessageThat().contains("new_cart");
+    Mockito.verify(mockConfigContainer, Mockito.times(2)).getIOWrapper(any(), any());
+    Mockito.verifyNoInteractions(mockPipeline);
+  }
+
+  @Test
+  public void testSetupLogicalDbMigration_SomeSpannerTablesNotFoundAtSource_Proceeds() {
+    SourceDbToSpannerOptions mockOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    mockOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
+
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    org.apache.beam.sdk.Pipeline mockPipeline = mock(org.apache.beam.sdk.Pipeline.class);
+
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSourceTableName(any(), any()))
+        .thenAnswer(invocation -> invocation.getArgument(1));
+
+    TableSelector mockTableSelector = mock(TableSelector.class);
+    when(mockTableSelector.getSchemaMapper()).thenReturn(mockSchemaMapper);
+    when(mockTableSelector.getDdl()).thenReturn(spannerDdl);
+
+    DbConfigContainer mockConfigContainer = mock(DbConfigContainer.class);
+    when(mockConfigContainer.getIOWrapper(any(), any())).thenReturn(mockJdbcIoWrapper);
+
+    SourceTableReference tableRef =
+        SourceTableReference.builder()
+            .setSourceTableName("new_cart")
+            .setSourceTableSchemaUUID("uuid-1")
+            .setSourceSchemaReference(
+                SourceSchemaReference.ofJdbc(
+                    JdbcSchemaReference.builder().setDbName("db1").build()))
+            .build();
+
+    // Level 0 table is missing at the source, level 1 table is present.
+    when(mockJdbcIoWrapper.getTableReaders())
+        .thenReturn(ImmutableMap.of())
+        .thenReturn(ImmutableMap.of(ImmutableList.of(tableRef), new DummyTransform()));
+    when(mockJdbcIoWrapper.discoverTableSchema()).thenReturn(ImmutableList.of());
+
+    Map<Integer, List<String>> levelToSpannerTableList = new HashMap<>();
+    levelToSpannerTableList.put(0, List.of("new_people"));
+    levelToSpannerTableList.put(1, List.of("new_cart"));
+
+    PipelineController.setupLogicalDbMigration(
+        mockOptions,
+        mockPipeline,
+        spannerConfig,
+        mockTableSelector,
+        levelToSpannerTableList,
+        mockConfigContainer);
+
+    Mockito.verify(mockConfigContainer, Mockito.times(2)).getIOWrapper(any(), any());
+    Mockito.verify(mockPipeline)
+        .apply(eq("Increment_table_counters"), any(IncrementTableCounter.class));
   }
 
   @After
