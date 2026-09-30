@@ -124,30 +124,48 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                           options.as(DataflowPipelineWorkerPoolOptions.class);
                       int maxNumWorkers =
                           Optional.ofNullable(poolOptions.getMaxNumWorkers()).orElse(0);
-                      int maxWorkers = maxNumWorkers > 0 ? maxNumWorkers : 1000;
+                      if (maxNumWorkers <= 0) {
+                        LOG.warn(
+                            "You have not specified --maxNumWorkers. When Spanner Data Boost is"
+                                + " enabled, the job is governed by the Spanner Data Boost"
+                                + " concurrent requests quota limit (see"
+                                + " https://cloud.google.com/spanner/docs/databoost/databoost-quotas)."
+                                + " Skipping Spanner Data Boost parallelism validation. If the"
+                                + " Dataflow job scales up such that concurrent requests exceed"
+                                + " this quota, there is a possibility that the export job might"
+                                + " fail. It is highly recommended to set --maxNumWorkers and"
+                                + " --workerMachineType parameters such that the parallelism is"
+                                + " below the quota limit.");
+                      } else {
+                        DataflowPipelineDebugOptions debugOptions =
+                            options.as(DataflowPipelineDebugOptions.class);
+                        int numWorkerHarnessThreads =
+                            Optional.ofNullable(debugOptions.getNumberOfWorkerHarnessThreads())
+                                .orElse(0);
+                        int threadsPerWorker =
+                            numWorkerHarnessThreads > 0
+                                ? numWorkerHarnessThreads
+                                : Runtime.getRuntime().availableProcessors();
 
-                      DataflowPipelineDebugOptions debugOptions =
-                          options.as(DataflowPipelineDebugOptions.class);
-                      int numWorkerHarnessThreads =
-                          Optional.ofNullable(debugOptions.getNumberOfWorkerHarnessThreads())
-                              .orElse(0);
-                      int threadsPerWorker =
-                          numWorkerHarnessThreads > 0
-                              ? numWorkerHarnessThreads
-                              : Runtime.getRuntime().availableProcessors();
+                        long maxParallelism = (long) maxNumWorkers * threadsPerWorker;
+                        long allowedParallelism = resolveMaxDataBoostParallelism(options);
 
-                      long maxParallelism = (long) maxWorkers * threadsPerWorker;
-                      long allowedParallelism = resolveMaxDataBoostParallelism(options);
-
-                      if (maxParallelism > allowedParallelism) {
-                        String errorMessage =
-                            String.format(
-                                "Job max parallelism (%d workers * %d threads/worker = %d"
-                                    + " concurrent requests) exceeds Spanner Data Boost quota"
-                                    + " (%d). Reduce --maxNumWorkers or increase quota.",
-                                maxWorkers, threadsPerWorker, maxParallelism, allowedParallelism);
-                        LOG.error(errorMessage);
-                        throw new IllegalArgumentException(errorMessage);
+                        if (maxParallelism > allowedParallelism) {
+                          String errorMessage =
+                              String.format(
+                                  "Job max parallelism (%d workers * %d threads/worker = %d"
+                                      + " concurrent requests) exceeds Spanner Data Boost quota"
+                                      + " (%d). Reduce --maxNumWorkers or increase quota. If"
+                                      + " required, set the --maxDataBoostParallelism parameter to"
+                                      + " a very high value to bypass this validation and proceed"
+                                      + " with the export.",
+                                  maxNumWorkers,
+                                  threadsPerWorker,
+                                  maxParallelism,
+                                  allowedParallelism);
+                          LOG.error(errorMessage);
+                          throw new IllegalArgumentException(errorMessage);
+                        }
                       }
                     }
                     c.output(c.element());

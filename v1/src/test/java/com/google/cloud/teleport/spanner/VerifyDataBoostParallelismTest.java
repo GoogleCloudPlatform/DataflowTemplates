@@ -604,10 +604,24 @@ public class VerifyDataBoostParallelismTest implements Serializable {
   }
 
   @Test
-  public void testPipelineExecutionThrowsWhenExceedingQuotaWithDefaultWorkersAndThreads() {
-    // Leave maxNumWorkers=0 (defaults to 1000) and numberOfWorkerHarnessThreads=0 (defaults to
-    // availableProcessors()), so 1000 * availableProcessors() > 500
+  public void testPipelineExecutionSkipsValidationWhenMaxNumWorkersNotSpecified() {
     pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).setMaxNumWorkers(0);
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create().withDataBoostEnabled(StaticValueProvider.of(true));
+
+    // Even with a tiny quota limit (1), validation is skipped when maxNumWorkers <= 0
+    PCollection<Integer> result =
+        pipeline.apply(new VerifyDataBoostParallelism(spannerConfig, StaticValueProvider.of(1)));
+    PAssert.that(result).containsInAnyOrder(1);
+    pipeline.run();
+  }
+
+  @Test
+  public void testPipelineExecutionThrowsWhenExceedingQuota() {
+    // Set maxNumWorkers=600 and leave numberOfWorkerHarnessThreads=0 (defaults to
+    // availableProcessors() >= 1), so 600 * availableProcessors() > 500
+    pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).setMaxNumWorkers(600);
     pipeline.getOptions().as(DataflowPipelineDebugOptions.class).setNumberOfWorkerHarnessThreads(0);
 
     SpannerConfig spannerConfig =
