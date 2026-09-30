@@ -56,20 +56,67 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Verifies that the maximum worker parallelism of the Dataflow job does not exceed the allowed
- * Spanner Data Boost concurrency quota.
+ * Verifies at pipeline execution time that the maximum possible worker parallelism of a Dataflow
+ * batch job does not exceed the allowed Cloud Spanner Data Boost concurrency quota ({@code
+ * spanner.googleapis.com/data_boost_quota}).
+ *
+ * <h3>Background</h3>
+ *
+ * <p>When Spanner Data Boost is enabled ({@code --dataBoostEnabled=true}), each active partitioned
+ * {@code ExecuteStreamingSql} or {@code StreamingRead} RPC consumes 1 unit of the per-project,
+ * per-region Data Boost concurrency quota ({@code DataBoostQuotaPerProjectPerRegion}, metric {@code
+ * spanner.googleapis.com/data_boost_quota}, unit {@code 1/5min/{project}/{region}}). In Dataflow
+ * batch pipelines, each worker harness thread can execute one partition read concurrently, so the
+ * worst-case number of concurrent Data Boost requests is:
+ *
+ * <pre>{@code
+ * maxParallelism = maxNumWorkers * threadsPerWorker
+ * }</pre>
+ *
+ * <p>where {@code threadsPerWorker} is {@code --numberOfWorkerHarnessThreads} if explicitly set, or
+ * the worker VM's vCPU count ({@link Runtime#availableProcessors()}) otherwise.
+ *
+ * <h3>Validation Behavior</h3>
+ *
+ * <ul>
+ *   <li>If Data Boost is disabled, this transform is a no-op.
+ *   <li>If {@code --maxNumWorkers} is not specified ({@code <= 0}), this transform logs a detailed
+ *       warning and skips validation without failing the job.
+ *   <li>If {@code --maxNumWorkers} is specified ({@code > 0}), this transform resolves the allowed
+ *       parallelism (from the user-supplied {@code --maxDataBoostParallelism} override if set, or
+ *       by querying the Service Usage Consumer Quota API for the Spanner project and instance
+ *       region(s), falling back to {@link #DEFAULT_DATA_BOOST_QUOTA} on any API error) and fails
+ *       fast with an {@link IllegalArgumentException} if {@code maxParallelism >
+ *       allowedParallelism}.
+ * </ul>
  */
 public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<Integer>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(VerifyDataBoostParallelism.class);
 
+  /**
+   * Default Spanner Data Boost concurrent requests quota used as a safe fallback when the Service
+   * Usage Consumer Quota API cannot be reached or does not return a valid limit. Standard regions
+   * outside {@code us-central1} default to 400 concurrent operations (while {@code us-central1}
+   * defaults to 1,000).
+   */
   public static final long DEFAULT_DATA_BOOST_QUOTA = 400L;
 
+  /**
+   * REST endpoint template for fetching the {@code spanner.googleapis.com/data_boost_quota} limit
+   * (unit {@code /5min/project/region}) from the Service Usage v1beta1 Consumer Quota API. Slashes
+   * in the metric name and limit unit are URL-encoded as {@code %2F} (escaped as {@code %%2F} for
+   * {@link String#format}).
+   */
   private static final String DATA_BOOST_QUOTA_LIMIT_URL_TEMPLATE =
       "https://serviceusage.googleapis.com/v1beta1/projects/%s/services/spanner.googleapis.com/"
           + "consumerQuotaMetrics/spanner.googleapis.com%%2Fdata_boost_quota/"
           + "limits/%%2F5min%%2Fproject%%2Fregion";
 
+  /**
+   * Prefix used by Google-managed regional Spanner instance configurations (for example, {@code
+   * regional-us-central1}).
+   */
   private static final String REGIONAL_CONFIG_PREFIX = "regional-";
 
   /** Serializable supplier for {@link HttpRequestFactory} to allow mocking in unit tests. */
@@ -107,6 +154,10 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
 
   @Override
   public PCollection<Integer> expand(PBegin begin) {
+    // Emit a single dummy element so the validation DoFn executes once on a Dataflow worker at
+    // runtime (where runtime ValueProviders and the worker VM's availableProcessors() are
+    // accessible). The resulting PCollection<Integer> can be passed to Wait.on(...) to gate
+    // downstream transforms until this validation succeeds.
     return begin
         .apply("Create Element", Create.of(1))
         .apply(
@@ -116,15 +167,22 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                   @ProcessElement
                   public void processElement(ProcessContext c, PipelineOptions options) {
                     ValueProvider<Boolean> dataBoostEnabled = spannerConfig.getDataBoostEnabled();
+                    // Only validate when Spanner Data Boost is explicitly enabled for the job.
                     if (dataBoostEnabled != null
                         && dataBoostEnabled.isAccessible()
                         && Boolean.TRUE.equals(dataBoostEnabled.get())) {
 
+                      // Retrieve --maxNumWorkers safely (getMaxNumWorkers() returns an Integer
+                      // which may be null or 0 when not explicitly configured by the user).
                       DataflowPipelineWorkerPoolOptions poolOptions =
                           options.as(DataflowPipelineWorkerPoolOptions.class);
                       int maxNumWorkers =
                           Optional.ofNullable(poolOptions.getMaxNumWorkers()).orElse(0);
+
                       if (maxNumWorkers <= 0) {
+                        // When --maxNumWorkers is not specified, we cannot compute a deterministic
+                        // upper bound on worker parallelism. Log an actionable warning and allow
+                        // the pipeline to proceed without performing quota validation.
                         LOG.warn(
                             "You have not specified --maxNumWorkers. When Spanner Data Boost is"
                                 + " enabled, the job is governed by the Spanner Data Boost"
@@ -137,6 +195,9 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                                 + " --workerMachineType parameters such that the parallelism is"
                                 + " below the quota limit.");
                       } else {
+                        // Determine the number of harness threads per worker. In Dataflow batch
+                        // runner, if --numberOfWorkerHarnessThreads is not explicitly set, the
+                        // worker harness defaults to 1 thread per vCPU on the worker machine.
                         DataflowPipelineDebugOptions debugOptions =
                             options.as(DataflowPipelineDebugOptions.class);
                         int numWorkerHarnessThreads =
@@ -147,9 +208,12 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                                 ? numWorkerHarnessThreads
                                 : Runtime.getRuntime().availableProcessors();
 
+                        // Compute worst-case concurrent Data Boost requests across all workers.
                         long maxParallelism = (long) maxNumWorkers * threadsPerWorker;
                         long allowedParallelism = resolveMaxDataBoostParallelism(options);
 
+                        // Fail fast before launching expensive export queries if the configured
+                        // worker parallelism can exceed the allowed Data Boost quota.
                         if (maxParallelism > allowedParallelism) {
                           String errorMessage =
                               String.format(
@@ -173,9 +237,22 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
                 }));
   }
 
+  /**
+   * Resolves the maximum allowed concurrent Data Boost requests in the following precedence order:
+   *
+   * <ol>
+   *   <li>If the user explicitly provided a positive {@code --maxDataBoostParallelism} parameter,
+   *       returns that value directly (bypassing the Service Usage Quota API).
+   *   <li>Otherwise, resolves the Spanner project ID and serving replica region(s) and queries the
+   *       Service Usage Consumer Quota API.
+   *   <li>If any unexpected error occurs, logs a warning and falls back to {@link
+   *       #DEFAULT_DATA_BOOST_QUOTA} (400).
+   * </ol>
+   */
   @VisibleForTesting
   long resolveMaxDataBoostParallelism(PipelineOptions options) {
     try {
+      // 1. Check for an explicit user-configured override (--maxDataBoostParallelism).
       if (maxDataBoostParallelism != null && maxDataBoostParallelism.isAccessible()) {
         Integer configuredLimit = maxDataBoostParallelism.get();
         if (configuredLimit != null && configuredLimit > 0) {
@@ -184,6 +261,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         }
       }
 
+      // 2. Otherwise, query the live Data Boost quota for the Spanner project and region(s).
       String projectId = resolveProjectId(options);
       Set<String> regions = resolveRegions();
       return getDataBoostQuota(projectId, regions, requestFactorySupplier.get());
@@ -196,8 +274,17 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
     }
   }
 
+  /**
+   * Resolves the Google Cloud project ID that owns the target Spanner database.
+   *
+   * <p>Spanner Data Boost quota ({@code spanner.googleapis.com/data_boost_quota}) is always charged
+   * against the project that owns the Spanner instance/database, even when the Dataflow job runs in
+   * a different project. Therefore, {@link SpannerConfig#getProjectId()} takes precedence over
+   * {@link DataflowPipelineOptions#getProject()}.
+   */
   @VisibleForTesting
   String resolveProjectId(PipelineOptions options) {
+    // 1. Prefer the Spanner project ID from SpannerConfig (--spannerProjectId).
     try {
       ValueProvider<String> configProject = spannerConfig.getProjectId();
       if (configProject != null && configProject.isAccessible()) {
@@ -209,6 +296,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
     } catch (Exception e) {
       LOG.debug("Unable to resolve project ID from SpannerConfig", e);
     }
+    // 2. Fall back to the Dataflow job's project ID (--project).
     try {
       DataflowPipelineOptions dataflowOptions = options.as(DataflowPipelineOptions.class);
       String projectId = dataflowOptions.getProject();
@@ -218,9 +306,24 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
     } catch (Exception e) {
       LOG.debug("Unable to resolve project ID from DataflowPipelineOptions", e);
     }
+    // 3. Final fallback to the environment's default project ID.
     return SpannerOptions.getDefaultProjectId();
   }
 
+  /**
+   * Resolves the set of GCP regions that can serve Data Boost requests for the target Spanner
+   * instance.
+   *
+   * <ul>
+   *   <li>For Google-managed regional configurations (e.g., {@code regional-us-central1}), extracts
+   *       the region name directly from the configuration ID without an extra Admin API RPC.
+   *   <li>For multi-region or custom configurations (e.g., {@code nam3}, {@code eur6}, {@code
+   *       custom-...}), fetches the {@link InstanceConfig} metadata from Spanner and collects the
+   *       locations of all non-{@code WITNESS} replicas (read-write and read-only replicas hold a
+   *       full copy of data and can serve Data Boost requests, whereas witness replicas only vote
+   *       on commits and never serve reads).
+   * </ul>
+   */
   @VisibleForTesting
   Set<String> resolveRegions() {
     ValueProvider<String> instanceId = spannerConfig.getInstanceId();
@@ -230,17 +333,24 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         try {
           SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
           try {
+            // SpannerAccessor caches the instanceConfigId (e.g. "regional-us-central1" or "nam3")
+            // when establishing the connection.
             String instanceConfigId = spannerAccessor.getInstanceConfigId();
             if (!Strings.isNullOrEmpty(instanceConfigId) && !"unknown".equals(instanceConfigId)) {
+              // Fast path for standard regional configs: strip "regional-" prefix in memory to
+              // avoid an extra GetInstanceConfig RPC and spanner.instanceConfigs.get IAM check.
               if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
                 return Collections.singleton(
                     instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length()));
               }
+              // Multi-region or custom config: query InstanceConfig to inspect constituent
+              // replicas.
               InstanceConfig instanceConfig =
                   spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
               if (instanceConfig != null && instanceConfig.getReplicas() != null) {
                 Set<String> replicaRegions = new LinkedHashSet<>();
                 for (ReplicaInfo replica : instanceConfig.getReplicas()) {
+                  // Exclude WITNESS replicas because they do not store data or serve reads.
                   if (replica != null
                       && replica.getType() != ReplicaInfo.ReplicaType.WITNESS
                       && !Strings.isNullOrEmpty(replica.getLocation())) {
@@ -261,11 +371,19 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
     return Collections.emptySet();
   }
 
+  /**
+   * Creates an authenticated {@link HttpRequestFactory} using Application Default Credentials
+   * (ADC). On Dataflow worker VMs, ADC is automatically provided by the GCE metadata server.
+   */
   @VisibleForTesting
   static HttpRequestFactory createDefaultRequestFactory() throws IOException {
     return createRequestFactory(GoogleCredentials.getApplicationDefault());
   }
 
+  /**
+   * Wraps the given {@link GoogleCredentials} with the {@code cloud-platform} OAuth scope and
+   * returns an {@link HttpRequestFactory} for calling Google Cloud REST APIs.
+   */
   @VisibleForTesting
   static HttpRequestFactory createRequestFactory(GoogleCredentials credentials) {
     GoogleCredentials scopedCredentials =
@@ -278,9 +396,26 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
   /**
    * Fetches the Spanner Data Boost concurrent requests quota ({@code
    * spanner.googleapis.com/data_boost_quota}) for a given project and set of Spanner regions from
-   * the Service Usage Consumer Quota API. For multi-region instances, returns the minimum effective
-   * quota across the serving replica regions. If any error occurs while fetching or parsing the
-   * quota, defaults to {@link #DEFAULT_DATA_BOOST_QUOTA} (400) without throwing an exception.
+   * the Service Usage Consumer Quota API.
+   *
+   * <h3>Multi-Region Quota Handling</h3>
+   *
+   * <p>Spanner does not maintain a single aggregated multi-region Data Boost quota bucket; instead,
+   * quota is enforced independently in each constituent GCP region where the Spanner Frontend
+   * receives the streaming RPC. Because GFE/GSLB routes requests based on network proximity to the
+   * client (and all Dataflow workers run in a single GCP region), up to 100% of a job's Data Boost
+   * requests can be routed to a single constituent Spanner region. Therefore, for multi-region
+   * instances, this method returns the <b>minimum</b> effective quota across all serving replica
+   * regions.
+   *
+   * <h3>Error & Unlimited Quota Handling</h3>
+   *
+   * <ul>
+   *   <li>The Service Usage API represents an unlimited quota with {@code effectiveLimit == -1},
+   *       which this method maps to {@link Long#MAX_VALUE}.
+   *   <li>If any error occurs while fetching or parsing the quota, this method logs a warning and
+   *       defaults to {@link #DEFAULT_DATA_BOOST_QUOTA} (400) without throwing an exception.
+   * </ul>
    */
   @VisibleForTesting
   static long getDataBoostQuota(
@@ -296,6 +431,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
     try {
       String url = String.format(DATA_BOOST_QUOTA_LIMIT_URL_TEMPLATE, projectId);
       HttpRequest request = requestFactory.buildGetRequest(new GenericUrl(url));
+      // Set x-goog-user-project so Service Usage bills/checks quota against the target project.
       request.getHeaders().set("x-goog-user-project", projectId);
 
       HttpResponse response = request.execute();
@@ -321,6 +457,11 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         return DEFAULT_DATA_BOOST_QUOTA;
       }
 
+      // Parse all quota buckets from the response:
+      // - Buckets with a {"dimensions": {"region": "<region>"}} object represent region-specific
+      //   limits (e.g. us-central1 defaulting to 1000, or custom regional quota overrides).
+      // - The bucket without a "dimensions" field represents the default limit across all other
+      //   regions (typically 400).
       long defaultLimit = 0;
       Map<String, Long> regionalLimits = new HashMap<>();
       for (JsonElement element : quotaBuckets) {
@@ -329,6 +470,7 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
           continue;
         }
         long rawLimit = bucket.get("effectiveLimit").getAsLong();
+        // Service Usage Consumer Quota API returns -1 when a quota is unlimited.
         long effectiveLimit = rawLimit == -1 ? Long.MAX_VALUE : rawLimit;
 
         if (bucket.has("dimensions") && bucket.get("dimensions").isJsonObject()) {
@@ -339,11 +481,14 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
             regionalLimits.put(dimensions.get("region").getAsString(), effectiveLimit);
           }
         } else {
-          // Bucket without region dimension is the default limit across all other regions
+          // Bucket without region dimension is the default limit across all other regions.
           defaultLimit = effectiveLimit;
         }
       }
 
+      // If one or more serving regions were resolved for the Spanner instance, look up each
+      // region's specific limit (falling back to defaultLimit if the region has no override bucket)
+      // and take the minimum across all serving regions.
       if (regions != null && !regions.isEmpty()) {
         long minRegionLimit = Long.MAX_VALUE;
         boolean foundValidLimit = false;
@@ -365,6 +510,8 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
           return minRegionLimit;
         }
       } else if (defaultLimit > 0) {
+        // If the instance's region(s) could not be resolved, use the project's default regional
+        // limit from the Quota API if positive.
         LOG.info(
             "Fetched Spanner Data Boost default quota for project={}, regions={}: {}",
             projectId,
