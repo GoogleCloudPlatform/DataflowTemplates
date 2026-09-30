@@ -282,7 +282,6 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private synchronized void maybeCreateDatabase() {
     checkIsUsable();
-    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
     if (usingStaticDatabase) {
       LOG.info("Not creating Spanner database - reusing static {}", databaseId);
       hasDatabase = true;
@@ -291,6 +290,7 @@ public final class SpannerResourceManager implements ResourceManager {
     if (hasDatabase) {
       return;
     }
+    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
     LOG.info("Creating database {} in instance {}.", databaseId, instanceId);
 
     try {
