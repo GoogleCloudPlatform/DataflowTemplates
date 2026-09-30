@@ -66,12 +66,12 @@ public class OracleToBigQueryYamlIT extends TemplateTestBase {
   public void testOracleToBigQuery() throws IOException {
     // 1. Setup Oracle database and insert test data
     JDBCResourceManager.JDBCSchema jdbcSchema =
-        new JDBCResourceManager.JDBCSchema(Map.of("ID", "INTEGER", "NAME", "VARCHAR(100)"), "ID");
+        new JDBCResourceManager.JDBCSchema(Map.of("ID", "VARCHAR(50)", "NAME", "VARCHAR(100)"), "ID");
 
     oracleResourceManager.createTable(TABLE_NAME, jdbcSchema);
     oracleResourceManager.write(
         TABLE_NAME,
-        java.util.List.of(Map.of("ID", 1, "NAME", "Alice"), Map.of("ID", 2, "NAME", "Bob")));
+        java.util.List.of(Map.of("ID", "1", "NAME", "Alice"), Map.of("ID", "2", "NAME", "Bob")));
 
     // 2. Setup BigQuery target dataset and table name
     bigQueryResourceManager.createDataset(REGION);
