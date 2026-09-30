@@ -51,7 +51,7 @@ public class TableConfigurationTest {
   @Test
   public void testEmptyConfig() {
     TableConfiguration config = TableConfiguration.empty();
-    assertFalse(config.hasFilters());
+    assertFalse(config.hasTableFilters());
     assertTrue(config.getSourceTables().isEmpty());
     assertTrue(config.isSourceTableAllowed("any_table"));
     assertTrue(config.isSpannerTableAllowed("any_table", mockSchemaMapper));
@@ -72,7 +72,7 @@ public class TableConfigurationTest {
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(3, config.getSourceTables().size());
     assertTrue(config.getSourceTables().contains("table1"));
     assertTrue(config.getSourceTables().contains("table2"));
@@ -99,7 +99,7 @@ public class TableConfigurationTest {
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(3, config.getSourceTables().size());
     assertTrue(config.getSourceTables().contains("tableA"));
     assertTrue(config.getSourceTables().contains("tableB"));
@@ -124,7 +124,7 @@ public class TableConfigurationTest {
     options.setGcsInputDirectory(null);
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(2, config.getSourceTables().size());
   }
 

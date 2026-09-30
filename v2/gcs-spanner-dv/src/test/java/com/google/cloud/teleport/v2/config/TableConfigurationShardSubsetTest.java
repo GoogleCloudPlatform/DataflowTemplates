@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -80,7 +81,7 @@ public class TableConfigurationShardSubsetTest {
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasShardFilter());
-    assertEquals(Arrays.asList("a", "b", "c"), config.getShardIds());
+    assertEquals(Arrays.asList("a", "b", "c"), new ArrayList<>(config.getShardIds()));
   }
 
   // P2 (extra): de-duplicated, first-occurrence order, unmodifiable (D-010, PD-20).
@@ -91,7 +92,7 @@ public class TableConfigurationShardSubsetTest {
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasShardFilter());
-    assertEquals(Arrays.asList("b", "a"), config.getShardIds());
+    assertEquals(Arrays.asList("b", "a"), new ArrayList<>(config.getShardIds()));
     assertThrows(UnsupportedOperationException.class, () -> config.getShardIds().add("c"));
   }
 
@@ -162,7 +163,7 @@ public class TableConfigurationShardSubsetTest {
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(new HashSet<>(Arrays.asList("A", "B")), config.getSourceTables());
     assertFalse(config.hasSpannerQueries());
     assertTrue(config.getSpannerQueries().isEmpty());
@@ -179,7 +180,7 @@ public class TableConfigurationShardSubsetTest {
 
     assertEquals(Collections.singleton("A"), config.getSourceTables());
     assertTrue(config.hasShardFilter());
-    assertEquals(Collections.singletonList("s1"), config.getShardIds());
+    assertEquals(Collections.singletonList("s1"), new ArrayList<>(config.getShardIds()));
     assertFalse(config.hasSpannerQueries());
     assertTrue(config.getSpannerQueries().isEmpty());
   }
@@ -199,7 +200,7 @@ public class TableConfigurationShardSubsetTest {
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasShardFilter());
-    assertEquals(Arrays.asList("s1", "s2"), config.getShardIds());
+    assertEquals(Arrays.asList("s1", "s2"), new ArrayList<>(config.getShardIds()));
     assertTrue(config.hasSpannerQueries());
     Map<String, String> queries = config.getSpannerQueries();
     assertEquals(Collections.singletonMap("Orders", query), queries);

@@ -49,7 +49,7 @@ public class TableConfiguration implements Serializable {
   private final Set<String> configuredSourceTables;
 
   /** Logical shard IDs from {@code --shardIds}: trimmed, de-duplicated, in input order. */
-  private final List<String> shardIds;
+  private final Set<String> shardIds;
 
   /**
    * Source table name (config key, as written) to its per-table configuration. Only tables with a
@@ -59,16 +59,16 @@ public class TableConfiguration implements Serializable {
 
   private TableConfiguration(
       Set<String> configuredSourceTables,
-      List<String> shardIds,
+      Set<String> shardIds,
       Map<String, TableLevelConfig> tableLevelConfigs) {
     this.configuredSourceTables = Collections.unmodifiableSet(configuredSourceTables);
-    this.shardIds = Collections.unmodifiableList(new ArrayList<>(shardIds));
+    this.shardIds = Collections.unmodifiableSet(new LinkedHashSet<>(shardIds));
     this.tableLevelConfigs = Collections.unmodifiableMap(new LinkedHashMap<>(tableLevelConfigs));
   }
 
   /** Creates an empty configuration with no filters. Useful for testing. */
   public static TableConfiguration empty() {
-    return new TableConfiguration(new HashSet<>(), new ArrayList<>(), new LinkedHashMap<>());
+    return new TableConfiguration(new HashSet<>(), Collections.emptySet(), new LinkedHashMap<>());
   }
 
   /**
@@ -158,7 +158,7 @@ public class TableConfiguration implements Serializable {
    * Parses {@code --shardIds} the same way as {@code --tables}: split on {@code ,}, trim, skip
    * empty entries and de-duplicate, keeping first-occurrence order.
    */
-  private static List<String> parseShardIds(String shardIdsConfig) {
+  private static Set<String> parseShardIds(String shardIdsConfig) {
     Set<String> shardIds = new LinkedHashSet<>();
     if (shardIdsConfig != null) {
       for (String shardId : shardIdsConfig.split(",")) {
@@ -168,10 +168,10 @@ public class TableConfiguration implements Serializable {
         }
       }
     }
-    return new ArrayList<>(shardIds);
+    return shardIds;
   }
 
-  public boolean hasFilters() {
+  public boolean hasTableFilters() {
     return configuredSourceTables != null && !configuredSourceTables.isEmpty();
   }
 
@@ -188,7 +188,7 @@ public class TableConfiguration implements Serializable {
    * Returns the selected logical shard IDs: unmodifiable, trimmed, de-duplicated, in input order.
    * Empty when shard subsetting is off.
    */
-  public List<String> getShardIds() {
+  public Set<String> getShardIds() {
     return shardIds;
   }
 
@@ -216,7 +216,7 @@ public class TableConfiguration implements Serializable {
    * @return true if allowed or no filters are configured, false otherwise.
    */
   public boolean isSourceTableAllowed(String sourceTableName) {
-    if (!hasFilters()) {
+    if (!hasTableFilters()) {
       return true;
     }
     return configuredSourceTables.contains(sourceTableName);
@@ -231,7 +231,7 @@ public class TableConfiguration implements Serializable {
    * @return true if allowed or no filters are configured, false otherwise.
    */
   public boolean isSpannerTableAllowed(String spannerTableName, ISchemaMapper schemaMapper) {
-    if (!hasFilters()) {
+    if (!hasTableFilters()) {
       return true;
     }
     try {
