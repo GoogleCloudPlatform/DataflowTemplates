@@ -34,6 +34,8 @@ pipeline:
       config:
         path: {{ csvPath }}
         delimiter: {{ delimiter }}
+        comment: {{ comment }}
+        filename_column: {{ filenameColumn }}
 
     - type: WriteToBigQuery
       name: WriteToBigQuery
