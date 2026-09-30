@@ -42,26 +42,19 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class GcsCsvToBigQueryYamlIT extends TemplateTestBase {
 
-  private GcsResourceManager gcsClient;
   private BigQueryResourceManager bigQueryResourceManager;
 
   private static final String TABLE_NAME = "csv_records";
 
   @Before
   public void setUp() {
-    gcsClient =
-        artifactBucketName != null
-            ? GcsResourceManager.builder(
-                    artifactBucketName, getClass().getSimpleName(), credentials)
-                .build()
-            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(gcsClient, bigQueryResourceManager);
+    ResourceManagerUtils.cleanResources(bigQueryResourceManager);
   }
 
   @Test
