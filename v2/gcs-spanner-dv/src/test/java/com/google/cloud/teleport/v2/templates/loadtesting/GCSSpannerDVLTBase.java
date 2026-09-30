@@ -46,19 +46,6 @@ import org.junit.After;
  * template.
  *
  * <p>This class provides common infrastructure for large-scale data validation tests, including:
- *
- * <ul>
- *   <li><b>Spanner Configuration</b>: Automatic provisioning of an ephemeral Spanner database via
- *       {@link #setUpResourceManagers()}, or validation against a pre-existing static Spanner
- *       database via {@link #setUpResourceManagers(String, String, String)} (which configures
- *       {@link SpannerResourceManager} with {@link
- *       SpannerResourceManager.Builder#useStaticDatabase()} so the database is never modified or
- *       dropped).
- *   <li><b>BigQuery Validation Dataset</b>: Per-test dataset creation and teardown.
- *   <li><b>GCS Artifact Management</b>: Custom transformation JAR uploads and GCS path resolution.
- *   <li><b>Metrics Collection</b>: Integration with Cloud Monitoring and BigQuery for Dataflow and
- *       Spanner CPU utilization tracking across both ephemeral and static Spanner databases.
- * </ul>
  */
 public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
@@ -203,6 +190,5 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
   public final void cleanUp() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, bigQueryResourceManager, gcsResourceManager);
-
   }
 }

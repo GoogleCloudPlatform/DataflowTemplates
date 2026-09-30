@@ -100,8 +100,7 @@ public final class GCSSpannerDVTestAsserts {
     if (shardId != null) {
       conditions.add(String.format("shard_id = '%s'", shardId));
     }
-    String whereClause =
-        conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
+    String whereClause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
     String query =
         String.format(
             "SELECT COUNT(*) FROM `%s.%s.MismatchedRecords`%s",
