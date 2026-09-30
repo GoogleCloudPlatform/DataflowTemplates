@@ -28,14 +28,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.microsoft.sqlserver.jdbc.SQLServerDriver`. Defaults to: com.microsoft.sqlserver.jdbc.SQLServerDriver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mssql`.
 * **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
+* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.microsoft.sqlserver.jdbc.SQLServerDriver`. Defaults to: com.microsoft.sqlserver.jdbc.SQLServerDriver.
+* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar`.
+* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mssql`.
 
 
 
@@ -141,14 +141,14 @@ export KEEP=<keep>
 export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mssql
 export QUERY=<query>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
+export DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
+export DRIVER_JARS=<driverJars>
+export JDBC_TYPE=mssql
 
 gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --project "$PROJECT" \
@@ -164,15 +164,15 @@ gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "location=$LOCATION" \
   --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
-  --parameters "autoSharding=$AUTO_SHARDING"
+  --parameters "autoSharding=$AUTO_SHARDING" \
+  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
+  --parameters "driverJars=$DRIVER_JARS" \
+  --parameters "jdbcType=$JDBC_TYPE"
 ```
 
 For more information about the command, please check:
@@ -204,14 +204,14 @@ export KEEP=<keep>
 export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mssql
 export QUERY=<query>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
+export DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
+export DRIVER_JARS=<driverJars>
+export JDBC_TYPE=mssql
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -220,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-sqlserver-yaml-job" \
 -DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,jdbcType=$JDBC_TYPE" \
 -f yaml
 ```
 
@@ -276,14 +276,14 @@ resource "google_dataflow_flex_template_job" "iceberg_to_sqlserver_yaml" {
     # filter = "<filter>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "mssql"
     # query = "<query>"
     # batchSize = "1000"
     # autoSharding = "<autoSharding>"
+    # driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+    # driverJars = "<driverJars>"
+    # jdbcType = "mssql"
   }
 }
 ```
