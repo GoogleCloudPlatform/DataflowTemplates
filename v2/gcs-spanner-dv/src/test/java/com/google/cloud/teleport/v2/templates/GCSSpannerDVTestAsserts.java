@@ -20,12 +20,20 @@ import static com.google.common.truth.Truth.assertThat;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.google.cloud.bigquery.BigQueryException;
+import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
+import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManagerException;
 import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test helper class for verifying BigQuery output from the gcs-spanner-dv pipeline.
@@ -34,6 +42,8 @@ import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
  * safely compare expected validation results against the actual rows written to BigQuery.
  */
 public final class GCSSpannerDVTestAsserts {
+
+  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVTestAsserts.class);
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper()
@@ -72,6 +82,60 @@ public final class GCSSpannerDVTestAsserts {
       BigQueryResourceManager bigQueryResourceManager, List<MismatchedRecordDto> expected) {
     assertTableRecords(
         bigQueryResourceManager, "MismatchedRecords", MismatchedRecordDto.class, expected);
+  }
+
+  /**
+   * Row counts of the {@code MismatchedRecords} table grouped by {@link MismatchGroup}. Use this
+   * instead of reading the table row by row via {@link #assertMismatchedRecords}, which is
+   * infeasible at load-test scale. Returns an empty map if the table does not exist (i.e. the job
+   * wrote no mismatch rows).
+   */
+  public static ImmutableMap<MismatchGroup, Long> countMismatchedRecords(
+      BigQueryResourceManager bigQueryResourceManager) {
+    String query =
+        String.format(
+            "SELECT schema_name, table_name, mismatch_type, shard_id, COUNT(*)"
+                + " FROM `%s.%s.MismatchedRecords`"
+                + " GROUP BY schema_name, table_name, mismatch_type, shard_id",
+            bigQueryResourceManager.getProjectId(), bigQueryResourceManager.getDatasetId());
+    TableResult result;
+    try {
+      result = bigQueryResourceManager.runQuery(query);
+    } catch (BigQueryResourceManagerException e) {
+      if (e.getCause() instanceof BigQueryException bqe && bqe.getCode() == 404) {
+        LOG.info("MismatchedRecords table does not exist; treating as no mismatches");
+        return ImmutableMap.of();
+      }
+      throw e;
+    }
+    ImmutableMap.Builder<MismatchGroup, Long> counts = ImmutableMap.builder();
+    for (FieldValueList row : result.iterateAll()) {
+      MismatchGroup group =
+          new MismatchGroup(
+              row.get(0).isNull() ? null : row.get(0).getStringValue(),
+              row.get(1).getStringValue(),
+              row.get(2).getStringValue(),
+              row.get(3).isNull() ? null : row.get(3).getStringValue());
+      counts.put(group, row.get(4).getLongValue());
+    }
+    ImmutableMap<MismatchGroup, Long> resultCounts = counts.buildOrThrow();
+    LOG.info("MismatchedRecords counts: {}", resultCounts);
+    return resultCounts;
+  }
+
+  /**
+   * Grouping key for {@link #countMismatchedRecords}. {@code schemaName} and {@code shardId} are
+   * {@code null} for unsharded sources or Spanner-side ({@code MISSING_IN_SOURCE}) records.
+   */
+  public record MismatchGroup(
+      @Nullable String schemaName,
+      String tableName,
+      String mismatchType,
+      @Nullable String shardId) {
+    public MismatchGroup {
+      Objects.requireNonNull(tableName, "tableName");
+      Objects.requireNonNull(mismatchType, "mismatchType");
+    }
   }
 
   /**

@@ -22,16 +22,14 @@ import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDV;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts;
+import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.MismatchGroup;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.TableValidationStatsDto;
 import com.google.cloud.teleport.v2.templates.GCSSpannerDVTestAsserts.ValidationSummaryDto;
-import java.io.IOException;
+import com.google.common.collect.ImmutableMap;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,7 +37,7 @@ import org.junit.runners.JUnit4;
 
 /**
  * Load test for the {@link GCSSpannerDV} template validating ~5TB of Avro data (21 shards, 2
- * non-empty tables) against a static, pre-populated Spanner database.
+ * tables) against a static, pre-populated Spanner database.
  *
  * <p>Uses {@code com.custom.CustomTransformationForDV5TBLT} to mutate {@code col1} for all shards
  * except {@code shard_1}, resulting in 1 matching shard and 20 mismatched shards.
@@ -56,8 +54,8 @@ public class GCSSpannerDV5TBLT extends GCSSpannerDVLTBase {
       "gs://nokill-avro-to-spanner-dv/5tb_load_test/avro_data";
   private static final String SESSION_FILE_PATH =
       "gs://nokill-avro-to-spanner-dv/5tb_load_test/session_file.json";
-  private static final String TRANSFORMATION_CLASS = "com.custom.CustomTransformationForDV5TBLT";
 
+  private static final long NUM_TABLES = 2L;
   private static final int NUM_SHARDS = 21;
   private static final int MISMATCHED_SHARDS = NUM_SHARDS - 1;
   // The Avro dataset contains ~26% duplicate records per shard (a sourcedb-to-spanner artifact),
@@ -68,32 +66,43 @@ public class GCSSpannerDV5TBLT extends GCSSpannerDVLTBase {
   private static final long AVRO_ROWS_PER_SHARD_TABLE2 = 13_234_026L;
   private static final long SPANNER_ROWS_PER_SHARD_TABLE1 = 4_255_685L;
   private static final long SPANNER_ROWS_PER_SHARD_TABLE2 = 10_489_500L;
+  private static final long TABLE1_MISSING_IN_DESTINATION_ROWS =
+      MISMATCHED_SHARDS * AVRO_ROWS_PER_SHARD_TABLE1;
+  private static final long TABLE2_MISSING_IN_DESTINATION_ROWS =
+      MISMATCHED_SHARDS * AVRO_ROWS_PER_SHARD_TABLE2;
+  private static final long TABLE1_MISSING_IN_SOURCE_ROWS =
+      MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE1;
+  private static final long TABLE2_MISSING_IN_SOURCE_ROWS =
+      MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE2;
+  // Every mutated record in shards 2..21 produces both a MISSING_IN_DESTINATION mismatch (from the
+  // mutated Avro hash) and a MISSING_IN_SOURCE mismatch (from the unmatched Spanner row hash).
+  private static final long TABLE1_MISMATCHED_ROWS =
+      TABLE1_MISSING_IN_DESTINATION_ROWS + TABLE1_MISSING_IN_SOURCE_ROWS;
+  private static final long TABLE2_MISMATCHED_ROWS =
+      TABLE2_MISSING_IN_DESTINATION_ROWS + TABLE2_MISSING_IN_SOURCE_ROWS;
 
   private static final Duration JOB_TIMEOUT = Duration.ofHours(1);
 
-  @Override
-  protected Optional<StaticSpannerTarget> staticSpannerTarget() {
-    return Optional.of(
-        new StaticSpannerTarget(SPANNER_PROJECT_ID, SPANNER_INSTANCE_ID, SPANNER_DATABASE_ID));
-  }
-
-  @Override
-  protected List<String> resourceHints() {
-    return List.of("cpu_count=16", "min_ram=60GB");
-  }
-
-  @Before
-  @Override
-  public void setUp() throws IOException {
-    super.setUp();
-    uploadCustomShardJarToGcs("custom");
-  }
-
   @Test
   public void validate5TBWith20MismatchedShards() throws Exception {
-    // 1. Launch validation pipeline and wait for completion
+    setUpResourceManagers(SPANNER_PROJECT_ID, SPANNER_INSTANCE_ID, SPANNER_DATABASE_ID);
+    uploadCustomShardJarToGcs("custom");
+
+    // 1. Assert Spanner schema before launching the validation job.
+    assertWithMessage("Total tables present in Spanner INFORMATION_SCHEMA")
+        .that(
+            spannerResourceManager
+                .runQuery("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ''")
+                .get(0)
+                .getLong(0))
+        .isEqualTo(NUM_TABLES);
+
+    // 2. Launch validation pipeline and wait for completion.
+    // sessionFilePath is required to resolve shardIdColumn so the custom transformation receives
+    // shard_id on each record; 16-vCPU / 60GB workers size the job for the 5TB shuffle.
     CustomTransformation customTransformation =
-        CustomTransformation.builder("custom/customTransformation.jar", TRANSFORMATION_CLASS)
+        CustomTransformation.builder(
+                "custom/customTransformation.jar", "com.custom.CustomTransformationForDV5TBLT")
             .build();
     LaunchInfo jobInfo =
         launchValidationJob(
@@ -101,24 +110,24 @@ public class GCSSpannerDV5TBLT extends GCSSpannerDVLTBase {
             JOB_TIMEOUT,
             customTransformation,
             Map.of("sessionFilePath", SESSION_FILE_PATH),
-            Map.of());
+            Map.of(
+                "additionalPipelineOptions",
+                List.of("resourceHints=cpu_count=16", "resourceHints=min_ram=60GB")));
     collectAndExportMetrics(jobInfo);
 
-    // 2. Assert BigQuery validation results
+    // 3. Assert BigQuery validation summary across both tables.
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
         List.of(
             new ValidationSummaryDto(
                 /* status= */ "MISMATCH",
-                /* totalTablesValidated= */ 2L,
+                /* totalTablesValidated= */ NUM_TABLES,
                 /* totalRowsMatched= */ AVRO_ROWS_PER_SHARD_TABLE1 + AVRO_ROWS_PER_SHARD_TABLE2,
-                /* totalRowsMismatched= */ MISMATCHED_SHARDS
-                    * (AVRO_ROWS_PER_SHARD_TABLE1
-                        + SPANNER_ROWS_PER_SHARD_TABLE1
-                        + AVRO_ROWS_PER_SHARD_TABLE2
-                        + SPANNER_ROWS_PER_SHARD_TABLE2),
+                /* totalRowsMismatched= */ TABLE1_MISMATCHED_ROWS + TABLE2_MISMATCHED_ROWS,
                 /* tablesWithMismatches= */ "table1,table2")));
 
+    // ComputeTableStatsFn derives destinationRowCount as matchedRowCount + missingInSourceCount,
+    // so shard_1's duplicate Avro records inflate matchedRowCount and destinationRowCount alike.
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         List.of(
@@ -128,41 +137,39 @@ public class GCSSpannerDV5TBLT extends GCSSpannerDVLTBase {
                 /* status= */ "MISMATCH",
                 /* sourceRowCount= */ NUM_SHARDS * AVRO_ROWS_PER_SHARD_TABLE1,
                 /* destinationRowCount= */ AVRO_ROWS_PER_SHARD_TABLE1
-                    + MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE1,
+                    + TABLE1_MISSING_IN_SOURCE_ROWS,
                 /* matchedRowCount= */ AVRO_ROWS_PER_SHARD_TABLE1,
-                /* mismatchRowCount= */ MISMATCHED_SHARDS
-                    * (AVRO_ROWS_PER_SHARD_TABLE1 + SPANNER_ROWS_PER_SHARD_TABLE1)),
+                /* mismatchRowCount= */ TABLE1_MISMATCHED_ROWS),
             new TableValidationStatsDto(
                 /* schemaName= */ null,
                 /* tableName= */ "table2",
                 /* status= */ "MISMATCH",
                 /* sourceRowCount= */ NUM_SHARDS * AVRO_ROWS_PER_SHARD_TABLE2,
                 /* destinationRowCount= */ AVRO_ROWS_PER_SHARD_TABLE2
-                    + MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE2,
+                    + TABLE2_MISSING_IN_SOURCE_ROWS,
                 /* matchedRowCount= */ AVRO_ROWS_PER_SHARD_TABLE2,
-                /* mismatchRowCount= */ MISMATCHED_SHARDS
-                    * (AVRO_ROWS_PER_SHARD_TABLE2 + SPANNER_ROWS_PER_SHARD_TABLE2))));
+                /* mismatchRowCount= */ TABLE2_MISMATCHED_ROWS)));
 
-    // 3. Assert MismatchedRecords by counts per group; the table has ~667M rows, so it cannot be
+    // 4. Assert MismatchedRecords by counts per group; the table has ~667M rows, so it cannot be
     // read row by row. Spanner-side (MISSING_IN_SOURCE) records have a NULL shard_id.
-    Map<String, Long> expectedMismatchCounts = new HashMap<>();
+    ImmutableMap.Builder<MismatchGroup, Long> expectedMismatchCounts = ImmutableMap.builder();
     for (int shard = 2; shard <= NUM_SHARDS; shard++) {
       expectedMismatchCounts.put(
-          mismatchKey(null, "table1", "MISSING_IN_DESTINATION", "shard_" + shard),
+          new MismatchGroup(null, "table1", "MISSING_IN_DESTINATION", "shard_" + shard),
           AVRO_ROWS_PER_SHARD_TABLE1);
       expectedMismatchCounts.put(
-          mismatchKey(null, "table2", "MISSING_IN_DESTINATION", "shard_" + shard),
+          new MismatchGroup(null, "table2", "MISSING_IN_DESTINATION", "shard_" + shard),
           AVRO_ROWS_PER_SHARD_TABLE2);
     }
     expectedMismatchCounts.put(
-        mismatchKey(null, "table1", "MISSING_IN_SOURCE", null),
-        MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE1);
+        new MismatchGroup(null, "table1", "MISSING_IN_SOURCE", null),
+        TABLE1_MISSING_IN_SOURCE_ROWS);
     expectedMismatchCounts.put(
-        mismatchKey(null, "table2", "MISSING_IN_SOURCE", null),
-        MISMATCHED_SHARDS * SPANNER_ROWS_PER_SHARD_TABLE2);
+        new MismatchGroup(null, "table2", "MISSING_IN_SOURCE", null),
+        TABLE2_MISSING_IN_SOURCE_ROWS);
 
     assertWithMessage("MismatchedRecords counts per schema/table/mismatch_type/shard_id")
-        .that(countMismatchedRecords())
-        .containsExactlyEntriesIn(expectedMismatchCounts);
+        .that(GCSSpannerDVTestAsserts.countMismatchedRecords(bigQueryResourceManager))
+        .containsExactlyEntriesIn(expectedMismatchCounts.buildOrThrow());
   }
 }

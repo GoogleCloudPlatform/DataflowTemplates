@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.util.Map;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,45 +27,31 @@ import org.slf4j.LoggerFactory;
  * Custom transformation used by the {@code GCSSpannerDV5TBLT} load test of the gcs-spanner-dv
  * template.
  *
- * <p>It mutates {@code col1} of every source record in {@code table1} and {@code table2} unless the
- * record belongs to {@code shard_1}. Because the validator hashes the transformed source record,
- * every record outside {@code shard_1} stops matching its Spanner row. The test therefore validates
- * one fully matching shard and pushes a large volume of mismatches through the report stage.
+ * <p>It mutates {@code col1} of every source record unless the record belongs to {@code shard_1}.
+ * Because the validator hashes the transformed source record, every record outside {@code shard_1}
+ * stops matching its Spanner row. The test therefore validates one fully matching shard and pushes
+ * a large volume of mismatches through the report stage.
  */
 public class CustomTransformationForDV5TBLT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationForDV5TBLT.class);
 
-  static final String MATCHING_SHARD_ID = "shard_1";
-  static final Set<String> MUTATED_TABLES = Set.of("table1", "table2");
-  static final String MUTATED_COLUMN = "col1";
-  static final String MUTATION_SUFFIX = "_mutated";
-
   @Override
   public void init(String parameters) {
-    LOG.info(
-        "CustomTransformationForDV5TBLT initialized: appending '{}' to {} of {} except in {}",
-        MUTATION_SUFFIX,
-        MUTATED_COLUMN,
-        MUTATED_TABLES,
-        MATCHING_SHARD_ID);
+    LOG.info("init called with {}", parameters);
   }
 
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    String tableName = request.getTableName();
-    String shardId = request.getShardId();
-    if (MATCHING_SHARD_ID.equals(shardId) || !MUTATED_TABLES.contains(tableName)) {
+    if ("shard_1".equals(request.getShardId())) {
       return new MigrationTransformationResponse(null, false);
     }
-    Map<String, Object> row = request.getRequestRow();
-    Object value = row == null ? null : row.get(MUTATED_COLUMN);
+    Object value = request.getRequestRow().get("col1");
     if (value == null) {
       return new MigrationTransformationResponse(null, false);
     }
-    return new MigrationTransformationResponse(
-        Map.of(MUTATED_COLUMN, value + MUTATION_SUFFIX), false);
+    return new MigrationTransformationResponse(Map.of("col1", value + "_mutated"), false);
   }
 
   @Override
