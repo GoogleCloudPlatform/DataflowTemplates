@@ -130,5 +130,7 @@ public class GCSSpannerDV5KTablesLT extends GCSSpannerDVLTBase {
               /* mismatchRowCount= */ 0L));
     }
     GCSSpannerDVTestAsserts.assertTableValidationStats(bigQueryResourceManager, expectedStats);
+
+    assertWithMessage("MismatchedRecords counts").that(countMismatchedRecords()).isEmpty();
   }
 }

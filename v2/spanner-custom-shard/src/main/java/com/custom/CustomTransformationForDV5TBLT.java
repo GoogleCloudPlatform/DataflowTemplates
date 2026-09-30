@@ -42,20 +42,14 @@ public class CustomTransformationForDV5TBLT implements ISpannerMigrationTransfor
   static final String MUTATED_COLUMN = "col1";
   static final String MUTATION_SUFFIX = "_mutated";
 
-  // Logged once per transformer instance so that workers confirm the transformation is active
-  // without emitting one log line per record (the test processes hundreds of millions of rows).
-  private transient boolean loggedFirstMutation = false;
-
   @Override
   public void init(String parameters) {
     LOG.info(
-        "[5TB-LT] CustomTransformationForDV5TBLT initialized. parameters={} (ignored),"
-            + " matchingShard={}, mutatedTables={}, mutatedColumn={}, suffix={}",
-        parameters,
-        MATCHING_SHARD_ID,
-        MUTATED_TABLES,
+        "CustomTransformationForDV5TBLT initialized: appending '{}' to {} of {} except in {}",
+        MUTATION_SUFFIX,
         MUTATED_COLUMN,
-        MUTATION_SUFFIX);
+        MUTATED_TABLES,
+        MATCHING_SHARD_ID);
   }
 
   @Override
@@ -71,18 +65,8 @@ public class CustomTransformationForDV5TBLT implements ISpannerMigrationTransfor
     if (value == null) {
       return new MigrationTransformationResponse(null, false);
     }
-    String mutatedValue = value + MUTATION_SUFFIX;
-    if (!loggedFirstMutation) {
-      loggedFirstMutation = true;
-      LOG.info(
-          "[5TB-LT] First mutation on this worker: table={}, shardId={}, originalLength={},"
-              + " mutatedLength={}",
-          tableName,
-          shardId,
-          value.toString().length(),
-          mutatedValue.length());
-    }
-    return new MigrationTransformationResponse(Map.of(MUTATED_COLUMN, mutatedValue), false);
+    return new MigrationTransformationResponse(
+        Map.of(MUTATED_COLUMN, value + MUTATION_SUFFIX), false);
   }
 
   @Override
