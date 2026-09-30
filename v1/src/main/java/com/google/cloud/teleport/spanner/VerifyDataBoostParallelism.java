@@ -163,78 +163,96 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
         .apply(
             "Verify DataBoost Parallelism DoFn",
             ParDo.of(
-                new DoFn<Integer, Integer>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c, PipelineOptions options) {
-                    ValueProvider<Boolean> dataBoostEnabled = spannerConfig.getDataBoostEnabled();
-                    // Only validate when Spanner Data Boost is explicitly enabled for the job.
-                    if (dataBoostEnabled != null
-                        && dataBoostEnabled.isAccessible()
-                        && Boolean.TRUE.equals(dataBoostEnabled.get())) {
+                new VerifyDataBoostParallelismFn(
+                    spannerConfig, maxDataBoostParallelism, requestFactorySupplier)));
+  }
 
-                      // Retrieve --maxNumWorkers safely (getMaxNumWorkers() returns an Integer
-                      // which may be null or 0 when not explicitly configured by the user).
-                      DataflowPipelineWorkerPoolOptions poolOptions =
-                          options.as(DataflowPipelineWorkerPoolOptions.class);
-                      int maxNumWorkers =
-                          Optional.ofNullable(poolOptions.getMaxNumWorkers()).orElse(0);
+  /**
+   * Static {@link DoFn} that performs the runtime Data Boost parallelism check on a worker without
+   * capturing the enclosing {@link VerifyDataBoostParallelism} {@link PTransform} instance.
+   */
+  private static class VerifyDataBoostParallelismFn extends DoFn<Integer, Integer> {
 
-                      if (maxNumWorkers <= 0) {
-                        // When --maxNumWorkers is not specified, we cannot compute a deterministic
-                        // upper bound on worker parallelism. Log an actionable warning and allow
-                        // the pipeline to proceed without performing quota validation.
-                        LOG.warn(
-                            "You have not specified --maxNumWorkers. When Spanner Data Boost is"
-                                + " enabled, the job is governed by the Spanner Data Boost"
-                                + " concurrent requests quota limit (see"
-                                + " https://cloud.google.com/spanner/docs/databoost/databoost-quotas)."
-                                + " Skipping Spanner Data Boost parallelism validation. If the"
-                                + " Dataflow job scales up such that concurrent requests exceed"
-                                + " this quota, there is a possibility that the export job might"
-                                + " fail. It is highly recommended to set --maxNumWorkers and"
-                                + " --workerMachineType parameters such that the parallelism is"
-                                + " below the quota limit.");
-                      } else {
-                        // Determine the number of harness threads per worker. In Dataflow batch
-                        // runner, if --numberOfWorkerHarnessThreads is not explicitly set, the
-                        // worker harness defaults to 1 thread per vCPU on the worker machine.
-                        DataflowPipelineDebugOptions debugOptions =
-                            options.as(DataflowPipelineDebugOptions.class);
-                        int numWorkerHarnessThreads =
-                            Optional.ofNullable(debugOptions.getNumberOfWorkerHarnessThreads())
-                                .orElse(0);
-                        int threadsPerWorker =
-                            numWorkerHarnessThreads > 0
-                                ? numWorkerHarnessThreads
-                                : Runtime.getRuntime().availableProcessors();
+    private final SpannerConfig spannerConfig;
+    private final ValueProvider<Integer> maxDataBoostParallelism;
+    private final HttpRequestFactorySupplier requestFactorySupplier;
 
-                        // Compute worst-case concurrent Data Boost requests across all workers.
-                        long maxParallelism = (long) maxNumWorkers * threadsPerWorker;
-                        long allowedParallelism = resolveMaxDataBoostParallelism(options);
+    VerifyDataBoostParallelismFn(
+        SpannerConfig spannerConfig,
+        ValueProvider<Integer> maxDataBoostParallelism,
+        HttpRequestFactorySupplier requestFactorySupplier) {
+      this.spannerConfig = spannerConfig;
+      this.maxDataBoostParallelism = maxDataBoostParallelism;
+      this.requestFactorySupplier = requestFactorySupplier;
+    }
 
-                        // Fail fast before launching expensive export queries if the configured
-                        // worker parallelism can exceed the allowed Data Boost quota.
-                        if (maxParallelism > allowedParallelism) {
-                          String errorMessage =
-                              String.format(
-                                  "Job max parallelism (%d workers * %d threads/worker = %d"
-                                      + " concurrent requests) exceeds Spanner Data Boost quota"
-                                      + " (%d). Reduce --maxNumWorkers or increase quota. If"
-                                      + " required, set the --maxDataBoostParallelism parameter to"
-                                      + " a very high value to bypass this validation and proceed"
-                                      + " with the export.",
-                                  maxNumWorkers,
-                                  threadsPerWorker,
-                                  maxParallelism,
-                                  allowedParallelism);
-                          LOG.error(errorMessage);
-                          throw new IllegalArgumentException(errorMessage);
-                        }
-                      }
-                    }
-                    c.output(c.element());
-                  }
-                }));
+    @ProcessElement
+    public void processElement(ProcessContext c, PipelineOptions options) {
+      ValueProvider<Boolean> dataBoostEnabled = spannerConfig.getDataBoostEnabled();
+      // Only validate when Spanner Data Boost is explicitly enabled for the job.
+      if (dataBoostEnabled != null
+          && dataBoostEnabled.isAccessible()
+          && Boolean.TRUE.equals(dataBoostEnabled.get())) {
+
+        // Retrieve --maxNumWorkers safely (getMaxNumWorkers() returns an Integer
+        // which may be null or 0 when not explicitly configured by the user).
+        DataflowPipelineWorkerPoolOptions poolOptions =
+            options.as(DataflowPipelineWorkerPoolOptions.class);
+        int maxNumWorkers = Optional.ofNullable(poolOptions.getMaxNumWorkers()).orElse(0);
+
+        if (maxNumWorkers <= 0) {
+          // When --maxNumWorkers is not specified, we cannot compute a deterministic
+          // upper bound on worker parallelism. Log an actionable warning and allow
+          // the pipeline to proceed without performing quota validation.
+          LOG.warn(
+              "You have not specified --maxNumWorkers. When Spanner Data Boost is"
+                  + " enabled, the job is governed by the Spanner Data Boost"
+                  + " concurrent requests quota limit (see"
+                  + " https://cloud.google.com/spanner/docs/databoost/databoost-quotas)."
+                  + " Skipping Spanner Data Boost parallelism validation. If the"
+                  + " Dataflow job scales up such that concurrent requests exceed"
+                  + " this quota, there is a possibility that the export job might"
+                  + " fail. It is highly recommended to set --maxNumWorkers and"
+                  + " --workerMachineType parameters such that the parallelism is"
+                  + " below the quota limit.");
+        } else {
+          // Determine the number of harness threads per worker. In Dataflow batch
+          // runner, if --numberOfWorkerHarnessThreads is not explicitly set, the
+          // worker harness defaults to 1 thread per vCPU on the worker machine.
+          DataflowPipelineDebugOptions debugOptions =
+              options.as(DataflowPipelineDebugOptions.class);
+          int numWorkerHarnessThreads =
+              Optional.ofNullable(debugOptions.getNumberOfWorkerHarnessThreads()).orElse(0);
+          int threadsPerWorker =
+              numWorkerHarnessThreads > 0
+                  ? numWorkerHarnessThreads
+                  : Runtime.getRuntime().availableProcessors();
+
+          // Compute worst-case concurrent Data Boost requests across all workers.
+          long maxParallelism = (long) maxNumWorkers * threadsPerWorker;
+          long allowedParallelism =
+              resolveMaxDataBoostParallelism(
+                  spannerConfig, maxDataBoostParallelism, requestFactorySupplier, options);
+
+          // Fail fast before launching expensive export queries if the configured
+          // worker parallelism can exceed the allowed Data Boost quota.
+          if (maxParallelism > allowedParallelism) {
+            String errorMessage =
+                String.format(
+                    "Job max parallelism (%d workers * %d threads/worker = %d"
+                        + " concurrent requests) exceeds Spanner Data Boost quota"
+                        + " (%d). Reduce --maxNumWorkers or increase quota. If"
+                        + " required, set the --maxDataBoostParallelism parameter to"
+                        + " a very high value to bypass this validation and proceed"
+                        + " with the export.",
+                    maxNumWorkers, threadsPerWorker, maxParallelism, allowedParallelism);
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+          }
+        }
+      }
+      c.output(c.element());
+    }
   }
 
   /**
@@ -251,6 +269,15 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
    */
   @VisibleForTesting
   long resolveMaxDataBoostParallelism(PipelineOptions options) {
+    return resolveMaxDataBoostParallelism(
+        spannerConfig, maxDataBoostParallelism, requestFactorySupplier, options);
+  }
+
+  private static long resolveMaxDataBoostParallelism(
+      SpannerConfig spannerConfig,
+      ValueProvider<Integer> maxDataBoostParallelism,
+      HttpRequestFactorySupplier requestFactorySupplier,
+      PipelineOptions options) {
     try {
       // 1. Check for an explicit user-configured override (--maxDataBoostParallelism).
       if (maxDataBoostParallelism != null && maxDataBoostParallelism.isAccessible()) {
@@ -262,8 +289,8 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
       }
 
       // 2. Otherwise, query the live Data Boost quota for the Spanner project and region(s).
-      String projectId = resolveProjectId(options);
-      Set<String> regions = resolveRegions();
+      String projectId = resolveProjectId(spannerConfig, options);
+      Set<String> regions = resolveRegions(spannerConfig);
       return getDataBoostQuota(projectId, regions, requestFactorySupplier.get());
     } catch (Exception e) {
       LOG.warn(
@@ -284,6 +311,10 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
    */
   @VisibleForTesting
   String resolveProjectId(PipelineOptions options) {
+    return resolveProjectId(spannerConfig, options);
+  }
+
+  private static String resolveProjectId(SpannerConfig spannerConfig, PipelineOptions options) {
     // 1. Prefer the Spanner project ID from SpannerConfig (--spannerProjectId).
     try {
       ValueProvider<String> configProject = spannerConfig.getProjectId();
@@ -331,6 +362,10 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
    */
   @VisibleForTesting
   Set<String> resolveRegions() {
+    return resolveRegions(spannerConfig);
+  }
+
+  private static Set<String> resolveRegions(SpannerConfig spannerConfig) {
     ValueProvider<String> instanceId = spannerConfig.getInstanceId();
     if (instanceId != null && instanceId.isAccessible()) {
       String instanceIdValue = instanceId.get();
