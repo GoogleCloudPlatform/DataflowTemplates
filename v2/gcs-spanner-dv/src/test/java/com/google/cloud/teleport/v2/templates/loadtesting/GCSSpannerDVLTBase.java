@@ -39,10 +39,6 @@ import org.junit.Before;
 /** Base class for {@code gcs-spanner-dv} load tests. */
 public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
-  protected static final String SPEC_PATH =
-      System.getProperty(
-          "specPath", "gs://dataflow-templates/latest/flex/Avro_to_Spanner_Data_Validator");
-
   private static final int SPANNER_NODE_COUNT = 10;
   private static final int NUM_WORKERS = 1;
   private static final int MAX_WORKERS = 100;
@@ -90,7 +86,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     parameters.putAll(additionalParameters);
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
+        LaunchConfig.builder(jobName, getTemplateSpecPath())
             .addEnvironment("numWorkers", NUM_WORKERS)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))

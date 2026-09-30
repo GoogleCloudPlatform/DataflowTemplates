@@ -27,7 +27,7 @@ on:
         required: false
         type: string
       spec_path:
-        description: 'Custom template spec GCS path (passed to -DspecPath=)'
+        description: 'Custom template spec GCS path (passed to -DspecPath=). Leave blank to build and stage templates from the checked out (mainline) code.'
         required: false
         type: string
 
