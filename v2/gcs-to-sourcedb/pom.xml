@@ -32,6 +32,8 @@
     </description>
 
  <properties>
+    <!-- Treat itParallelism as an absolute per-module cap instead of per-core. -->
+    <itPerCoreThreadCount>false</itPerCoreThreadCount>
   </properties>
 
     <dependencies>

@@ -206,6 +206,11 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    # --it-integration-test-parallelism is the Surefire threadCount per template (Maven module).
+    # Spanner modules set itPerCoreThreadCount=false in their pom, so it is NOT multiplied by the
+    # runner's core count. With parallel=classesAndMethods, the 48 threads are one pool shared by
+    # class runners and test methods; each running class holds a thread while its methods run,
+    # so effectively about half (~24) ITs run concurrently per template.
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
@@ -217,6 +222,7 @@ jobs:
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
+        --it-integration-test-parallelism=48 \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
