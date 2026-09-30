@@ -133,7 +133,7 @@ public interface SQLServerToIcebergYaml {
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
       helpText =
-          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
+          "The number of rows to fetch per database call. It should ONLY be used  if the default value throws memory errors.  For SQL Server, this only takes effect if selectMethod=cursor is specified  in connectionProperties.",
       example = "50000")
   Integer getFetchSize();
 
