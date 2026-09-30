@@ -52,7 +52,7 @@ public interface OracleToBigQueryYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:oracle:thin:@//your-host:1521/your-service")
+      example = "jdbc:oracle://your-host:1521/serviceName")
   @Validation.Required
   String getJdbcUrl();
 
@@ -76,26 +76,6 @@ public interface OracleToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 4,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: oracle.jdbc.OracleDriver",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "oracle.jdbc.OracleDriver")
-  @Default.String("oracle.jdbc.OracleDriver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 5,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/ojdbc8.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 6,
       name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
@@ -104,27 +84,7 @@ public interface OracleToBigQueryYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 7,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"ALTER SESSION SET CURRENT_SCHEMA=my_schema\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 8,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: oracle.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "oracle")
-  @Default.String("oracle")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 9,
+      order = 5,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -133,7 +93,7 @@ public interface OracleToBigQueryYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 6,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -142,7 +102,7 @@ public interface OracleToBigQueryYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 7,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -151,7 +111,7 @@ public interface OracleToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 12,
+      order = 8,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -160,7 +120,7 @@ public interface OracleToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 9,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -170,16 +130,16 @@ public interface OracleToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 14,
+      order = 10,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
+      helpText = "Whether to disable auto-commit on read. Required for some databases like Oracle.",
       example = "True")
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 11,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -188,7 +148,7 @@ public interface OracleToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 12,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -199,7 +159,7 @@ public interface OracleToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 13,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -210,7 +170,7 @@ public interface OracleToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 14,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -221,7 +181,7 @@ public interface OracleToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 19,
+      order = 15,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",

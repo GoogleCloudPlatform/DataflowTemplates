@@ -66,7 +66,8 @@ public class OracleToBigQueryYamlIT extends TemplateTestBase {
   public void testOracleToBigQuery() throws IOException {
     // 1. Setup Oracle database and insert test data
     JDBCResourceManager.JDBCSchema jdbcSchema =
-        new JDBCResourceManager.JDBCSchema(Map.of("ID", "VARCHAR(50)", "NAME", "VARCHAR(100)"), "ID");
+        new JDBCResourceManager.JDBCSchema(
+            Map.of("ID", "VARCHAR(50)", "NAME", "VARCHAR(100)"), "ID");
 
     oracleResourceManager.createTable(TABLE_NAME, jdbcSchema);
     oracleResourceManager.write(
