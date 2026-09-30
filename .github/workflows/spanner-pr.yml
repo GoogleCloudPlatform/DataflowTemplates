@@ -169,15 +169,11 @@ jobs:
       run: |
         ./cicd/run-it-smoke-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
+        --it-region="us-east1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
-        --it-cloud-proxy-host="10.128.0.16" \
-        --it-oracle-host="10.128.0.108" \
-        --it-integration-test-parallelism="10" \
-        --it-oracle-sys-password="TestPassword123" \
-        --it-oracle-password="TestPassword123" \
+        --it-cloud-proxy-host="10.128.0.16"
         --it-jvm-args="-Xlog:gc*:file=target/gc-%p.log:time,uptime,level,tags"
     - name: Upload Smoke Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -219,16 +215,11 @@ jobs:
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
+        --it-region="us-east1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
-        --it-direct-runner=$IS_PR \
-        --it-integration-test-parallelism="10" \
-        --it-oracle-host="10.128.0.108" \
-        --it-oracle-sys-password="TestPassword123" \
-        --it-oracle-password="TestPassword123" \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

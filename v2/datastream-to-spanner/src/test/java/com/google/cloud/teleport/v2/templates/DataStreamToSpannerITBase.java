@@ -61,8 +61,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
-  protected String oracleUser;
-
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
@@ -414,6 +412,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       LOG.info("No custom transformation provided.");
     }
 
+    // Streaming right fitting requires horizontal autoscaling to be enabled explicitly.
+    params.put("autoscalingAlgorithm", "THROUGHPUT_BASED");
+
     // overridden parameters
     if (jobParameters != null) {
       for (Entry<String, String> entry : jobParameters.entrySet()) {
@@ -429,6 +430,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+    options.addEnvironment(
+        "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
@@ -616,60 +619,5 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       }
     }
     return combinedCondition;
-  }
-
-  @Override
-  protected org.apache.beam.it.common.PipelineOperator.Config.Builder wrapConfiguration(
-      org.apache.beam.it.common.PipelineOperator.Config.Builder builder) {
-    if (System.getProperty("directRunnerTest") != null) {
-      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(25));
-    }
-    return builder;
-  }
-
-  protected void executeOracleSqlFileScript(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
-      String resourceName,
-      String targetUsername)
-      throws Exception {
-    String sql =
-        String.join(
-            " ",
-            org.testcontainers.shaded.com.google.common.io.Resources.readLines(
-                org.testcontainers.shaded.com.google.common.io.Resources.getResource(resourceName),
-                java.nio.charset.StandardCharsets.UTF_8));
-    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
-    executeOracleSql(jdbcResourceManager, sql, targetUsername);
-  }
-
-  protected void executeOracleSql(
-      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
-      String sqlString,
-      String targetUsername)
-      throws Exception {
-    String sql = sqlString;
-    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
-    String[] statements = sql.split(";");
-
-    try (java.sql.Connection connection =
-        java.sql.DriverManager.getConnection(
-            jdbcResourceManager.getUri(),
-            jdbcResourceManager.getUsername(),
-            jdbcResourceManager.getPassword())) {
-
-      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
-        try (java.sql.Statement stmt = connection.createStatement()) {
-          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = \"" + targetUsername + "\"");
-        }
-      }
-
-      try (java.sql.Statement statement = connection.createStatement()) {
-        for (String stmt : statements) {
-          if (!stmt.trim().isBlank()) {
-            statement.execute(stmt);
-          }
-        }
-      }
-    }
   }
 }
