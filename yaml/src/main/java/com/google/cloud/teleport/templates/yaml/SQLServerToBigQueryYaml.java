@@ -76,26 +76,6 @@ public interface SQLServerToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 4,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 5,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 6,
       name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
@@ -104,7 +84,7 @@ public interface SQLServerToBigQueryYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 5,
       name = "connectionInitSql",
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
@@ -113,18 +93,7 @@ public interface SQLServerToBigQueryYaml {
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
-      order = 8,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: mssql.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mssql")
-  @Default.String("mssql")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 9,
+      order = 6,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -133,7 +102,7 @@ public interface SQLServerToBigQueryYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 7,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -142,7 +111,7 @@ public interface SQLServerToBigQueryYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 8,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -151,7 +120,7 @@ public interface SQLServerToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 12,
+      order = 9,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -160,7 +129,7 @@ public interface SQLServerToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 10,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -170,7 +139,7 @@ public interface SQLServerToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 14,
+      order = 11,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
@@ -179,7 +148,7 @@ public interface SQLServerToBigQueryYaml {
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 12,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -188,7 +157,7 @@ public interface SQLServerToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 13,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -199,7 +168,7 @@ public interface SQLServerToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 14,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -210,7 +179,7 @@ public interface SQLServerToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 15,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -221,7 +190,7 @@ public interface SQLServerToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 19,
+      order = 16,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
