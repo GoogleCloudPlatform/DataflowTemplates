@@ -315,13 +315,18 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
    * instance.
    *
    * <ul>
-   *   <li>For Google-managed regional configurations (e.g., {@code regional-us-central1}), extracts
-   *       the region name directly from the configuration ID without an extra Admin API RPC.
-   *   <li>For multi-region or custom configurations (e.g., {@code nam3}, {@code eur6}, {@code
-   *       custom-...}), fetches the {@link InstanceConfig} metadata from Spanner and collects the
-   *       locations of all non-{@code WITNESS} replicas (read-write and read-only replicas hold a
-   *       full copy of data and can serve Data Boost requests, whereas witness replicas only vote
-   *       on commits and never serve reads).
+   *   <li><b>Primary path</b>: Fetches the {@link InstanceConfig} metadata from Spanner and
+   *       collects the locations of all non-{@code WITNESS} replicas (read-write and read-only
+   *       replicas hold a full copy of data and can serve Data Boost requests, whereas witness
+   *       replicas only vote on commits and never serve reads). Using {@link InstanceConfig} as the
+   *       primary source handles multi-region configs (e.g., {@code nam3}, {@code eur6}), custom
+   *       configs ({@code custom-...}), standard regional configs ({@code regional-us-central1}),
+   *       and tiered/private regional configs whose IDs contain suffixes after the GCP region name
+   *       (e.g., {@code regional-us-central1-private1}, {@code regional-europe-west2-plus}).
+   *   <li><b>Fallback path</b>: If {@link InstanceConfig} metadata cannot be retrieved (for
+   *       example, due to missing {@code spanner.instanceConfigs.get} permission) and the
+   *       configuration ID starts with {@code regional-}, extracts the region name by stripping the
+   *       {@code regional-} prefix.
    * </ul>
    */
   @VisibleForTesting
@@ -337,27 +342,36 @@ public class VerifyDataBoostParallelism extends PTransform<PBegin, PCollection<I
             // when establishing the connection.
             String instanceConfigId = spannerAccessor.getInstanceConfigId();
             if (!Strings.isNullOrEmpty(instanceConfigId) && !"unknown".equals(instanceConfigId)) {
-              // Fast path for standard regional configs: strip "regional-" prefix in memory to
-              // avoid an extra GetInstanceConfig RPC and spanner.instanceConfigs.get IAM check.
+              // Primary path: query InstanceConfig to inspect constituent non-witness replicas for
+              // all configurations (regional, dual-region, multi-region, and custom).
+              try {
+                InstanceConfig instanceConfig =
+                    spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
+                if (instanceConfig != null && instanceConfig.getReplicas() != null) {
+                  Set<String> replicaRegions = new LinkedHashSet<>();
+                  for (ReplicaInfo replica : instanceConfig.getReplicas()) {
+                    // Exclude WITNESS replicas because they do not store data or serve reads.
+                    if (replica != null
+                        && replica.getType() != ReplicaInfo.ReplicaType.WITNESS
+                        && !Strings.isNullOrEmpty(replica.getLocation())) {
+                      replicaRegions.add(replica.getLocation());
+                    }
+                  }
+                  if (!replicaRegions.isEmpty()) {
+                    return replicaRegions;
+                  }
+                }
+              } catch (Exception e) {
+                LOG.debug(
+                    "Unable to fetch InstanceConfig for {}; falling back to config ID parsing",
+                    instanceConfigId,
+                    e);
+              }
+              // Fallback for standard regional configs when InstanceConfig metadata is unavailable
+              // (e.g. if the caller lacks spanner.instanceConfigs.get IAM permission).
               if (instanceConfigId.startsWith(REGIONAL_CONFIG_PREFIX)) {
                 return Collections.singleton(
                     instanceConfigId.substring(REGIONAL_CONFIG_PREFIX.length()));
-              }
-              // Multi-region or custom config: query InstanceConfig to inspect constituent
-              // replicas.
-              InstanceConfig instanceConfig =
-                  spannerAccessor.getInstanceAdminClient().getInstanceConfig(instanceConfigId);
-              if (instanceConfig != null && instanceConfig.getReplicas() != null) {
-                Set<String> replicaRegions = new LinkedHashSet<>();
-                for (ReplicaInfo replica : instanceConfig.getReplicas()) {
-                  // Exclude WITNESS replicas because they do not store data or serve reads.
-                  if (replica != null
-                      && replica.getType() != ReplicaInfo.ReplicaType.WITNESS
-                      && !Strings.isNullOrEmpty(replica.getLocation())) {
-                    replicaRegions.add(replica.getLocation());
-                  }
-                }
-                return replicaRegions;
               }
             }
           } finally {

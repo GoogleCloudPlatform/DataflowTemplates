@@ -429,8 +429,31 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .resolveRegions()
             .isEmpty());
 
-    // 2. Regional instance config ("regional-us-west1") returns singleton ["us-west1"]
-    ServiceFactory<Spanner, SpannerOptions> regionalServiceFactory =
+    // 2. Primary path for regional config (including tiered config "regional-us-central1-private1")
+    // resolves exact GCP region from InstanceConfig replicas ("us-central1")
+    ReplicaInfo regionalRwReplica = mock(ReplicaInfo.class);
+    when(regionalRwReplica.getType()).thenReturn(ReplicaType.READ_WRITE);
+    when(regionalRwReplica.getLocation()).thenReturn("us-central1");
+    InstanceConfig tieredRegionalConfig = mock(InstanceConfig.class);
+    when(tieredRegionalConfig.getReplicas())
+        .thenReturn(Collections.singletonList(regionalRwReplica));
+
+    ServiceFactory<Spanner, SpannerOptions> tieredRegionalFactory =
+        createMockServiceFactory("regional-us-central1-private1", tieredRegionalConfig);
+    SpannerConfig tieredRegionalSpannerConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("tiered-regional-inst")
+            .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
+            .withServiceFactory(tieredRegionalFactory);
+    assertEquals(
+        Collections.singleton("us-central1"),
+        new VerifyDataBoostParallelism(tieredRegionalSpannerConfig).resolveRegions());
+
+    // 2b. Fallback path for regional instance config ("regional-us-west1") when getInstanceConfig
+    // returns null or throws an exception -> strips "regional-" prefix to return ["us-west1"]
+    ServiceFactory<Spanner, SpannerOptions> regionalFallbackServiceFactory =
         createMockServiceFactory("regional-us-west1", null);
     SpannerConfig regionalConfig =
         SpannerConfig.create()
@@ -438,10 +461,33 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withInstanceId("regional-inst")
             .withDatabaseId("test-db")
             .withCredentials(mockCredentials)
-            .withServiceFactory(regionalServiceFactory);
+            .withServiceFactory(regionalFallbackServiceFactory);
     assertEquals(
         Collections.singleton("us-west1"),
         new VerifyDataBoostParallelism(regionalConfig).resolveRegions());
+
+    @SuppressWarnings("unchecked")
+    ServiceFactory<Spanner, SpannerOptions> throwingGetConfigFactory = mock(ServiceFactory.class);
+    Spanner throwingConfigSpanner = mock(Spanner.class);
+    InstanceAdminClient throwingConfigAdminClient = mock(InstanceAdminClient.class);
+    Instance throwingConfigInstance = mock(Instance.class);
+    when(throwingGetConfigFactory.create(any())).thenReturn(throwingConfigSpanner);
+    when(throwingConfigSpanner.getInstanceAdminClient()).thenReturn(throwingConfigAdminClient);
+    when(throwingConfigAdminClient.getInstance(any())).thenReturn(throwingConfigInstance);
+    when(throwingConfigInstance.getInstanceConfigId())
+        .thenReturn(InstanceConfigId.of("test-proj", "regional-europe-west1"));
+    when(throwingConfigAdminClient.getInstanceConfig("regional-europe-west1"))
+        .thenThrow(new RuntimeException("PERMISSION_DENIED on spanner.instanceConfigs.get"));
+    SpannerConfig throwingGetInstanceConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("regional-perm-denied-inst")
+            .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
+            .withServiceFactory(throwingGetConfigFactory);
+    assertEquals(
+        Collections.singleton("europe-west1"),
+        new VerifyDataBoostParallelism(throwingGetInstanceConfig).resolveRegions());
 
     // 3. Multi-region instance config ("nam3") returns non-witness replica regions
     ReplicaInfo rwReplica = mock(ReplicaInfo.class);
@@ -477,7 +523,8 @@ public class VerifyDataBoostParallelismTest implements Serializable {
         ImmutableSet.of("us-east4", "us-central1"),
         new VerifyDataBoostParallelism(multiRegionConfig).resolveRegions());
 
-    // 4. Multi-region instance config with null InstanceConfig or null replicas returns empty set
+    // 4. Multi-region instance config with null InstanceConfig, null replicas, or witness-only
+    // replicas returns empty set
     ServiceFactory<Spanner, SpannerOptions> nullConfigFactory =
         createMockServiceFactory("nam6", null);
     SpannerConfig nullInstanceConfig =
@@ -501,6 +548,20 @@ public class VerifyDataBoostParallelismTest implements Serializable {
             .withCredentials(mockCredentials)
             .withServiceFactory(nullReplicasFactory);
     assertTrue(new VerifyDataBoostParallelism(nullReplicasConfig).resolveRegions().isEmpty());
+
+    InstanceConfig witnessOnlyInstanceConfig = mock(InstanceConfig.class);
+    when(witnessOnlyInstanceConfig.getReplicas())
+        .thenReturn(Collections.singletonList(witnessReplica));
+    ServiceFactory<Spanner, SpannerOptions> witnessOnlyFactory =
+        createMockServiceFactory("eur5", witnessOnlyInstanceConfig);
+    SpannerConfig witnessOnlyConfig =
+        SpannerConfig.create()
+            .withProjectId("test-proj")
+            .withInstanceId("witness-only-inst")
+            .withDatabaseId("test-db")
+            .withCredentials(mockCredentials)
+            .withServiceFactory(witnessOnlyFactory);
+    assertTrue(new VerifyDataBoostParallelism(witnessOnlyConfig).resolveRegions().isEmpty());
 
     // 5. Unknown or empty instanceConfigId returns empty set
     ServiceFactory<Spanner, SpannerOptions> unknownConfigFactory =
