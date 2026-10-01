@@ -25,7 +25,7 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.io.IOException;
@@ -53,7 +53,6 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -66,10 +65,9 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types for
  * Cassandra migration.
  */
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Triaging flaky test")
 public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraAllDataTypesIT.class);
