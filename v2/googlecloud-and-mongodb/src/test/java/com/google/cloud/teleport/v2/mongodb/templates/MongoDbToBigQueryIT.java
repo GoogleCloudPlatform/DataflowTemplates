@@ -138,14 +138,20 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   @Test
   public void testMongoDbToBigQueryWithFilters() throws IOException {
-    mongoDbToBigQueryBase("FLATTEN", false, true);
+    mongoDbToBigQueryBase("FLATTEN", false, true, false);
+  }
+
+  @Test
+  public void testMongoDbToBigQueryWithBucketAuto() throws IOException {
+    mongoDbToBigQueryBase("FLATTEN", false, false, true);
   }
 
   private void mongoDbToBigQueryWithUdfBase(String userOption) throws IOException {
-    mongoDbToBigQueryBase(userOption, true, false);
+    mongoDbToBigQueryBase(userOption, true, false, false);
   }
 
-  private void mongoDbToBigQueryBase(String userOption, boolean applyUdf, boolean applyFilter)
+  private void mongoDbToBigQueryBase(
+      String userOption, boolean applyUdf, boolean applyFilter, boolean applyBucketAuto)
       throws IOException {
     // Arrange
     String collectionName = testName;
@@ -198,6 +204,9 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     if (applyFilter) {
       options.addParameter("filter", "{ \"filter_test\": { $eq: \"0\" }}");
     }
+    if (applyBucketAuto) {
+      options.addParameter("bucketAuto", "true").addParameter("numSplits", "5");
+    }
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -231,6 +240,9 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
         });
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
+    if (applyBucketAuto) {
+      assertEquals(mongoDocuments.size(), tableRows.getTotalRows());
+    }
     tableRows
         .getValues()
         .forEach(

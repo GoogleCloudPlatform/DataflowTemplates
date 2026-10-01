@@ -70,7 +70,6 @@ func main() {
 		flags.RetryFailures(),
 		flags.StaticOracleHost(),
 		flags.StaticOracleSysPassword(),
-		flags.StaticOraclePassword(),
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),

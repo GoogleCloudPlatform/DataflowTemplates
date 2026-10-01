@@ -58,7 +58,7 @@ variable "dataflow_params" {
       kms_key_name                 = optional(string)
       labels                       = optional(map(string))
       launcher_machine_type        = optional(string)
-      machine_type                 = optional(string, "n2-standard-2")
+      machine_type                 = optional(string, "n2-standard-4")
       max_workers                  = number
       job_name                     = optional(string, "reverse-replication-job")
       network                      = optional(string)
