@@ -27,10 +27,12 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbReadOptions;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import javax.script.ScriptException;
@@ -80,6 +82,7 @@ public class MongoDbToBigQuery {
   public interface Options
       extends PipelineOptions,
           MongoDbOptions,
+          MongoDbReadOptions,
           BigQueryWriteOptions,
           BigQueryStorageApiBatchOptions,
           JavascriptDocumentTransformerOptions {}
@@ -134,21 +137,8 @@ public class MongoDbToBigQuery {
               mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
-    MongoDbIO.Read readDocuments =
-        MongoDbIO.read()
-            .withUri(mongoDbUri)
-            .withDatabase(options.getDatabase())
-            .withCollection(options.getCollection());
-
-    String filterJson = options.getFilter();
-    BsonDocument filter;
-    if (!Strings.isNullOrEmpty(filterJson)
-        && !(filter = BsonDocument.parse(filterJson)).isEmpty()) {
-      readDocuments = readDocuments.withQueryFn(FindQuery.create().withFilters(filter));
-    }
-
     pipeline
-        .apply("Read Documents", readDocuments)
+        .apply("Read Documents", buildReadDocuments(options, mongoDbUri))
         .apply(
             "UDF",
             TransformDocumentViaJavascript.newBuilder()
@@ -176,5 +166,24 @@ public class MongoDbToBigQuery {
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND));
     pipeline.run();
     return true;
+  }
+
+  @VisibleForTesting
+  static MongoDbIO.Read buildReadDocuments(Options options, String mongoDbUri) {
+    MongoDbIO.Read readDocuments =
+        MongoDbIO.read()
+            .withUri(mongoDbUri)
+            .withDatabase(options.getDatabase())
+            .withCollection(options.getCollection())
+            .withBucketAuto(options.getBucketAuto())
+            .withNumSplits(options.getNumSplits());
+
+    String filterJson = options.getFilter();
+    BsonDocument filter;
+    if (!Strings.isNullOrEmpty(filterJson)
+        && !(filter = BsonDocument.parse(filterJson)).isEmpty()) {
+      readDocuments = readDocuments.withQueryFn(FindQuery.create().withFilters(filter));
+    }
+    return readDocuments;
   }
 }
