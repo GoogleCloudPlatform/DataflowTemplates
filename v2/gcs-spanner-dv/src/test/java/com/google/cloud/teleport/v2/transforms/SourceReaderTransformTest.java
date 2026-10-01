@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -26,6 +27,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -370,5 +374,39 @@ public class SourceReaderTransformTest implements Serializable {
     org.junit.Assert.assertEquals(2, patterns.size());
     org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table1/**.avro"));
     org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table2/**.avro"));
+  }
+
+  @Test
+  public void testGetFilePatternsWithShardsOnly() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setShardIds("s1,s2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    List<String> patterns = SourceReaderTransform.getFilePatterns("gs://b/d", tableConfig);
+
+    assertEquals(2, patterns.size());
+    assertEquals(
+        new HashSet<>(Arrays.asList("gs://b/d/*/s1/**.avro", "gs://b/d/*/s2/**.avro")),
+        new HashSet<>(patterns));
+  }
+
+  @Test
+  public void testGetFilePatternsWithTablesAndShards() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setTables("T1,T2");
+    options.setShardIds("s1,s2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    List<String> patterns = SourceReaderTransform.getFilePatterns("gs://b/d", tableConfig);
+
+    assertEquals(4, patterns.size());
+    assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                "gs://b/d/T1/s1/**.avro",
+                "gs://b/d/T1/s2/**.avro",
+                "gs://b/d/T2/s1/**.avro",
+                "gs://b/d/T2/s2/**.avro")),
+        new HashSet<>(patterns));
   }
 }
