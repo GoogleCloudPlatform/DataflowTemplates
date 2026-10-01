@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.config.TableConfiguration;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -63,7 +62,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     }
   }
 
-  @VisibleForTesting
   List<ReadOperation> buildReadOperations(Ddl ddl, ISchemaMapper schemaMapper) {
     if (tableConfig == null
         || (!tableConfig.hasShardFilter() && !tableConfig.hasSpannerQueries())) {
@@ -78,8 +76,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       if (tableConfig != null && !tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
         continue;
       }
-      // We encode the tableName in the query itself to push table information dynamically
-      // and avoid table level stages.
       readOperations.add(ReadOperation.create().withQuery(baselineQuery(ddl.dialect(), tableName)));
     }
     return readOperations;
@@ -108,8 +104,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
         continue;
       }
-      // remove() also marks the query as used; queries left over are reported after the loop.
-      String key = keyBySpannerTable.remove(tableName);
+      String key = keyBySpannerTable.get(tableName);
       String spannerQuery = key == null ? null : spannerQueries.get(key);
       Statement statement;
       if (spannerQuery != null && !hasShardFilter) {
@@ -121,11 +116,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
         statement = Statement.of(wrapSpannerQuery(tableName, normalizeSpannerQuery(spannerQuery)));
       } else if (spannerQuery != null) {
         // spannerQuery with --shardIds: the query wins over any ShardIdColumn in the session file.
-        if (schemaMapper.getShardIdColumnName("", tableName) != null) {
-          LOG.warn(
-              "Table '{}': the spannerQuery overrides the ShardIdColumn from the session file",
-              tableName);
-        }
         statement = Statement.of(wrapSpannerQuery(tableName, normalizeSpannerQuery(spannerQuery)));
       } else if (!hasShardFilter) {
         // No spannerQuery and no --shardIds: read the whole table.
@@ -149,13 +139,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       readOperations.add(ReadOperation.create().withQuery(statement));
     }
 
-    // A key whose table wasn't read (out of scope) would silently validate nothing.
-    for (Map.Entry<String, String> entry : keyBySpannerTable.entrySet()) {
-      errors.add(
-          String.format(
-              "spannerQuery for '%s': maps to Spanner table '%s', which isn't validated",
-              entry.getValue(), entry.getKey()));
-    }
     if (!errors.isEmpty()) {
       Collections.sort(errors);
       throw new IllegalArgumentException(
@@ -175,8 +158,9 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       List<String> errors) {
     Map<String, String> keyBySpannerTable = new HashMap<>();
     for (String key : spannerQueries.keySet()) {
+      // A query for a table left out of tableNames is unused, not wrong.
       if (!tableConfig.isSourceTableAllowed(key)) {
-        errors.add(String.format("spannerQuery for '%s': the table isn't in tableNames", key));
+        LOG.warn("Ignoring the spannerQuery for '{}': the table isn't in tableNames", key);
         continue;
       }
       String spannerTableName;
@@ -195,20 +179,15 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
         continue;
       }
       // Key by the DDL's own name, so a mapper name differing only in case still matches.
-      String otherKey = keyBySpannerTable.putIfAbsent(table.name(), key);
-      if (otherKey != null) {
-        errors.add(
-            String.format(
-                "spannerQuery for '%s' and '%s': both map to Spanner table '%s'",
-                otherKey, key, table.name()));
-      }
+      keyBySpannerTable.put(table.name(), key);
     }
     return keyBySpannerTable;
   }
 
   /** Returns the full-table query for {@code spannerTableName}, tagged with its table name. */
-  @VisibleForTesting
   static String baselineQuery(Dialect dialect, String spannerTableName) {
+    // We encode the tableName in the query itself to push table information dynamically and avoid
+    // table level stages.
     String quote = quote(dialect);
     return String.format(
         "SELECT *, '%s' as __tableName__ FROM %s%s%s",
@@ -219,7 +198,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
    * Returns the baseline query filtered to rows whose {@code shardIdColumn} is in {@code shardIds}.
    * The IDs are bound as one array parameter, so the SQL doesn't depend on the number of shards.
    */
-  @VisibleForTesting
   static Statement shardFilterStatement(
       Dialect dialect, String spannerTableName, String shardIdColumn, Collection<String> shardIds) {
     String quote = quote(dialect);
@@ -234,7 +212,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
   }
 
   /** Trims {@code rawQuery} and strips its trailing run of {@code ;} and whitespace. */
-  @VisibleForTesting
   static String normalizeSpannerQuery(String rawQuery) {
     return rawQuery.trim().replaceAll("[;\\s]+$", "");
   }
@@ -243,7 +220,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
    * Wraps a user query so its rows are tagged with {@code spannerTableName}. The query goes on its
    * own lines so a trailing {@code --} comment can't swallow the closing parenthesis.
    */
-  @VisibleForTesting
   static String wrapSpannerQuery(String spannerTableName, String normalizedQuery) {
     // readAll merges all tables; ComparisonRecordMapper reads this tag to find and hash the table.
     return "SELECT *, '"

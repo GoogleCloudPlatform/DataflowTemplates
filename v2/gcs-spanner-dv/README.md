@@ -94,6 +94,7 @@ To validate only some shards of a sharded bulk migration:
 2. Every table being validated must be filtered to the same shards on the Spanner side, in one of two ways. A table with neither makes the job fail; leave tables you don't want to validate out of `tableNames`.
    - The session file has a `ShardIdColumn` for the table. Nothing more to do.
    - Otherwise, add a non-blank `spannerQuery` for the table in the `tableConfigurationFilePath` file.
+   - If a table has both, its `spannerQuery` is used and the `ShardIdColumn` is ignored.
 3. Write each `spannerQuery` as follows:
    1. Under `optionalConfigurations`, use the table's **source** (pre-migration) name as the key.
    2. Write it **strictly** in the format `SELECT * FROM <spanner-table-name> WHERE <condition>`.
