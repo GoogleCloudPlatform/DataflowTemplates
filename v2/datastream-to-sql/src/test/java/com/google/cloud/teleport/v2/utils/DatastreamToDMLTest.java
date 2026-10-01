@@ -1461,7 +1461,9 @@ public class DatastreamToDMLTest {
     assertEquals(
         "INSERT INTO \"foo\".\"audit_log\" (\"col1\",\"col2\") VALUES (100,'val');",
         dmlInfo.getDmlSql());
-   * Verifies that {@link DatastreamToDML#getColumnsValuesSql} applies {@code columnCasing} when
+  }
+
+  /* Verifies that {@link DatastreamToDML#getColumnsValuesSql} applies {@code columnCasing} when
    * looking up destination column types in {@code tableSchema}.
    */
   @Test
