@@ -28,12 +28,8 @@ import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,7 +47,7 @@ import org.junit.runners.JUnit4;
  *       occurrences using Combine with sum, formats output as {@code word: count}, and writes
  *       results to Cloud Storage.
  *   <li>This test supplies an {@code outputPath} parameter to direct the output into a test GCS
- *       bucket managed by {@link GcsResourceManager}.
+ *       bucket managed by {@link TemplateTestBase#gcsClient}.
  *   <li>After pipeline execution completes, the test verifies that output artifacts exist and
  *       contain expected word count entries from King Lear.
  * </ul>
@@ -61,27 +57,12 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class WordCountYamlIT extends TemplateTestBase {
 
-  private GcsResourceManager gcsResourceManager;
-
-  @Before
-  public void setUp() {
-    gcsResourceManager =
-        artifactBucketName != null && !artifactBucketName.isEmpty()
-            ? GcsResourceManager.builder(artifactBucketName, testName, credentials).build()
-            : GcsResourceManager.builder(testName, credentials).build();
-  }
-
-  @After
-  public void tearDown() {
-    ResourceManagerUtils.cleanResources(gcsResourceManager);
-  }
-
   @Test
   public void testWordCount() throws IOException {
     // --------------------------------------------------------------------------------------------
     // 1. Arrange / Setup: Configure output destination and launch parameters
     // --------------------------------------------------------------------------------------------
-    String outputPath = getGcsPath("output/counts", gcsResourceManager);
+    String outputPath = getGcsPath("output/counts");
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath).addParameter("outputPath", outputPath);
@@ -99,8 +80,7 @@ public class WordCountYamlIT extends TemplateTestBase {
     // --------------------------------------------------------------------------------------------
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts =
-        gcsResourceManager.listArtifacts("output/", Pattern.compile(".*counts.*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*counts.*"));
     assertThat(artifacts).isNotEmpty();
 
     // Verify output files contain exact expected word counts from King Lear
