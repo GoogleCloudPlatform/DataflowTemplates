@@ -120,12 +120,7 @@ pipeline:
         path: "{{ errorPath }}"
 
 providers:
-  - type: pythonPackage
-    config:
-      packages:
-        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-30/job_builder_util_transforms-0.3.1.tar.gz
-    transforms:
-      CopyFilesToGCS: "copy_files_to_gcs.CopyFilesToGCS"
+  - include: gs://dataflow-templates/extra-python-packages/2026-08-30/yaml_provider_listing_0.3.1.yaml
 
 options:
   streaming: false
