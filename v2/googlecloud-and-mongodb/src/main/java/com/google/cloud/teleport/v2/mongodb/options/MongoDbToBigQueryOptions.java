@@ -98,6 +98,41 @@ public class MongoDbToBigQueryOptions {
     void setFilter(String jsonFilter);
   }
 
+  /** Options for splitting the MongoDB read into parallel partitions. */
+  public interface MongoDbReadOptions extends PipelineOptions {
+    @TemplateParameter.Boolean(
+        order = 1,
+        optional = true,
+        groupName = "Source",
+        description = "Use $bucketAuto to split the read",
+        helpText =
+            "If `true`, the collection is split into partitions by `_id` using the `$bucketAuto`"
+                + " aggregation stage, so the read is parallelized across workers. Unlike"
+                + " `splitVector`, `$bucketAuto` is also permitted on MongoDB Atlas. The number of"
+                + " partitions is controlled by `numSplits`. Collections whose `_id` values are not"
+                + " ObjectIds require Apache Beam 2.77.0 or later. Defaults to `false`.")
+    @Default.Boolean(false)
+    Boolean getBucketAuto();
+
+    void setBucketAuto(Boolean bucketAuto);
+
+    @TemplateParameter.Integer(
+        order = 2,
+        optional = true,
+        groupName = "Source",
+        description = "Number of read splits",
+        helpText =
+            "The number of partitions to split the read into. When `bucketAuto` is `true`, `0`"
+                + " uses 10 partitions. When `bucketAuto` is `false`, a value greater than `0`"
+                + " splits the read with the `splitVector` command, which is not permitted on"
+                + " MongoDB Atlas, and `0` reads the collection as a single partition. Defaults to"
+                + " `0`.")
+    @Default.Integer(0)
+    Integer getNumSplits();
+
+    void setNumSplits(Integer numSplits);
+  }
+
   /** Options for reading from PubSub. */
   public interface PubSubOptions extends PipelineOptions, DataflowPipelineOptions {
     @TemplateParameter.PubsubTopic(
