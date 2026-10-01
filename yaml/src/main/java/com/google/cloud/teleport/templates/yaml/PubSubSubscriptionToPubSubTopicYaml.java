@@ -86,7 +86,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
       name = "attributesMap",
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
-      helpText = "Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
+      helpText = "Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
       example = "attrs"
     )
   String getAttributesMap();
@@ -113,6 +113,16 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
 
   @TemplateParameter.Text(
       order = 8,
+      name = "publishTimeField",
+      optional = true,
+      description = "Field to add to output messages with the Pub/Sub message publish time.",
+      helpText = "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
+      example = "publish_time"
+    )
+  String getPublishTimeField();
+
+  @TemplateParameter.Text(
+      order = 9,
       name = "outputTopic",
       optional = false,
       description = "Output Pub/Sub topic",
@@ -123,7 +133,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputTopic();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "outputFormat",
       optional = true,
       description = "Output message format.",
@@ -134,7 +144,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputFormat();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "outputSchema",
       optional = true,
       description = "Output data schema.",
@@ -144,7 +154,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputSchema();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "outputAttributes",
       optional = true,
       description = "List of attribute keys for output messages.",
@@ -154,7 +164,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputAttributes();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "outputAttributesMap",
       optional = true,
       description = "Name of a string-to-string map field for output attributes.",
@@ -164,7 +174,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputAttributesMap();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "outputIdAttribute",
       optional = true,
       description = "Attribute name for unique record identifier on output messages.",
@@ -174,7 +184,7 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
   String getOutputIdAttribute();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "outputTimestampAttribute",
       optional = true,
       description = "Attribute name for publish timestamp on output messages.",

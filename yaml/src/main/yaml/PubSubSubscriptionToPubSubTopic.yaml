@@ -36,9 +36,10 @@ pipeline:
         format: {{ format | default('JSON') }}
         schema: {{ schema }}
         attributes: {{ attributes }}
-        attribute_map: {{ attributesMap }}
+        attributes_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
+        publish_time_field: {{ publishTimeField }}
     - type: WriteToPubSub
       name: WriteToPubSub
       config:
@@ -46,7 +47,7 @@ pipeline:
         format: {{ outputFormat | default('JSON') }}
         schema: {{ outputSchema }}
         attributes: {{ outputAttributes }}
-        attribute_map: {{ outputAttributesMap }}
+        attributes_map: {{ outputAttributesMap }}
         id_attribute: {{ outputIdAttribute }}
         timestamp_attribute: {{ outputTimestampAttribute }}
   windowing:

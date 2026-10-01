@@ -23,9 +23,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`. Defaults to: JSON.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition. For example, `{"type": "object", "properties": {"field1": {"type": "string"}}}`.
 * **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields. For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`. For example, `["attr1", "attr2"]`.
-* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map. For example, `attrs`.
+* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map. For example, `attrs`.
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort. For example, `id`.
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message publishing time as the timestamp. For example, `timestamp`.
+* **publishTimeField**: Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added. For example, `publish_time`.
 * **outputFormat**: The output message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`. Defaults to: JSON.
 * **outputSchema**: Schema specification for the output format, if applicable. For example, `{"type": "object", "properties": {"field1": {"type": "string"}}}`.
 * **outputAttributes**: List of attribute keys whose values will be pulled out as Pub/Sub message attributes. For example, `["attr1", "attr2"]`.
@@ -134,6 +135,7 @@ export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export PUBLISH_TIME_FIELD=<publishTimeField>
 export OUTPUT_FORMAT=JSON
 export OUTPUT_SCHEMA=<outputSchema>
 export OUTPUT_ATTRIBUTES=<outputAttributes>
@@ -152,6 +154,7 @@ gcloud dataflow flex-template run "pubsub-subscription-to-pubsub-topic-yaml-job"
   --parameters "attributesMap=$ATTRIBUTES_MAP" \
   --parameters "idAttribute=$ID_ATTRIBUTE" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
+  --parameters "publishTimeField=$PUBLISH_TIME_FIELD" \
   --parameters "outputTopic=$OUTPUT_TOPIC" \
   --parameters "outputFormat=$OUTPUT_FORMAT" \
   --parameters "outputSchema=$OUTPUT_SCHEMA" \
@@ -187,6 +190,7 @@ export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export PUBLISH_TIME_FIELD=<publishTimeField>
 export OUTPUT_FORMAT=JSON
 export OUTPUT_SCHEMA=<outputSchema>
 export OUTPUT_ATTRIBUTES=<outputAttributes>
@@ -201,7 +205,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-pubsub-topic-yaml-job" \
 -DtemplateName="PubSub_Subscription_to_PubSub_Topic_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
 -f yaml
 ```
 
@@ -254,6 +258,7 @@ resource "google_dataflow_flex_template_job" "pubsub_subscription_to_pubsub_topi
     # attributesMap = "<attributesMap>"
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
+    # publishTimeField = "<publishTimeField>"
     # outputFormat = "JSON"
     # outputSchema = "<outputSchema>"
     # outputAttributes = "<outputAttributes>"

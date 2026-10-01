@@ -146,10 +146,10 @@ options:
         help: >
           Name of a field in which to store the full set of attributes
           associated with this message. For example, if the format is `raw` and
-          `attribute_map` is set to `attrs` then this read will produce elements
+          `attributes_map` is set to `attrs` then this read will produce elements
           of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type
           of string to string.
-          If both `attributes` and `attribute_map` are set, the overlapping
+          If both `attributes` and `attributes_map` are set, the overlapping
           attribute values will be present in both the flattened structure and the
           attribute map.
         example: "attrs"
@@ -175,6 +175,13 @@ options:
           Message value to use as element timestamp. If None, uses message
           publishing time as the timestamp.
         example: "timestamp"
+        required: false
+        type: text
+      - order: 7
+        name: "publishTimeField"
+        description: "Field to add to output messages with the Pub/Sub message publish time."
+        help: "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added."
+        example: "publish_time"
         required: false
         type: text
 
