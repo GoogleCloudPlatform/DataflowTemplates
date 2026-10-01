@@ -206,11 +206,19 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    # Pin the IT class order for live (datastream-to-spanner), bulk (sourcedb-to-spanner) and
+    # reverse (spanner-to-sourcedb). Their poms use Surefire runOrder=balanced, which reads
+    # <module>/.surefire-spanner-it; this installs it from src/test/resources/it-run-order.stats
+    # (longest test first) and adds any IT class missing from that file with the median runtime.
+    - name: Install Integration Test Run Order
+      run: |
+        for module in v2/datastream-to-spanner v2/sourcedb-to-spanner v2/spanner-to-sourcedb; do
+          python3 v2/spanner-common/src/test/resources/it-run-order/it_run_order.py install --module-dir "$module"
+        done
     # --it-integration-test-parallelism is the Surefire threadCount per template (Maven module).
-    # Spanner modules set itPerCoreThreadCount=false in their pom, so it is NOT multiplied by the
-    # runner's core count. With parallel=classesAndMethods, the 48 threads are one pool shared by
-    # class runners and test methods; each running class holds a thread while its methods run,
-    # so effectively about half (~24) ITs run concurrently per template.
+    # The live, bulk and reverse poms set perCoreThreadCount=false, so it is NOT multiplied by the
+    # runner's core count, and threadCountClasses=1/threadCountMethods=1, which splits it 1:1
+    # between class runners and test methods. So at most 48 / 2 = 24 ITs run concurrently per template.
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}

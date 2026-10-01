@@ -32,11 +32,6 @@
         Stream CDC Data from Spanner to file sink
     </description>
 
-    <properties>
-        <!-- Treat itParallelism as an absolute per-module cap instead of per-core. -->
-        <itPerCoreThreadCount>false</itPerCoreThreadCount>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>

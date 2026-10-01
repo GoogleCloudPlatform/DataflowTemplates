@@ -32,3 +32,6 @@
 
 # build log
 **/build.log*
+
+# Surefire run order statistics (generated; see it_run_order.py in v2/spanner-common)
+**/.surefire-*

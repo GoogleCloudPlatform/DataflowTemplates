@@ -28,8 +28,6 @@
     <artifactId>spanner-custom-shard</artifactId>
     <properties>
         <skipShade>true</skipShade>
-        <!-- Treat itParallelism as an absolute per-module cap instead of per-core. -->
-        <itPerCoreThreadCount>false</itPerCoreThreadCount>
     </properties>
     <dependencies>
         <dependency>

@@ -28,11 +28,6 @@
 
     <artifactId>gcs-spanner-dv</artifactId>
 
-    <properties>
-        <!-- Treat itParallelism as an absolute per-module cap instead of per-core. -->
-        <itPerCoreThreadCount>false</itPerCoreThreadCount>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
