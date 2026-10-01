@@ -21,6 +21,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +72,7 @@ public class IcebergResourceManager implements ResourceManager {
   private final String catalogName;
   private final Map<String, String> catalogProps;
   private final Map<String, String> configProps;
+  private final List<String> createdNamespaces = Collections.synchronizedList(new ArrayList<>());
 
   /**
    * Creates a new IcebergResourceManager.
@@ -125,6 +128,7 @@ public class IcebergResourceManager implements ResourceManager {
 
     try {
       ((SupportsNamespaces) catalog()).createNamespace(Namespace.of(components));
+      createdNamespaces.add(namespace);
       return true;
     } catch (AlreadyExistsException e) {
       return false;
@@ -179,6 +183,8 @@ public class IcebergResourceManager implements ResourceManager {
       catalog().listTables(ns).forEach(catalog()::dropTable);
     }
 
+    createdNamespaces.remove(namespace);
+
     // Drop the namespace
     return ((SupportsNamespaces) catalog()).dropNamespace(Namespace.of(components));
   }
@@ -213,7 +219,7 @@ public class IcebergResourceManager implements ResourceManager {
       return catalog().loadTable(icebergIdentifier);
     } catch (NoSuchTableException e) {
       throw new IcebergResourceManagerException(
-          "No Such Table found with name" + tableIdentifier + "'.", e);
+          "No Such Table found with name '" + tableIdentifier + "'.", e);
     }
   }
 
@@ -286,10 +292,14 @@ public class IcebergResourceManager implements ResourceManager {
    */
   @Override
   public synchronized void cleanupAll() throws IcebergResourceManagerException {
-    Set<String> namespaces = listNamespaces();
-    for (String namespace : namespaces) {
+    List<String> namespacesToClean;
+    synchronized (createdNamespaces) {
+      namespacesToClean = List.copyOf(createdNamespaces);
+    }
+    for (String namespace : namespacesToClean) {
       dropNamespace(namespace, true);
     }
+    createdNamespaces.clear();
     LOG.info("Cleaned up all resources for test ID: {}.", testId);
   }
 

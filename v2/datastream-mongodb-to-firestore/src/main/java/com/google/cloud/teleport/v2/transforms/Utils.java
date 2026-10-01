@@ -60,6 +60,9 @@ public final class Utils {
           "Document parsing for {} failed due to {}, try casting.", jsonString, ex.getMessage());
       rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
     }
+    if (rawDoc == null) {
+      return null;
+    }
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }

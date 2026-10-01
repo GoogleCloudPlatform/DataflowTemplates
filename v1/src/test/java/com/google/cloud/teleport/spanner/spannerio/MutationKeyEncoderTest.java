@@ -906,6 +906,7 @@ public class MutationKeyEncoderTest {
 
   @Test
   public void unknownTableOrdering() throws Exception {
+    MutationKeyEncoder.clearUnknownTablesWarningsMap();
     SpannerSchema.Builder builder = SpannerSchema.builder();
 
     builder.addColumn("test1", "key", "INT64");

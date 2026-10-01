@@ -46,7 +46,7 @@ class MainTest(unittest.TestCase):
       with open(temp_path, 'r') as f:
         content = f.read().splitlines()
 
-      self.assertEqual(content, ['boto3', 'botocore'])
+      self.assertEqual(content, main.DEFAULT_DEPENDENCIES)
 
       # Clean up the temp file
       os.remove(temp_path)

@@ -8,10 +8,13 @@ Currently, this template works for tables of any size on the follow sources
   including unsigned) and Binary/VarBinary primary keys.
 * MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
   Binary/VarBinary primary keys.
-* PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
-  BigInteger including unsigned) primary keys.
+* PostgreSQL 13+ - String (`VARCHAR` and `TEXT` only, upto 3 byte characters; `CHAR` is not supported), Integer like (up to
+  BigInteger including unsigned), Float, Double, Numeric/Decimal, Date, Time,
+  Timetz, Timestamp, Timestamptz, Bit, and UUID primary keys.
 
 Tables without primary keys or primary keys not mentioned above are not supported.
+
+For detailed information regarding PostgreSQL-specific features and limitations, please refer to the [PostgreSQL Supported Features and Limitations](#postgresql-supported-features-and-limitations) section.
 
 ## Getting Started
 
@@ -62,13 +65,17 @@ mvn test
 ### Executing Template
 
 #### Required Parameters
-* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf). Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
-* **username** (username of the source database): The username which can be used to connect to the source database.
-* **password** (username of the source database): The username which can be used to connect to the source database.
+* **sourceConfigURL** (Source connection config file URL): The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). You can optionally specify a `"connectionProperties"` string in the JDBC config to configure the JDBC connection (e.g. `useSSL=true&requireSSL=true`), where keys and values can be URL-encoded if they contain special characters. For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required. Refer to src/main/scripts/create_simple_shard_config.bash for steps to generate a shard configuration.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **outputDirectory** (GCS path of the output directory): The GCS path of the directory where all errors and skipped events are dumped to be used during migrations
+
+**Referencing SSL Certificates**:
+To connect to a JDBC source using a custom SSL certificate (e.g. a truststore), you must first make the certificate file available to the Dataflow workers:
+1. Upload your certificate file (e.g., `truststore.jks`) to a Google Cloud Storage bucket.
+2. When launching the Dataflow template, provide the GCS path to the `--extraFilesToStage` parameter (e.g. `--extraFilesToStage="gs://<BUCKET_NAME>/truststore.jks"`). The file will be downloaded to the `/extra_files` directory on each worker.
+3. In your shards JSON configuration, set the `"connectionProperties"` to reference this local file path. For example, for MySQL you would specify the `trustCertificateKeyStoreUrl` and password: `"connectionProperties": "useSSL=true&requireSSL=true&trustCertificateKeyStoreUrl=file:/extra_files/truststore.jks&trustCertificateKeyStorePassword=my_password"`
 
 #### Optional Parameters
 * **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
@@ -86,7 +93,7 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters sourceConfigURL="jdbc:mysql://<source_ip>:3306/<mysql_db_name>",username=<mysql user>,password=<mysql pass>,instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
+        --parameters sourceConfigURL="gs://<bucket-name>/source-config.json",instanceId="<spanner instanceid>",databaseId="<spanner_database_id>",projectId="$PROJECT",outputDirectory=gs://<gcs-dir> \
         --additional-experiments=disable_runner_v2
 ```
 #### Replaying DLQ entries.
@@ -147,3 +154,57 @@ However, because the continuous reader watches the `retry/` directory indefinite
     * All shards have same dialect (mixed dialect migration will cause pipeline failure during initialization)
     * For tables with string primary key, all shards have the same weights for a given collation (the collection weight detection
       is queried on available shards for efficient parallel discovery).
+
+#### PostgreSQL Supported Features and Limitations
+* **Table Inheritance:** When migrating databases utilizing table inheritance, the pipeline queries parent tables using the `ONLY` keyword. This ensures data is not duplicated from child tables into the parent table in Spanner. Instead, child tables are discovered and migrated as their own separate, independent tables in Spanner.
+* **Declarative Partitioning:** Fully supported. When migrating partitioned tables, provision only the parent table in your target Spanner schema. The pipeline will automatically read records from all underlying source partitions and seamlessly consolidate them into the single parent table in Spanner. **Do not provision the individual child partitions in Spanner, as doing so will cause the pipeline to migrate them separately and result in data duplication.**
+* **Custom Namespaces:** Custom namespaces (schemas other than the default schema i.e. `public`) are not supported.
+* **Supported Data Types:**
+  * **`SMALLINT` / `SMALLSERIAL`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `FLOAT32`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `REAL`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`INTEGER` / `SERIAL` / `OID`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`BIGINT` / `BIGSERIAL`:**
+    * *Spanner GoogleSQL:* `INT64`, `NUMERIC`, `STRING`
+    * *Spanner PostgreSQL:* `BIGINT`, `NUMERIC`, `VARCHAR` / `TEXT`
+  * **`REAL` (`FLOAT4`):**
+    * *Spanner GoogleSQL:* `FLOAT32`, `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `REAL`, `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`DOUBLE PRECISION` (`FLOAT8`):**
+    * *Spanner GoogleSQL:* `FLOAT64`, `STRING`
+    * *Spanner PostgreSQL:* `DOUBLE PRECISION`, `VARCHAR` / `TEXT`
+  * **`DECIMAL` / `NUMERIC`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`MONEY`:**
+    * *Spanner GoogleSQL:* `NUMERIC`, `STRING`
+    * *Spanner PostgreSQL:* `NUMERIC`, `VARCHAR` / `TEXT`
+  * **`CHAR`, `VARCHAR`, `TEXT`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`DATE`:**
+    * *Spanner GoogleSQL:* `DATE`, `STRING`
+    * *Spanner PostgreSQL:* `DATE`, `VARCHAR` / `TEXT`
+  * **`TIMESTAMP` , `TIMESTAMPTZ`:**
+    * *Spanner GoogleSQL:* `TIMESTAMP`, `STRING`
+    * *Spanner PostgreSQL:* `TIMESTAMPTZ`, `VARCHAR` / `TEXT`
+  * **`TIME`, `TIMETZ`, `INTERVAL`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`BOOL` / `BOOLEAN`:**
+    * *Spanner GoogleSQL:* `BOOL`, `STRING`
+    * *Spanner PostgreSQL:* `BOOLEAN`, `VARCHAR` / `TEXT`
+  * **`BYTEA`, `BIT`, `VARBIT`:**
+    * *Spanner GoogleSQL:* `BYTES`
+    * *Spanner PostgreSQL:* `BYTEA`
+  * **`UUID`:**
+    * *Spanner GoogleSQL:* `UUID`, `STRING`
+    * *Spanner PostgreSQL:* `UUID`, `VARCHAR` / `TEXT`
+  * **`CIDR`, `INET`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`
+  * **`JSON` / `JSONB`:**
+    * *Spanner GoogleSQL:* `JSON`, `STRING`
+    * *Spanner PostgreSQL:* `JSONB`, `VARCHAR` / `TEXT`

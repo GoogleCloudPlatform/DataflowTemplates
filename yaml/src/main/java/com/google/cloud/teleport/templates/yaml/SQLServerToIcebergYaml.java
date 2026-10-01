@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.Validation;
     name = "SQLServer_To_Iceberg_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "SQLServer to Iceberg (YAML)",
+    displayName = "SQL Server to Iceberg (YAML)",
     description =
         "The SQLServer to Iceberg template is a batch pipeline executes the user provided SQL query to read data from SQLServer table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",

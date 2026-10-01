@@ -185,7 +185,7 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
-                + "t.index_type, t.spanner_type "
+                + "t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -195,7 +195,7 @@ public class InformationSchemaScannerTest {
         postgresSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
-                + "t.index_type, t.spanner_type "
+                + "t.index_type, t.spanner_type, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "

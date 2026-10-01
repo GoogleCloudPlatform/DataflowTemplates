@@ -269,7 +269,15 @@ public class AvroToValueMapperTest {
             + "}";
     Value valueJson =
         getGsqlMap().get(Type.json()).apply(fruitJson, SchemaBuilder.builder().stringType());
-    assertEquals("Test json input", Value.string(fruitJson), valueJson);
+    assertEquals("Test json input", Value.json(fruitJson), valueJson);
+
+    Value valuePgJsonb =
+        getPgMap().get(Type.pgJsonb()).apply(fruitJson, SchemaBuilder.builder().stringType());
+    assertEquals("Test pgJsonb input", Value.pgJsonb(fruitJson), valuePgJsonb);
+
+    Value valuePgText =
+        getPgMap().get(Type.pgText()).apply("Hello Text", SchemaBuilder.builder().stringType());
+    assertEquals("Test pgText input", Value.string("Hello Text"), valuePgText);
 
     result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
     assertEquals("", result);
@@ -561,6 +569,7 @@ public class AvroToValueMapperTest {
     assertThat(
             AvroToValueMapper.getGsqlMap().keySet().stream()
                 .filter(t -> !t.getCode().equals(Code.ARRAY))
+                .filter(t -> !t.getCode().equals(Code.UUID))
                 .map(t -> t.toString())
                 .sorted()
                 .collect(Collectors.toList()))
@@ -876,5 +885,63 @@ public class AvroToValueMapperTest {
         () ->
             avroArrayFieldToSpannerArray(
                 genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToLong));
+  }
+
+  @Test
+  public void testAvroValueToPgFloat4() {
+    Schema schema = SchemaBuilder.builder().floatType();
+
+    // Normal floats
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(45.56f, schema))
+        .isEqualTo(Value.float32(45.56f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(3.4e38f, schema))
+        .isEqualTo(Value.float32(3.4e38f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(-3.4e38f, schema))
+        .isEqualTo(Value.float32(-3.4e38f));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(0.0f, schema)).isEqualTo(Value.float32(0.0f));
+
+    // Extremes
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.MAX_VALUE, schema))
+        .isEqualTo(Value.float32(Float.MAX_VALUE));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.MIN_VALUE, schema))
+        .isEqualTo(Value.float32(Float.MIN_VALUE));
+
+    // Infinities and NaN
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.POSITIVE_INFINITY, schema))
+        .isEqualTo(Value.float32(Float.POSITIVE_INFINITY));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.NEGATIVE_INFINITY, schema))
+        .isEqualTo(Value.float32(Float.NEGATIVE_INFINITY));
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(Float.NaN, schema))
+        .isEqualTo(Value.float32(Float.NaN));
+
+    // Null
+    assertThat(getPgMap().get(Type.pgFloat4()).apply(null, schema)).isEqualTo(Value.float32(null));
+  }
+
+  @Test
+  public void testAvroFieldToLong_BooleanAndByteBuffer() {
+    Schema schema = SchemaBuilder.builder().longType();
+
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong(Boolean.TRUE, schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong(Boolean.FALSE, schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("true", schema));
+    assertEquals(Long.valueOf(1L), AvroToValueMapper.avroFieldToLong("TRUE", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("false", schema));
+    assertEquals(Long.valueOf(0L), AvroToValueMapper.avroFieldToLong("FALSE", schema));
+
+    ByteBuffer buf8 = ByteBuffer.allocate(8);
+    buf8.putLong(123456789L);
+    buf8.flip();
+    assertEquals(Long.valueOf(123456789L), AvroToValueMapper.avroFieldToLong(buf8, schema));
+
+    ByteBuffer buf4 = ByteBuffer.wrap(new byte[] {0, 0, 1, 0});
+    assertEquals(Long.valueOf(256L), AvroToValueMapper.avroFieldToLong(buf4, schema));
+  }
+
+  @Test
+  public void testAvroFieldToString_ByteBuffer() {
+    Schema schema = SchemaBuilder.builder().stringType();
+    ByteBuffer buf = ByteBuffer.wrap(new byte[] {0x01, 0x0A, (byte) 0xFF});
+    assertEquals("010aff", AvroToValueMapper.avroFieldToString(buf, schema));
   }
 }

@@ -215,6 +215,17 @@ public class ImportPipeline {
     ValueProvider<Integer> getEarlyIndexCreateThreshold();
 
     void setEarlyIndexCreateThreshold(ValueProvider<Integer> value);
+
+    @TemplateParameter.Boolean(
+        order = 13,
+        optional = true,
+        description = "Run Index DDL in parallel",
+        helpText =
+            "If `true`, the pipeline executes index creation DDL statements in parallel. The default value is `false`.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getRunIndexDdlInParallel();
+
+    void setRunIndexDdlInParallel(ValueProvider<Boolean> value);
   }
 
   public static void main(String[] args) {
@@ -251,7 +262,8 @@ public class ImportPipeline {
             options.getWaitForSequences(),
             options.getEarlyIndexCreateFlag(),
             options.getDdlCreationTimeoutInMinutes(),
-            options.getEarlyIndexCreateThreshold()));
+            options.getEarlyIndexCreateThreshold(),
+            options.getRunIndexDdlInParallel()));
 
     PipelineResult result = p.run();
 

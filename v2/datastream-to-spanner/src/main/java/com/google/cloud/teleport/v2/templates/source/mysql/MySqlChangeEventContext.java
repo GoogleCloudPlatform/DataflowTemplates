@@ -1,0 +1,101 @@
+/*
+ * Copyright (C) 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.source.mysql;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * MySql implementation of ChangeEventContext that provides implementation of the
+ * generateShadowTableMutation method.
+ */
+class MySqlChangeEventContext extends ChangeEventContext {
+
+  public MySqlChangeEventContext(
+      JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
+    super(changeEvent, ddl, MySqlDsToSpSourceConnector.MYSQL_SORT_ORDER);
+    this.changeEvent = changeEvent;
+    this.shadowTablePrefix = shadowTablePrefix;
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    this.shadowTable = shadowTablePrefix + this.dataTable;
+
+    Table dataTable = ddl.table(this.dataTable);
+    Set<String> primaryKeyColNames =
+        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
+    convertChangeEventToMutation(ddl, shadowTableDdl);
+  }
+
+  /*
+   * Creates shadow table mutation for MySql.
+   */
+  @Override
+  protected Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+      throws ChangeEventConvertorException {
+    // Get shadow information from change event mutation context
+    Mutation.WriteBuilder builder =
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
+            shadowDdl, changeEvent, shadowTablePrefix);
+
+    // Add timestamp information to shadow table mutation
+    Long changeEventTimestamp =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
+    builder
+        .set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY))
+        .to(Value.int64(changeEventTimestamp));
+
+    /* MySql backfill events "can" have log file and log file position as null.
+     * Set their value to a value (lexicographically) smaller than any real value.
+     */
+    String logFile =
+        ChangeEventTypeConvertor.toString(
+            changeEvent, MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, /* requiredField= */ false);
+    if (logFile == null) {
+      logFile = "";
+    }
+    // Add log file information to shadow table mutation
+    builder.set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY)).to(logFile);
+
+    Long logPosition =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent,
+            MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY,
+            /* requiredField= */ false);
+    if (logPosition == null) {
+      logPosition = new Long(-1);
+    }
+    // Add logfile position information to shadow table mutation
+    builder
+        .set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY))
+        .to(Value.int64(logPosition));
+
+    return builder.build();
+  }
+}

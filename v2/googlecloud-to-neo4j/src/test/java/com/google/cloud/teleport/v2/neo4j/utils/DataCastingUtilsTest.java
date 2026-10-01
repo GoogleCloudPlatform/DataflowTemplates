@@ -52,6 +52,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -63,6 +64,7 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
 import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeTarget;
@@ -475,7 +477,7 @@ public class DataCastingUtilsTest {
                 mapping("hireDate", PropertyType.LOCAL_DATETIME)),
             null);
 
-    Map<String, Object> stringObjectMap = rowToNeo4jDataMap(row, target);
+    Map<String, Object> stringObjectMap = rowToNeo4jDataMap(row);
     assertThat(stringObjectMap)
         .containsExactly(
             "id",
@@ -522,7 +524,7 @@ public class DataCastingUtilsTest {
             .withFieldValue("duration", "PT23H59M59S")
             .withFieldValue("bytes", "SGVsbG8gV29ybGQ=")
             .build();
-    Target target =
+    var target =
         new NodeTarget(
             true,
             "neo4j-target",
@@ -547,7 +549,7 @@ public class DataCastingUtilsTest {
             null);
 
     List<Object> convertedList =
-        DataCastingUtils.sourceTextToTargetObjects(row, target, null, null);
+        DataCastingUtils.sourceTextToTargetObjects(row, new NodeTargetStep(target, Set.of()));
 
     assertThat(convertedList)
         .comparingElementsUsing(Correspondence.from(Objects::deepEquals, "deep equals"))
@@ -584,7 +586,7 @@ public class DataCastingUtilsTest {
             List.of(mapping),
             null);
 
-    var dataMap = rowToNeo4jDataMap(row, target);
+    var dataMap = rowToNeo4jDataMap(row);
 
     assertThat(dataMap).isEqualTo(Map.of("Station", "placeholder-station"));
   }
@@ -608,7 +610,7 @@ public class DataCastingUtilsTest {
             List.of(new PropertyMapping("STATION", "STATION", PropertyType.STRING)),
             null);
 
-    var dataMap = rowToNeo4jDataMap(row, target);
+    var dataMap = rowToNeo4jDataMap(row);
 
     assertThat(dataMap).isEqualTo(Map.of("STATION", "placeholder-station"));
   }

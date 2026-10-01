@@ -70,6 +70,7 @@ public final class SchemaUtils {
   private static final String SPANNER_TYPE_DATE = "DATE";
   private static final String SPANNER_TYPE_NUMERIC = "NUMERIC";
   private static final String SPANNER_TYPE_JSON = "JSON";
+  private static final String SPANNER_TYPE_UUID = "UUID";
 
   // Defines constants for PG dialect Spanner data types found in the session
   // file.
@@ -84,6 +85,7 @@ public final class SchemaUtils {
   private static final String SPANNER_TYPE_PG_DATE = "PG_DATE";
   private static final String SPANNER_TYPE_PG_NUMERIC = "PG_NUMERIC";
   private static final String SPANNER_TYPE_PG_JSONB = "PG_JSONB";
+  private static final String SPANNER_TYPE_PG_UUID = "PG_UUID";
 
   /**
    * Builds a Spanner {@link Ddl} object from a HarbourBridge session file.
@@ -147,6 +149,13 @@ public final class SchemaUtils {
             case SPANNER_TYPE_JSON:
               tableBuilder.column(colName).json().endColumn();
               break;
+            case SPANNER_TYPE_UUID:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.array(Type.uuid())).endColumn();
+              } else {
+                tableBuilder.column(colName).uuid().endColumn();
+              }
+              break;
             case SPANNER_TYPE_PG_VARCHAR:
               if (Boolean.TRUE.equals(isArray)) {
                 tableBuilder.column(colName).type(Type.pgArray(Type.pgVarchar())).endColumn();
@@ -187,6 +196,13 @@ public final class SchemaUtils {
               break;
             case SPANNER_TYPE_PG_JSONB:
               tableBuilder.column(colName).pgJsonb().endColumn();
+              break;
+            case SPANNER_TYPE_PG_UUID:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgUuid())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgUuid().endColumn();
+              }
               break;
             default:
               throw new IllegalArgumentException(

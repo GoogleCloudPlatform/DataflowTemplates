@@ -15,7 +15,7 @@ migration_prefix = "<MIGRATION_PREFIX>"
 local_schema_file_path = "./schema.sql"
 
 # Cloud SQL Database Setup
-database_provider     = "MYSQL"
+database_provider = "MYSQL"
 # database_version      = "8_0"
 physical_shards_count = 1
 logical_shards_count  = 2

@@ -28,6 +28,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **schemaConfig**: GCS Path to a file containing JSON overrides for data generation. For example, `gs://your-bucket/path/to/schema_config.json`.
 * **dlqDirectory**: The GCS directory to write dead-letter queue records to. For example, `gs://your-bucket/dlq`.
 * **maxParallelism**: The maximum parallelism (shards) for key-based redistribution. If not specified, default values are resolved based on the sink type.
+* **customJarPath**: GCS path to a custom JAR file containing the custom data generator implementation. For example, `gs://your-bucket/path/to/custom.jar`.
+* **customClassName**: The fully qualified class name of the custom data generator implementation. This is required if customJarPath is provided. For example, `com.mycompany.MyCustomGenerator`.
 * **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
 * **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
@@ -136,6 +138,8 @@ export DELETE_INTERVAL=5
 export SCHEMA_CONFIG=<schemaConfig>
 export DLQ_DIRECTORY=<dlqDirectory>
 export MAX_PARALLELISM=<maxParallelism>
+export CUSTOM_JAR_PATH=<customJarPath>
+export CUSTOM_CLASS_NAME=<customClassName>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -155,6 +159,8 @@ gcloud dataflow flex-template run "cdc-data-generator-job" \
   --parameters "schemaConfig=$SCHEMA_CONFIG" \
   --parameters "dlqDirectory=$DLQ_DIRECTORY" \
   --parameters "maxParallelism=$MAX_PARALLELISM" \
+  --parameters "customJarPath=$CUSTOM_JAR_PATH" \
+  --parameters "customClassName=$CUSTOM_CLASS_NAME" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -189,6 +195,8 @@ export DELETE_INTERVAL=5
 export SCHEMA_CONFIG=<schemaConfig>
 export DLQ_DIRECTORY=<dlqDirectory>
 export MAX_PARALLELISM=<maxParallelism>
+export CUSTOM_JAR_PATH=<customJarPath>
+export CUSTOM_CLASS_NAME=<customClassName>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -199,7 +207,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cdc-data-generator-job" \
 -DtemplateName="Cdc_Data_Generator" \
--Dparameters="sinkType=$SINK_TYPE,sinkOptions=$SINK_OPTIONS,batchSize=$BATCH_SIZE,insertQps=$INSERT_QPS,updateQps=$UPDATE_QPS,deleteQps=$DELETE_QPS,jdbcPoolSize=$JDBC_POOL_SIZE,updateInterval=$UPDATE_INTERVAL,deleteInterval=$DELETE_INTERVAL,schemaConfig=$SCHEMA_CONFIG,dlqDirectory=$DLQ_DIRECTORY,maxParallelism=$MAX_PARALLELISM,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sinkType=$SINK_TYPE,sinkOptions=$SINK_OPTIONS,batchSize=$BATCH_SIZE,insertQps=$INSERT_QPS,updateQps=$UPDATE_QPS,deleteQps=$DELETE_QPS,jdbcPoolSize=$JDBC_POOL_SIZE,updateInterval=$UPDATE_INTERVAL,deleteInterval=$DELETE_INTERVAL,schemaConfig=$SCHEMA_CONFIG,dlqDirectory=$DLQ_DIRECTORY,maxParallelism=$MAX_PARALLELISM,customJarPath=$CUSTOM_JAR_PATH,customClassName=$CUSTOM_CLASS_NAME,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/cdc-data-generator
 ```
 
@@ -256,6 +264,8 @@ resource "google_dataflow_flex_template_job" "cdc_data_generator" {
     # schemaConfig = "<schemaConfig>"
     # dlqDirectory = "<dlqDirectory>"
     # maxParallelism = "<maxParallelism>"
+    # customJarPath = "<customJarPath>"
+    # customClassName = "<customClassName>"
     # disabledAlgorithms = "<disabledAlgorithms>"
     # extraFilesToStage = "<extraFilesToStage>"
   }

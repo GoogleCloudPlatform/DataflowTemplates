@@ -270,7 +270,7 @@ public abstract class SpannerConfig implements Serializable {
 
   /** Specifies the service factory to create instance of Spanner. */
   @VisibleForTesting
-  SpannerConfig withServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
+  public SpannerConfig withServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
     return toBuilder().setServiceFactory(serviceFactory).build();
   }
 

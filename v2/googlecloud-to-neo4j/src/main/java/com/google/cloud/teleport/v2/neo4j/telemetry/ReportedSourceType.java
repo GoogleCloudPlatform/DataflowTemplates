@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.telemetry;
 
 import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
-import org.neo4j.importer.v1.sources.Source;
+import org.neo4j.importer.v1.pipeline.SourceStep;
 
 public enum ReportedSourceType {
   BIGQUERY {
@@ -39,8 +39,9 @@ public enum ReportedSourceType {
     }
   };
 
-  public static ReportedSourceType reportedSourceTypeOf(Source source) {
-    String sourceType = source.getType();
+  public static ReportedSourceType reportedSourceTypeOf(SourceStep step) {
+    var source = step.source();
+    var sourceType = source.getType();
     switch (sourceType) {
       case "bigquery":
         return ReportedSourceType.BIGQUERY;

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import static com.google.cloud.teleport.v2.neo4j.database.CypherPatterns.sanitize;
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getPropertyMappings;
 import static java.util.stream.Collectors.toMap;
 
 import java.util.LinkedHashSet;
@@ -24,13 +25,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.neo4j.importer.v1.ImportSpecification;
-import org.neo4j.importer.v1.targets.EntityTarget;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
+import org.neo4j.importer.v1.pipeline.RelationshipTargetStep;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
 import org.neo4j.importer.v1.targets.RelationshipSchema;
-import org.neo4j.importer.v1.targets.RelationshipTarget;
 
 /** Generates cypher based on model metadata. */
 public class CypherGenerator {
@@ -41,23 +43,19 @@ public class CypherGenerator {
    * getImportStatement generates the batch import statement of the specified node or relationship
    * target.
    *
-   * @param importSpecification the whole import specification
-   * @param target the node or relationship target
+   * @param step the node or relationship target
    * @return the batch import query
    */
-  public static String getImportStatement(
-      ImportSpecification importSpecification,
-      EntityTarget target,
-      Neo4jCapabilities capabilities) {
-    var type = target.getTargetType();
-    var generatedCypher =
-        switch (type) {
-          case NODE -> unwindNodes((NodeTarget) target);
-          case RELATIONSHIP -> unwindRelationships(
-              importSpecification, (RelationshipTarget) target);
-          default -> throw new IllegalArgumentException(
-              String.format("unexpected target type: %s", type));
-        };
+  public static String getImportStatement(EntityTargetStep step, Neo4jCapabilities capabilities) {
+    String generatedCypher;
+    if (step instanceof NodeTargetStep nodeTargetStep) {
+      generatedCypher = unwindNodes(nodeTargetStep);
+    } else if (step instanceof RelationshipTargetStep relationshipTargetStep) {
+      generatedCypher = unwindRelationships(relationshipTargetStep);
+    } else {
+      throw new IllegalArgumentException(
+          String.format("unexpected target type: %s", step.getClass().getName()));
+    }
 
     if (capabilities.hasCypherVersionStatement()) {
       return "CYPHER 5 " + generatedCypher;
@@ -73,27 +71,26 @@ public class CypherGenerator {
    * @return a collection of Cypher schema statements
    */
   public static Set<String> getSchemaStatements(
-      EntityTarget target, Neo4jCapabilities capabilities) {
-    var type = target.getTargetType();
-    var generatedCyphers =
-        switch (type) {
-          case NODE -> getNodeSchemaStatements((NodeTarget) target, capabilities);
-          case RELATIONSHIP -> getRelationshipSchemaStatements(
-              (RelationshipTarget) target, capabilities);
-          default -> throw new IllegalArgumentException(
-              String.format("unexpected target type: %s", type));
-        };
-
+      EntityTargetStep step, Neo4jCapabilities capabilities) {
+    Set<String> statements;
+    if (step instanceof NodeTargetStep nodeStep) {
+      statements = getNodeSchemaStatements(nodeStep, capabilities);
+    } else if (step instanceof RelationshipTargetStep relationshipStep) {
+      statements = getRelationshipSchemaStatements(relationshipStep, capabilities);
+    } else {
+      throw new IllegalArgumentException(
+          String.format("unexpected target type: %s", step.getClass().getName()));
+    }
     if (capabilities.hasCypherVersionStatement()) {
-      generatedCyphers =
-          generatedCyphers.stream().map(cypher -> "CYPHER 5 " + cypher).collect(Collectors.toSet());
+      statements =
+          statements.stream().map(cypher -> "CYPHER 5 " + cypher).collect(Collectors.toSet());
     }
 
-    return generatedCyphers;
+    return statements;
   }
 
-  private static String unwindNodes(NodeTarget nodeTarget) {
-    String cypherLabels = CypherPatterns.labels(nodeTarget.getLabels());
+  private static String unwindNodes(NodeTargetStep nodeTarget) {
+    String cypherLabels = CypherPatterns.labels(nodeTarget.labels());
     CypherPatterns patterns = CypherPatterns.parsePatterns(nodeTarget, "n", ROW_VARIABLE_NAME);
 
     return "UNWIND $"
@@ -101,7 +98,7 @@ public class CypherGenerator {
         + " AS "
         + ROW_VARIABLE_NAME
         + " "
-        + nodeTarget.getWriteMode().name()
+        + nodeTarget.writeMode().name()
         + " (n"
         + cypherLabels
         + " {"
@@ -110,28 +107,18 @@ public class CypherGenerator {
         + patterns.nonKeysSetClause();
   }
 
-  private static String unwindRelationships(
-      ImportSpecification importSpecification, RelationshipTarget relationship) {
-    String nodeClause = relationship.getNodeMatchMode().name();
-    var startNodeReference = relationship.getStartNodeReference();
-    NodeTarget startNode =
-        resolveRelationshipNode(importSpecification, startNodeReference.getName());
-    String startNodeKeys =
-        CypherPatterns.parseRelationshipNodePatterns(
-                startNode, startNodeReference, "start", ROW_VARIABLE_NAME)
-            .keysPattern();
-    var endNodeReference = relationship.getEndNodeReference();
-    NodeTarget endNode = resolveRelationshipNode(importSpecification, endNodeReference.getName());
-    String endNodeKeys =
-        CypherPatterns.parseRelationshipNodePatterns(
-                endNode, endNodeReference, "end", ROW_VARIABLE_NAME)
-            .keysPattern();
-    String relationshipClause = relationship.getWriteMode().name();
-    CypherPatterns relationshipPatterns =
-        CypherPatterns.parsePatterns(relationship, "r", ROW_VARIABLE_NAME);
+  private static String unwindRelationships(RelationshipTargetStep relationship) {
+    var nodeClause = relationship.nodeMatchMode().name();
+    var startNode = relationship.startNode();
+    var startNodeKeys =
+        CypherPatterns.parsePatterns(startNode, "start", ROW_VARIABLE_NAME).keysPattern();
+    var endNode = relationship.endNode();
+    var endNodeKeys = CypherPatterns.parsePatterns(endNode, "end", ROW_VARIABLE_NAME).keysPattern();
+    var relationshipClause = relationship.writeMode().name();
+    var relationshipPatterns = CypherPatterns.parsePatterns(relationship, "r", ROW_VARIABLE_NAME);
 
-    String relationshipKeysPattern = relationshipPatterns.keysPattern();
-    String relationshipNonKeysClause = relationshipPatterns.nonKeysSetClause();
+    var relationshipKeysPattern = relationshipPatterns.keysPattern();
+    var relationshipNonKeysClause = relationshipPatterns.nonKeysSetClause();
     return "UNWIND $"
         + ROWS_VARIABLE_NAME
         + " AS "
@@ -139,31 +126,31 @@ public class CypherGenerator {
         + " "
         + nodeClause
         + " (start"
-        + CypherPatterns.labels(startNode.getLabels())
+        + CypherPatterns.labels(startNode.labels())
         + (startNodeKeys.isEmpty() ? "" : " {" + startNodeKeys + "}")
         + ")"
         + " "
         + nodeClause
         + " (end"
-        + CypherPatterns.labels(endNode.getLabels())
+        + CypherPatterns.labels(endNode.labels())
         + (endNodeKeys.isEmpty() ? "" : " {" + endNodeKeys + "}")
         + ")"
         + " "
         + relationshipClause
         + " (start)-[r:"
-        + sanitize(relationship.getType())
+        + sanitize(relationship.type())
         + (relationshipKeysPattern.isEmpty() ? "" : " {" + relationshipKeysPattern + "}")
         + "]->(end)"
         + (relationshipNonKeysClause.isEmpty() ? "" : " " + relationshipNonKeysClause);
   }
 
   private static Set<String> getNodeSchemaStatements(
-      NodeTarget target, Neo4jCapabilities capabilities) {
-    NodeSchema schema = target.getSchema();
+      NodeTargetStep target, Neo4jCapabilities capabilities) {
+    NodeSchema schema = target.schema();
     Set<String> statements = new LinkedHashSet<>();
 
     if (capabilities.hasNodeTypeConstraints()) {
-      Map<String, PropertyType> types = indexPropertyTypes(target.getProperties());
+      Map<String, PropertyType> types = indexPropertyTypes(getPropertyMappings(target));
       for (var constraint : schema.getTypeConstraints()) {
         String property = constraint.getProperty();
         statements.add(
@@ -289,16 +276,16 @@ public class CypherGenerator {
   }
 
   private static Set<String> getRelationshipSchemaStatements(
-      RelationshipTarget target, Neo4jCapabilities capabilities) {
-    RelationshipSchema schema = target.getSchema();
+      RelationshipTargetStep step, Neo4jCapabilities capabilities) {
+    RelationshipSchema schema = step.schema();
     if (schema == null) {
       return Set.of();
     }
     Set<String> statements = new LinkedHashSet<>();
-    String escapedType = sanitize(target.getType());
+    String escapedType = sanitize(step.type());
 
     if (capabilities.hasRelationshipTypeConstraints()) {
-      Map<String, PropertyType> types = indexPropertyTypes(target.getProperties());
+      Map<String, PropertyType> types = indexPropertyTypes(getPropertyMappings(step));
       for (var constraint : schema.getTypeConstraints()) {
         String property = constraint.getProperty();
         statements.add(

@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.mapper;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
@@ -90,6 +92,66 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertNull(record.getShardId());
+  }
+
+  @Test
+  public void testMapFromSpannerStruct_WithGeneratedColumn() throws Exception {
+    String tableName = "public.Users";
+    String cleanTableName = "Users";
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to("Alice")
+            .set("gen_name")
+            .to("Alice_gen")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
+            .to(tableName)
+            .build();
+
+    Table mockTable = mock(Table.class);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
+
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "id")).thenReturn(false);
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "name")).thenReturn(false);
+    when(mockSchemaMapper.isGeneratedColumn("", tableName, "gen_name")).thenReturn(true);
+
+    // Mock primary keys
+    IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
+    when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
+
+    ComparisonRecord record = mapper.mapFrom(struct);
+
+    assertNotNull(record);
+    assertEquals(cleanTableName, record.getTableName());
+    assertEquals("public", record.getSchemaName());
+    assertEquals(1, record.getPrimaryKeyColumns().size());
+    assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    assertNull(record.getShardId());
+
+    // Verify that the filtering logic did execute and checked if gen_name is a generated column
+    verify(mockSchemaMapper).isGeneratedColumn("", tableName, "gen_name");
+
+    // To verify that 'gen_name' was indeed excluded from 'values',
+    // we can assert that its hash is exactly the same as a struct that never had it.
+    Struct structWithoutGenName =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to("Alice")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
+            .to(tableName)
+            .build();
+
+    ComparisonRecord recordWithoutGenName = mapper.mapFrom(structWithoutGenName);
+    assertEquals(
+        "Hash should exactly match the struct without 'gen_name', proving it was omitted from 'values'",
+        recordWithoutGenName.getHash(),
+        record.getHash());
   }
 
   @Test
@@ -150,6 +212,7 @@ public class ComparisonRecordMapperBasicTest {
     assertNotNull(record);
     assertEquals(cleanTableName, record.getTableName());
     assertEquals("public", record.getSchemaName());
+    assertEquals("shard1", record.getShardId());
     assertNotNull(record.getHash());
   }
 

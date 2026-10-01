@@ -101,7 +101,7 @@ public abstract class ChangeEventContext {
   }
 
   // Abstract method to generate shadow table mutation.
-  abstract Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+  protected abstract Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
       throws ChangeEventConvertorException;
 
   // Helper method to convert change event to mutation.

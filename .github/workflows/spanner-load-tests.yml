@@ -26,8 +26,13 @@ on:
         description: 'Specific Load Test (passed to -Dtest=)'
         required: false
         type: string
+      spec_path:
+        description: 'Custom template spec GCS path (passed to -DspecPath=)'
+        required: false
+        type: string
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
   load_tests:
@@ -37,9 +42,10 @@ jobs:
     runs-on: [ self-hosted, perf ]
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
+        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -47,6 +53,9 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Tests
+      env:
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        SPEC_PATH: ${{ github.event.inputs.spec_path }}
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
@@ -57,7 +66,8 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-        --test="${{ github.event.inputs.specific_test }}"
+        --lt-spec-path="$SPEC_PATH" \
+        --test="$SPECIFIC_TEST"
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
@@ -90,9 +100,10 @@ jobs:
     runs-on: [ self-hosted, perf ]
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
+        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -100,6 +111,8 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Test Observers
+      env:
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
         ./cicd/run-load-test-observer \
         --modules-to-build="lt/observability" \
@@ -109,7 +122,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-        --test="${{ github.event.inputs.specific_test }}"
+        --test="$SPECIFIC_TEST"
     - name: Upload Load Test Observer Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails

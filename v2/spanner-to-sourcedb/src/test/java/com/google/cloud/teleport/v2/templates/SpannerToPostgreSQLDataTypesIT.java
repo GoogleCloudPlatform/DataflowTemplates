@@ -248,6 +248,9 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
             Value.json("{\"key\": \"value1\"}"),
             Value.json("{\"key\": \"value2\"}"),
             Value.json(null)));
+    spannerRowData.put(
+        "uuid_table",
+        List.of(Value.string("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"), Value.string(null)));
     return spannerRowData;
   }
 
@@ -270,6 +273,8 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
     expectedData.put(
         "json_table",
         createRows("json_table", "{\"key\": \"value1\"}", "{\"key\": \"value2\"}", null));
+    expectedData.put(
+        "uuid_table", createRows("uuid_table", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", null));
     return expectedData;
   }
 

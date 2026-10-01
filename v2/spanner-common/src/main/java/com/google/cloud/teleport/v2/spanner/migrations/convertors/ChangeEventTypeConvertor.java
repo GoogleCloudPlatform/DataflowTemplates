@@ -31,6 +31,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -71,6 +72,8 @@ public class ChangeEventTypeConvertor {
       case STRING:
       case PG_VARCHAR:
       case PG_TEXT:
+      case UUID:
+      case PG_UUID:
         return Value.string(toString(changeEvent, key, requiredField));
       case NUMERIC:
       case PG_NUMERIC:
@@ -213,12 +216,28 @@ public class ChangeEventTypeConvertor {
         return ByteArray.copyFrom(bigIntValue.toByteArray());
       }
 
-      // For data with Spanner type as BYTES, Datastream returns a hex encoded string. We need to
-      // decode it before returning to ensure data correctness.
+      // For all databases except PostgreSQL, for data with Spanner type as BYTES,
+      // Datastream returns a hex encoded string. We need to decode it before
+      // returning to ensure data correctness.
       String s = node.asText();
       if (s.equalsIgnoreCase("NULL")) {
         return null;
       }
+
+      // For PostgreSQL, we rely on `_metadata_source_type` here because during the Avro-to-JSON
+      // conversion (in FormatDatastreamRecordToJson), all structural Avro schema information is
+      // lost.
+      // Jackson automatically serializes Avro `bytes` fields (used natively by PostgreSQL
+      // Datastream for binary columns) into Base64 JSON strings. Since this method only
+      // receives the resulting JSON tree, it cannot check the original Avro schema type,
+      // so it checks if the source database type is PostgreSQL instead to safely decode
+      // the Base64.
+      JsonNode sourceTypeNode = changeEvent.get("_metadata_source_type");
+      if (sourceTypeNode != null && "postgresql".equalsIgnoreCase(sourceTypeNode.asText())) {
+        byte[] decodedBytes = Base64.getDecoder().decode(s);
+        return ByteArray.copyFrom(decodedBytes);
+      }
+
       // Make an odd length hex string even by appending a 0 in the beginning.
       if (s.length() % 2 == 1) {
         s = "0" + s;

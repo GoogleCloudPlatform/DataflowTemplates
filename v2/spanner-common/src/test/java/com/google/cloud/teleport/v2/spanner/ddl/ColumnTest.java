@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 public class ColumnTest {
@@ -51,6 +52,7 @@ public class ColumnTest {
     assertEquals("JSON", Column.builder().name("col").type(Type.json()).autoBuild().typeString());
     assertEquals(
         "TOKENLIST", Column.builder().name("col").type(Type.tokenlist()).autoBuild().typeString());
+    assertEquals("UUID", Column.builder().name("col").type(Type.uuid()).autoBuild().typeString());
     assertEquals(
         "ARRAY<INT64>",
         Column.builder().name("col").type(Type.array(Type.int64())).autoBuild().typeString());
@@ -152,6 +154,13 @@ public class ColumnTest {
             .autoBuild()
             .typeString());
     assertEquals(
+        "uuid",
+        Column.builder(Dialect.POSTGRESQL)
+            .name("col")
+            .type(Type.pgUuid())
+            .autoBuild()
+            .typeString());
+    assertEquals(
         "bigint[]",
         Column.builder(Dialect.POSTGRESQL)
             .name("col")
@@ -180,6 +189,7 @@ public class ColumnTest {
     assertEquals(Type.json(), Column.builder().name("col").parseType("JSON").autoBuild().type());
     assertEquals(
         Type.tokenlist(), Column.builder().name("col").parseType("TOKENLIST").autoBuild().type());
+    assertEquals(Type.uuid(), Column.builder().name("col").parseType("UUID").autoBuild().type());
     assertEquals(
         Type.array(Type.int64()),
         Column.builder().name("col").parseType("ARRAY<INT64>").autoBuild().type());
@@ -240,8 +250,23 @@ public class ColumnTest {
             .autoBuild()
             .type());
     assertEquals(
+        Type.pgUuid(),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("uuid").autoBuild().type());
+    assertEquals(
         Type.pgArray(Type.pgInt8()),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("bigint[]").autoBuild().type());
+    assertEquals(
+        Type.pgFloat4(),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("float4").autoBuild().type());
+    assertEquals(
+        Type.pgFloat8(),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("float8").autoBuild().type());
+    assertEquals(
+        Type.pgArray(Type.pgFloat4()),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("float4[]").autoBuild().type());
+    assertEquals(
+        Type.pgArray(Type.pgFloat8()),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("float8[]").autoBuild().type());
   }
 
   @Test
@@ -266,5 +291,32 @@ public class ColumnTest {
     assertEquals(
         "\"col4\"                                  bigint GENERATED ALWAYS AS (1+1) STORED",
         c4.prettyPrint());
+  }
+
+  @Test
+  public void testPrettyPrintColumnOptions() {
+    // GoogleSQL supports an inline OPTIONS clause in a column definition.
+    Column gsql =
+        Column.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("col1")
+            .type(Type.int64())
+            .notNull(true)
+            .columnOptions(ImmutableList.of("locality_group=\"default\""))
+            .autoBuild();
+    assertEquals(
+        "`col1`                                  INT64 NOT NULL OPTIONS (locality_group=\"default\")",
+        gsql.prettyPrint());
+
+    // PostgreSQL has no inline OPTIONS clause. Emitting one yields DDL the PG dialect rejects
+    // with `syntax error at or near "OPTIONS"`, so the clause must be suppressed even when the
+    // information schema reports options for the column.
+    Column pg =
+        Column.builder(Dialect.POSTGRESQL)
+            .name("col1")
+            .type(Type.pgInt8())
+            .notNull(true)
+            .columnOptions(ImmutableList.of("locality_group='default'"))
+            .autoBuild();
+    assertEquals("\"col1\"                                  bigint NOT NULL", pg.prettyPrint());
   }
 }

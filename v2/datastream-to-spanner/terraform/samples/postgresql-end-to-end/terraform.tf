@@ -2,14 +2,14 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = ">= 5.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.0" # Or the latest compatible version
+      version = ">= 3.0" # Or the latest compatible version
     }
   }
-  required_version = "~>1.2"
+  required_version = ">=1.2"
 }
 
 #Set the project

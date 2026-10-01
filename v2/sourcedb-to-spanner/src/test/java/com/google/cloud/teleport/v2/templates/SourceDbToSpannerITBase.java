@@ -18,9 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
+import com.google.gson.Gson;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,7 +32,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +43,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -44,6 +51,7 @@ import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
@@ -56,6 +64,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  * environment setup and assertConditions.
  */
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
+  protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
 
   public MySQLResourceManager setUpMySQLResourceManager() {
@@ -66,8 +75,102 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return CloudMySQLResourceManager.builder(testName).build();
   }
 
+  public org.apache.beam.it.jdbc.OracleResourceManager setUpOracleResourceManager() {
+    return org.apache.beam.it.jdbc.OracleResourceManager.builder(testName).build();
+  }
+
+  protected void loadOracleSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath) throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadOracleSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath, String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql, targetUsername);
+  }
+
+  protected void loadOracleSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql) throws Exception {
+    loadOracleSQLToJdbcResourceManager(jdbcResourceManager, sql, "SYSTEM");
+  }
+
+  protected void loadOracleSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql, String targetUsername) throws Exception {
+    LOG.info("Loading Oracle sql to jdbc resource manager in schema {}", targetUsername);
+    try (Connection connection =
+        DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      // Ensure creation of tables occurs in the isolated namespace
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+        }
+      }
+
+      // Preprocess SQL to handle multi-line statements and newlines
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+
+      // Split into individual statements based on -- SPLIT --
+      String[] statements = sql.split("-- SPLIT --");
+
+      // Execute each statement
+      try (Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isEmpty()) {
+            LOG.info("Executing Oracle statement: {}", stmt);
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
+      throw new Exception("Failed to load SQL into database", e);
+    }
+    LOG.info("Successfully loaded sql to jdbc resource manager");
+  }
+
+  protected String setupOracleIsolatedUser(JDBCResourceManager jdbcResourceManager) {
+    String testUsername =
+        "BULK_"
+            + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    LOG.info("Creating isolated Oracle user: {}", testUsername);
+    jdbcResourceManager.runSQLUpdate("CREATE USER " + testUsername + " IDENTIFIED BY password");
+    jdbcResourceManager.runSQLUpdate("GRANT ALL PRIVILEGES TO " + testUsername);
+    return testUsername;
+  }
+
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
     return PostgresResourceManager.builder(testName).build();
+  }
+
+  private static MSSQLResourceManager sharedMssqlResourceManager;
+
+  public MSSQLResourceManager setUpMSSQLResourceManager() {
+    synchronized (SourceDbToSpannerITBase.class) {
+      if (sharedMssqlResourceManager == null) {
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        sharedMssqlResourceManager = builder.build();
+      }
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testName);
+      builder.setUsername(sharedMssqlResourceManager.getUsername());
+      builder.setPassword(sharedMssqlResourceManager.getPassword());
+      builder.setHost(sharedMssqlResourceManager.getHost());
+      builder.setPort(sharedMssqlResourceManager.getPort());
+      builder.useStaticContainer();
+      return builder.build();
+    }
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
@@ -104,15 +207,39 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
   }
 
+  protected void loadSQLFileResource(
+      JDBCResourceManager jdbcResourceManager, String resourcePath, String targetUsername)
+      throws Exception {
+    String sql =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourcePath), StandardCharsets.UTF_8));
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql, targetUsername);
+  }
+
   protected void loadSQLToJdbcResourceManager(JDBCResourceManager jdbcResourceManager, String sql)
       throws Exception {
-    LOG.info("Loading sql to jdbc resource manager with uri: {}", jdbcResourceManager.getUri());
-    try {
-      Connection connection =
-          DriverManager.getConnection(
-              jdbcResourceManager.getUri(),
-              jdbcResourceManager.getUsername(),
-              jdbcResourceManager.getPassword());
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql, "SYSTEM");
+  }
+
+  protected void loadSQLToJdbcResourceManager(
+      JDBCResourceManager jdbcResourceManager, String sql, String targetUsername) throws Exception {
+    LOG.info(
+        "Loading sql to jdbc resource manager with uri: {} as user: {}",
+        jdbcResourceManager.getUri(),
+        targetUsername);
+    try (Connection connection =
+        DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      // Ensure creation of tables occurs in the isolated namespace
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)
+          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        try (Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + targetUsername);
+        }
+      }
 
       // Preprocess SQL to handle multi-line statements and newlines
       sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
@@ -121,13 +248,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       String[] statements = sql.split(";");
 
       // Execute each statement
-      Statement statement = connection.createStatement();
-      for (String stmt : statements) {
-        if (!stmt.trim().isEmpty()) {
-          // Skip SELECT statements
-          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
-            LOG.info("Executing statement: {}", stmt);
-            statement.executeUpdate(stmt);
+      try (Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isEmpty()) {
+            // Skip SELECT statements
+            if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+              LOG.info("Executing statement: {}", stmt);
+              statement.executeUpdate(stmt);
+            }
           }
         }
       }
@@ -229,17 +357,21 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("workerMachineType", "n2-standard-4");
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {
-      params.putAll(getJdbcParameters((JDBCResourceManager) sourceResourceManager));
+      params.putAll(
+          getJdbcParameters(
+              (JDBCResourceManager) sourceResourceManager, gcsPathPrefix, jobParameters));
     } else if (sourceResourceManager instanceof CassandraResourceManager) {
       params.putAll(
           getCassandraParameters((CassandraResourceManager) sourceResourceManager, gcsPathPrefix));
     }
     if (!params.containsKey("outputDirectory")) {
       params.put("outputDirectory", "gs://" + artifactBucketName);
+    }
+    if (System.getProperty("directRunnerTest") != null) {
+      params.put("resourceHints", "cpu_count=4");
     }
 
     if (sessionFileResourceName != null) {
@@ -258,8 +390,19 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     }
 
     // overridden parameters
+    String ipConfig = "WORKER_IP_PRIVATE";
     if (jobParameters != null) {
+      if (jobParameters.containsKey("ipConfiguration")) {
+        ipConfig = jobParameters.get("ipConfiguration");
+      }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
+        if ("namespace".equals(entry.getKey())
+            || "ipConfiguration".equals(entry.getKey())
+            || "dbUser".equals(entry.getKey())
+            || "dbPassword".equals(entry.getKey())
+            || "connectionProperties".equals(entry.getKey())) {
+          continue;
+        }
         params.put(entry.getKey(), entry.getValue());
       }
     }
@@ -272,7 +415,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
-    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("ipConfiguration", ipConfig);
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
@@ -280,15 +424,104 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return jobInfo;
   }
 
-  private Map<String, String> getJdbcParameters(JDBCResourceManager jdbcResourceManager) {
+  protected String createAndUploadShardConfigToGcs(
+      String gcsPathPrefix,
+      JDBCResourceManager jdbcResourceManager,
+      Map<String, String> jobParameters)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(jdbcResourceManager.getUsername());
+    shard.setPassword(jdbcResourceManager.getPassword());
+
+    if (jdbcResourceManager instanceof PostgresResourceManager pgRm) {
+      shard.setHost(pgRm.getHost());
+      shard.setPort(String.valueOf(pgRm.getPort()));
+      shard.setDbName(pgRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
+      shard.setHost(mySqlRm.getHost());
+      shard.setPort(String.valueOf(mySqlRm.getPort()));
+      shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.SSLMySQLResourceManager sslRm) {
+      shard.setHost(sslRm.getHost());
+      shard.setPort(String.valueOf(sslRm.getPort()));
+      shard.setDbName(sslRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager cloudRm) {
+      shard.setHost(cloudRm.getHost());
+      shard.setPort(String.valueOf(cloudRm.getPort()));
+      shard.setDbName(cloudRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.jdbc.OracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());
+    }
+
+    if (testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword("password");
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    }
+
+    if (jobParameters != null) {
+      if (jobParameters.containsKey("namespace")) {
+        shard.setNamespace(jobParameters.get("namespace"));
+      }
+      if (jobParameters.containsKey("dbUser")) {
+        shard.setUser(jobParameters.get("dbUser"));
+      }
+      if (jobParameters.containsKey("dbPassword")) {
+        shard.setPassword(jobParameters.get("dbPassword"));
+      }
+      if (jobParameters.containsKey("connectionProperties")) {
+        shard.setConnectionProperties(jobParameters.get("connectionProperties"));
+      }
+    }
+
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(List.of(shard));
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
+    LOG.info("Shard file contents: {}", shardFileContents);
+
+    String configBasePath = (gcsPathPrefix == null) ? "null" : gcsPathPrefix;
+    if (configBasePath.endsWith("/")) {
+      configBasePath = configBasePath.substring(0, configBasePath.length() - 1);
+    }
+    String configGcsPath = getGcsPath(configBasePath + "/shard.json");
+
+    gcsClient.createArtifact(configBasePath + "/shard.json", shardFileContents);
+
+    return configGcsPath;
+  }
+
+  private Map<String, String> getJdbcParameters(
+      JDBCResourceManager jdbcResourceManager,
+      String gcsPathPrefix,
+      Map<String, String> jobParameters) {
 
     Map<String, String> params =
         new HashMap<>() {
           {
             put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
-            put("sourceConfigURL", jdbcResourceManager.getUri());
-            put("username", jdbcResourceManager.getUsername());
-            put("password", jdbcResourceManager.getPassword());
+            try {
+              put(
+                  "sourceConfigURL",
+                  createAndUploadShardConfigToGcs(
+                      gcsPathPrefix, jdbcResourceManager, jobParameters));
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
             put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
           }
         };
@@ -383,6 +616,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     if (resourceManager instanceof PostgresResourceManager) {
       return SQLDialect.POSTGRESQL.name();
     }
+    if (resourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+      return "ORACLE";
+    }
+    if (resourceManager instanceof MSSQLResourceManager) {
+      return SQLDialect.SQLSERVER.name();
+    }
     return SQLDialect.MYSQL.name();
   }
 
@@ -391,9 +630,56 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       if (jdbcResourceManager instanceof PostgresResourceManager) {
         return Class.forName("org.postgresql.Driver").getCanonicalName();
       }
+      if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        return "oracle.jdbc.OracleDriver";
+      }
+      if (jdbcResourceManager instanceof MSSQLResourceManager) {
+        return Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").getCanonicalName();
+      }
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException(e);
+    }
+  }
+
+  @Override
+  protected PipelineOperator.Config.Builder wrapConfiguration(
+      PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(Duration.ofMinutes(15));
+    }
+    return builder;
+  }
+
+  public static List<Map<String, Object>> runIsolatedSQLQuery(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String testUsername,
+      String query) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = connection.createStatement()) {
+      if (!"SYSTEM".equalsIgnoreCase(testUsername)
+          && jdbcResourceManager instanceof org.apache.beam.it.jdbc.OracleResourceManager) {
+        stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = " + testUsername);
+      }
+      List<Map<String, Object>> result = new ArrayList<>();
+      try (ResultSet rs = stmt.executeQuery(query)) {
+        java.sql.ResultSetMetaData md = rs.getMetaData();
+        int columns = md.getColumnCount();
+        while (rs.next()) {
+          Map<String, Object> row = new HashMap<>(columns);
+          for (int i = 1; i <= columns; ++i) {
+            row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
+          }
+          result.add(row);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException("Error running isolated query", e);
     }
   }
 }

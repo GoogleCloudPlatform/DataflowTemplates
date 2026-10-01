@@ -105,7 +105,10 @@ public class ValidationSummaryCombineFn
         .setDestinationDatabase(destinationDatabase)
         .setStatus(status)
         .setTotalTablesValidated(accumulator.totalTables)
-        .setTablesWithMismatches(String.join(",", accumulator.tablesWithMismatches))
+        .setTablesWithMismatches(
+            accumulator.tablesWithMismatches.stream()
+                .sorted()
+                .collect(java.util.stream.Collectors.joining(",")))
         .setTotalRowsMatched(accumulator.totalMatched)
         .setTotalRowsMismatched(accumulator.totalMismatched)
         .setStartTimestamp(startTimestamp)

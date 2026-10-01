@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -196,7 +197,7 @@ public class FormatDatastreamRecordToJsonTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode changeEvent = mapper.readTree(jsonData);
     // The avro file contains binary_content: b'\xde\xad\xbe\xef', which is converted to
-    // base64 encoded string by Jackson library.
+    // base64 encoded string by Jackson.
     assertEquals("3q2+7w==", changeEvent.get("binary_content").textValue());
   }
 
@@ -315,6 +316,247 @@ public class FormatDatastreamRecordToJsonTest {
     assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
   }
 
+  @Test
+  public void testInterval() throws JsonProcessingException {
+    ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
+
+    /* Basic Test: 1 month, 26 hours (1 day + 2 hours), 3000000 micros (3 seconds) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "basic", generateIntervalSchema(), generateIntervalRecord(1, 26, 3000000L), objectNode);
+
+    /* Zero interval */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "zero_interval", generateIntervalSchema(), generateIntervalRecord(0, 0, 0L), objectNode);
+
+    /* Only months */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "only_months", generateIntervalSchema(), generateIntervalRecord(12, 0, 0L), objectNode);
+
+    /* Only time (5 hours + 123456 micros = 5H0.123456S) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "only_time", generateIntervalSchema(), generateIntervalRecord(0, 5, 123456L), objectNode);
+
+    /* Negative interval (-1 month, -26 hours = -1 day - 2 hours, -3000000 micros = -3 seconds) */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_basic",
+        generateIntervalSchema(),
+        generateIntervalRecord(-1, -26, -3000000L),
+        objectNode);
+
+    String expected =
+        "{\"basic\":\"P1M1DT2H3S\","
+            + "\"zero_interval\":\"PT0S\","
+            + "\"only_months\":\"P1Y\","
+            + "\"only_time\":\"PT5H0.123456S\","
+            + "\"neg_basic\":\"P-1M-1DT-2H-3S\"}";
+    assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
+  }
+
+  @Test
+  public void testTimeTz() throws JsonProcessingException {
+    ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
+
+    /* Basic Test: 23:59:59 + 10 hours offset */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "basic", generateTimeTzSchema(), generateTimeTzRecord(86399000000L, 36000000), objectNode);
+
+    /* Negative offset: 12:30:00 - 5 hours offset */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_offset",
+        generateTimeTzSchema(),
+        generateTimeTzRecord(45000000000L, -18000000),
+        objectNode);
+
+    /* Zero offset (UTC): 08:00:00Z */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "utc", generateTimeTzSchema(), generateTimeTzRecord(28800000000L, 0), objectNode);
+
+    /* 24:00:00 special case */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "max_time",
+        generateTimeTzSchema(),
+        generateTimeTzRecord(86400000000L, 36000000),
+        objectNode);
+
+    String expected =
+        "{\"basic\":\"23:59:59+10:00\","
+            + "\"neg_offset\":\"12:30:00-05:00\","
+            + "\"utc\":\"08:00:00Z\","
+            + "\"max_time\":\"24:00:00+10:00\"}";
+    assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
+  }
+
+  @Test
+  public void testGetPrimaryKeys_primaryKeysField() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_pk")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("database")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("primary_keys")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "mydb");
+    sourceMetadata.put("database", "mydb");
+    sourceMetadata.put("table", "users");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put("primary_keys", new GenericData.Array<>(arraySchema, List.of("id")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "mysql-cdc-binlog");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_sqlServerReplicationIndexFallback() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_ri")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("replication_index")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "dbo");
+    sourceMetadata.put("table", "orders");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put(
+        "replication_index", new GenericData.Array<>(arraySchema, List.of("order_id")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "sqlserver-cdc-logbased");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"order_id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_nullWhenNeitherFieldPresent() throws IOException {
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_none")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "HR");
+    sourceMetadata.put("table", "employees");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "oracle-dump");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertTrue(output.get("_metadata_primary_keys").isNull());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_prefersPrimaryKeysWhenBothPresent() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_both")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("database")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("primary_keys")
+            .type(arraySchema)
+            .noDefault()
+            .name("replication_index")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "dbo");
+    sourceMetadata.put("database", "dbo");
+    sourceMetadata.put("table", "items");
+    sourceMetadata.put("change_type", "UPDATE");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put("primary_keys", new GenericData.Array<>(arraySchema, List.of("id")));
+    sourceMetadata.put(
+        "replication_index", new GenericData.Array<>(arraySchema, List.of("repl_col")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "mysql-cdc-binlog");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
   private GenericRecord generateIntervalNanosRecord(
       Long years, Long months, Long days, Long hours, Long minutes, Long seconds, Long nanos) {
 
@@ -355,6 +597,91 @@ public class FormatDatastreamRecordToJsonTest {
         .name("nanos")
         .type(SchemaBuilder.builder().longType())
         .withDefault(0L)
+        .endRecord();
+  }
+
+  private GenericRecord buildOuterRecord(GenericRecord sourceMetadata, String readMethod) {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields().endRecord();
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+
+    Schema outerSchema =
+        SchemaBuilder.record("test_record")
+            .fields()
+            .name("stream_name")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("read_timestamp")
+            .type()
+            .longType()
+            .noDefault()
+            .name("source_timestamp")
+            .type()
+            .longType()
+            .noDefault()
+            .name("read_method")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("source_metadata")
+            .type(sourceMetadata.getSchema())
+            .noDefault()
+            .name("payload")
+            .type(payloadSchema)
+            .noDefault()
+            .endRecord();
+
+    GenericRecord record = new GenericData.Record(outerSchema);
+    record.put("stream_name", "test-stream");
+    record.put("read_timestamp", 1000000L);
+    record.put("source_timestamp", 1000000L);
+    record.put("read_method", readMethod);
+    record.put("source_metadata", sourceMetadata);
+    record.put("payload", payload);
+    return record;
+  }
+
+  private GenericRecord generateIntervalRecord(Integer months, Integer hours, Long micros) {
+    GenericRecord genericRecord = new GenericData.Record(generateIntervalSchema());
+    genericRecord.put("months", months);
+    genericRecord.put("hours", hours);
+    genericRecord.put("micros", micros);
+    return genericRecord;
+  }
+
+  private Schema generateIntervalSchema() {
+    return SchemaBuilder.builder()
+        .record("interval")
+        .fields()
+        .name("months")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
+        .name("hours")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
+        .name("micros")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .endRecord();
+  }
+
+  private GenericRecord generateTimeTzRecord(Long time, Integer offset) {
+    GenericRecord genericRecord = new GenericData.Record(generateTimeTzSchema());
+    genericRecord.put("time", time);
+    genericRecord.put("offset", offset);
+    return genericRecord;
+  }
+
+  private Schema generateTimeTzSchema() {
+    return SchemaBuilder.builder()
+        .record("timeTz")
+        .fields()
+        .name("time")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("offset")
+        .type(SchemaBuilder.builder().intType())
+        .withDefault(0)
         .endRecord();
   }
 }

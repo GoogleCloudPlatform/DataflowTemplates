@@ -33,35 +33,39 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
-import org.neo4j.importer.v1.targets.Target;
-import org.neo4j.importer.v1.targets.TargetType;
+import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
 
 public class Neo4jBlockingUnwindFnTest {
 
   @Test
   public void sends_transaction_metadata() {
-    Neo4jConnection connection = mock(Neo4jConnection.class);
-    Neo4jBlockingUnwindFn batchImporter =
+    var connection = mock(Neo4jConnection.class);
+    var batchImporter =
         new Neo4jBlockingUnwindFn(
             ReportedSourceType.BIGQUERY,
-            TargetType.RELATIONSHIP,
-            "RETURN 42",
+            newQueryStep("a-query-step", "RETURN 42"),
             false,
             "map",
-            (row) -> DataCastingUtils.rowToNeo4jDataMap(row, mock(Target.class)),
+            DataCastingUtils::rowToNeo4jDataMap,
             () -> connection);
 
     batchImporter.setup();
     batchImporter.processElement(aProcessContext());
 
     Map<String, String> expectedTxMetadata =
-        Map.of(
-            "sink", "neo4j", "source", "BigQuery", "target-type", "relationship", "step", "import");
+        Map.of("sink", "neo4j", "source", "BigQuery", "target-type", "query", "step", "import");
     TransactionConfig expectedTransactionConfig =
         TransactionConfig.builder()
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();
     verify(connection).writeTransaction(any(), eq(expectedTransactionConfig));
+  }
+
+  private static CustomQueryTargetStep newQueryStep(String name, String query) {
+    var mock = mock(CustomQueryTargetStep.class);
+    when(mock.name()).thenReturn(name);
+    when(mock.query()).thenReturn(query);
+    return mock;
   }
 
   private static DoFn.ProcessContext aProcessContext() {

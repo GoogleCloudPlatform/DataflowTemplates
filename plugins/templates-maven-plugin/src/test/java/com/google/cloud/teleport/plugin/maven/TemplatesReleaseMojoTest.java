@@ -151,7 +151,7 @@ public class TemplatesReleaseMojoTest {
       List<Map<String, String>> actualOptions = actualManifest.get("options");
 
       List<Map<String, String>> expectedBlueprints =
-          List.of(Map.of("name", "MyBlueprint to Gcs", "path", blueprintObjectName));
+          List.of(Map.of("name", "Kafka to BigQuery", "path", blueprintObjectName));
       List<Map<String, String>> expectedOptions =
           List.of(Map.of("name", "MyOptions", "path", optionsObjectName));
 
@@ -269,6 +269,59 @@ public class TemplatesReleaseMojoTest {
       assertTrue(actualManifest.get("blueprints").isEmpty());
       assertEquals(1, actualManifest.get("options").size());
       assertEquals("MyOptions", actualManifest.get("options").get(0).get("name"));
+    }
+  }
+
+  @Test
+  public void testExecute_publishesYamlBlueprintsFallbackWhenDisplayNameMissing()
+      throws MojoExecutionException, IOException {
+    mojo.publishYamlBlueprints = true;
+
+    // Create fake yaml file for blueprints without display_name
+    File yamlDir = new File(baseDir, mojo.yamlBlueprintsPath);
+    yamlDir.mkdirs();
+    File yamlFile1 = new File(yamlDir, "MyBlueprintToGcs.yaml");
+    String yamlWithoutDisplayName =
+        """
+        template:
+          name: "MyBlueprint_To_Gcs"
+        """;
+    Files.write(yamlFile1.toPath(), yamlWithoutDisplayName.getBytes(StandardCharsets.UTF_8));
+
+    try (MockedStatic<StorageOptions> storageOptionsMock =
+        Mockito.mockStatic(StorageOptions.class)) {
+      Storage mockStorage = mock(Storage.class);
+      StorageOptions mockStorageOptions = mock(StorageOptions.class);
+      storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
+      when(mockStorageOptions.getService()).thenReturn(mockStorage);
+
+      Map<String, byte[]> uploadedFiles = new HashMap<>();
+      Mockito.doAnswer(
+              invocation -> {
+                BlobInfo blobInfo = invocation.getArgument(0);
+                InputStream inputStream = invocation.getArgument(1);
+                uploadedFiles.put(blobInfo.getName(), inputStream.readAllBytes());
+                return null;
+              })
+          .when(mockStorage)
+          .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
+
+      // Act
+      mojo.execute();
+
+      // Assert
+      String manifestName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
+      assertTrue(uploadedFiles.containsKey(manifestName));
+
+      String manifestContent = new String(uploadedFiles.get(manifestName), StandardCharsets.UTF_8);
+      Gson gson = new Gson();
+      Type type = new TypeToken<Map<String, List<Map<String, String>>>>() {}.getType();
+      Map<String, List<Map<String, String>>> actualManifest = gson.fromJson(manifestContent, type);
+      List<Map<String, String>> actualBlueprints = actualManifest.get("blueprints");
+
+      assertEquals(1, actualBlueprints.size());
+      assertEquals("MyBlueprint to Gcs", actualBlueprints.get(0).get("name"));
     }
   }
 

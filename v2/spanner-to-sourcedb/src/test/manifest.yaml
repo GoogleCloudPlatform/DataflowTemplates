@@ -1,0 +1,102 @@
+scenarios:
+  # ==================================================================
+  # Reverse Replication (v2/spanner-to-sourcedb)
+  # ==================================================================
+  - id: reverse-it
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbIT
+    description: "Main functional integration test for reverse replication from Spanner to target MySQL databases."
+
+  - id: reverse-datatypes
+    type: datatypes
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlDataTypesIT
+    description: "Validates reverse data type mappings, conversion formats, and value checks from Spanner to MySQL."
+
+  - id: reverse-reservedkeywords
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlReservedKeywordsIT
+    description: "Evaluates reverse replication updates targeting tables and columns named after MySQL reserved keywords."
+
+  - id: reverse-timezone
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbTimezoneIT
+    description: "Validates timezone offset conversions and date-time column updates during reverse replication."
+
+  - id: reverse-dlq-all
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDBMySQLRetryAllDLQIT
+    description: "Verifies DLQ routing and reprocessing metrics when reverse replication writes to MySQL encounter failures."
+
+  - id: reverse-sharded-dlq
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDBShardedMySQLRetryDLQIT
+    description: "Verifies DLQ reprocessing and retry delivery patterns under sharded MySQL configuration."
+
+  - id: reverse-widerow-10mb
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlSourceDbWideRow10MbIT
+    description: "Asserts reverse replication throughput and synchronization speed under heavy 10MB payloads."
+
+  - id: reverse-widerow-maxcolumns
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlSourceDbWideRowMaxColumnsIT
+    description: "Validates reverse replication stability when writing rows containing the maximum supported column counts in MySQL."
+
+  - id: reverse-datatypes-pg
+    type: datatypes
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlDataTypesPGDialectIT
+    spanner_dialect: POSTGRESQL
+    description: "Validates reverse data type mappings targeting a PostgreSQL-dialect Spanner database."
+
+  - id: reverse-without-session
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToMySqlWithoutSessionIT
+    description: "Validates reverse replication flow without specifying custom mapping session files."
+
+  - id: reverse-customsharding
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbCustomShardIT
+    description: "Validates custom sharding configurations in spanner-to-sourcedb reverse replication."
+
+  - id: reverse-customtransformation
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbCustomTransformationIT
+    description: "Validates custom transformations during reverse replication."
+
+  - id: reverse-fileoverrides
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbFileOverridesSchemaMapperIT
+    description: "Verifies reverse replication mapping overrides configured via custom files."
+
+  - id: reverse-stringoverrides
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbStringOverridesSchemaMapperIT
+    description: "Verifies string column type overrides mapping configurations."
+
+  - id: reverse-interleaved-multishard
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbInterleaveMultiShardIT
+    description: "Validates reverse replication child tables interleaved under multi-sharded configurations."
+
+  - id: reverse-datatypes-generic
+    type: datatypes
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbDatatypeIT
+    description: "Validates generic reverse data type mappings and value checks from Spanner to target database."
+
+  - id: reverse-widerow-basic
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDbWideRowBasicIT
+    description: "Validates baseline wide-row reverse replication without extreme payload or column boundary constraints."
+
+  - id: reverse-dlq-single
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDBMySQLRetryDLQIT
+    description: "Verifies single-message Dead Letter Queue (DLQ) retry routing for non-sharded reverse replication pipelines."
+
+  - id: reverse-sharded-dlq-all
+    template: v2/spanner-to-sourcedb
+    context: com.google.cloud.teleport.v2.templates.SpannerToSourceDBShardedMySQLRetryAllDLQIT
+    description: "Verifies retry-all DLQ recovery and redelivery behavior under sharded reverse replication configuration."

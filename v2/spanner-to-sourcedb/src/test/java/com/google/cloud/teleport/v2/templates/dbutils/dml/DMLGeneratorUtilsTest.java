@@ -82,7 +82,7 @@ public class DMLGeneratorUtilsTest {
     newValuesJson.put("spanner_col1", "val1");
 
     DMLGeneratorUtils.ColumnValueMapper mapper =
-        (spannerColDef, sourceColDef, valuesJson, timezoneOffset) -> {
+        (spannerColDef, sourceColDef, valuesJson, timezoneOffset, params) -> {
           assertEquals(spannerCol, spannerColDef);
           assertEquals(sourceCol, sourceColDef);
           assertEquals(newValuesJson, valuesJson);
@@ -99,7 +99,8 @@ public class DMLGeneratorUtilsTest {
             new JSONObject(),
             "+00:00",
             null,
-            mapper);
+            mapper,
+            null);
 
     assertEquals(1, response.size());
     assertEquals("mapped_val", response.get("col1"));
@@ -127,7 +128,7 @@ public class DMLGeneratorUtilsTest {
     keyValuesJson.put("spanner_col1", "val1");
 
     DMLGeneratorUtils.ColumnValueMapper mapper =
-        (spannerColDef, sourceColDef, valuesJson, timezoneOffset) -> {
+        (spannerColDef, sourceColDef, valuesJson, timezoneOffset, params) -> {
           assertEquals(spannerCol, spannerColDef);
           assertEquals(sourceCol, sourceColDef);
           assertEquals(keyValuesJson, valuesJson);
@@ -144,7 +145,8 @@ public class DMLGeneratorUtilsTest {
             keyValuesJson,
             "+00:00",
             null,
-            mapper);
+            mapper,
+            null);
 
     assertEquals(1, response.size());
     assertEquals("mapped_val", response.get("col1"));
@@ -167,6 +169,7 @@ public class DMLGeneratorUtilsTest {
             new JSONObject(),
             new JSONObject(),
             "+00:00",
+            null,
             null,
             null);
 
@@ -197,6 +200,7 @@ public class DMLGeneratorUtilsTest {
             new JSONObject(),
             "+00:00",
             null,
+            null,
             null);
 
     assertTrue(response.isEmpty());
@@ -224,6 +228,7 @@ public class DMLGeneratorUtilsTest {
             new JSONObject(),
             new JSONObject(),
             "+00:00",
+            null,
             null,
             null);
 
@@ -253,6 +258,7 @@ public class DMLGeneratorUtilsTest {
             new JSONObject(),
             new JSONObject(),
             "+00:00",
+            null,
             null,
             null);
 
@@ -289,7 +295,7 @@ public class DMLGeneratorUtilsTest {
     keyValuesJson.put("spanner_col1", "val1");
 
     DMLGeneratorUtils.ColumnValueMapper mapper =
-        (spannerColDef, sourceColDef, valuesJson, timezoneOffset) -> {
+        (spannerColDef, sourceColDef, valuesJson, timezoneOffset, params) -> {
           assertEquals(spannerCol1, spannerColDef);
           assertEquals(sourceCol1, sourceColDef);
           assertEquals(keyValuesJson, valuesJson);
@@ -306,7 +312,8 @@ public class DMLGeneratorUtilsTest {
             keyValuesJson,
             "+00:00",
             null,
-            mapper);
+            mapper,
+            null);
 
     assertEquals(1, response.size());
     assertEquals("mapped_val1", response.get("col1"));

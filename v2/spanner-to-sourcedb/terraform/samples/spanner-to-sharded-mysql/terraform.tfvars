@@ -81,8 +81,8 @@ dataflow_params = {
     labels = { env = "dev", team = "data-eng" }
     # Optional machine type for the launcher VM
     launcher_machine_type = "n2-standard-4"
-    # Optional machine type for worker VMs (defaults to "n2-standard-2")
-    machine_type = "n1-standard-1"
+    # Optional machine type for worker VMs (defaults to "n2-standard-4")
+    machine_type = "n2-standard-4"
     # Maximum number of workers for the Dataflow job
     max_workers = 100
     # Optional name for the Dataflow job (defaults to "reverse-replication-job")

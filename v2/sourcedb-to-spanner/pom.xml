@@ -185,7 +185,6 @@
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>${mssql-jdbc.version}</version>
-            <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-common -->
         <!-- test dependencies for localCassandraIO begin -->
@@ -246,6 +245,11 @@
             <artifactId>it-conditions</artifactId>
             <scope>test</scope>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc8.version}</version>
         </dependency>
     </dependencies>
     <dependencyManagement>

@@ -1,5 +1,7 @@
 # Source Database & Spanner Target Setup for Migration Testing
 
+## Sample Scenario: Sharded Database Infra Setup for Spanner Migrations
+
 This folder contains Terraform configuration files to automatically set up, configure, and clean up database resources on Google Cloud Platform (GCP).
 
 This setup is designed to help you prepare and test database migration pipelines. It automatically creates:
@@ -10,6 +12,15 @@ This setup is designed to help you prepare and test database migration pipelines
 5. Two **sharding configuration files** (`shard-config.json` and `bulk-config.json`) that list the host IP, database name, and credentials for all created database shards. You can pass either file directly as an input parameter to your Dataflow migration jobs.
 
 ---
+
+## Assumptions
+
+1. Google Cloud SDK (`gcloud` CLI) and Python 3 are installed.
+2. User account or service account running Terraform has sufficient GCP permissions.
+
+## Terraform permissions
+
+The account running Terraform requires Cloud SQL Admin, Cloud Spanner Admin, Compute Network Admin, and Secret Manager Admin permissions.
 
 ## Prerequisites
 
@@ -26,7 +37,7 @@ Before you begin, make sure your computer has the following installed and config
 
 ---
 
-## How the Automated Scripts Work
+## Description: How the Automated Scripts Work
 
 This setup includes several helper scripts in the `scripts/` folder to handle database loading, cleanup, and state reconciliation.
 
@@ -43,7 +54,7 @@ If you configure your databases to use private IPs instead of public IPs, Google
 
 ---
 
-## Step-by-Step Guide to Deploying
+## How to run: Step-by-Step Guide
 
 ### Step 1: Prepare Your Local Database Structure
 Create a local SQL file named `schema.sql` in this folder. Define the tables and columns you want to load into your source databases. For example:
@@ -83,7 +94,7 @@ terraform apply -parallelism=100 --var-file=terraform_simple.tfvars
 
 ---
 
-## Outputs & Results
+## Resources Created: Outputs & Results
 
 Once the deployment completes successfully, Terraform will print the resource details on your screen and generate two sharding configuration files in this directory:
 
@@ -135,7 +146,7 @@ Once the deployment completes successfully, Terraform will print the resource de
 
 ---
 
-## Troubleshooting
+## FAQ: Troubleshooting
 
 ### Handling Creation Timeouts & Operation Dropouts
 When deploying a high number of physical database instances concurrently (e.g., 128 shards), you may occasionally encounter a transient timeout or polling connection dropout error from the Google Cloud API:

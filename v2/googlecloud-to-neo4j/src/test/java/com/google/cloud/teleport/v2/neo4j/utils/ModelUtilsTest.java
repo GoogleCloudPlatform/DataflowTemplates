@@ -15,23 +15,24 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.SourceTransformationsBuilder.sourceTransformationsBuilder;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec.TargetQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.Order;
+import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
 import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.schemas.Schema;
-import org.junit.Assert;
 import org.junit.Test;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
+import org.neo4j.importer.v1.pipeline.RelationshipTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
 import org.neo4j.importer.v1.targets.NodeReference;
@@ -41,7 +42,6 @@ import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.RelationshipKeyConstraint;
 import org.neo4j.importer.v1.targets.RelationshipSchema;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.WriteMode;
 
 public class ModelUtilsTest {
@@ -50,21 +50,11 @@ public class ModelUtilsTest {
   public void should_generate_correct_sql_statement_for_nodes_no_keys() {
     assertThat(
             ModelUtils.getTargetSql(
-                specForNode(
-                        "Person",
-                        Map.of(
-                            "ID",
-                            "id",
-                            "NAME",
-                            "name",
-                            "SURNAME",
-                            "surname",
-                            "DATE_OF_BIRTH",
-                            "dob"),
-                        List.of())
-                    .getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    Map.of(
+                        "ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -75,21 +65,11 @@ public class ModelUtilsTest {
   public void should_generate_correct_sql_statement_for_nodes_with_keys() {
     assertThat(
             ModelUtils.getTargetSql(
-                specForNode(
-                        "Person",
-                        Map.of(
-                            "ID",
-                            "id",
-                            "NAME",
-                            "name",
-                            "SURNAME",
-                            "surname",
-                            "DATE_OF_BIRTH",
-                            "dob"),
-                        List.of("ID"))
-                    .getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    Map.of(
+                        "ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of("ID")),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -100,21 +80,11 @@ public class ModelUtilsTest {
   public void should_generate_correct_sql_statement_for_nodes_with_base_sql() {
     assertThat(
             ModelUtils.getTargetSql(
-                specForNode(
-                        "Person",
-                        Map.of(
-                            "ID",
-                            "id",
-                            "NAME",
-                            "name",
-                            "SURNAME",
-                            "surname",
-                            "DATE_OF_BIRTH",
-                            "dob"),
-                        List.of("ID"))
-                    .getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    Map.of(
+                        "ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of("ID")),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, BIRTH_PLACE FROM TABLE"))
@@ -126,21 +96,11 @@ public class ModelUtilsTest {
   public void should_generate_correct_sql_statement_for_nodes_with_base_sql_sort() {
     assertThat(
             ModelUtils.getTargetSql(
-                specForNode(
-                        "Person",
-                        Map.of(
-                            "ID",
-                            "id",
-                            "NAME",
-                            "name",
-                            "SURNAME",
-                            "surname",
-                            "DATE_OF_BIRTH",
-                            "dob"),
-                        List.of("ID"))
-                    .getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    Map.of(
+                        "ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of("ID")),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 true,
                 "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, BIRTH_PLACE FROM TABLE"))
@@ -150,20 +110,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_relationships_no_keys() {
-    var relSpec =
-        specForRel(
-            "WORKS_AT",
-            Map.of("CONTRACT_DATE", "contractDate"),
-            List.of(),
-            "Person",
-            Map.of("PERSON_ID", "id"),
-            "Company",
-            Map.of("COMPANY_ID", "id"));
     assertThat(
             ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                relationshipTargetStep(
+                    "WORKS_AT",
+                    Map.of("CONTRACT_DATE", "contractDate"),
+                    List.of(),
+                    "Person",
+                    Map.of("PERSON_ID", "id"),
+                    "Company",
+                    Map.of("COMPANY_ID", "id")),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 false,
                 null))
@@ -172,20 +128,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_relationships_with_keys() {
-    var relSpec =
-        specForRel(
-            "WORKS_AT",
-            Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
-            List.of("ID"),
-            "Person",
-            Map.of("PERSON_ID", "id"),
-            "Company",
-            Map.of("COMPANY_ID", "id"));
     assertThat(
             ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                relationshipTargetStep(
+                    "WORKS_AT",
+                    Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
+                    List.of("ID"),
+                    "Person",
+                    Map.of("PERSON_ID", "id"),
+                    "Company",
+                    Map.of("COMPANY_ID", "id")),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 false,
                 null))
@@ -194,20 +146,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_relationships_with_base_sql() {
-    var relSpec =
-        specForRel(
-            "WORKS_AT",
-            Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
-            List.of("ID"),
-            "Person",
-            Map.of("PERSON_ID", "id"),
-            "Company",
-            Map.of("COMPANY_ID", "id"));
     assertThat(
             ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                relationshipTargetStep(
+                    "WORKS_AT",
+                    Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
+                    List.of("ID"),
+                    "Person",
+                    Map.of("PERSON_ID", "id"),
+                    "Company",
+                    Map.of("COMPANY_ID", "id")),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 false,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
@@ -216,20 +164,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_relationships_with_base_sql_sort() {
-    var relSpec =
-        specForRel(
-            "WORKS_AT",
-            Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
-            List.of("ID"),
-            "Person",
-            Map.of("PERSON_ID", "id"),
-            "Company",
-            Map.of("COMPANY_ID", "id"));
     assertThat(
             ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                relationshipTargetStep(
+                    "WORKS_AT",
+                    Map.of("ID", "id", "CONTRACT_DATE", "contractDate"),
+                    List.of("ID"),
+                    "Person",
+                    Map.of("PERSON_ID", "id"),
+                    "Company",
+                    Map.of("COMPANY_ID", "id")),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
@@ -239,42 +183,28 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_grouping() {
-    final TargetQuerySpec build =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .group(true)
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                build.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder().enableGrouping().build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
-                false,
-                null))
+                false))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
   }
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_grouping_limited() {
-    var nodeSpec =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .group(true)
-            .limit(100)
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                nodeSpec.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder().enableGrouping().limit(100).build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -284,20 +214,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_grouping_where() {
-    final TargetQuerySpec build =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .group(true)
-            .where("NAME LIKE 'A%'")
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                build.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder()
+                        .enableGrouping()
+                        .where("NAME LIKE 'A%'")
+                        .build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -307,19 +233,13 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_aggregation() {
-    final TargetQuerySpec build =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .aggregations(new Aggregation("COUNT(*)", "COUNT"))
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                build.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder().addAggregation("COUNT(*)", "COUNT").build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -329,21 +249,16 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_aggregations() {
-    final var nodeSpec =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .aggregations(
-                new Aggregation("COUNT(*)", "NUMBER_OF_PEOPLE"),
-                new Aggregation("MAX(DATE_OF_BIRTH)", "YOUNGEST"))
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                nodeSpec.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder()
+                        .addAggregation("COUNT(*)", "NUMBER_OF_PEOPLE")
+                        .addAggregation("MAX(DATE_OF_BIRTH)", "YOUNGEST")
+                        .build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -353,23 +268,18 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_aggregations_where_limit() {
-    final var nodeSpec =
-        new TransformBuilder(
-                specForNode(
-                    "Person",
-                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
-                    List.of()))
-            .aggregations(
-                new Aggregation("COUNT(*)", "NUMBER_OF_PEOPLE"),
-                new Aggregation("MAX(DATE_OF_BIRTH)", "YOUNGEST"))
-            .where("NAME LIKE 'A%'")
-            .limit(1000)
-            .build();
     assertThat(
             ModelUtils.getTargetSql(
-                nodeSpec.getTarget(),
-                null,
-                null,
+                nodeTargetStep(
+                    "Person",
+                    mapOf("ID", "id", "NAME", "name", "SURNAME", "surname", "DATE_OF_BIRTH", "dob"),
+                    List.of(),
+                    sourceTransformationsBuilder()
+                        .addAggregation("COUNT(*)", "NUMBER_OF_PEOPLE")
+                        .addAggregation("MAX(DATE_OF_BIRTH)", "YOUNGEST")
+                        .where("NAME LIKE 'A%'")
+                        .limit(1000)
+                        .build()),
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
                 false,
                 null))
@@ -379,23 +289,17 @@ public class ModelUtilsTest {
 
   @Test
   public void should_generate_correct_sql_statement_for_transforms_with_base_sql_sort_group() {
-    final TargetQuerySpec relSpec =
-        new TransformBuilder(
-                specForRel(
+    assertThat(
+            ModelUtils.getTargetSql(
+                relationshipTargetStep(
                     "WORKS_AT",
                     mapOf("ID", "id", "CONTRACT_DATE", "contractDate"),
-                    List.of("ID"),
+                    List.of("id"),
                     "Person",
                     mapOf("PERSON_ID", "id"),
                     "Company",
-                    mapOf("COMPANY_ID", "id")))
-            .group(true)
-            .build();
-    assertThat(
-            ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                    mapOf("COMPANY_ID", "id"),
+                    sourceTransformationsBuilder().enableGrouping().build()),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
@@ -406,24 +310,20 @@ public class ModelUtilsTest {
   @Test
   public void
       should_generate_correct_sql_statement_for_transforms_with_base_sql_sort_aggregations_limit() {
-    var relSpec =
-        new TransformBuilder(
-                specForRel(
+    assertThat(
+            ModelUtils.getTargetSql(
+                relationshipTargetStep(
                     "WORKS_AT",
                     mapOf("ID", "id", "CONTRACT_DATE", "contractDate"),
-                    List.of("ID"),
+                    List.of("id"),
                     "Person",
                     mapOf("PERSON_ID", "id"),
                     "Company",
-                    mapOf("COMPANY_ID", "id")))
-            .aggregations(new Aggregation("COUNT(*)", "ENTRIES"))
-            .limit(1000)
-            .build();
-    assertThat(
-            ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                    mapOf("COMPANY_ID", "id"),
+                    sourceTransformationsBuilder()
+                        .addAggregation("COUNT(*)", "ENTRIES")
+                        .limit(1000)
+                        .build()),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
@@ -434,25 +334,21 @@ public class ModelUtilsTest {
   @Test
   public void
       should_generate_correct_sql_statement_for_transforms_with_base_sql_sort_aggregations_limit_where() {
-    var relSpec =
-        new TransformBuilder(
-                specForRel(
+    assertThat(
+            ModelUtils.getTargetSql(
+                relationshipTargetStep(
                     "WORKS_AT",
                     mapOf("ID", "id", "CONTRACT_DATE", "contractDate"),
-                    List.of("ID"),
+                    List.of("id"),
                     "Person",
                     mapOf("PERSON_ID", "id"),
                     "Company",
-                    mapOf("COMPANY_ID", "id")))
-            .aggregations(new Aggregation("COUNT(*)", "ENTRIES"))
-            .where("PERSON_ID BETWEEN 0 AND 10000")
-            .limit(1000)
-            .build();
-    assertThat(
-            ModelUtils.getTargetSql(
-                relSpec.getTarget(),
-                relSpec.getStartNodeTarget(),
-                relSpec.getEndNodeTarget(),
+                    mapOf("COMPANY_ID", "id"),
+                    sourceTransformationsBuilder()
+                        .addAggregation("COUNT(*)", "ENTRIES")
+                        .where("PERSON_ID BETWEEN 0 AND 10000")
+                        .limit(1000)
+                        .build()),
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
@@ -461,33 +357,39 @@ public class ModelUtilsTest {
   }
 
   @SuppressWarnings("SameParameterValue")
-  private static TargetQuerySpec specForNode(
+  private static TargetStep nodeTargetStep(
       String label, Map<String, String> fieldToPropMapping, List<String> keyFields) {
+
+    return nodeTargetStep(label, fieldToPropMapping, keyFields, null);
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private static TargetStep nodeTargetStep(
+      String label,
+      Map<String, String> fieldToPropMapping,
+      List<String> keyFields,
+      SourceTransformations sourceTransformations) {
 
     List<PropertyMapping> mappings = propertyMappings(fieldToPropMapping);
     NodeSchema schema =
         new NodeSchema(
             null, nodeKeyConstraints(label, keyFields), null, null, null, null, null, null, null);
-    var target =
+    return new NodeTargetStep(
         new NodeTarget(
             true,
             label,
             "a-source",
             null,
             WriteMode.CREATE,
-            List.of(),
+            sourceTransformations == null ? List.of() : List.of(sourceTransformations),
             List.of(label),
             mappings,
-            schema);
-
-    return new TargetQuerySpec.TargetQuerySpecBuilder()
-        .sourceBeamSchema(Schema.builder().build())
-        .target(target)
-        .build();
+            schema),
+        Set.of());
   }
 
   @SuppressWarnings("SameParameterValue")
-  private static TargetQuerySpec specForRel(
+  private static TargetStep relationshipTargetStep(
       String type,
       Map<String, String> fieldToPropMapping,
       List<String> keyFields,
@@ -495,6 +397,27 @@ public class ModelUtilsTest {
       Map<String, String> sourceKeys,
       String targetLabel,
       Map<String, String> targetKeys) {
+    return relationshipTargetStep(
+        type,
+        fieldToPropMapping,
+        keyFields,
+        sourceLabel,
+        sourceKeys,
+        targetLabel,
+        targetKeys,
+        null);
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private static TargetStep relationshipTargetStep(
+      String type,
+      Map<String, String> fieldToPropMapping,
+      List<String> keyProperties,
+      String sourceLabel,
+      Map<String, String> sourceKeys,
+      String targetLabel,
+      Map<String, String> targetKeys,
+      SourceTransformations relationshipSourceTransformations) {
 
     var startNodeTarget =
         new NodeTarget(
@@ -545,19 +468,20 @@ public class ModelUtilsTest {
             type,
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
-            List.of(),
+            relationshipSourceTransformations == null
+                ? List.of()
+                : List.of(relationshipSourceTransformations),
             new NodeReference("start-node-target"),
             new NodeReference("end-node-target"),
             propertyMappings(fieldToPropMapping),
             new RelationshipSchema(
-                null, relKeyConstraints(keyFields), null, null, null, null, null, null, null));
+                null, relKeyConstraints(keyProperties), null, null, null, null, null, null, null));
 
-    return new TargetQuerySpec.TargetQuerySpecBuilder()
-        .sourceBeamSchema(Schema.builder().build())
-        .target(target)
-        .startNodeTarget(startNodeTarget)
-        .endNodeTarget(endNodeTarget)
-        .build();
+    return new RelationshipTargetStep(
+        target,
+        new NodeTargetStep(startNodeTarget, Set.of()),
+        new NodeTargetStep(endNodeTarget, Set.of()),
+        Set.of());
   }
 
   private static List<PropertyMapping> propertyMappings(Map<String, String> fieldToPropMapping) {
@@ -588,145 +512,6 @@ public class ModelUtilsTest {
     return result;
   }
 
-  private static class TransformBuilder {
-
-    private final TargetQuerySpecBuilder result;
-
-    TransformBuilder(TargetQuerySpec original) {
-      this.result =
-          new TargetQuerySpec.TargetQuerySpecBuilder()
-              .nullableSourceRows(original.getNullableSourceRows())
-              .sourceBeamSchema(original.getSourceBeamSchema())
-              .target(original.getTarget())
-              .startNodeTarget(original.getStartNodeTarget())
-              .endNodeTarget(original.getEndNodeTarget());
-    }
-
-    TransformBuilder aggregations(Aggregation... aggregations) {
-      result.target(copyTarget(result.getTarget(), transformationsWithAggregations(aggregations)));
-      return this;
-    }
-
-    TransformBuilder limit(int limit) {
-      result.target(copyTarget(result.getTarget(), transformationsWithLimit(limit)));
-      return this;
-    }
-
-    TransformBuilder where(String where) {
-      result.target(copyTarget(result.getTarget(), transformationsWithWhere(where)));
-      return this;
-    }
-
-    TransformBuilder group(boolean group) {
-      result.target(copyTarget(result.getTarget(), transformationsWithGroupBy(group)));
-      return this;
-    }
-
-    TargetQuerySpec build() {
-      return result.build();
-    }
-
-    private static Target copyTarget(
-        Target previousTarget,
-        Function<SourceTransformations, SourceTransformations> copyTransform) {
-      return switch (previousTarget.getTargetType()) {
-        case NODE -> {
-          var originalNode = (NodeTarget) previousTarget;
-          yield copyNode(
-              (NodeTarget) previousTarget,
-              copyTransform.apply(
-                  originalNode.getExtension(SourceTransformations.class).orElse(null)));
-        }
-        case RELATIONSHIP -> {
-          var originalRelationship = (RelationshipTarget) previousTarget;
-          yield copyRelationship(
-              originalRelationship,
-              copyTransform.apply(
-                  originalRelationship.getExtension(SourceTransformations.class).orElse(null)));
-        }
-        default -> {
-          Assert.fail("expected node or relationship target");
-          yield null;
-        }
-      };
-    }
-
-    private static NodeTarget copyNode(
-        NodeTarget original, SourceTransformations newTransformations) {
-      return new NodeTarget(
-          original.isActive(),
-          original.getName(),
-          original.getSource(),
-          original.getDependencies(),
-          original.getWriteMode(),
-          newTransformations == null ? List.of() : List.of(newTransformations),
-          original.getLabels(),
-          original.getProperties(),
-          original.getSchema());
-    }
-
-    private static Function<SourceTransformations, SourceTransformations>
-        transformationsWithAggregations(Aggregation[] aggregations) {
-      return (original) ->
-          new SourceTransformations(
-              original != null && original.enableGrouping(),
-              Arrays.asList(aggregations),
-              original == null ? "" : original.whereClause(),
-              original == null ? List.of() : original.orderByClauses(),
-              original == null ? -1 : original.limit());
-    }
-
-    private Function<SourceTransformations, SourceTransformations> transformationsWithLimit(
-        int limit) {
-      return (original) ->
-          new SourceTransformations(
-              original != null && original.enableGrouping(),
-              original == null ? List.of() : original.aggregations(),
-              original == null ? "" : original.whereClause(),
-              original == null ? List.of() : original.orderByClauses(),
-              limit);
-    }
-
-    private Function<SourceTransformations, SourceTransformations> transformationsWithWhere(
-        String where) {
-      return (original) ->
-          new SourceTransformations(
-              original != null && original.enableGrouping(),
-              original == null ? List.of() : original.aggregations(),
-              where,
-              original == null ? List.of() : original.orderByClauses(),
-              original == null ? -1 : original.limit());
-    }
-
-    private Function<SourceTransformations, SourceTransformations> transformationsWithGroupBy(
-        boolean groupBy) {
-      return (original) ->
-          new SourceTransformations(
-              groupBy,
-              original == null ? List.of() : original.aggregations(),
-              original == null ? "" : original.whereClause(),
-              original == null ? List.of() : original.orderByClauses(),
-              original == null ? -1 : original.limit());
-    }
-
-    private static RelationshipTarget copyRelationship(
-        RelationshipTarget original, SourceTransformations transformations) {
-      return new RelationshipTarget(
-          original.isActive(),
-          original.getName(),
-          original.getSource(),
-          original.getDependencies(),
-          original.getType(),
-          original.getWriteMode(),
-          original.getNodeMatchMode(),
-          transformations == null ? List.of() : List.of(transformations),
-          original.getStartNodeReference(),
-          original.getEndNodeReference(),
-          original.getProperties(),
-          original.getSchema());
-    }
-  }
-
   private static List<NodeKeyConstraint> nodeKeyConstraints(
       String label, Collection<String> keyFields) {
     return keyFields.stream()
@@ -740,5 +525,71 @@ public class ModelUtilsTest {
     return keyFields.stream()
         .map(key -> new RelationshipKeyConstraint(String.format("key-%s", key), List.of(key), null))
         .collect(Collectors.toList());
+  }
+}
+
+class SourceTransformationsBuilder {
+
+  private boolean enableGrouping;
+
+  private List<Aggregation> aggregations = new ArrayList<>();
+
+  private String where;
+
+  private List<OrderBy> orderBys = new ArrayList<>();
+
+  private Integer limit = -1;
+
+  public static SourceTransformationsBuilder sourceTransformationsBuilder() {
+    return new SourceTransformationsBuilder();
+  }
+
+  public static SourceTransformationsBuilder sourceTransformationsBuilder(
+      SourceTransformationsBuilder builder) {
+    return new SourceTransformationsBuilder(builder);
+  }
+
+  private SourceTransformationsBuilder() {}
+
+  private SourceTransformationsBuilder(SourceTransformationsBuilder builder) {
+    this.enableGrouping = builder.enableGrouping;
+    this.aggregations = builder.aggregations;
+    this.where = builder.where;
+    this.orderBys = builder.orderBys;
+    this.limit = builder.limit;
+  }
+
+  public SourceTransformationsBuilder enableGrouping() {
+    this.enableGrouping = true;
+    return this;
+  }
+
+  public SourceTransformationsBuilder addAggregation(String expression, String fieldName) {
+    this.aggregations.add(new Aggregation(expression, fieldName));
+    return this;
+  }
+
+  public SourceTransformationsBuilder where(String whereClause) {
+    this.where = whereClause;
+    return this;
+  }
+
+  public SourceTransformationsBuilder addOrderByAsc(String expression) {
+    this.orderBys.add(new OrderBy(expression, Order.ASC));
+    return this;
+  }
+
+  public SourceTransformationsBuilder addOrderByDesc(String expression) {
+    this.orderBys.add(new OrderBy(expression, Order.DESC));
+    return this;
+  }
+
+  public SourceTransformationsBuilder limit(Integer limit) {
+    this.limit = limit;
+    return this;
+  }
+
+  public SourceTransformations build() {
+    return new SourceTransformations(enableGrouping, aggregations, where, orderBys, limit);
   }
 }

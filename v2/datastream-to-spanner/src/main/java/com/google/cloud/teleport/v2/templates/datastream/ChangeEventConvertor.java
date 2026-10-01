@@ -110,7 +110,7 @@ public class ChangeEventConvertor {
     return ChangeEventConvertor.changeEventToInsertOrUpdateMutation(ddl, changeEvent);
   }
 
-  static Mutation.WriteBuilder changeEventToShadowTableMutationBuilder(
+  public static Mutation.WriteBuilder changeEventToShadowTableMutationBuilder(
       Ddl ddl, JsonNode changeEvent, String shadowTablePrefix)
       throws ChangeEventConvertorException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();

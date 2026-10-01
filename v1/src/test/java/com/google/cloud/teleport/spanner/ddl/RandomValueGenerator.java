@@ -98,6 +98,13 @@ public class RandomValueGenerator {
           return Value.pgNumeric("NaN");
         }
         return Value.pgNumeric(null);
+      case JSON:
+        return Value.json((String) null);
+      case PG_JSONB:
+        return Value.pgJsonb((String) null);
+      case UUID:
+      case PG_UUID:
+        return Value.string(null);
       case ARRAY:
       case PG_ARRAY:
         switch (type.getArrayElementType().getCode()) {
@@ -120,6 +127,13 @@ public class RandomValueGenerator {
           case PG_TEXT:
           case PG_VARCHAR:
             return Value.stringArray(null);
+          case JSON:
+            return Value.jsonArray(null);
+          case PG_JSONB:
+            return Value.pgJsonbArray(null);
+          case UUID:
+          case PG_UUID:
+            return Value.uuidArray(null);
           case DATE:
           case PG_DATE:
             return Value.dateArray(null);
@@ -145,40 +159,54 @@ public class RandomValueGenerator {
     switch (type.getArrayElementType().getCode()) {
       case BOOL:
       case PG_BOOL:
-        return Value.boolArray(generateList(random::nextBoolean));
+        return Value.boolArray(generateList(random::nextBoolean, column));
       case INT64:
       case PG_INT8:
-        return Value.int64Array(generateList(random::nextLong));
+        return Value.int64Array(generateList(random::nextLong, column));
       case FLOAT32:
       case PG_FLOAT4:
-        return Value.float32Array(generateList(random::nextFloat));
+        return Value.float32Array(generateList(random::nextFloat, column));
       case FLOAT64:
       case PG_FLOAT8:
-        return Value.float64Array(generateList(random::nextDouble));
+        return Value.float64Array(generateList(random::nextDouble, column));
       case BYTES:
       case PG_BYTEA:
-        return Value.bytesArray(generateList(() -> randomByteArray(column.size())));
+        return Value.bytesArray(generateList(() -> randomByteArray(column.size()), column));
       case STRING:
       case PG_VARCHAR:
       case PG_TEXT:
-        return Value.stringArray(generateList(() -> randomString(column.size())));
+        return Value.stringArray(generateList(() -> randomString(column.size()), column));
+      case JSON:
+        return Value.jsonArray(generateList(() -> "{\"key\":\"value\"}", column));
+      case PG_JSONB:
+        return Value.pgJsonbArray(generateList(() -> "{\"key\":\"value\"}", column));
+      case UUID:
+      case PG_UUID:
+        return Value.uuidArray(generateList(() -> java.util.UUID.randomUUID(), column));
       case DATE:
       case PG_DATE:
-        return Value.dateArray(generateList(this::randomDate));
+        return Value.dateArray(generateList(this::randomDate, column));
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:
-        return Value.timestampArray(generateList(this::randomTimestamp));
+        return Value.timestampArray(generateList(this::randomTimestamp, column));
+      case NUMERIC:
+        return Value.numericArray(generateList(this::randomNumeric, column));
       case PG_NUMERIC:
-        return Value.pgNumericArray(generateList(this::randomPgNumeric));
+        return Value.pgNumericArray(generateList(this::randomPgNumeric, column));
     }
     throw new IllegalArgumentException("Unexpected type " + type);
   }
 
-  private <T> List<T> generateList(Supplier<T> v) {
+  private <T> List<T> generateList(Supplier<T> v, Column column) {
     int size = random.nextInt(10);
+    boolean allowNull = true;
+    if (column != null && column.arrayLength() != null) {
+      size = column.arrayLength();
+      allowNull = false;
+    }
     List<T> result = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      T value = random.nextInt(100) < arrayNullThreshold ? null : v.get();
+      T value = allowNull && random.nextInt(100) < arrayNullThreshold ? null : v.get();
       result.add(value);
     }
     return result;
@@ -220,10 +248,40 @@ public class RandomValueGenerator {
         {
           return Value.timestamp(randomTimestamp());
         }
+      case JSON:
+        return Value.json("{\"key\":\"value\"}");
+      case PG_JSONB:
+        return Value.pgJsonb("{\"key\":\"value\"}");
+      case UUID:
+      case PG_UUID:
+        return Value.uuid(java.util.UUID.randomUUID());
+      case NUMERIC:
+        return Value.numeric(randomNumeric());
       case PG_NUMERIC:
         return Value.pgNumeric(randomPgNumeric());
     }
     throw new IllegalArgumentException("Unexpected type " + type);
+  }
+
+  private java.math.BigDecimal randomNumeric() {
+    int leftSize = random.nextInt(NumericUtils.PRECISION - NumericUtils.SCALE) + 1;
+    int rightSize = random.nextInt(NumericUtils.SCALE + 1);
+    StringBuilder sb = new StringBuilder();
+    if (leftSize == 1) {
+      sb.append(0);
+    } else {
+      sb.append(random.nextInt(9) + 1);
+    }
+    for (int i = 1; i < leftSize; i++) {
+      sb.append(random.nextInt(10));
+    }
+    if (rightSize > 0) {
+      sb.append(".");
+      for (int i = 0; i < rightSize; i++) {
+        sb.append(random.nextInt(10));
+      }
+    }
+    return new java.math.BigDecimal(sb.toString());
   }
 
   private String randomPgNumeric() {

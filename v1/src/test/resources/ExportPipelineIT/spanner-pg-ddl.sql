@@ -42,3 +42,9 @@ DROP SEARCH INDEX IF EXISTS "%PREFIX%SearchIndex";
 CREATE SEARCH INDEX "%PREFIX%SearchIndex"
   ON "%PREFIX%Singers"("NameTokens") ORDER BY "Id" WHERE "Id" IS NOT NULL
   WITH (sort_order_sharding=TRUE);
+
+DROP TABLE IF EXISTS "%PREFIX%NoPkTable";
+CREATE TABLE "%PREFIX%NoPkTable" (
+    "Name" character varying
+);
+

@@ -149,8 +149,12 @@ public class AvroToValueMapper {
                     recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
 
     gsqlFunctions.put(
-        Type.json(),
+        Type.uuid(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+
+    gsqlFunctions.put(
+        Type.json(),
+        (recordValue, fieldSchema) -> Value.json(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
         Type.array(Type.json()),
         (recordValue, fieldSchema) ->
@@ -226,7 +230,7 @@ public class AvroToValueMapper {
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgJsonb(),
-        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+        (recordValue, fieldSchema) -> Value.pgJsonb(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
         Type.pgNumeric(),
         (recordValue, fieldSchema) ->
@@ -245,6 +249,9 @@ public class AvroToValueMapper {
     pgFunctions.put(
         Type.pgDate(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgUuid(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     return pgFunctions;
   }
 
@@ -272,6 +279,28 @@ public class AvroToValueMapper {
     try {
       if (recordValue == null) {
         return null;
+      }
+      // It is required for BIT data type.
+      if (recordValue instanceof Boolean) {
+        return ((Boolean) recordValue) ? 1L : 0L;
+      }
+      // It is required for BIT data type.
+      if ("true".equalsIgnoreCase(recordValue.toString())) {
+        return 1L;
+      }
+      // It is required for BIT data type.
+      if ("false".equalsIgnoreCase(recordValue.toString())) {
+        return 0L;
+      }
+      if (recordValue instanceof ByteBuffer) {
+        // For scenarios where source bytes need to be converted to Long.
+        ByteBuffer buf = ((ByteBuffer) recordValue).duplicate();
+        if (buf.remaining() == 0) {
+          return 0L;
+        }
+        byte[] bytes = new byte[buf.remaining()];
+        buf.get(bytes);
+        return new BigInteger(bytes).longValue();
       }
       return Long.parseLong(recordValue.toString());
     } catch (Exception e) {
@@ -323,6 +352,14 @@ public class AvroToValueMapper {
     try {
       if (recordValue == null) {
         return null;
+      }
+      if (recordValue instanceof ByteBuffer) {
+        // If source byte buffer need to be translated to String.
+        // For eg: rowversion in SQL Server to String.
+        ByteBuffer buf = ((ByteBuffer) recordValue).duplicate();
+        byte[] bytes = new byte[buf.remaining()];
+        buf.get(bytes);
+        return Hex.encodeHexString(bytes);
       }
       return recordValue.toString();
     } catch (Exception e) {
@@ -387,6 +424,7 @@ public class AvroToValueMapper {
       if (fieldSchema.getType().equals(Schema.Type.STRING)) {
         // For string avro type, expect hex encoded string.
         String s = recordValue.toString();
+
         if (s.length() % 2 == 1) {
           s = "0" + s;
         }

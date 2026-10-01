@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.mongodb.client.model.Filters.eq;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -26,8 +28,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
+import com.mongodb.ServerAddress;
 import com.mongodb.WriteError;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.FindIterable;
@@ -43,6 +47,9 @@ import org.apache.beam.sdk.metrics.MetricsEnvironment;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.MultiOutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.Before;
@@ -361,9 +368,8 @@ public class ProcessChangeEventFnTest {
   public void testProcessElementPermanentError_Code2() {
     WriteError writeError =
         new WriteError(
-            2, "At most 20 nested array/entity values are supported.", new org.bson.BsonDocument());
-    MongoWriteException permanentError =
-        new MongoWriteException(writeError, new com.mongodb.ServerAddress());
+            2, "At most 20 nested array/entity values are supported.", new BsonDocument());
+    MongoWriteException permanentError = new MongoWriteException(writeError, new ServerAddress());
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(permanentError);
 
@@ -427,9 +433,9 @@ public class ProcessChangeEventFnTest {
 
   @Test
   public void testProcessElementTransientWriteError_retry() {
-    WriteError writeError = new WriteError(11000, "Duplicate key", new org.bson.BsonDocument());
+    WriteError writeError = new WriteError(11000, "Duplicate key", new BsonDocument());
     MongoWriteException writeException =
-        new MongoWriteException(writeError, new com.mongodb.ServerAddress("localhost", 27017));
+        new MongoWriteException(writeError, new ServerAddress("localhost", 27017));
     writeException.addLabel("TransientTransactionError");
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
@@ -449,10 +455,9 @@ public class ProcessChangeEventFnTest {
 
   @Test
   public void testProcessElementTransientCommandError_retry() {
-    org.bson.BsonDocument response = new org.bson.BsonDocument("code", new org.bson.BsonInt32(123));
-    com.mongodb.MongoCommandException commandException =
-        new com.mongodb.MongoCommandException(
-            response, new com.mongodb.ServerAddress("localhost", 27017));
+    BsonDocument response = new BsonDocument("code", new BsonInt32(123));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
     commandException.addLabel("TransientTransactionError");
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
@@ -472,10 +477,9 @@ public class ProcessChangeEventFnTest {
 
   @Test
   public void testProcessElementSevereCommandError() {
-    org.bson.BsonDocument response = new org.bson.BsonDocument("code", new org.bson.BsonInt32(123));
-    com.mongodb.MongoCommandException commandException =
-        new com.mongodb.MongoCommandException(
-            response, new com.mongodb.ServerAddress("localhost", 27017));
+    BsonDocument response = new BsonDocument("code", new BsonInt32(123));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
 
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(commandException);
 
@@ -485,5 +489,144 @@ public class ProcessChangeEventFnTest {
     verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
+  }
+
+  @Test
+  public void testProcessElement_updateEventWithNullDataSkips() {
+    when(mockFindIterable.first()).thenReturn(null);
+    when(mockElement.getDataAsJsonString()).thenReturn(new Document("data", null).toJson());
+    when(mockElement.isDeleteEvent()).thenReturn(false);
+    when(mockElement.isUpdateEvent()).thenReturn(true);
+    when(mockElement.getChangeType()).thenReturn("UPDATE");
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockDataCollection, never()).replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockShadowCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockSession).commitTransaction();
+    verify(mockSession, never()).abortTransaction();
+    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockSuccessReceiver, times(1)).output(mockElement);
+
+    MetricsContainerImpl container =
+        (MetricsContainerImpl) MetricsEnvironment.getCurrentContainer();
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "nullDataUpdateSkips"))
+                .getCumulative());
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(
+                    MetricName.named(ProcessChangeEventFn.class, "nullDataUpdateSkips_UPDATE"))
+                .getCumulative());
+  }
+
+  @Test
+  public void testProcessElement_insertEventWithNullDataRoutesToSevereDlq() {
+    when(mockFindIterable.first()).thenReturn(null);
+    when(mockElement.getDataAsJsonString()).thenReturn(new Document("data", null).toJson());
+    when(mockElement.isDeleteEvent()).thenReturn(false);
+    when(mockElement.isUpdateEvent()).thenReturn(false);
+    when(mockElement.getChangeType()).thenReturn("INSERT");
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockDataCollection, never()).replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockShadowCollection, never())
+        .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
+    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockSevereFailureReceiver, times(1)).output(any());
+  }
+
+  @Test
+  public void testIsTransientTransactionError_code112WithoutLabel() {
+    BsonDocument response = new BsonDocument("code", new BsonInt32(112));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_writeExceptionCode112WithoutLabel() {
+    WriteError writeError = new WriteError(112, "Write conflict", new BsonDocument());
+    MongoWriteException writeException =
+        new MongoWriteException(writeError, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(writeException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_nonTransientError() {
+    BsonDocument response = new BsonDocument("code", new BsonInt32(123));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertFalse(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_unknownTransactionNumber() {
+    BsonDocument response =
+        new BsonDocument("code", new BsonInt32(2))
+            .append("errmsg", new BsonString("Transaction number 488769 is unknown."));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_code251NoSuchTransaction() {
+    BsonDocument response =
+        new BsonDocument("code", new BsonInt32(251))
+            .append("errmsg", new BsonString("Given transaction number 488769 does not exist"));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_rephrasedUnknownTransaction() {
+    BsonDocument response =
+        new BsonDocument("code", new BsonInt32(2))
+            .append("errmsg", new BsonString("Transaction 488769 not found on server"));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_commandExceptionCode112WithoutLabel() {
+    BsonDocument response =
+        new BsonDocument("code", new BsonInt32(112))
+            .append("errmsg", new BsonString("Too much contention on these documents."));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_commandExceptionCode91ShutdownInProgress() {
+    BsonDocument response =
+        new BsonDocument("code", new BsonInt32(91))
+            .append(
+                "errmsg",
+                new BsonString(
+                    "The service is temporarily unavailable. Please retry with exponential"
+                        + " backoff."));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(commandException));
+  }
+
+  @Test
+  public void testIsTransientTransactionError_wrappedInRuntimeException() {
+    BsonDocument response = new BsonDocument("code", new BsonInt32(112));
+    MongoCommandException commandException =
+        new MongoCommandException(response, new ServerAddress("localhost", 27017));
+    RuntimeException wrappedException = new RuntimeException("Wrapped error", commandException);
+    assertTrue(ProcessChangeEventFn.isTransientTransactionError(wrappedException));
   }
 }

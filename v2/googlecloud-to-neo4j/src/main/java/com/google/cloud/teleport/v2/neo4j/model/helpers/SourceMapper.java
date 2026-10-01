@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrNull;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
@@ -47,7 +47,7 @@ public class SourceMapper {
   static final String DEFAULT_SOURCE_NAME = "";
   static final Pattern NEWLINE_PATTERN = Pattern.compile("\\R");
 
-  public static List<Source> parse(JSONArray rawSources, OptionsParams options) {
+  public static List<Source> parse(JSONArray rawSources, OverlayTokens options) {
     List<Source> sources = new ArrayList<>(rawSources.length());
     for (int i = 0; i < rawSources.length(); i++) {
       sources.add(parse(rawSources.getJSONObject(i), options));
@@ -55,7 +55,7 @@ public class SourceMapper {
     return sources;
   }
 
-  public static Source parse(JSONObject rawSource, OptionsParams options) {
+  public static Source parse(JSONObject rawSource, OverlayTokens options) {
     var sourceType = getStringOrDefault(rawSource, "type", "text").toLowerCase(Locale.ROOT);
     switch (sourceType) {
       case "bigquery":
@@ -67,13 +67,13 @@ public class SourceMapper {
     }
   }
 
-  private static BigQuerySource parseBigQuerySource(JSONObject rawSource, OptionsParams options) {
+  private static BigQuerySource parseBigQuerySource(JSONObject rawSource, OverlayTokens options) {
     var sourceName = getStringOrDefault(rawSource, "name", DEFAULT_SOURCE_NAME);
-    var sql = ModelUtils.replaceVariableTokens(rawSource.getString("query"), options.getTokenMap());
+    var sql = ModelUtils.replaceVariableTokens(rawSource.getString("query"), options.tokens());
     return new BigQuerySource(sourceName, sql);
   }
 
-  private static TextSource parseTextSource(JSONObject rawSource, OptionsParams options) {
+  private static TextSource parseTextSource(JSONObject rawSource, OverlayTokens options) {
     var sourceName = getStringOrDefault(rawSource, "name", DEFAULT_SOURCE_NAME);
     var header =
         Arrays.asList(StringUtils.stripAll(rawSource.getString("ordered_field_names").split(",")));
@@ -84,7 +84,7 @@ public class SourceMapper {
     var separator = getStringOrNull(rawSource, "separator");
     if (rawSource.has("uri") || rawSource.has("url")) {
       var url = rawSource.has("uri") ? rawSource.getString("uri") : rawSource.getString("url");
-      url = ModelUtils.replaceVariableTokens(url, options.getTokenMap());
+      url = ModelUtils.replaceVariableTokens(url, options.tokens());
       return new ExternalTextSource(sourceName, List.of(url), header, format, delimiter, separator);
     }
 

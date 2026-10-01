@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -152,16 +153,10 @@ public final class ShardFileReaderTest {
   @Test
   public void shardFileWithNoCredentials() {
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                shardFileReader.getOrderedShardDetails(
-                    "src/test/resources/shard-with-nocreds.json"));
-    assertTrue(
-        thrown
-            .getMessage()
-            .contains("Neither password nor secretManagerUri was found in the shard file"));
+    List<Shard> shards =
+        shardFileReader.getOrderedShardDetails("src/test/resources/shard-with-nocreds.json");
+    assertEquals(1, shards.size());
+    assertNull(shards.get(0).getPassword());
   }
 
   @Test
@@ -242,6 +237,20 @@ public final class ShardFileReaderTest {
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
 
+    assertEquals(shards, expectedShards);
+  }
+
+  @Test
+  public void readBulkMigrationShardFileWithNoCredentials() {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards =
+        shardFileReader.readForwardMigrationShardingConfig(
+            "src/test/resources/bulk-migration-shards-nocreds.json");
+    assertEquals(1, shards.size());
+    assertNull(shards.get(0).getPassword());
+    Shard shard1 = new Shard("", "1.1.1.1", "3306", "test1", null, "", null, null, "");
+    shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
+    List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1));
     assertEquals(shards, expectedShards);
   }
 }

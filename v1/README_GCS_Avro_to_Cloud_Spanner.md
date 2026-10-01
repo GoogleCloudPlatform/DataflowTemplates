@@ -34,6 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **ddlCreationTimeoutInMinutes**: The timeout in minutes for DDL statements performed by the template. The default value is 30 minutes.
 * **spannerPriority**: The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.
 * **earlyIndexCreateThreshold**: The threshold for the number of indexes and foreign keys that determines whether to create indexes before data loading. If the total number of indexes and foreign keys is larger than this threshold, they will be created before data import for better performance. The default value is 40.
+* **runIndexDdlInParallel**: If `true`, the pipeline executes index creation DDL statements in parallel. The default value is `false`.
 
 
 
@@ -139,6 +140,7 @@ export SPANNER_PROJECT_ID=<spannerProjectId>
 export DDL_CREATION_TIMEOUT_IN_MINUTES=30
 export SPANNER_PRIORITY=<spannerPriority>
 export EARLY_INDEX_CREATE_THRESHOLD=40
+export RUN_INDEX_DDL_IN_PARALLEL=false
 
 gcloud dataflow jobs run "gcs-avro-to-cloud-spanner-job" \
   --project "$PROJECT" \
@@ -156,7 +158,8 @@ gcloud dataflow jobs run "gcs-avro-to-cloud-spanner-job" \
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
-  --parameters "earlyIndexCreateThreshold=$EARLY_INDEX_CREATE_THRESHOLD"
+  --parameters "earlyIndexCreateThreshold=$EARLY_INDEX_CREATE_THRESHOLD" \
+  --parameters "runIndexDdlInParallel=$RUN_INDEX_DDL_IN_PARALLEL"
 ```
 
 For more information about the command, please check:
@@ -190,6 +193,7 @@ export SPANNER_PROJECT_ID=<spannerProjectId>
 export DDL_CREATION_TIMEOUT_IN_MINUTES=30
 export SPANNER_PRIORITY=<spannerPriority>
 export EARLY_INDEX_CREATE_THRESHOLD=40
+export RUN_INDEX_DDL_IN_PARALLEL=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -198,7 +202,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-avro-to-cloud-spanner-job" \
 -DtemplateName="GCS_Avro_to_Cloud_Spanner" \
--Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,inputDir=$INPUT_DIR,spannerHost=$SPANNER_HOST,waitForIndexes=$WAIT_FOR_INDEXES,waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS,waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS,waitForSequences=$WAIT_FOR_SEQUENCES,earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG,spannerProjectId=$SPANNER_PROJECT_ID,ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,earlyIndexCreateThreshold=$EARLY_INDEX_CREATE_THRESHOLD" \
+-Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,inputDir=$INPUT_DIR,spannerHost=$SPANNER_HOST,waitForIndexes=$WAIT_FOR_INDEXES,waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS,waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS,waitForSequences=$WAIT_FOR_SEQUENCES,earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG,spannerProjectId=$SPANNER_PROJECT_ID,ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,earlyIndexCreateThreshold=$EARLY_INDEX_CREATE_THRESHOLD,runIndexDdlInParallel=$RUN_INDEX_DDL_IN_PARALLEL" \
 -f v1
 ```
 
@@ -257,6 +261,7 @@ resource "google_dataflow_job" "gcs_avro_to_cloud_spanner" {
     # ddlCreationTimeoutInMinutes = "30"
     # spannerPriority = "<spannerPriority>"
     # earlyIndexCreateThreshold = "40"
+    # runIndexDdlInParallel = "false"
   }
 }
 ```

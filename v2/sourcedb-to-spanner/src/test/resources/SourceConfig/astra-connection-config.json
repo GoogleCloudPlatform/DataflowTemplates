@@ -1,0 +1,6 @@
+{
+  "databaseId": "test-database-id",
+  "astraToken": "AstraCS:test-token",
+  "keySpace": "test-keyspace",
+  "astraDbRegion": "us-east1"
+}

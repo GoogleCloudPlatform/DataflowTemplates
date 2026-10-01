@@ -1,0 +1,35 @@
+version: "1"
+sources:
+  - type: text
+    name: inline-source
+    format: excel
+    header: [customer_id, seller_id]
+    data:
+      - ["c1", "s1"]
+targets:
+  nodes:
+    - name: a-node-target
+      source: inline-source
+      write_mode: merge
+      labels: [Customer]
+      properties:
+        - source_field: customer_id
+          target_property: id
+      schema:
+        key_constraints:
+          - name: customer_key
+            label: Customer
+            properties: [id]
+    - name: b-node-target
+      source: inline-source
+      depends_on: [a-node-target]
+      write_mode: merge
+      labels: [Seller]
+      properties:
+        - source_field: seller_id
+          target_property: id
+      schema:
+        key_constraints:
+          - name: seller_key
+            label: Seller
+            properties: [id]
