@@ -132,8 +132,14 @@ variable "tables" {
 variable "tableConfigurationFilePath" {
   type = string
   description = <<EOT
-A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{"tableNames": ["table1", "table2"]}`. Defaults to empty.
+A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{"tableNames": ["table1", "table2"]}`. Optionally, `optionalConfigurations.<sourceTable>.spannerQuery` sets the Spanner query used to read that table, e.g. to restrict it to the selected `shardIds`. See the 'Validating a subset of shards' section of the module README.md for the query rules. Defaults to empty.
 EOT
+  default = null
+}
+
+variable "shardIds" {
+  type = string
+  description = "A comma-separated list of logical shard IDs (the IDs used by the bulk migration, which appear as the `<table>/<shardId>/` directory in the Avro output). When set, only those shards are validated. Tables with a session file `ShardIdColumn` are filtered on that column; every other in-scope table needs a `spannerQuery` in `tableConfigurationFilePath`, otherwise the job fails. For example, `shard_001,shard_007`. Defaults to empty."
   default = null
 }
 
@@ -279,6 +285,7 @@ resource "google_dataflow_flex_template_job" "generated" {
         transformationCustomParameters = var.transformationCustomParameters
         tables = var.tables
         tableConfigurationFilePath = var.tableConfigurationFilePath
+        shardIds = var.shardIds
     }
     
 	additional_experiments = var.additional_experiments
