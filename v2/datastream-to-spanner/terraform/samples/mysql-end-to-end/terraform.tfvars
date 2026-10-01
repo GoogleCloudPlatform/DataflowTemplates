@@ -1,10 +1,11 @@
 # Common Parameters
 common_params = {
-  project                         = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
-  host_project                    = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
-  region                          = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region
-  migration_id                    = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
-  add_policies_to_service_account = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
+  project                             = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
+  host_project                        = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
+  region                              = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region
+  migration_id                        = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
+  add_policies_to_service_account     = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
+  create_cutover_monitoring_dashboard = false                    # Set to true to create a Cloud Monitoring dashboard for cutover verification.
 }
 
 # Datastream Parameters
@@ -89,7 +90,7 @@ dataflow_params = {
     kms_key_name                 = "<YOUR_KMS_KEY_NAME>"        # If you're using customer-managed encryption key
     labels                       = {}                           # Add any labels you want
     launcher_machine_type        = "n1-standard-1"              # Adjust as needed
-    machine_type                 = "n2-standard-2"              # Adjust as needed
+    machine_type                 = "n2-standard-4"              # Adjust as needed
     max_workers                  = 10                           # Adjust based on your requirements
     job_name                     = "live-migration-job"         # Or your custom job name
     network                      = "<YOUR_NETWORK>"             # Network for your Dataflow job

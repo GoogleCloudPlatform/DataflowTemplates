@@ -129,7 +129,8 @@ resource "google_project_iam_member" "live_migration_roles" {
     "roles/pubsub.viewer",
     "roles/spanner.databaseAdmin",
     "roles/monitoring.metricWriter",
-    "roles/cloudprofiler.agent"
+    "roles/cloudprofiler.agent",
+    "roles/run.invoker"
   ]) : toset([])
 
   project = data.google_project.project.id
@@ -163,7 +164,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     shouldCreateShadowTables        = tostring(var.dataflow_params.template_params.create_shadow_tables)
     rfcStartDateTime                = var.dataflow_params.template_params.rfc_start_date_time
     fileReadConcurrency             = tostring(var.dataflow_params.template_params.file_read_concurrency)
-    deadLetterQueueDirectory        = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.common_params.dataflow_params.template_params.dead_letter_queue_directory : "gs://${var.datastream_params.target_gcs_bucket_name}/dlq"
+    deadLetterQueueDirectory        = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "gs://${var.datastream_params.target_gcs_bucket_name}/dlq"
     dlqRetryMinutes                 = tostring(var.dataflow_params.template_params.dlq_retry_minutes)
     dlqMaxRetryCount                = tostring(var.dataflow_params.template_params.dlq_max_retry_count)
     dataStreamRootUrl               = var.dataflow_params.template_params.datastream_root_url
@@ -207,3 +208,92 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
   }
 }
 
+# Cloud Run Service for Polling GCS DLQ and Publishing Metrics to Cloud Monitoring
+resource "google_cloud_run_v2_service" "dlq_poller" {
+  count = var.common_params.create_cutover_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_project_iam_member.live_migration_roles
+  ]
+  name     = "${local.migration_id}-dlq-poller"
+  location = var.common_params.region
+  project  = var.common_params.project
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = var.dataflow_params.runner_params.service_account_email != null ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+    containers {
+      image   = "mirror.gcr.io/library/python:3.11-slim"
+      command = ["python3", "-c", file("${path.module}/../monitoring-dashboard/dlq_poller.py")]
+      env {
+        name  = "PROJECT_ID"
+        value = var.common_params.project
+      }
+      env {
+        name  = "REGION"
+        value = var.common_params.region
+      }
+      env {
+        name  = "MIGRATION_ID"
+        value = local.migration_id
+      }
+      env {
+        name  = "DLQ_DIRECTORIES"
+        value = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "gs://${var.datastream_params.target_gcs_bucket_name}/dlq"
+      }
+    }
+  }
+  labels = {
+    "migration_id" = local.migration_id
+  }
+}
+
+# Cloud Scheduler Job to Trigger the GCS DLQ Poller Every Minute
+resource "google_cloud_scheduler_job" "dlq_poller_scheduler" {
+  count = var.common_params.create_cutover_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_project_iam_member.live_migration_roles,
+    google_cloud_run_v2_service.dlq_poller
+  ]
+  name             = "${local.migration_id}-dlq-poller-cron"
+  description      = "Triggers the GCS DLQ poller Cloud Run service every minute"
+  schedule         = "* * * * *"
+  time_zone        = "Etc/UTC"
+  attempt_deadline = "60s"
+  region           = var.common_params.region
+  project          = var.common_params.project
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloud_run_v2_service.dlq_poller[0].uri
+    oidc_token {
+      service_account_email = var.dataflow_params.runner_params.service_account_email != null ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+      audience              = google_cloud_run_v2_service.dlq_poller[0].uri
+    }
+  }
+}
+
+# Cloud Monitoring Dashboard for Cutover Readiness Verification
+resource "google_monitoring_dashboard" "cutover_dashboard" {
+  count = var.common_params.create_cutover_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_datastream_stream.mysql_to_gcs,
+    google_pubsub_subscription.datastream_subscription,
+    google_dataflow_flex_template_job.live_migration_job,
+    google_cloud_run_v2_service.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler
+  ]
+  project = var.common_params.project
+  dashboard_json = templatefile("${path.module}/../monitoring-dashboard/monitoring_dashboard.json.tpl", {
+    dashboard_display_name  = "Cutover Dashboard - ${local.migration_id}"
+    migration_id            = local.migration_id
+    datastream_ids          = google_datastream_stream.mysql_to_gcs.stream_id
+    dataflow_job_ids        = google_dataflow_flex_template_job.live_migration_job.job_id
+    pubsub_subscription_ids = join("|", compact([
+      google_pubsub_subscription.datastream_subscription.name,
+      var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != null ? element(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription), length(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription)) - 1) : null
+    ]))
+  })
+}
