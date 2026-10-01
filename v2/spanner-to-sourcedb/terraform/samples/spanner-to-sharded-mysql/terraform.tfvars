@@ -11,6 +11,8 @@ common_params = {
   replication_bucket = "my-replication-bucket"
   # Optional flag to control adding policies to the service account (defaults to true)
   add_policies_to_service_account = false
+  # Optional flag to create the Cloud Monitoring dashboard for cutback readiness (defaults to false)
+  create_cutback_monitoring_dashboard = false
 }
 
 dataflow_params = {
@@ -81,8 +83,8 @@ dataflow_params = {
     labels = { env = "dev", team = "data-eng" }
     # Optional machine type for the launcher VM
     launcher_machine_type = "n2-standard-4"
-    # Optional machine type for worker VMs (defaults to "n2-standard-2")
-    machine_type = "n1-standard-1"
+    # Optional machine type for worker VMs (defaults to "n2-standard-4")
+    machine_type = "n2-standard-4"
     # Maximum number of workers for the Dataflow job
     max_workers = 100
     # Optional name for the Dataflow job (defaults to "reverse-replication-job")

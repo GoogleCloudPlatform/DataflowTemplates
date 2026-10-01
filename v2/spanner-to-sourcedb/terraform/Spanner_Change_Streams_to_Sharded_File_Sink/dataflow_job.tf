@@ -207,7 +207,7 @@ variable "launcher_machine_type" {
 variable "machine_type" {
   type        = string
   description = "The machine type to use for the job."
-  default     = null
+  default     = "n2-standard-4"
 }
 
 variable "max_workers" {
