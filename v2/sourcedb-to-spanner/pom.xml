@@ -311,6 +311,11 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
                             <perCoreThreadCount>false</perCoreThreadCount>
+                            <!-- Run @DirectRunnerTest ITs in the IT job (instead of the smoke job).
+                                 TemplateTestBase still selects DirectRunner based on the category.
+                                 combine.self="override" is required so the empty value clears the
+                                 parent's ${direct-runner.tests} exclusion instead of inheriting it. -->
+                            <excludedGroups combine.self="override"></excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -332,6 +337,8 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
                             <perCoreThreadCount>false</perCoreThreadCount>
+                            <!-- @DirectRunnerTest ITs of this module run in the IT job instead. -->
+                            <excludedGroups>com.google.cloud.teleport.metadata.DirectRunnerTest</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
