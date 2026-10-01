@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.datastream.values;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.google.api.services.bigquery.model.TableRow;
 import java.io.IOException;
@@ -76,5 +77,137 @@ public class DatastreamRowTest {
     assertEquals(2, sortFields.size());
     assertEquals("_metadata_timestamp", sortFields.get(0));
     assertEquals("_metadata_lsn", sortFields.get(1));
+  }
+
+  @Test
+  public void testPostgresSortFieldsWithIsDeleted() {
+    TableRow r1 = new TableRow();
+    r1.set("_metadata_source_type", "postgresql");
+    r1.set("_metadata_primary_keys", Arrays.asList("id"));
+    DatastreamRow row = DatastreamRow.of(r1);
+    List<String> sortFields = row.getSortFields(true);
+
+    assertEquals(3, sortFields.size());
+    assertEquals("_metadata_timestamp", sortFields.get(0));
+    assertEquals("_metadata_lsn", sortFields.get(1));
+    assertEquals("_metadata_deleted", sortFields.get(2));
+  }
+
+  @Test
+  public void testDmlInfoPostgresLsnNormalizationAndOrdering() {
+    List<String> orderFields = Arrays.asList("_metadata_timestamp", "_metadata_lsn");
+
+    DmlInfo backfillInfo =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            orderFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "null"),
+            "{}");
+
+    DmlInfo insertInfo =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            orderFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/2902D0D0'"),
+            "{}");
+
+    DmlInfo updateInfo =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            orderFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/2903CF48'"),
+            "{}");
+
+    DmlInfo shorterHexLsn =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            orderFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/9FFFFFF'"),
+            "{}");
+
+    DmlInfo longerHexLsn =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            orderFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/10000000'"),
+            "{}");
+
+    assertEquals("1758835512-'00000017/2902D0D0'", insertInfo.getOrderByValueString());
+    assertEquals("1758835512-'00000017/2903CF48'", updateInfo.getOrderByValueString());
+    assertEquals("1758835512-", backfillInfo.getOrderByValueString());
+    assertTrue(
+        backfillInfo.getOrderByValueString().compareTo(insertInfo.getOrderByValueString()) < 0);
+    assertTrue(
+        insertInfo.getOrderByValueString().compareTo(updateInfo.getOrderByValueString()) < 0);
+    assertTrue(
+        shorterHexLsn.getOrderByValueString().compareTo(longerHexLsn.getOrderByValueString()) < 0);
+  }
+
+  @Test
+  public void testNormalizeLsnValueEdgeCases() {
+    // Null, empty, and literal null variants
+    assertEquals("", DmlInfo.normalizeLsnValue(null));
+    assertEquals("", DmlInfo.normalizeLsnValue(""));
+    assertEquals("", DmlInfo.normalizeLsnValue("null"));
+    assertEquals("", DmlInfo.normalizeLsnValue("NULL"));
+    assertEquals("", DmlInfo.normalizeLsnValue("'null'"));
+    assertEquals("", DmlInfo.normalizeLsnValue("'NULL'"));
+
+    // Quoted vs unquoted valid Postgres LSNs
+    assertEquals("'00000017/2902D0D0'", DmlInfo.normalizeLsnValue("'17/2902d0d0'"));
+    assertEquals("00000017/2902D0D0", DmlInfo.normalizeLsnValue("17/2902d0d0"));
+
+    // Short string (< 2 chars) or mismatched quotes
+    assertEquals("'", DmlInfo.normalizeLsnValue("'"));
+    assertEquals("'17/2902D0D0", DmlInfo.normalizeLsnValue("'17/2902D0D0"));
+    assertEquals("17/2902D0D0'", DmlInfo.normalizeLsnValue("17/2902D0D0'"));
+
+    // Missing slash, leading slash, or trailing slash
+    assertEquals("'00000025:000001a8:0001'", DmlInfo.normalizeLsnValue("'00000025:000001a8:0001'"));
+    assertEquals("/2902D0D0", DmlInfo.normalizeLsnValue("/2902D0D0"));
+    assertEquals("17/", DmlInfo.normalizeLsnValue("17/"));
+
+    // Non-hex segments around slash (NumberFormatException fallback)
+    assertEquals("'GHI/2902D0D0'", DmlInfo.normalizeLsnValue("'GHI/2902D0D0'"));
+    assertEquals("17/ZZZZZZZZ", DmlInfo.normalizeLsnValue("17/ZZZZZZZZ"));
+
+    // DmlInfo with more orderByValues than orderByFields
+    DmlInfo mismatchedFieldsInfo =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "vtelecom",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            Arrays.asList("_metadata_timestamp"),
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "extra_val"),
+            "{}");
+    assertEquals("1758835512-extra_val", mismatchedFieldsInfo.getOrderByValueString());
   }
 }
