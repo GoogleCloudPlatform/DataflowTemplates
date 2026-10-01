@@ -72,7 +72,7 @@ common_params = {
       kms_key_name                 = "<YOUR_KMS_KEY_NAME>"            # KMS key name for encryption (optional)
       labels                       = { env = "<YOUR_ENVIRONMENT>" }   # Labels for the Dataflow job
       launcher_machine_type        = "<YOUR_LAUNCHER_MACHINE_TYPE>"   # Machine type for the launcher VM (e.g., "n1-standard-1")
-      machine_type                 = "<YOUR_MACHINE_TYPE>"            # Machine type for worker VMs (e.g., "n2-standard-2")
+      machine_type                 = "<YOUR_MACHINE_TYPE>"            # Machine type for worker VMs (e.g., "n2-standard-4")
       max_workers                  = "<YOUR_MAX_WORKERS>"             # Maximum number of worker VMs
       job_name                     = "<YOUR_JOB_NAME>"                # Name of the Dataflow job
       network                      = "<YOUR_VPC_NETWORK>"             # VPC network for the Dataflow job
