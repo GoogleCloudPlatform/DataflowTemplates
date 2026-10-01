@@ -382,11 +382,13 @@ public class SourceReaderTransformTest implements Serializable {
     options.setShardIds("s1,s2");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
-    List<String> patterns = SourceReaderTransform.getFilePatterns("gs://b/d", tableConfig);
+    List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);
 
     assertEquals(2, patterns.size());
     assertEquals(
-        new HashSet<>(Arrays.asList("gs://b/d/*/s1/**.avro", "gs://b/d/*/s2/**.avro")),
+        new HashSet<>(
+            Arrays.asList("gs://my-bucket/dir/*/s1/**.avro", "gs://my-bucket/dir/*/s2/**.avro")),
         new HashSet<>(patterns));
   }
 
@@ -397,16 +399,17 @@ public class SourceReaderTransformTest implements Serializable {
     options.setShardIds("s1,s2");
     TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
 
-    List<String> patterns = SourceReaderTransform.getFilePatterns("gs://b/d", tableConfig);
+    List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);
 
     assertEquals(4, patterns.size());
     assertEquals(
         new HashSet<>(
             Arrays.asList(
-                "gs://b/d/T1/s1/**.avro",
-                "gs://b/d/T1/s2/**.avro",
-                "gs://b/d/T2/s1/**.avro",
-                "gs://b/d/T2/s2/**.avro")),
+                "gs://my-bucket/dir/T1/s1/**.avro",
+                "gs://my-bucket/dir/T1/s2/**.avro",
+                "gs://my-bucket/dir/T2/s1/**.avro",
+                "gs://my-bucket/dir/T2/s2/**.avro")),
         new HashSet<>(patterns));
   }
 }

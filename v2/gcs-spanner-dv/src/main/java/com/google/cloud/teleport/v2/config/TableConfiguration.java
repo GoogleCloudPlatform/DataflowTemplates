@@ -22,12 +22,10 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -92,7 +90,6 @@ public class TableConfiguration implements Serializable {
 
     Set<String> configuredTables = new HashSet<>();
     Map<String, TableLevelConfig> tableLevelConfigs = new LinkedHashMap<>();
-    List<String> blankQueryTables = new ArrayList<>();
 
     if (hasTablesConfig) {
       for (String table : tablesConfig.split(",")) {
@@ -121,16 +118,13 @@ public class TableConfiguration implements Serializable {
           if (fileConfig != null && fileConfig.getOptionalConfigurations() != null) {
             for (Map.Entry<String, TableLevelConfig> entry :
                 fileConfig.getOptionalConfigurations().entrySet()) {
-              // A null entry or a null/absent spannerQuery means "not configured".
-              if (entry.getValue() == null || entry.getValue().getSpannerQuery() == null) {
+              // A null entry or a null, absent or blank spannerQuery means "not configured".
+              if (entry.getValue() == null
+                  || entry.getValue().getSpannerQuery() == null
+                  || entry.getValue().getSpannerQuery().trim().isEmpty()) {
                 continue;
               }
-              String spannerQuery = entry.getValue().getSpannerQuery();
-              if (spannerQuery.trim().isEmpty()) {
-                blankQueryTables.add(entry.getKey());
-              } else {
-                tableLevelConfigs.put(entry.getKey(), entry.getValue());
-              }
+              tableLevelConfigs.put(entry.getKey(), entry.getValue());
             }
           }
         }
@@ -140,18 +134,8 @@ public class TableConfiguration implements Serializable {
       }
     }
 
-    if (!blankQueryTables.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Blank spannerQuery configured in tableConfigurationFilePath for tables: "
-              + blankQueryTables
-              + ". Remove the spannerQuery or provide a non-empty query.");
-    }
-
-    TableConfiguration config =
-        new TableConfiguration(
-            configuredTables, parseShardIds(options.getShardIds()), tableLevelConfigs);
-
-    return config;
+    return new TableConfiguration(
+        configuredTables, parseShardIds(options.getShardIds()), tableLevelConfigs);
   }
 
   /**

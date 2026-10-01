@@ -204,14 +204,15 @@ public class TableConfigurationTest {
   }
 
   @Test
-  public void testTableConfigFileOnlyNonNullSpannerQueriesAreConfigured() throws IOException {
+  public void testTableConfigFileOnlyNonBlankSpannerQueriesAreConfigured() throws IOException {
     File tableConfigFile = tempFolder.newFile("tables.json");
     try (FileWriter writer = new FileWriter(tableConfigFile)) {
       writer.write(
-          "{\"tableNames\":[\"T1\",\"T2\",\"T3\"],\"optionalConfigurations\":{"
+          "{\"tableNames\":[\"T1\",\"T2\",\"T3\",\"T4\"],\"optionalConfigurations\":{"
               + "\"T1\":{\"spannerQuery\":\"SELECT * FROM T1 WHERE id < 5\"},"
               + "\"T2\":{},"
-              + "\"T3\":{\"spannerQuery\":null}}}");
+              + "\"T3\":{\"spannerQuery\":null},"
+              + "\"T4\":{\"spannerQuery\":\"  \"}}}");
     }
     options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
 
@@ -221,24 +222,6 @@ public class TableConfigurationTest {
     assertEquals(
         Collections.singletonMap("T1", "SELECT * FROM T1 WHERE id < 5"),
         config.getSpannerQueries());
-    assertEquals(new HashSet<>(Arrays.asList("T1", "T2", "T3")), config.getSourceTables());
-  }
-
-  @Test
-  public void testTableConfigFileBlankSpannerQueryFailsNamingTable() throws IOException {
-    File tableConfigFile = tempFolder.newFile("tables.json");
-    try (FileWriter writer = new FileWriter(tableConfigFile)) {
-      writer.write(
-          "{\"tableNames\":[\"T1\",\"T2\"],\"optionalConfigurations\":{"
-              + "\"T1\":{\"spannerQuery\":\"   \"},"
-              + "\"T2\":{\"spannerQuery\":\"\"}}}");
-    }
-    options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
-
-    IllegalArgumentException thrown =
-        assertThrows(
-            IllegalArgumentException.class, () -> TableConfiguration.parseFromOptions(options));
-    assertTrue(thrown.getMessage(), thrown.getMessage().contains("T1"));
-    assertTrue(thrown.getMessage(), thrown.getMessage().contains("T2"));
+    assertEquals(new HashSet<>(Arrays.asList("T1", "T2", "T3", "T4")), config.getSourceTables());
   }
 }

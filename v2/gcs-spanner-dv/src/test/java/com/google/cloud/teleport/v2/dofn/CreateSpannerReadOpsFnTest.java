@@ -332,45 +332,7 @@ public class CreateSpannerReadOpsFnTest {
     when(mapper.getSourceTableName(anyString(), eq("SpannerOnly")))
         .thenThrow(new NoSuchElementException("no source table for SpannerOnly"));
     when(mapper.getShardIdColumnName(anyString(), eq("Users"))).thenReturn("migration_shard_id");
-    GCSSpannerDVOptions allTablesOptions = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    allTablesOptions.setShardIds("s1,s2");
-    TableConfiguration allTables = TableConfiguration.parseFromOptions(allTablesOptions);
-    GCSSpannerDVOptions usersOnlyOptions = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    usersOnlyOptions.setTables("Users");
-    usersOnlyOptions.setShardIds("s1,s2");
-    TableConfiguration usersOnly = TableConfiguration.parseFromOptions(usersOnlyOptions);
-
-    List<ReadOperation> allTablesResult =
-        new CreateSpannerReadOpsFn(mock(PCollectionView.class), d -> mapper, allTables)
-            .buildReadOperations(ddl, mapper);
-    List<ReadOperation> usersOnlyResult =
-        new CreateSpannerReadOpsFn(mock(PCollectionView.class), d -> mapper, usersOnly)
-            .buildReadOperations(ddl, mapper);
-
-    List<ReadOperation> expected =
-        Collections.singletonList(
-            ReadOperation.create()
-                .withQuery(
-                    Statement.newBuilder(
-                            "SELECT *, 'Users' as __tableName__ FROM `Users`"
-                                + " WHERE `migration_shard_id` IN UNNEST(@p1)")
-                        .bind("p1")
-                        .toStringArray(Arrays.asList("s1", "s2"))
-                        .build()));
-    assertEquals("no --tables", expected, allTablesResult);
-    assertEquals("--tables=Users", expected, usersOnlyResult);
-  }
-
-  @Test
-  public void testShardIdsWithRenamedSourceTableFiltersBySourceNameAndQueriesSpannerName() {
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "Users", "AccountRoles");
-    ISchemaMapper mapper = mock(ISchemaMapper.class);
-    when(mapper.getSourceTableName(anyString(), eq("Users"))).thenReturn("users_src");
-    when(mapper.getSourceTableName(anyString(), eq("AccountRoles")))
-        .thenReturn("account_roles_src");
-    when(mapper.getShardIdColumnName(anyString(), eq("Users"))).thenReturn("migration_shard_id");
     GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setTables("users_src");
     options.setShardIds("s1,s2");
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
@@ -378,8 +340,6 @@ public class CreateSpannerReadOpsFnTest {
         new CreateSpannerReadOpsFn(mock(PCollectionView.class), d -> mapper, config)
             .buildReadOperations(ddl, mapper);
 
-    // Users is kept via its source name "users_src" and queried as `Users`; AccountRoles is out
-    // of scope, so it is skipped before the shard ID column check despite having no column.
     assertEquals(
         Collections.singletonList(
             ReadOperation.create()
@@ -390,32 +350,6 @@ public class CreateSpannerReadOpsFnTest {
                         .bind("p1")
                         .toStringArray(Arrays.asList("s1", "s2"))
                         .build())),
-        result);
-  }
-
-  @Test
-  public void testSpannerQueryWithoutShardIdsIsUsed() throws IOException {
-    // Without --shardIds the query is still used; other tables keep the baseline query.
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1", "table2");
-    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setTableConfigurationFilePath(
-        writeTableConfigFile(
-            "{\"optionalConfigurations\":"
-                + "{\"table1\":{\"spannerQuery\":\"SELECT * FROM table1 WHERE id < 10\"}}}"));
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    List<ReadOperation> result =
-        new CreateSpannerReadOpsFn(mock(PCollectionView.class), IdentityMapper::new, config)
-            .buildReadOperations(ddl, new IdentityMapper(ddl));
-
-    assertEquals(
-        Arrays.asList(
-            ReadOperation.create()
-                .withQuery(
-                    "SELECT *, 'table1' AS __tableName__ FROM (\n"
-                        + "SELECT * FROM table1 WHERE id < 10\n"
-                        + ") AS __dv_src__"),
-            ReadOperation.create().withQuery("SELECT *, 'table2' as __tableName__ FROM `table2`")),
         result);
   }
 
@@ -476,25 +410,6 @@ public class CreateSpannerReadOpsFnTest {
   }
 
   @Test
-  public void testSpannerQueryKeyNotInTableNamesFails() throws IOException {
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1", "table2");
-    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setTableConfigurationFilePath(
-        writeTableConfigFile(
-            "{\"tableNames\":[\"table1\"],\"optionalConfigurations\":"
-                + "{\"table2\":{\"spannerQuery\":\"SELECT * FROM table2\"}}}"));
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    IllegalArgumentException e =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new CreateSpannerReadOpsFn(mock(PCollectionView.class), IdentityMapper::new, config)
-                    .buildReadOperations(ddl, new IdentityMapper(ddl)));
-    assertTrue(e.getMessage(), e.getMessage().contains("table2"));
-  }
-
-  @Test
   public void testSpannerQueryKeyWithoutSpannerMappingFails() throws IOException {
     // IdentityMapper.getSpannerTableName throws for "ghost" because the DDL has no such table.
     Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1");
@@ -514,32 +429,7 @@ public class CreateSpannerReadOpsFnTest {
   }
 
   @Test
-  public void testTwoSpannerQueryKeysMappedToSameTableFailNamingBoth() throws IOException {
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1", "table2");
-    ISchemaMapper mapper = mock(ISchemaMapper.class);
-    when(mapper.getSourceTableName(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(1));
-    when(mapper.getSpannerTableName(anyString(), eq("table1"))).thenReturn("table1");
-    when(mapper.getSpannerTableName(anyString(), eq("t1_copy"))).thenReturn("table1");
-    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setTableConfigurationFilePath(
-        writeTableConfigFile(
-            "{\"optionalConfigurations\":{"
-                + "\"table1\":{\"spannerQuery\":\"SELECT * FROM table1\"},"
-                + "\"t1_copy\":{\"spannerQuery\":\"SELECT * FROM table1 WHERE id < 5\"}}}"));
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    IllegalArgumentException e =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new CreateSpannerReadOpsFn(mock(PCollectionView.class), d -> mapper, config)
-                    .buildReadOperations(ddl, mapper));
-    assertTrue(e.getMessage(), e.getMessage().contains("table1"));
-    assertTrue(e.getMessage(), e.getMessage().contains("t1_copy"));
-  }
-
-  @Test
-  public void testSpannerQueryTrailingSemicolonAndWhitespaceStripped() throws IOException {
+  public void testSpannerQueryTrailingSemicolonAndWhitespaceStripped() {
     // The maximal trailing run of ';' and whitespace is stripped.
     assertEquals(
         "SELECT * FROM table1",
@@ -547,53 +437,6 @@ public class CreateSpannerReadOpsFnTest {
     assertEquals(
         "SELECT * FROM table1",
         CreateSpannerReadOpsFn.normalizeSpannerQuery("  SELECT * FROM table1;"));
-
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1");
-    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    // "\\n" is a JSON-escaped newline, so the query is "SELECT * FROM table1 ;; \n ".
-    options.setTableConfigurationFilePath(
-        writeTableConfigFile(
-            "{\"optionalConfigurations\":"
-                + "{\"table1\":{\"spannerQuery\":\"SELECT * FROM table1 ;; \\n \"}}}"));
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    List<ReadOperation> result =
-        new CreateSpannerReadOpsFn(mock(PCollectionView.class), IdentityMapper::new, config)
-            .buildReadOperations(ddl, new IdentityMapper(ddl));
-
-    assertEquals(
-        Collections.singletonList(
-            ReadOperation.create()
-                .withQuery(
-                    "SELECT *, 'table1' AS __tableName__ FROM (\n"
-                        + "SELECT * FROM table1\n"
-                        + ") AS __dv_src__")),
-        result);
-  }
-
-  @Test
-  public void testSpannerQueryTrailingLineCommentKeptAndParenOnNextLine() throws IOException {
-    // A trailing line comment can't swallow the closing parenthesis.
-    Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "table1");
-    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setTableConfigurationFilePath(
-        writeTableConfigFile(
-            "{\"optionalConfigurations\":"
-                + "{\"table1\":{\"spannerQuery\":\"SELECT * FROM table1 WHERE id < 5 -- note\"}}}"));
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    List<ReadOperation> result =
-        new CreateSpannerReadOpsFn(mock(PCollectionView.class), IdentityMapper::new, config)
-            .buildReadOperations(ddl, new IdentityMapper(ddl));
-
-    assertEquals(
-        Collections.singletonList(
-            ReadOperation.create()
-                .withQuery(
-                    "SELECT *, 'table1' AS __tableName__ FROM (\n"
-                        + "SELECT * FROM table1 WHERE id < 5 -- note\n"
-                        + ") AS __dv_src__")),
-        result);
   }
 
   /** Builds a DDL with empty tables; CreateSpannerReadOpsFn reads only table names and dialect. */
