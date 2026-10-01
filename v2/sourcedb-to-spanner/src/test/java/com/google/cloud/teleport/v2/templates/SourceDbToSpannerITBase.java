@@ -413,12 +413,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
 
-    params.put("targetParallelism", "15");
     if (System.getProperty("directRunnerTest") != null
         || pipelineLauncher instanceof DirectRunnerClient) {
       // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
       // element per transform, which is very costly for large elements such as CollationMapper
       // and causes heavy GC when many pipelines share one test JVM.
+      params.put("targetParallelism", "15");
       params.putIfAbsent("enforceImmutability", "false");
       params.putIfAbsent("enforceEncodability", "false");
     }

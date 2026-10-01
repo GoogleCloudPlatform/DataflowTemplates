@@ -40,7 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @org.junit.experimental.categories.Category({
-  com.google.cloud.teleport.metadata.TemplateIntegrationTest.class
+  com.google.cloud.teleport.metadata.TemplateIntegrationTest.class,
+  com.google.cloud.teleport.metadata.DirectRunnerTest.class
 })
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
