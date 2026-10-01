@@ -24,6 +24,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -98,7 +99,8 @@ public class WordCountYamlIT extends TemplateTestBase {
     // --------------------------------------------------------------------------------------------
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts = gcsResourceManager.listArtifacts("output/", null);
+    List<Artifact> artifacts =
+        gcsResourceManager.listArtifacts("output/", Pattern.compile(".*counts.*"));
     assertThat(artifacts).isNotEmpty();
 
     // Verify output files contain exact expected word counts from King Lear
