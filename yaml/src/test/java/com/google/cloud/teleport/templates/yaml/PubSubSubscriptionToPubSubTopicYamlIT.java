@@ -19,17 +19,12 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutures;
-import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -120,69 +115,38 @@ public final class PubSubSubscriptionToPubSubTopicYamlIT extends TemplateTestBas
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    // Prepare messages to publish
-    List<String> expectedMessages = new ArrayList<>();
-    List<ByteString> messageDataList = new ArrayList<>();
+    // Publish messages to inputTopic (retained by inputSubscription until read by pipeline)
+    LOG.info("Publishing {} messages to input topic...", MESSAGES_COUNT);
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
       String messageJson =
           new JSONObject(Map.of("id", i, "job", testName, "name", "message")).toString();
-      messageDataList.add(ByteString.copyFromUtf8(messageJson));
-      expectedMessages.add(messageJson);
+      pubsubResourceManager.publish(inputTopic, Map.of(), ByteString.copyFromUtf8(messageJson));
     }
 
-    Publisher publisher = null;
-    try {
-      publisher =
-          Publisher.newBuilder(inputTopic).setCredentialsProvider(credentialsProvider).build();
-      final Publisher finalPublisher = publisher;
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(MESSAGES_COUNT)
+            .build();
 
-      PubsubMessagesCheck pubsubCheck =
-          PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
-              .setMinMessages(MESSAGES_COUNT)
-              .build();
+    // Wait for pipeline processing
+    PipelineOperator.Result result =
+        pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
 
-      // Publish messages and wait for pipeline processing
-      PipelineOperator.Result result =
-          pipelineOperator()
-              .waitForConditionsAndFinish(
-                  createConfig(info),
-                  () -> {
-                    LOG.info("Publishing messages to input topic...");
-                    List<ApiFuture<String>> futures = new ArrayList<>();
-                    for (ByteString data : messageDataList) {
-                      futures.add(
-                          finalPublisher.publish(PubsubMessage.newBuilder().setData(data).build()));
-                    }
-                    try {
-                      ApiFutures.allAsList(futures).get();
-                      Thread.sleep(2000);
-                    } catch (Exception e) {
-                      throw new RuntimeException("Error publishing messages", e);
-                    }
-                    return true;
-                  },
-                  pubsubCheck);
+    // Assert
+    assertThatResult(result).meetsConditions();
 
-      // Assert
-      assertThatResult(result).meetsConditions();
-
-      // Verify received messages
-      List<String> actualMessages =
-          pubsubCheck.getReceivedMessageList().stream()
-              .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
-              .collect(Collectors.toList());
-      assertThat(actualMessages).hasSize(MESSAGES_COUNT);
-      for (String actualMessage : actualMessages) {
-        JSONObject json = new JSONObject(actualMessage);
-        assertThat(json.getString("job")).isEqualTo(testName);
-        assertThat(json.getString("name")).isEqualTo("message");
-        assertThat(json.getInt("id")).isAtLeast(1);
-        assertThat(json.getInt("id")).isAtMost(MESSAGES_COUNT);
-      }
-    } finally {
-      if (publisher != null) {
-        publisher.shutdown();
-      }
+    // Verify received messages
+    List<String> actualMessages =
+        pubsubCheck.getReceivedMessageList().stream()
+            .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
+            .collect(Collectors.toList());
+    assertThat(actualMessages).hasSize(MESSAGES_COUNT);
+    for (String actualMessage : actualMessages) {
+      JSONObject json = new JSONObject(actualMessage);
+      assertThat(json.getString("job")).isEqualTo(testName);
+      assertThat(json.getString("name")).isEqualTo("message");
+      assertThat(json.getInt("id")).isAtLeast(1);
+      assertThat(json.getInt("id")).isAtMost(MESSAGES_COUNT);
     }
   }
 }
