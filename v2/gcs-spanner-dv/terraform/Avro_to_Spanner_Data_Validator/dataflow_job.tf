@@ -139,7 +139,7 @@ EOT
 
 variable "shardIds" {
   type = string
-  description = "A comma-separated list of logical shard IDs (the IDs used by the bulk migration, which appear as the `<table>/<shardId>/` directory in the Avro output). When set, only those shards are validated. Tables with a session file `ShardIdColumn` are filtered on that column; every other in-scope table needs a `spannerQuery` in `tableConfigurationFilePath`, otherwise the job fails. For example, `shard_001,shard_007`. Defaults to empty."
+  description = "A comma-separated list of logical shard IDs (the IDs used by the sourcedb-to-spanner template, which appear as the `<table>/<shardId>/` directory in the Avro output). When set, only those shards are validated. Tables with a session file `ShardIdColumn` are filtered on that column; every other in-scope table needs a `spannerQuery` in `tableConfigurationFilePath`, otherwise the job fails. For example, `shard_001,shard_007`. Defaults to empty."
   default = null
 }
 

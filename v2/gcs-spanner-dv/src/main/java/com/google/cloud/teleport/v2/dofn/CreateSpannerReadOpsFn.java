@@ -142,7 +142,8 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
           continue;
         }
         statement =
-            pathAStatement(ddl.dialect(), tableName, shardIdColumn, tableConfig.getShardIds());
+            shardFilterStatement(
+                ddl.dialect(), tableName, shardIdColumn, tableConfig.getShardIds());
       }
       LOG.info("Spanner query for table '{}': {}", tableName, statement.getSql());
       readOperations.add(ReadOperation.create().withQuery(statement));
@@ -219,7 +220,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
    * The IDs are bound as one array parameter, so the SQL doesn't depend on the number of shards.
    */
   @VisibleForTesting
-  static Statement pathAStatement(
+  static Statement shardFilterStatement(
       Dialect dialect, String spannerTableName, String shardIdColumn, Collection<String> shardIds) {
     String quote = quote(dialect);
     String filter =
