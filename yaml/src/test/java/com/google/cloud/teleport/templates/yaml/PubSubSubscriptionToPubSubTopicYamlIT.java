@@ -87,6 +87,15 @@ public final class PubSubSubscriptionToPubSubTopicYamlIT extends TemplateTestBas
 
     LOG.info("Starting pubSubSubscriptionToPubSubTopic test.");
 
+    // Arrange - Pub/Sub topics and subscriptions setup
+    //
+    // Note on test design:
+    // The Dataflow pipeline strictly reads from inputSubscription and writes to outputTopic.
+    // However, in Google Cloud Pub/Sub:
+    // 1) Messages cannot be published directly to a subscription; they must be published
+    //    to a topic (inputTopic) that routes them to inputSubscription.
+    // 2) Messages cannot be pulled directly from a topic; a subscription (outputSubscription)
+    //    must be created on outputTopic to receive and verify the messages written by the pipeline.
     String nameSuffix = RandomStringUtils.randomAlphanumeric(8);
     TopicName inputTopic = pubsubResourceManager.createTopic("input-" + nameSuffix);
     SubscriptionName inputSubscription =
@@ -107,9 +116,11 @@ public final class PubSubSubscriptionToPubSubTopicYamlIT extends TemplateTestBas
                 .addParameter("outputTopic", outputTopic.toString())
                 .addParameter("outputFormat", "JSON"));
 
+    // Act - Launch pipeline
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
+    // Prepare messages to publish
     List<String> expectedMessages = new ArrayList<>();
     List<ByteString> messageDataList = new ArrayList<>();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
@@ -130,6 +141,7 @@ public final class PubSubSubscriptionToPubSubTopicYamlIT extends TemplateTestBas
               .setMinMessages(MESSAGES_COUNT)
               .build();
 
+      // Publish messages and wait for pipeline processing
       PipelineOperator.Result result =
           pipelineOperator()
               .waitForConditionsAndFinish(
@@ -151,13 +163,22 @@ public final class PubSubSubscriptionToPubSubTopicYamlIT extends TemplateTestBas
                   },
                   pubsubCheck);
 
+      // Assert
       assertThatResult(result).meetsConditions();
 
+      // Verify received messages
       List<String> actualMessages =
           pubsubCheck.getReceivedMessageList().stream()
               .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
               .collect(Collectors.toList());
-      assertThat(actualMessages).isNotEmpty();
+      assertThat(actualMessages).hasSize(MESSAGES_COUNT);
+      for (String actualMessage : actualMessages) {
+        JSONObject json = new JSONObject(actualMessage);
+        assertThat(json.getString("job")).isEqualTo(testName);
+        assertThat(json.getString("name")).isEqualTo("message");
+        assertThat(json.getInt("id")).isAtLeast(1);
+        assertThat(json.getInt("id")).isAtMost(MESSAGES_COUNT);
+      }
     } finally {
       if (publisher != null) {
         publisher.shutdown();
