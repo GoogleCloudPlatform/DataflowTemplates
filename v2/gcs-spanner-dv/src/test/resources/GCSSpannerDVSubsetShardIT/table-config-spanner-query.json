@@ -1,0 +1,11 @@
+{
+  "tableNames": ["Users", "AccountRolesSrc"],
+  "optionalConfigurations": {
+    "Users": {
+      "spannerQuery": "SELECT * FROM Users WHERE user_id <= 2"
+    },
+    "AccountRolesSrc": {
+      "spannerQuery": "SELECT * FROM AccountRoles WHERE role_id <= 1"
+    }
+  }
+}
