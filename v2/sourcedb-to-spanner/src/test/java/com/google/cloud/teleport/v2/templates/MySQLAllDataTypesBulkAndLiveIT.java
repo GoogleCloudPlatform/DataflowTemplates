@@ -22,7 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  * bulk failure injection, and live retry. The Bulk failures are injected both at Custom
  * transformation phase and Spanner write phase. The test case also includes an interleaved table.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {

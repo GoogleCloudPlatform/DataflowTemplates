@@ -20,7 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Duration;
@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link DataStreamToSpanner} Flex template which tests migration of all
  * MySQL data types.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStreamToSpannerITBase {
