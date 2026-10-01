@@ -27,7 +27,7 @@ import com.dtsx.astra.sdk.db.domain.DatabaseCreationRequest;
 import com.dtsx.astra.sdk.db.domain.DatabaseStatusType;
 import com.dtsx.astra.sdk.utils.ApiLocator;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
 import com.google.gson.Gson;
@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * DB.
  */
 @RunWith(JUnit4.class)
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 public class AstraDbToSpannerIT extends SourceDbToSpannerITBase implements Serializable {
 
