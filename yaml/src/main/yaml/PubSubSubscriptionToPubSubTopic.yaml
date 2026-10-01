@@ -1,0 +1,57 @@
+template:
+  name: "PubSub_Subscription_to_PubSub_Topic_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Pub/Sub subscription to Pub/Sub topic (YAML)"
+  description: >
+    The Pub/Sub subscription to Pub/Sub topic template is a streaming pipeline that reads messages
+    from a Pub/Sub subscription and writes them to another Pub/Sub topic.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "PubSubSubscriptionToPubSubTopic.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/pubsub_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Pub/Sub subscription must exist prior to execution.",
+    "The output Pub/Sub topic must exist prior to execution."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "pubsub_options"
+
+  parameters:
+    - pubsub_subscription_read_options
+    - pubsub_common_read_options
+    - pubsub_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPubSub
+      name: ReadFromPubSub
+      config:
+        subscription: {{ subscription }}
+        format: {{ format | default('JSON') }}
+        schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributesMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
+    - type: WriteToPubSub
+      name: WriteToPubSub
+      config:
+        topic: {{ outputTopic }}
+        format: {{ outputFormat | default('JSON') }}
+        schema: {{ outputSchema }}
+        attributes: {{ outputAttributes }}
+        attribute_map: {{ outputAttributesMap }}
+        id_attribute: {{ outputIdAttribute }}
+        timestamp_attribute: {{ outputTimestampAttribute }}
+  windowing:
+    type: fixed
+    size: 60
+
+options:
+  streaming: true
