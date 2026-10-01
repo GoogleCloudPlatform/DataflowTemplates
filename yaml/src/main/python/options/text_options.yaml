@@ -1,0 +1,10 @@
+options:
+  - name: "text_write_options"
+    parameters:
+      - order: 1
+        name: "outputPath"
+        description: "Output file path"
+        help: "The Cloud Storage path prefix to write output text files to."
+        example: "gs://your-bucket/wordcount/output"
+        required: true
+        type: text
