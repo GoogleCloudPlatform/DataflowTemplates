@@ -91,14 +91,13 @@ To validate only some shards of a sharded bulk migration:
    ```shell
    --parameters "shardIds=shard_001,shard_007"
    ```
-2. Make sure each validated table is filtered to the same shards on the Spanner side:
-   - If the session file has a `ShardIdColumn` for the table, there is nothing more to do.
-   - Otherwise, add a `spannerQuery` for the table in the `tableConfigurationFilePath` file.
+2. Every table being validated must be filtered to the same shards on the Spanner side, in one of two ways. A table with neither makes the job fail; leave tables you don't want to validate out of `tableNames`.
+   - The session file has a `ShardIdColumn` for the table. Nothing more to do.
+   - Otherwise, add a non-blank `spannerQuery` for the table in the `tableConfigurationFilePath` file.
 3. Write each `spannerQuery` as follows:
    1. Under `optionalConfigurations`, use the table's **source** (pre-migration) name as the key.
    2. Write it **strictly** in the format `SELECT * FROM <spanner-table-name> WHERE <condition>`.
    3. The template reads the table's Spanner rows with this query, so its `WHERE` condition must match all rows of the shards in `shardIds`, and only those. Update it whenever `shardIds` changes.
-   4. A blank `spannerQuery` fails the job at launch. If the table does not need a query, do not include a `spannerQuery` entry for it.
 
    > [!IMPORTANT]
    > The query runs on your Spanner database. `<spanner-table-name>` and every column must be named exactly as in your **Spanner DDL** (after any renames), and the SQL must be in your **Spanner database's dialect** (GoogleSQL or PostgreSQL, including its identifier quoting).
