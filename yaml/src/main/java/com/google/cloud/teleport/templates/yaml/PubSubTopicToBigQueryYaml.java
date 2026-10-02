@@ -22,14 +22,14 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PubSub_To_BigQuery_Yaml",
+    name = "PubSub_Topic_To_BigQuery_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Pub/Sub to BigQuery (YAML)",
+    displayName = "Pub/Sub topic to BigQuery (YAML)",
     description =
-        "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
+        "The Pub/Sub topic to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubSubToBigQuery.yaml",
+    yamlTemplateFile = "PubSubTopicToBigQuery.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery",
@@ -40,7 +40,7 @@ import org.apache.beam.sdk.options.Validation;
     },
     streaming = true,
     hidden = false)
-public interface PubSubToBigQueryYaml {
+public interface PubSubTopicToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 1,

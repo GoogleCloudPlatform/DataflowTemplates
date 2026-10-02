@@ -1,14 +1,14 @@
 template:
 
-  name: "PubSub_To_BigQuery_Yaml"
+  name: "PubSub_Topic_To_BigQuery_Yaml"
   category: "STREAMING"
   type: "YAML"
-  display_name: "Pub/Sub to BigQuery (YAML)"
+  display_name: "Pub/Sub topic to BigQuery (YAML)"
   description: >
-    The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted
+    The Pub/Sub topic to BigQuery template is a streaming pipeline that reads JSON-formatted
     data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.
   flex_container_name: "pipeline-yaml"
-  yamlTemplateFile: "PubSubToBigQuery.yaml"
+  yamlTemplateFile: "PubSubTopicToBigQuery.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt"}
   documentation: >
