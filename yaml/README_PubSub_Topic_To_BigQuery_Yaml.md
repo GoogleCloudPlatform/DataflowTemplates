@@ -2,7 +2,7 @@
 Pub/Sub topic to BigQuery (YAML) template
 ---
 The Pub/Sub topic to BigQuery template is a streaming pipeline that reads
-JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting
+JSON-formatted data from a Pub/Sub topic and writes the resulting
 records to BigQuery.
 
 
@@ -154,7 +154,6 @@ gcloud dataflow flex-template run "pubsub-topic-to-bigquery-yaml-job" \
   --parameters "idAttribute=$ID_ATTRIBUTE" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
   --parameters "errorHandling=$ERROR_HANDLING" \
-  --parameters "subscription=$SUBSCRIPTION" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -200,7 +199,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-topic-to-bigquery-yaml-job" \
 -DtemplateName="PubSub_Topic_To_BigQuery_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
