@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download Test Report
-      uses: dawidd6/action-download-artifact@27e4ae67c24b67d3b54bc6d6a45475be1e28031b # v26
+      uses: dawidd6/action-download-artifact@eab87c9830c39eff17e5a6eadb20bfb4bc880477 # v27
       with:
         name: surefire-.*test-results
         name_is_regexp: true
