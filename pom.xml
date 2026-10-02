@@ -86,6 +86,10 @@
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
+    <!-- Must match the version google-cloud-spanner (via libraries-bom) is built against;
+         libraries-bom does not manage io.opentelemetry itself, so without this the SDK
+         version is decided by nearest-wins and can be dragged backwards. -->
+    <opentelemetry.version>1.62.0</opentelemetry.version>
     <re2j.version>1.8</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
     <snakeyaml.version>2.4</snakeyaml.version>
@@ -134,6 +138,16 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
         <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Must stay ahead of the GCP BOM: the io.opentelemetry artifacts are one release
+           train and have to move together, so this BOM owns them even if the GCP BOM
+           starts managing them too. -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>${opentelemetry.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
