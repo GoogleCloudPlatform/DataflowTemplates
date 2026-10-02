@@ -146,12 +146,11 @@ public interface PubSubToBigQueryYaml {
   @TemplateParameter.Text(
       order = 11,
       name = "createDisposition",
-      optional = false,
+      optional = true,
       description = "How to create",
       helpText =
           "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
       example = "")
-  @Validation.Required
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 

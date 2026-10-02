@@ -23,7 +23,7 @@ options:
           Specifies whether a table should be created if it does not exist. 
           Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.
         default: CREATE_NEVER           
-        required: true
+        required: false
         type: text
       - order: 2
         name: "writeDisposition"

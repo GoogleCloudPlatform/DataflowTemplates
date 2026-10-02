@@ -70,7 +70,7 @@ pipeline:
       input: ReadFromKafka
       config:
         table: {{ table }}
-        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
         num_streams: {{ numStreams | default(1) }}
         error_handling:
