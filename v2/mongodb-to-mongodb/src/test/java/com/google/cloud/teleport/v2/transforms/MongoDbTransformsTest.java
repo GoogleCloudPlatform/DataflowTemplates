@@ -848,6 +848,140 @@ public class MongoDbTransformsTest {
 
   @Test
   @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_staleInsertAfterDelete_preservesDelete() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    // Newer Delete event at T=1000, inc=1
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000, 1),
+            new Document("_id", 100).toJson());
+
+    // Older Insert/Upsert event at T=900, inc=1 arriving after Delete in the batch iterable
+    Document doc1 = new Document("_id", 100).append("name", "Alice");
+    DocumentWithMetadata staleInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            doc1,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(900, 1),
+            null);
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    // Iterable presents [deleteItem, staleInsertItem]
+    when(mockCtx.element())
+        .thenReturn(KV.of("users#0", Arrays.asList(deleteItem, staleInsertItem)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof DeleteOneModel);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_newerInsertAfterDelete_replacesWithInsert()
+      throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    // Older Delete event at T=800, inc=1
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(800, 1),
+            new Document("_id", 100).toJson());
+
+    // Newer Insert/Upsert event at T=1000, inc=1
+    Document doc1 = new Document("_id", 100).append("name", "Alice");
+    DocumentWithMetadata newerInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            doc1,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000, 1),
+            null);
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element())
+        .thenReturn(KV.of("users#0", Arrays.asList(deleteItem, newerInsertItem)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
   public void testWriteBatchesCoalescing_multipleUpdates_emitsLatestPayload() throws Exception {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);

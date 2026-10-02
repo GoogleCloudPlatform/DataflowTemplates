@@ -196,6 +196,43 @@ public class DocumentWithMetadataCoderTest {
         withOriginalDocument(doc, new Document("_id", 3).append("k", "original").toJson()));
   }
 
+  @Test
+  public void testEncodeDecode_binaryBsonTypesAndLazyCdcEvent() throws Exception {
+    org.bson.types.ObjectId oid = new org.bson.types.ObjectId("66d57f9b000000012b022c01");
+    Document nested = new Document("nestedKey", "nestedVal").append("count", 42L);
+    Document doc =
+        new Document("_id", oid)
+            .append("decimal", org.bson.types.Decimal128.parse("12345.6789"))
+            .append("nested", nested);
+
+    DocumentWithMetadata cdcItem =
+        DocumentWithMetadata.cdcEvent(
+            doc,
+            null,
+            "sourceCol",
+            "targetCol",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1724000000L, 1L),
+            "{\"_id\": {\"$oid\": \"66d57f9b000000012b022c01\"}}");
+
+    assertNull(cdcItem.rawOriginalDocument());
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    DocumentWithMetadataCoder.of().encode(cdcItem, out);
+    DocumentWithMetadata decoded =
+        DocumentWithMetadataCoder.of().decode(new ByteArrayInputStream(out.toByteArray()));
+
+    assertNotNull(decoded);
+    assertNull(decoded.rawOriginalDocument());
+    assertEquals(oid, decoded.getId());
+    assertEquals(
+        org.bson.types.Decimal128.parse("12345.6789"),
+        decoded.getDocument().get("decimal", org.bson.types.Decimal128.class));
+    assertEquals(nested, decoded.getDocument().get("nested", Document.class));
+    assertEquals(cdcItem.getOriginalDocument(), decoded.getOriginalDocument());
+    CoderProperties.coderDecodeEncodeEqual(DocumentWithMetadataCoder.of(), cdcItem);
+  }
+
   private static DocumentWithMetadata withOriginalDocument(Document doc, String originalDocument) {
     return new DocumentWithMetadata(
         doc,
