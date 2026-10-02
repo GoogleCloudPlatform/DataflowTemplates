@@ -141,6 +141,10 @@ CREATE VIEW "AuthorStatsView" SQL SECURITY INVOKER AS SELECT "Articles"."author_
 -- Change Streams
 CREATE CHANGE STREAM "AllStream" FOR ALL WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES');
 
+-- Functions (UDFs)
+CREATE FUNCTION my_schema."MyCustomFunction"("arg0" text, "arg1" text DEFAULT 'bar') RETURNS text SECURITY INVOKER IMMUTABLE RETURN (SELECT 'bar');
+CREATE FUNCTION my_schema."PgMultiply"("a" bigint, "b" bigint) RETURNS bigint SECURITY INVOKER IMMUTABLE LANGUAGE SQL RETURN (SELECT "a" * "b");
+
 -- Tables w/o PKs
 CREATE TABLE "MyTable_NoPks" (
 	"val" bigint
