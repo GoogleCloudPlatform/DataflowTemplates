@@ -16,12 +16,14 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
@@ -47,6 +49,9 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
 
   private final Counter conversionErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, CONVERSION_ERRORS_COUNTER_NAME);
+
+  private final Counter droppedTableExceptions =
+      Metrics.counter(SpannerTransactionWriterDoFn.class, DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME);
 
   public CreateKeyValuePairsWithPrimaryKeyHashDoFn(PCollectionView<Ddl> ddlView) {
     this.ddlView = ddlView;
@@ -77,6 +82,13 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
       String finalKeyString = tableName + "_" + primaryKey.toString();
       Long finalKey = (long) finalKeyString.hashCode();
       c.output(KV.of(finalKey, msg));
+    } catch (DroppedTableException e) {
+      // Table exists in the source but not in Spanner. Write the event to the skip directory.
+      LOG.warn("Skipping change event for table not present in Spanner, tableName=" + tableName);
+      FailsafeElement<String, String> output = FailsafeElement.of(msg);
+      output.setErrorMessage(e.getMessage());
+      c.output(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG, output);
+      droppedTableExceptions.inc();
     } catch (Exception e) {
       LOG.error(
           "Error while converting change event to primary key hash for tableName=" + tableName, e);

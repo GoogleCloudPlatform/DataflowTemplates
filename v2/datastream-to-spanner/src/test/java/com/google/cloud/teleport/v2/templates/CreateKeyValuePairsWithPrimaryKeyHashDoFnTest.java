@@ -16,10 +16,12 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -167,6 +169,33 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     doFn.processElement(processContext);
 
     verify(processContext).output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
+  }
+
+  @Test
+  public void testProcessElementWithTableMissingInSpanner() {
+    Ddl ddl = getTestDdl();
+    when(processContext.sideInput(ddlView)).thenReturn(ddl);
+
+    // Table exists at source but not in Spanner.
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "AuditLog");
+    outputObject.put("log_id", 1);
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContext.element()).thenReturn(failsafeElement);
+
+    doFn.processElement(processContext);
+
+    ArgumentCaptor<FailsafeElement<String, String>> captor =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContext).output(eq(SKIPPED_TABLE_EVENT_TAG), captor.capture());
+    verify(processContext, never()).output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
+    verify(processContext, never()).output(any(KV.class));
+    assertEquals(failsafeElement.getOriginalPayload(), captor.getValue().getOriginalPayload());
+    assertEquals(
+        "Table from change event does not exist in Spanner. table=AuditLog",
+        captor.getValue().getErrorMessage());
   }
 
   @Test

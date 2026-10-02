@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
@@ -157,7 +158,7 @@ class SpannerTransactionWriterDoFn
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "spanner_writer_latency_ms");
 
   private final Counter droppedTableExceptions =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Dropped table exceptions");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME);
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
@@ -315,10 +316,12 @@ class SpannerTransactionWriterDoFn
       }
 
     } catch (DroppedTableException e) {
-      // Errors when table exists in source but was dropped during conversion. We do not output any
-      // errors to dlq for this.
-      // Note that this is not loogged to DLQ!!
-      LOG.error("Table dropped during migration for changeEventMessage {}", msg, e.getMessage());
+      // Errors when table exists in source but was dropped during conversion.
+      LOG.error(
+          "Table dropped during migration for changeEventMessage {}, error: {}",
+          msg,
+          e.getMessage());
+      outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG);
       droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
       LOG.error("Invalid Change Exception", e);
