@@ -29,6 +29,9 @@ public abstract class ComparisonRecord {
 
   public abstract List<Column> getPrimaryKeyColumns();
 
+  @Nullable
+  public abstract List<Column> getSourcePrimaryKeyColumns();
+
   public abstract String getHash();
 
   @Nullable
@@ -47,6 +50,8 @@ public abstract class ComparisonRecord {
     public abstract Builder setTableName(String tableName);
 
     public abstract Builder setPrimaryKeyColumns(List<Column> primaryKeyColumns);
+
+    public abstract Builder setSourcePrimaryKeyColumns(List<Column> sourcePrimaryKeyColumns);
 
     public abstract Builder setHash(String hash);
 
