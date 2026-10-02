@@ -156,7 +156,9 @@ resource "google_project_iam_member" "reverse_replication_roles" {
     "roles/secretmanager.viewer",
     "roles/editor",
     "roles/dataflow.worker",
-    "roles/storage.objectAdmin"
+    "roles/storage.objectAdmin",
+    "roles/monitoring.metricWriter",
+    "roles/run.invoker"
   ]) : toset([])
   project = data.google_project.project.id
   role    = each.key
@@ -224,4 +226,93 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
   labels = {
     "migration_id" = local.migration_id
   }
+}
+
+# Cloud Run Service for Polling GCS DLQ and Publishing Metrics to Cloud Monitoring
+resource "google_cloud_run_v2_service" "dlq_poller" {
+  count = var.common_params.create_cutback_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_project_iam_member.reverse_replication_roles,
+    google_storage_bucket.reverse_replication_bucket
+  ]
+  name     = "${local.migration_id}-dlq-poller"
+  location = var.common_params.region
+  project  = var.common_params.project
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = var.dataflow_params.runner_params.service_account_email != null ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+    containers {
+      image   = "mirror.gcr.io/library/python:3.11-slim"
+      command = ["python3", "-c", file("${path.module}/../monitoring-dashboard/dlq_poller.py")]
+      env {
+        name  = "PROJECT_ID"
+        value = var.common_params.project
+      }
+      env {
+        name  = "REGION"
+        value = var.common_params.region
+      }
+      env {
+        name  = "MIGRATION_ID"
+        value = local.migration_id
+      }
+      env {
+        name  = "DLQ_DIRECTORIES"
+        value = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
+      }
+    }
+  }
+  labels = {
+    "migration_id" = local.migration_id
+  }
+}
+
+# Cloud Scheduler Job to Trigger the GCS DLQ Poller Every Minute
+resource "google_cloud_scheduler_job" "dlq_poller_scheduler" {
+  count = var.common_params.create_cutback_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_project_iam_member.reverse_replication_roles,
+    google_cloud_run_v2_service.dlq_poller
+  ]
+  name             = "${local.migration_id}-dlq-poller-cron"
+  description      = "Triggers the GCS DLQ poller Cloud Run service every minute"
+  schedule         = "* * * * *"
+  time_zone        = "Etc/UTC"
+  attempt_deadline = "60s"
+  region           = var.common_params.region
+  project          = var.common_params.project
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloud_run_v2_service.dlq_poller[0].uri
+    oidc_token {
+      service_account_email = var.dataflow_params.runner_params.service_account_email != null ? var.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+      audience              = google_cloud_run_v2_service.dlq_poller[0].uri
+    }
+  }
+}
+
+# Cloud Monitoring Dashboard for Cutback Readiness Verification
+resource "google_monitoring_dashboard" "cutback_dashboard" {
+  count = var.common_params.create_cutback_monitoring_dashboard ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_pubsub_subscription.dlq_pubsub_subscription,
+    google_dataflow_flex_template_job.reverse_replication_job,
+    google_cloud_run_v2_service.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler
+  ]
+  project = var.common_params.project
+  dashboard_json = templatefile("${path.module}/../monitoring-dashboard/monitoring_dashboard.json.tpl", {
+    dashboard_display_name  = "Cutback Dashboard - ${local.migration_id}"
+    migration_id            = local.migration_id
+    dataflow_job_ids        = google_dataflow_flex_template_job.reverse_replication_job.job_id
+    pubsub_subscription_ids = join("|", compact([
+      google_pubsub_subscription.dlq_pubsub_subscription.name,
+      var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != null ? element(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription), length(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription)) - 1) : null
+    ]))
+  })
 }

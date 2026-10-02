@@ -31,7 +31,10 @@ resource "google_project_service" "enabled_apis" {
     "storage.googleapis.com",
     "pubsub.googleapis.com",
     "cloudprofiler.googleapis.com",
-    "spanner.googleapis.com"
+    "spanner.googleapis.com",
+    "monitoring.googleapis.com",
+    "run.googleapis.com",
+    "cloudscheduler.googleapis.com"
   ])
   service            = each.key
   project            = var.common_params.project
