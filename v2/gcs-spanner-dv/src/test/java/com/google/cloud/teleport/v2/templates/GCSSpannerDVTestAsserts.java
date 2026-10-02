@@ -21,11 +21,13 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.google.cloud.bigquery.TableResult;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Test helper class for verifying BigQuery output from the gcs-spanner-dv pipeline.
@@ -72,6 +74,41 @@ public final class GCSSpannerDVTestAsserts {
       BigQueryResourceManager bigQueryResourceManager, List<MismatchedRecordDto> expected) {
     assertTableRecords(
         bigQueryResourceManager, "MismatchedRecords", MismatchedRecordDto.class, expected);
+  }
+
+  /**
+   * Returns the number of rows in {@code MismatchedRecords} matching all non-null filter arguments
+   * ({@code null} arguments are not filtered on). Use this instead of {@link
+   * #assertMismatchedRecords} at load-test scale where reading the table row by row is infeasible.
+   */
+  public static long countMismatchedRecords(
+      BigQueryResourceManager bigQueryResourceManager,
+      @Nullable String schemaName,
+      @Nullable String tableName,
+      @Nullable String mismatchType,
+      @Nullable String shardId) {
+    List<String> conditions = new ArrayList<>();
+    if (schemaName != null) {
+      conditions.add(String.format("schema_name = '%s'", schemaName));
+    }
+    if (tableName != null) {
+      conditions.add(String.format("table_name = '%s'", tableName));
+    }
+    if (mismatchType != null) {
+      conditions.add(String.format("mismatch_type = '%s'", mismatchType));
+    }
+    if (shardId != null) {
+      conditions.add(String.format("shard_id = '%s'", shardId));
+    }
+    String whereClause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
+    String query =
+        String.format(
+            "SELECT COUNT(*) FROM `%s.%s.MismatchedRecords`%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            whereClause);
+    TableResult result = bigQueryResourceManager.runQuery(query);
+    return result.getValues().iterator().next().get(0).getLongValue();
   }
 
   /**
