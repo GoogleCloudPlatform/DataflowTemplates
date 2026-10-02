@@ -56,7 +56,7 @@
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
-    <autovalue.version>1.10.4</autovalue.version>
+    <autovalue.version>1.11.1</autovalue.version>
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.12.1</avro.version>
     <caffeine.version>3.2.3</caffeine.version>
