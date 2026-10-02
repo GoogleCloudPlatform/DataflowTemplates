@@ -6,7 +6,8 @@ variable "common_params" {
     region       = string
     migration_id = optional(string)
     # Will be auto-generated if not specified
-    add_policies_to_service_account = optional(bool, true)
+    add_policies_to_service_account     = optional(bool, true)
+    create_cutover_monitoring_dashboard = optional(bool, false)
     datastream_params = object({
       gcs_bucket_name               = optional(string, "live-migration")
       pubsub_topic_name             = optional(string, "live-migration")
@@ -68,7 +69,7 @@ variable "common_params" {
         kms_key_name                 = optional(string)
         labels                       = optional(map(string))
         launcher_machine_type        = optional(string)
-        machine_type                 = optional(string, "n1-standard-4")
+        machine_type                 = optional(string, "n2-standard-4")
         max_workers                  = number
         job_name                     = optional(string, "live-migration-job")
         network                      = optional(string)

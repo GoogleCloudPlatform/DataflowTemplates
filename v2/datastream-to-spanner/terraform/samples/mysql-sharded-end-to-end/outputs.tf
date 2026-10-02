@@ -11,6 +11,9 @@ output "resource_ids" {
       pubsub_topic                         = google_pubsub_topic.datastream_topic[idx].name
       pubsub_subscription                  = google_pubsub_subscription.datastream_subscription[idx].name
       dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : google_dataflow_flex_template_job.live_migration_job[idx].job_id
+      dlq_poller_service                   = var.common_params.create_cutover_monitoring_dashboard ? google_cloud_run_v2_service.dlq_poller[idx].name : ""
+      dlq_poller_scheduler                 = var.common_params.create_cutover_monitoring_dashboard ? google_cloud_scheduler_job.dlq_poller_scheduler[idx].name : ""
+      cutover_monitoring_dashboard         = var.common_params.create_cutover_monitoring_dashboard ? split("/", google_monitoring_dashboard.cutover_dashboard[idx].id)[3] : ""
     }
   }
 
@@ -22,7 +25,10 @@ output "resource_ids" {
     google_storage_bucket.datastream_bucket,
     google_pubsub_topic.datastream_topic,
     google_pubsub_subscription.datastream_subscription,
-    google_dataflow_flex_template_job.live_migration_job
+    google_dataflow_flex_template_job.live_migration_job,
+    google_cloud_run_v2_service.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler,
+    google_monitoring_dashboard.cutover_dashboard
   ]
 }
 
@@ -39,6 +45,9 @@ output "resource_urls" {
       pubsub_topic                         = "https://console.cloud.google.com/cloudpubsub/topic/detail/${google_pubsub_topic.datastream_topic[idx].name}?project=${var.common_params.project}"
       pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription[idx].name}?project=${var.common_params.project}"
       dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
+      dlq_poller_service                   = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/run/detail/${var.common_params.region}/${google_cloud_run_v2_service.dlq_poller[idx].name}/metrics?project=${var.common_params.project}" : ""
+      dlq_poller_scheduler                 = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/cloudscheduler/jobs/edit/${var.common_params.region}/${google_cloud_scheduler_job.dlq_poller_scheduler[idx].name}?project=${var.common_params.project}" : ""
+      cutover_monitoring_dashboard         = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/monitoring/dashboards/custom/${split("/", google_monitoring_dashboard.cutover_dashboard[idx].id)[3]}?project=${var.common_params.project}" : ""
     }
   }
 
@@ -50,6 +59,9 @@ output "resource_urls" {
     google_storage_bucket.datastream_bucket,
     google_pubsub_topic.datastream_topic,
     google_pubsub_subscription.datastream_subscription,
-    google_dataflow_flex_template_job.live_migration_job
+    google_dataflow_flex_template_job.live_migration_job,
+    google_cloud_run_v2_service.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler,
+    google_monitoring_dashboard.cutover_dashboard
   ]
 }
