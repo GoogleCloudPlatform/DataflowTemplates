@@ -1,14 +1,14 @@
 
-Pub/Sub to BigQuery (YAML) template
+Pub/Sub topic to BigQuery (YAML) template
 ---
-The Pub/Sub to BigQuery template is a streaming pipeline that reads
-JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting
+The Pub/Sub topic to BigQuery template is a streaming pipeline that reads
+JSON-formatted data from a Pub/Sub topic and writes the resulting
 records to BigQuery.
 
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_To_BigQuery_Yaml).
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_Topic_To_BigQuery_Yaml).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
@@ -30,7 +30,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
 * **errorHandling**: This option specifies whether and where to output error rows.
-* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'. Defaults to: CREATE_IF_NEEDED.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
@@ -50,7 +49,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToBigQueryYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubTopicToBigQueryYaml.java)
 
 ### Templates Plugin
 
@@ -92,7 +91,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="PubSub_To_BigQuery_Yaml" \
+-DtemplateName="PubSub_Topic_To_BigQuery_Yaml" \
 -f yaml
 ```
 
@@ -103,7 +102,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_BigQuery_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_Topic_To_BigQuery_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -123,7 +122,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_BigQuery_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_Topic_To_BigQuery_Yaml"
 
 ### Required
 export TOPIC=<topic>
@@ -137,12 +136,11 @@ export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
-export SUBSCRIPTION=<subscription>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
 
-gcloud dataflow flex-template run "pubsub-to-bigquery-yaml-job" \
+gcloud dataflow flex-template run "pubsub-topic-to-bigquery-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -154,7 +152,6 @@ gcloud dataflow flex-template run "pubsub-to-bigquery-yaml-job" \
   --parameters "idAttribute=$ID_ATTRIBUTE" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
   --parameters "errorHandling=$ERROR_HANDLING" \
-  --parameters "subscription=$SUBSCRIPTION" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -188,7 +185,6 @@ export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
-export SUBSCRIPTION=<subscription>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -198,9 +194,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="pubsub-to-bigquery-yaml-job" \
--DtemplateName="PubSub_To_BigQuery_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-DjobName="pubsub-topic-to-bigquery-yaml-job" \
+-DtemplateName="PubSub_Topic_To_BigQuery_Yaml" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -218,7 +214,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/PubSub_To_BigQuery_Yaml
+cd yaml/terraform/PubSub_Topic_To_BigQuery_Yaml
 terraform init
 terraform apply
 ```
@@ -238,11 +234,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "pubsub_to_bigquery_yaml" {
+resource "google_dataflow_flex_template_job" "pubsub_topic_to_bigquery_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_BigQuery_Yaml"
-  name              = "pubsub-to-bigquery-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_Topic_To_BigQuery_Yaml"
+  name              = "pubsub-topic-to-bigquery-yaml"
   region            = var.region
   parameters        = {
     topic = "<topic>"
@@ -254,7 +250,6 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigquery_yaml" {
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
     # errorHandling = "<errorHandling>"
-    # subscription = "<subscription>"
     # createDisposition = "CREATE_IF_NEEDED"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"
