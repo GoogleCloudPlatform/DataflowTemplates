@@ -122,7 +122,7 @@ public abstract class DatastreamToDML
     return applyCasingLogic(name, this.defaultCasing);
   }
 
-  private String applyCasingLogic(String name, String casingOption) {
+  protected String applyCasingLogic(String name, String casingOption) {
     if (name == null || name.isEmpty()) {
       return name;
     }
@@ -280,6 +280,25 @@ public abstract class DatastreamToDML
     return quoteCharacter + name + quoteCharacter;
   }
 
+  public List<String> getSourcePrimaryKeyFields(JsonNode rowObj, List<String> primaryKeys) {
+    Map<String, String> casedToSourceFieldMap = new HashMap<>();
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceFieldName = it.next();
+      casedToSourceFieldMap.put(
+          applyCasingLogic(sourceFieldName, this.columnCasing), sourceFieldName);
+    }
+
+    List<String> sourcePrimaryKeyFields = new ArrayList<>();
+    for (String destPk : primaryKeys) {
+      if (casedToSourceFieldMap.containsKey(destPk)) {
+        sourcePrimaryKeyFields.add(casedToSourceFieldMap.get(destPk));
+      } else if (rowObj.has(destPk)) {
+        sourcePrimaryKeyFields.add(destPk);
+      }
+    }
+    return sourcePrimaryKeyFields;
+  }
+
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
     // Oracle uses upper case while Postgres uses all lowercase.
@@ -297,7 +316,7 @@ public abstract class DatastreamToDML
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+    List<String> sourcePrimaryKeys = this.getSourcePrimaryKeyFields(rowObj, primaryKeys);
     List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
     List<String> orderByValues =
         getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
