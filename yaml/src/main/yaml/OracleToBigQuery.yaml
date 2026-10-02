@@ -1,5 +1,5 @@
 template:
-  name: "Oracle_to_BigQuery_Yaml"
+  name: "Oracle_To_BigQuery_Yaml"
   category: "BATCH"
   type: "YAML"
   display_name: "Oracle to BigQuery (YAML)"
@@ -42,7 +42,6 @@ pipeline:
         table: {{ location }}
         num_partitions: {{ numPartitions }}
         fetch_size: {{ fetchSize }}
-        connection_init_sql: {{ connectionInitSql }}
         disable_auto_commit: {{ disableAutoCommit }}
         output_parallelization: {{ outputParallelization }}
 
@@ -50,7 +49,7 @@ pipeline:
       name: WriteToBigQuery
       config:
         table: {{ table }}
-        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
         num_streams: {{ numStreams | default(1) }}
 

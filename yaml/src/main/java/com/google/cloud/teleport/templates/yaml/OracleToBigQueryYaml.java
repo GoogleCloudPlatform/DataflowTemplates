@@ -22,7 +22,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Oracle_to_BigQuery_Yaml",
+    name = "Oracle_To_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Oracle to BigQuery (YAML)",
@@ -161,12 +161,13 @@ public interface OracleToBigQueryYaml {
   @TemplateParameter.Text(
       order = 13,
       name = "createDisposition",
-      optional = true,
+      optional = false,
       description = "How to create",
       helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
       example = "")
-  @Default.String("CREATE_IF_NEEDED")
+  @Validation.Required
+  @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
   @TemplateParameter.Text(
