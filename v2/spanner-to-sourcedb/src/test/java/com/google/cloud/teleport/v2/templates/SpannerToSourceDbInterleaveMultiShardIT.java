@@ -90,11 +90,15 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             createSpannerDatabase(SpannerToSourceDbInterleaveMultiShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName + "shardA");
         createMySQLSchema(
             jdbcResourceManagerShardA, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName + "shardB");
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 

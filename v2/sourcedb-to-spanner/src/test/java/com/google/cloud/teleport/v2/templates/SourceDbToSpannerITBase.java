@@ -68,7 +68,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
 
   public MySQLResourceManager setUpMySQLResourceManager() {
-    return MySQLResourceManager.builder(testName).build();
+    return com.google.cloud.teleport.v2.templates.mysql.SharedMySQLBulkITContainer
+        .createResourceManager(testName);
   }
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {

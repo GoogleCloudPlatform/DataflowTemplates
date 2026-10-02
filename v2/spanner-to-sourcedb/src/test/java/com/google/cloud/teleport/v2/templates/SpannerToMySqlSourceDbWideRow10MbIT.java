@@ -91,7 +91,9 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
             createSpannerDatabase(SpannerToMySqlSourceDbWideRow10MbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName);
         increasePacketSize();
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlSourceDbWideRow10MbIT.MYSQL_SCHEMA_FILE_RESOURCE);
