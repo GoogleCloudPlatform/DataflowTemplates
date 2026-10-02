@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.sql.Connection;
@@ -32,6 +32,7 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -50,7 +51,7 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
  * a simple schema.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
@@ -131,14 +132,30 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
     mySQLResourceManager.write(TABLE2, mySQLData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-    gcsClient.uploadArtifact(
-        "input/truststore_Shard1.jks", mySQLResourceManager.getTruststorePath());
-    String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks");
-    String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
+    // DirectRunner never invokes JvmInitializers, so CommonTemplateJvmInitializer does not stage
+    // extraFilesToStage into /extra_files. Since the pipeline runs in the test JVM, point the JDBC
+    // SSL properties directly at the locally generated stores instead.
+    boolean isDirectRunner =
+        System.getProperty("directRunnerTest") != null
+            || pipelineLauncher instanceof DirectRunnerClient;
 
-    gcsClient.uploadArtifact("input/keystore_Shard1.jks", mySQLResourceManager.getKeystorePath());
-    String keystoreGcsUrl = getGcsPath("input/keystore_Shard1.jks");
-    String keystoreLocalUrl = "file:///extra_files/keystore_Shard1.jks";
+    String truststoreLocalUrl;
+    String keystoreLocalUrl;
+    if (isDirectRunner) {
+      truststoreLocalUrl = "file://" + mySQLResourceManager.getTruststorePath();
+      keystoreLocalUrl = "file://" + mySQLResourceManager.getKeystorePath();
+    } else {
+      gcsClient.uploadArtifact(
+          "input/truststore_Shard1.jks", mySQLResourceManager.getTruststorePath());
+      String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks");
+      truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
+
+      gcsClient.uploadArtifact("input/keystore_Shard1.jks", mySQLResourceManager.getKeystorePath());
+      String keystoreGcsUrl = getGcsPath("input/keystore_Shard1.jks");
+      keystoreLocalUrl = "file:///extra_files/keystore_Shard1.jks";
+
+      sslJobParameters.put("extraFilesToStage", truststoreGcsUrl + "," + keystoreGcsUrl);
+    }
 
     String props =
         String.format(
@@ -150,7 +167,6 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             java.net.URLEncoder.encode(
                 mySQLResourceManager.getPassword(), java.nio.charset.StandardCharsets.UTF_8));
 
-    sslJobParameters.put("extraFilesToStage", truststoreGcsUrl + "," + keystoreGcsUrl);
     sslJobParameters.put("connectionProperties", props);
     sslJobParameters.put("dbUser", "df_user");
     sslJobParameters.put("dbPassword", "");

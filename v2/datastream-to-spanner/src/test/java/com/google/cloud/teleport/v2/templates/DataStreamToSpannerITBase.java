@@ -41,6 +41,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
@@ -426,6 +427,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     String jobName = PipelineUtils.createJobName(identifierSuffix);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
+      // element per transform, which is very costly for large elements such as CollationMapper
+      // and causes heavy GC when many pipelines share one test JVM.
+      params.put("targetParallelism", "32");
+      params.putIfAbsent("enforceImmutability", "false");
+      params.putIfAbsent("enforceEncodability", "false");
+    }
     options.setParameters(params);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));

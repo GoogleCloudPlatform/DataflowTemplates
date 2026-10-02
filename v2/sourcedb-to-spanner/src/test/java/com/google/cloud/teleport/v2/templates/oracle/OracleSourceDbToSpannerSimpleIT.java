@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
@@ -47,7 +47,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
  * a simple schema.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {

@@ -42,6 +42,8 @@ var (
 	dUnifiedWorkerHarnessContainerImage string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
+	dDirectRunner                       bool
+	dJvmArgs                            string
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -64,6 +66,8 @@ func RegisterItFlags() {
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
+	flag.BoolVar(&dDirectRunner, "it-direct-runner", false, "Whether to use DirectRunner instead of DataflowRunner")
+	flag.StringVar(&dJvmArgs, "it-jvm-args", "", "(optional) Extra JVM arguments for the forked test JVMs, passed to surefire as -DargLine")
 }
 
 func Region() string {
@@ -166,4 +170,17 @@ func ThreadCount() int {
 	i := 4
 	fmt.Sscan(dThreadCount, &i)
 	return i
+}
+
+func DirectRunner() bool {
+	return dDirectRunner
+}
+
+// JvmArgs returns the extra JVM arguments for forked test JVMs as a surefire argLine property.
+// Only takes effect for modules whose surefire configuration doesn't set <argLine> explicitly.
+func JvmArgs() string {
+	if dJvmArgs != "" {
+		return "-DargLine=" + dJvmArgs
+	}
+	return ""
 }

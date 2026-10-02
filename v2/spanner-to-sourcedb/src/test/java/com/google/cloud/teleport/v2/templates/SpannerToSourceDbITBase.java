@@ -43,6 +43,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -349,6 +350,15 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
+      // element per transform, which is very costly for large elements such as CollationMapper
+      // and causes heavy GC when many pipelines share one test JVM.
+      params.put("targetParallelism", "15");
+      params.putIfAbsent("enforceImmutability", "false");
+      params.putIfAbsent("enforceEncodability", "false");
+    }
     options.setParameters(params);
     options.addEnvironment(
         "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
@@ -561,5 +571,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     } catch (Exception e) {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
     }
+  }
+
+  @Override
+  protected org.apache.beam.it.common.PipelineOperator.Config.Builder wrapConfiguration(
+      org.apache.beam.it.common.PipelineOperator.Config.Builder builder) {
+    if (System.getProperty("directRunnerTest") != null) {
+      return builder.setTimeoutAfter(java.time.Duration.ofMinutes(25));
+    }
+    return builder;
   }
 }

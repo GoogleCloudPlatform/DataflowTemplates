@@ -233,7 +233,10 @@ public class DataStreamToSpanner {
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
     Optional<Integer> resourceHintsMinCpus =
         DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
+    if (!pipeline.getOptions().getRunner().getSimpleName().equals("DirectRunner")) {
+      DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+          workerMachineType, 4, resourceHintsMinCpus);
+    }
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     // Ingest session file into schema object.
     Schema schema = SessionFileReader.read(options.getSessionFilePath());

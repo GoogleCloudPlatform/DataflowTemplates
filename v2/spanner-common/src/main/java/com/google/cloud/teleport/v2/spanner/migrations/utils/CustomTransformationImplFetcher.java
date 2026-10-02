@@ -17,9 +17,12 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.common.base.Strings;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashMap;
+import java.util.Map;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -27,13 +30,30 @@ import org.slf4j.LoggerFactory;
 
 public class CustomTransformationImplFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationImplFetcher.class);
-  private static ISpannerMigrationTransformer spannerMigrationTransformer = null;
+
+  /**
+   * Transformers cached per {@link CustomTransformation} configuration (jar, class, parameters).
+   * Keying by configuration, instead of a single JVM-wide instance, ensures that multiple pipelines
+   * sharing a JVM (e.g. DirectRunner integration tests) never pick up a transformer loaded for a
+   * different pipeline.
+   */
+  private static final Map<CustomTransformation, ISpannerMigrationTransformer>
+      spannerMigrationTransformers = new HashMap<>();
 
   public static synchronized ISpannerMigrationTransformer getCustomTransformationLogicImpl(
       CustomTransformation customTransformation) {
-
+    if (customTransformation == null
+        || Strings.isNullOrEmpty(customTransformation.jarPath())
+        || Strings.isNullOrEmpty(customTransformation.classPath())) {
+      return null;
+    }
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        spannerMigrationTransformers.get(customTransformation);
     if (spannerMigrationTransformer == null) {
       spannerMigrationTransformer = getApplyTransformationImpl(customTransformation);
+      if (spannerMigrationTransformer != null) {
+        spannerMigrationTransformers.put(customTransformation, spannerMigrationTransformer);
+      }
     }
     return spannerMigrationTransformer;
   }

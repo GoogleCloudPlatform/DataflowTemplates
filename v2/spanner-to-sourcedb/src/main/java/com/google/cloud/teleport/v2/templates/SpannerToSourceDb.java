@@ -153,7 +153,10 @@ public class SpannerToSourceDb {
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
     Optional<Integer> resourceHintsMinCpus =
         DataflowWorkerMachineTypeUtils.getMinCpuResourceHint(pipeline.getOptions());
-    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4, resourceHintsMinCpus);
+    if (!pipeline.getOptions().getRunner().getSimpleName().equals("DirectRunner")) {
+      DataflowWorkerMachineTypeUtils.validateMachineSpecs(
+          workerMachineType, 4, resourceHintsMinCpus);
+    }
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =

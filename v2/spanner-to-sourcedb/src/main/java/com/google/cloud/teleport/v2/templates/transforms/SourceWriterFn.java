@@ -366,6 +366,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
+        LOG.error("JDBC Write Exception causing DLQ route!", ex);
         TupleTag<String> errorTag =
             SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
         outputWithTag(c, errorTag, message, spannerRec);

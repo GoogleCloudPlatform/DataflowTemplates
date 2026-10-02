@@ -147,7 +147,9 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 gcsResourceManager);
 
         Map<String, String> jobParameters = new HashMap<>();
-        jobParameters.put("extraFilesToStage", truststoreGcsPath);
+        if (System.getProperty("directRunnerTest") == null) {
+          jobParameters.put("extraFilesToStage", truststoreGcsPath);
+        }
 
         jobInfo =
             launchDataflowJob(
@@ -2380,11 +2382,18 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .replace("##port##", Integer.toString(port))
             .replace("##keyspace##", keyspaceName);
 
+    String truststorePath = "/extra_files/truststore.jks";
+    if (System.getProperty("directRunnerTest") != null) {
+      truststorePath = cassandraResourceManager.getTrustStoreFile().getAbsolutePath();
+    }
+
     cassandraConfigContents +=
         "\n"
             + "  datastax-java-driver.advanced.ssl-engine-factory {\n"
             + "    class = DefaultSslEngineFactory\n"
-            + "    truststore-path = \"/extra_files/truststore.jks\"\n"
+            + "    truststore-path = \""
+            + truststorePath
+            + "\"\n"
             + "    truststore-password = \"cassandra_ssl_password\"\n"
             + "    hostname-validation = false\n"
             + "  }\n";
