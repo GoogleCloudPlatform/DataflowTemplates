@@ -234,8 +234,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    compareExpectedTables(destDbPrefix + usersChkpt, ImmutableList.of(allTypesTable, usersTable));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + usersChkpt, ImmutableList.of(usersTable));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(usersTable);
@@ -298,9 +299,10 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     compareExpectedTables(
-        destDbPrefix + multiTableChkpt, ImmutableList.of(allTypesTable, peopleTable, usersTable));
+        destDbPrefix + multiTableChkpt, ImmutableList.of(allTypesTable, usersTable));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(allTypesTable, usersTable);
@@ -370,9 +372,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    compareExpectedTables(
-        destDbPrefix + emptyChkpt, ImmutableList.of(allTypesTable, usersTable, emptyTable));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + emptyChkpt, ImmutableList.of(emptyTable));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = Collections.emptyList();
@@ -476,8 +478,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    compareExpectedTables(destDbPrefix + chkptTwo, ImmutableList.of(tableA, tableB, tableC));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + chkptTwo, ImmutableList.of(tableC));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(tableC);
@@ -761,9 +764,9 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    compareExpectedTables(
-        destDbPrefix + chkptSix, ImmutableList.of(tableA, tableB, tableC, tableD));
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    compareExpectedTables(destDbPrefix + chkptSix, ImmutableList.of(tableB, tableC));
 
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(tableB, tableC);
@@ -808,15 +811,16 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    Collections.sort(tableNames);
-    compareExpectedTables(destDbPrefix + chkptSeven, tableNames);
-
     // Get ALL the exported tables by calling the getFilteredTables() helper
     List<String> filteredTables =
         getFilteredTables(ddl, randomExportTables).stream()
             .map(t -> t.name())
             .collect(Collectors.toList());
+
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
+    Collections.sort(filteredTables);
+    compareExpectedTables(destDbPrefix + chkptSeven, filteredTables);
 
     List<String> unselectedTables =
         tableNames.stream()
@@ -983,16 +987,13 @@ public final class ExportRelatedTablesCheckTest {
         exportPipeline,
         importPipeline);
 
-    // Compare the tables in the ddl to ensure all original tables were re-created during the import
-    compareExpectedTables(
-        destDbPrefix + chkptNine,
-        ImmutableList.of(
-            tableA, tableB, tableC, tableD, tableE, tableF, tableG, tableH, tableI, tableJ, tableK,
-            tableL));
-
-    // Check to see selected tables exported with data and and unselected tables did not
+    // Compare the tables in the ddl to ensure only selected tables were re-created during the
+    // import
     List<String> exportTables =
         ImmutableList.of(tableA, tableB, tableC, tableE, tableF, tableH, tableI, tableJ);
+    compareExpectedTables(destDbPrefix + chkptNine, exportTables);
+
+    // Check to see selected tables exported with data and and unselected tables did not
     List<String> unselectedTables = ImmutableList.of(tableD, tableK, tableL);
     compareExpectedTableRows(destDbPrefix + chkptNine, exportTables, unselectedTables);
   }
@@ -1055,14 +1056,17 @@ public final class ExportRelatedTablesCheckTest {
   /* Compares the tables in a database against their expected row counts */
   private void compareExpectedTableRows(
       String db, List<String> exportTables, List<String> unselectedTables) {
+    Ddl ddl = readDdl(db);
     // Check to see that every table that should be exported with data contains rows upon import
     for (String table : exportTables) {
       assertFalse(getRowCount(db, table) == 0);
     }
 
-    // Check to see that every unselected table was exported without data
+    // Check to see that every unselected table was not created or has zero rows if empty table
     for (String table : unselectedTables) {
-      assertEquals(0, getRowCount(db, table));
+      if (ddl.table(table) != null) {
+        assertEquals(0, getRowCount(db, table));
+      }
     }
   }
 
