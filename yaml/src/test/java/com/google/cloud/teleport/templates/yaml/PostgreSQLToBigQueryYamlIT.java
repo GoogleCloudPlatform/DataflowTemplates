@@ -91,9 +91,7 @@ public class PostgreSQLToBigQueryYamlIT extends TemplateTestBase {
             .addParameter("password", postgresResourceManager.getPassword())
             .addParameter("connectionProperties", "connectTimeout=30")
             .addParameter("postgresTable", TABLE_NAME)
-            .addParameter(
-                "table",
-                bqTable.getProject() + ":" + bqTable.getDataset() + "." + bqTable.getTable());
+            .addParameter("table", toTableSpecLegacy(bqTable));
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();

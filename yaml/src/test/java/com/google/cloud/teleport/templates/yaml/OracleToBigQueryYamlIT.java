@@ -92,9 +92,7 @@ public class OracleToBigQueryYamlIT extends TemplateTestBase {
             .addParameter("username", oracleResourceManager.getUsername())
             .addParameter("password", oracleResourceManager.getPassword())
             .addParameter("location", TABLE_NAME)
-            .addParameter(
-                "table",
-                bqTable.getProject() + ":" + bqTable.getDataset() + "." + bqTable.getTable());
+            .addParameter("table", toTableSpecLegacy(bqTable));
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
