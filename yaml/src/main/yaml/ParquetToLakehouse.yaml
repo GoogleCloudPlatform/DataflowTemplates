@@ -30,7 +30,7 @@ template:
       type: text
     - name: "gcsFilePath"
       description: "Optional destination GCS directory path to copy files to."
-      help: "An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table."
+      help: "An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. This will not be used if the files are already in GCS."
       example: "gs://your-bucket/warehouse/data/"
       required: false
       type: text

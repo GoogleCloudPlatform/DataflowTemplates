@@ -57,7 +57,7 @@ public interface ParquetToLakehouseYaml {
       optional = true,
       description = "Optional destination GCS directory path to copy files to.",
       helpText =
-          "An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table.",
+          "An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. This will not be used if the files are already in GCS.",
       example = "gs://your-bucket/warehouse/data/")
   String getGcsFilePath();
 
