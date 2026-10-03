@@ -59,7 +59,8 @@ public class CustomTransformationImplFetcher {
         URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customTransformation.jarPath());
 
         // Create a new URLClassLoader
-        URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
+        URLClassLoader urlClassLoader =
+            new URLClassLoader(classLoaderUrls, Thread.currentThread().getContextClassLoader());
 
         // Load the target class
         Class<?> customTransformationClass =

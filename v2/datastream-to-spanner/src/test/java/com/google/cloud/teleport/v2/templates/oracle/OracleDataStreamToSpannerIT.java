@@ -1,0 +1,522 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.oracle;
+
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
+import com.google.cloud.datastream.v1.DestinationConfig;
+import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.Stream;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.function.Function;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.conditions.ConditionCheck;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
+import org.apache.beam.it.gcp.datastream.OracleSource;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(DataStreamToSpanner.class)
+@RunWith(Parameterized.class)
+public class OracleDataStreamToSpannerIT extends SpannerTemplateITBase {
+
+  private static final Integer NUM_EVENTS = 10;
+
+  private static final String ROW_ID = "ROW_ID";
+  private static final String NAME = "NAME";
+  private static final String AGE = "AGE";
+  private static final String MEMBER = "MEMBER";
+  private static final String ENTRY_ADDED = "ENTRY_ADDED";
+
+  private String gcsPrefix;
+  private String dlqGcsPrefix;
+
+  private SubscriptionName subscription;
+  private SubscriptionName dlqSubscription;
+
+  private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
+  private SpannerOracleResourceManager oracleResourceManager;
+  private DatastreamResourceManager datastreamResourceManager;
+  private SpannerResourceManager spannerResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
+  private GcsResourceManager gcsResourceManager;
+  private String oracleUser;
+
+  @Before
+  public void setUp() throws Exception {
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-connect-2")
+            .build();
+
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+    gcsPrefix =
+        getGcsPath(testName + "/cdc/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
+    dlqGcsPrefix =
+        getGcsPath(testName + "/dlq/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
+  }
+
+  @After
+  public void cleanUp() {
+    ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
+        spannerResourceManager,
+        pubsubResourceManager,
+        gcsResourceManager);
+    SharedOracleLiveITInstance.dropUser(oracleUser);
+  }
+
+  @Test
+  public void testDataStreamOracleToSpanner() throws IOException {
+    simpleOracleToSpannerTest(
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        Dialect.GOOGLE_STANDARD_SQL,
+        Function.identity());
+  }
+
+  @Test
+  public void testDataStreamOracleToPostgresSpanner() throws IOException {
+    simpleOracleToSpannerTest(
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        Dialect.POSTGRESQL,
+        Function.identity());
+  }
+
+  @Test
+  public void testDataStreamOracleToSpannerJson() throws IOException {
+    simpleOracleToSpannerTest(
+        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
+        Dialect.GOOGLE_STANDARD_SQL,
+        Function.identity());
+  }
+
+  private void simpleOracleToSpannerTest(
+      DatastreamResourceManager.DestinationOutputFormat fileFormat,
+      Dialect spannerDialect,
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
+    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
+    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+
+    SpannerResourceManager.Builder spannerResourceManagerBuilder =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .setCredentials(credentials);
+    spannerResourceManager = spannerResourceManagerBuilder.build();
+
+    List<String> tableNames =
+        List.of(
+            ("DatastreamToSpanner_1_" + RandomStringUtils.randomAlphanumeric(5)).toUpperCase(),
+            ("DatastreamToSpanner_2_" + RandomStringUtils.randomAlphanumeric(5)).toUpperCase());
+
+    tableNames.forEach(
+        tableName -> {
+          String createSql =
+              "CREATE TABLE \""
+                  + tableName
+                  + "\" (ROW_ID INTEGER NOT NULL, NAME VARCHAR2(200), AGE INTEGER, MEMBER VARCHAR2(200), ENTRY_ADDED VARCHAR2(200), PRIMARY KEY (ROW_ID))";
+          try {
+            executeOracleSql(oracleResourceManager, createSql, oracleUser);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+
+    OracleSource jdbcSource =
+        OracleSource.builder(
+                oracleResourceManager.getHost(),
+                oracleUser,
+                SharedOracleLiveITInstance.ORACLE_PASSWORD,
+                oracleResourceManager.getPort(),
+                oracleResourceManager.getDatabaseName())
+            .setAllowedTables(
+                Map.of(oracleUser.toUpperCase(), List.of(tableNames.get(0), tableNames.get(1))))
+            .build();
+
+    createSpannerTables(tableNames, spannerDialect);
+
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
+
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile", gcsResourceManager.getBucket(), gcsPrefix, fileFormat);
+
+    Stream stream =
+        datastreamResourceManager.createStream(
+            "stream" + RandomStringUtils.randomAlphanumeric(5).toLowerCase(),
+            sourceConfig,
+            destinationConfig);
+    datastreamResourceManager.startStream(stream);
+
+    createPubSubNotifications();
+    String jobName = PipelineUtils.createJobName(testName);
+    PipelineLauncher.LaunchConfig.Builder options =
+        paramsAdder
+            .apply(
+                PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+                    .addParameter("gcsPubSubSubscription", subscription.toString())
+                    .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+                    .addParameter("streamName", stream.getName())
+                    .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                    .addParameter("projectId", PROJECT)
+                    .addParameter(
+                        "deadLetterQueueDirectory",
+                        getGcsPath(testName, gcsResourceManager) + "/dlq/")
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
+                    .addParameter(
+                        "inputFileFormat",
+                        fileFormat.equals(
+                                DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
+                            ? "avro"
+                            : "json")
+                    .addParameter("datastreamSourceType", "oracle"))
+            .addParameter("workerMachineType", "n2-standard-4");
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeJdbcData(tableNames, cdcEvents),
+                    SpannerRowsCheck.builder(spannerResourceManager, tableNames.get(0))
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, tableNames.get(1))
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    changeJdbcData(tableNames, cdcEvents),
+                    checkDestinationRows(tableNames, cdcEvents)))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(45)), conditionCheck);
+
+    checkSpannerTables(tableNames, cdcEvents);
+    assertThatResult(result).meetsConditions();
+  }
+
+  protected void executeOracleSql(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager,
+      String sqlString,
+      String targetUsername)
+      throws Exception {
+    String sql = sqlString;
+    sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ").trim();
+    String[] statements = sql.split(";");
+
+    try (java.sql.Connection connection =
+        java.sql.DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            jdbcResourceManager.getUsername(),
+            jdbcResourceManager.getPassword())) {
+
+      if (!"SYSTEM".equalsIgnoreCase(targetUsername)) {
+        try (java.sql.Statement stmt = connection.createStatement()) {
+          stmt.execute("ALTER SESSION SET CURRENT_SCHEMA = \"" + targetUsername + "\"");
+        }
+      }
+
+      try (java.sql.Statement statement = connection.createStatement()) {
+        for (String stmt : statements) {
+          if (!stmt.trim().isBlank()) {
+            if (stmt.toLowerCase().trim().startsWith("select")) {
+              statement.executeQuery(stmt);
+            } else {
+              statement.executeUpdate(stmt);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void createPubSubNotifications() throws IOException {
+    pubsubResourceManager =
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+
+    TopicName topic = pubsubResourceManager.createTopic("it");
+    TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
+    subscription = pubsubResourceManager.createSubscription(topic, "it-sub");
+    dlqSubscription = pubsubResourceManager.createSubscription(dlqTopic, "dlq-sub");
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefix.substring(1));
+    gcsResourceManager.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
+  }
+
+  private void createSpannerTables(List<String> tableNames, Dialect spannerDialect) {
+    boolean usingPg = Dialect.POSTGRESQL.equals(spannerDialect);
+    tableNames.forEach(
+        tableName -> {
+          String q = usingPg ? "\"" : "`";
+          spannerResourceManager.executeDdlStatement(
+              "CREATE TABLE "
+                  + (usingPg ? "\"" + tableName + "\"" : "`" + tableName + "`")
+                  + " ("
+                  + q
+                  + ROW_ID
+                  + q
+                  + (usingPg ? " bigint " : " INT64 ")
+                  + "NOT NULL, "
+                  + q
+                  + NAME
+                  + q
+                  + (usingPg ? " character varying(200), " : " STRING(MAX), ")
+                  + q
+                  + AGE
+                  + q
+                  + (usingPg ? " bigint, " : " INT64, ")
+                  + q
+                  + MEMBER
+                  + q
+                  + (usingPg ? " character varying(200), " : " STRING(MAX), ")
+                  + q
+                  + ENTRY_ADDED
+                  + q
+                  + (usingPg ? " character varying(200)" : " STRING(MAX)")
+                  + (usingPg ? ", " : ") ")
+                  + "PRIMARY KEY ("
+                  + q
+                  + ROW_ID
+                  + q
+                  + ")"
+                  + (usingPg ? ")" : ""));
+        });
+  }
+
+  private ConditionCheck checkDestinationRows(
+      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Check Spanner rows.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        for (String tableName : tableNames) {
+          long totalRows = spannerResourceManager.getRowCount(tableName);
+          long maxRows = cdcEvents.get(tableName).size();
+          if (totalRows > maxRows) {
+            return new CheckResult(
+                false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
+          }
+        }
+        try {
+          checkSpannerTables(tableNames, cdcEvents);
+          return new CheckResult(true, "Spanner tables contain expected rows.");
+        } catch (AssertionError error) {
+          return new CheckResult(false, "Spanner tables do not contain expected rows.");
+        }
+      }
+    };
+  }
+
+  private void checkSpannerTables(
+      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+    tableNames.forEach(
+        tableName ->
+            SpannerAsserts.assertThatStructs(
+                    spannerResourceManager.readTableRecords(tableName, COLUMNS))
+                .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(tableName)));
+  }
+
+  private ConditionCheck writeJdbcData(
+      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send initial JDBC events.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        boolean success = true;
+        List<String> messages = new ArrayList<>();
+        for (String tableName : tableNames) {
+
+          List<Map<String, Object>> rows = new ArrayList<>();
+          for (int i = 0; i < NUM_EVENTS; i++) {
+            Map<String, Object> values = new HashMap<>();
+            values.put(ROW_ID, i);
+            values.put(NAME, RandomStringUtils.randomAlphabetic(10));
+            values.put(AGE, new Random().nextInt(100));
+            values.put(MEMBER, new Random().nextInt() % 2 == 0 ? "Y" : "N");
+            values.put(ENTRY_ADDED, Instant.now().toString());
+            rows.add(values);
+          }
+
+          List<Map<String, Object>> cdcRows = new ArrayList<>();
+          for (Map<String, Object> row : rows) {
+            Map<String, Object> cdcRow = new HashMap<>();
+            cdcRow.put(ROW_ID, row.get(ROW_ID));
+            cdcRow.put(NAME, row.get(NAME));
+            cdcRow.put(AGE, row.get(AGE));
+            cdcRow.put(MEMBER, row.get(MEMBER));
+            cdcRow.put(ENTRY_ADDED, row.get(ENTRY_ADDED));
+            cdcRows.add(cdcRow);
+          }
+          cdcEvents.put(tableName, cdcRows);
+
+          for (Map<String, Object> record : rows) {
+            StringBuilder columns = new StringBuilder();
+            StringBuilder vals = new StringBuilder();
+            for (String key : record.keySet()) {
+              if (columns.length() > 0) {
+                columns.append(", ");
+                vals.append(", ");
+              }
+              columns.append(key);
+              vals.append("'").append(record.get(key)).append("'");
+            }
+            try {
+              executeOracleSql(
+                  oracleResourceManager,
+                  "INSERT INTO "
+                      + tableName
+                      + " ("
+                      + columns.toString()
+                      + ") VALUES ("
+                      + vals.toString()
+                      + ")",
+                  oracleUser);
+            } catch (Exception e) {
+              success = false;
+              e.printStackTrace();
+            }
+          }
+          messages.add(String.format("%d rows to %s", rows.size(), tableName));
+        }
+
+        SharedOracleLiveITInstance.flushRedoLogs();
+        return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
+      }
+    };
+  }
+
+  private ConditionCheck changeJdbcData(
+      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send JDBC changes.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        List<String> messages = new ArrayList<>();
+        for (String tableName : tableNames) {
+
+          List<Map<String, Object>> newCdcEvents = new ArrayList<>();
+          for (int i = 0; i < NUM_EVENTS; i++) {
+            if (i % 2 == 0) {
+              Map<String, Object> values = cdcEvents.get(tableName).get(i);
+
+              String newName = values.get(NAME).toString().toUpperCase();
+              int newAge = new Random().nextInt(100);
+              String newMember = Objects.equals(values.get(MEMBER).toString(), "Y") ? "N" : "Y";
+
+              values.put(NAME, newName);
+              values.put(AGE, newAge);
+              values.put(MEMBER, newMember);
+
+              String updateSql =
+                  "UPDATE "
+                      + tableName
+                      + " SET "
+                      + NAME
+                      + " = '"
+                      + newName
+                      + "', "
+                      + AGE
+                      + " = "
+                      + newAge
+                      + ", "
+                      + MEMBER
+                      + " = '"
+                      + newMember
+                      + "' WHERE "
+                      + ROW_ID
+                      + " = "
+                      + i;
+              try {
+                executeOracleSql(oracleResourceManager, updateSql, oracleUser);
+                executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
+              } catch (Exception e) {
+                return new CheckResult(false, e.getMessage());
+              }
+              newCdcEvents.add(values);
+            } else {
+              try {
+                executeOracleSql(
+                    oracleResourceManager,
+                    "DELETE FROM " + tableName + " WHERE " + ROW_ID + "=" + i,
+                    oracleUser);
+                executeOracleSql(oracleResourceManager, "COMMIT", oracleUser);
+                SharedOracleLiveITInstance.flushRedoLogs();
+              } catch (Exception e) {
+                return new CheckResult(false, e.getMessage());
+              }
+            }
+          }
+          cdcEvents.put(tableName, newCdcEvents);
+          messages.add(String.format("%d changes to %s", newCdcEvents.size(), tableName));
+        }
+        return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
+      }
+    };
+  }
+}
