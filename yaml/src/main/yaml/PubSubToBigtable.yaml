@@ -31,6 +31,7 @@ template:
     - "bigtable_options"
 
   parameters:
+    - pubsub_topic_options
     - pubsub_common_options
     - pubsub_read_options
     - maptofields_common_options
