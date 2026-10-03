@@ -13,7 +13,7 @@ options:
         description: "Properties used to set up the Lakehouse catalog."
         help: "A map of properties for setting up the Lakehouse catalog."
         example: '{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}'
-        required: true
+        required: false
         type: text
       - order: 3
         name: "lakehouseConfigProperties"
@@ -72,5 +72,15 @@ options:
         description: "The name of a single record field that should be written."
         help: "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'."
         example: "my_record_field"
+        required: false
+        type: text
+
+  - name: "lakehouse_add_files_options"
+    parameters:
+      - order: 1
+        name: "lakehouseProjectId"
+        description: "The Google Cloud project ID for the Lakehouse catalog."
+        help: "The Google Cloud project ID used for the default BigLake Iceberg REST catalog when lakehouseCatalogProperties is not provided."
+        example: "your-project-id"
         required: false
         type: text

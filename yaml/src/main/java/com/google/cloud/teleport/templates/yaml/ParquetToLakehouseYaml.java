@@ -74,11 +74,10 @@ public interface ParquetToLakehouseYaml {
   @TemplateParameter.Text(
       order = 4,
       name = "lakehouseCatalogProperties",
-      optional = false,
+      optional = true,
       description = "Properties used to set up the Lakehouse catalog.",
       helpText = "A map of properties for setting up the Lakehouse catalog.",
       example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
-  @Validation.Required
   String getLakehouseCatalogProperties();
 
   @TemplateParameter.Text(
@@ -110,6 +109,16 @@ public interface ParquetToLakehouseYaml {
 
   @TemplateParameter.Text(
       order = 8,
+      name = "lakehouseProjectId",
+      optional = true,
+      description = "The Google Cloud project ID for the Lakehouse catalog.",
+      helpText =
+          "The Google Cloud project ID used for the default BigLake Iceberg REST catalog when lakehouseCatalogProperties is not provided.",
+      example = "your-project-id")
+  String getLakehouseProjectId();
+
+  @TemplateParameter.Text(
+      order = 9,
       name = "lakehouseLocationPrefix",
       optional = true,
       description = "An optional location prefix for data files.",
@@ -119,7 +128,7 @@ public interface ParquetToLakehouseYaml {
   String getLakehouseLocationPrefix();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "errorPath",
       optional = false,
       description = "Output path for error records.",

@@ -16,7 +16,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **deltaLakeTable**: The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table. For example, `gs://your-bucket/path/to/table`.
 * **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseCatalogName**: The name of the Lakehouse catalog that contains the table. For example, `my_hadoop_catalog`.
 
 ### Optional parameters
@@ -24,6 +23,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **deltaLakeVersion**: Version of the Delta Lake table to read. Cannot be set if timestamp is set. For example, `0`.
 * **deltaLakeTimestamp**: Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set. For example, `2026-05-20T15:43:26Z`.
 * **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
+* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
@@ -125,13 +125,13 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Lake
 ### Required
 export DELTA_LAKE_TABLE=<deltaLakeTable>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
 
 ### Optional
 export DELTA_LAKE_VERSION=<deltaLakeVersion>
 export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
@@ -178,13 +178,13 @@ export REGION=us-central1
 ### Required
 export DELTA_LAKE_TABLE=<deltaLakeTable>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
 
 ### Optional
 export DELTA_LAKE_VERSION=<deltaLakeVersion>
 export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
@@ -247,11 +247,11 @@ resource "google_dataflow_flex_template_job" "deltalake_to_lakehouse_yaml" {
   parameters        = {
     deltaLakeTable = "<deltaLakeTable>"
     lakehouseTable = "<lakehouseTable>"
-    lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     lakehouseCatalogName = "<lakehouseCatalogName>"
     # deltaLakeVersion = "<deltaLakeVersion>"
     # deltaLakeTimestamp = "<deltaLakeTimestamp>"
     # deltaLakeHadoopConfig = ""{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": }""
+    # lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     # lakehouseConfigProperties = "<lakehouseConfigProperties>"
     # lakehousePartitionFields = "<lakehousePartitionFields>"
     # lakehouseTableProperties = "<lakehouseTableProperties>"

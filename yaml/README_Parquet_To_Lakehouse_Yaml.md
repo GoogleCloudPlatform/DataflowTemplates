@@ -17,15 +17,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **filePattern**: A file pattern (glob) matching the input Parquet files to add to the Lakehouse table. For example, `gs://your-bucket/path/*.parquet`.
 * **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **errorPath**: The Cloud Storage path where failed records will be written in JSON format. For example, `gs://your-bucket/errors/error.json`.
 
 ### Optional parameters
 
 * **gcsFilePath**: An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. For example, `gs://your-bucket/warehouse/data/`.
+* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **lakehouseProjectId**: The Google Cloud project ID used for the default BigLake Iceberg REST catalog when lakehouseCatalogProperties is not provided. For example, `your-project-id`.
 * **lakehouseLocationPrefix**: A location prefix used by the catalog when registering data files in the Lakehouse table. For example, `gs://your-bucket/warehouse`.
 
 
@@ -121,14 +122,15 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Parquet_To_Lakeho
 ### Required
 export FILE_PATTERN=<filePattern>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export ERROR_PATH=<errorPath>
 
 ### Optional
 export GCS_FILE_PATH=<gcsFilePath>
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
+export LAKEHOUSE_PROJECT_ID=<lakehouseProjectId>
 export LAKEHOUSE_LOCATION_PREFIX=<lakehouseLocationPrefix>
 
 gcloud dataflow flex-template run "parquet-to-lakehouse-yaml-job" \
@@ -142,6 +144,7 @@ gcloud dataflow flex-template run "parquet-to-lakehouse-yaml-job" \
   --parameters "lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES" \
   --parameters "lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS" \
   --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
+  --parameters "lakehouseProjectId=$LAKEHOUSE_PROJECT_ID" \
   --parameters "lakehouseLocationPrefix=$LAKEHOUSE_LOCATION_PREFIX" \
   --parameters "errorPath=$ERROR_PATH"
 ```
@@ -164,14 +167,15 @@ export REGION=us-central1
 ### Required
 export FILE_PATTERN=<filePattern>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export ERROR_PATH=<errorPath>
 
 ### Optional
 export GCS_FILE_PATH=<gcsFilePath>
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
+export LAKEHOUSE_PROJECT_ID=<lakehouseProjectId>
 export LAKEHOUSE_LOCATION_PREFIX=<lakehouseLocationPrefix>
 
 mvn clean package -PtemplatesRun \
@@ -181,7 +185,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="parquet-to-lakehouse-yaml-job" \
 -DtemplateName="Parquet_To_Lakehouse_Yaml" \
--Dparameters="filePattern=$FILE_PATTERN,gcsFilePath=$GCS_FILE_PATH,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseLocationPrefix=$LAKEHOUSE_LOCATION_PREFIX,errorPath=$ERROR_PATH" \
+-Dparameters="filePattern=$FILE_PATTERN,gcsFilePath=$GCS_FILE_PATH,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseProjectId=$LAKEHOUSE_PROJECT_ID,lakehouseLocationPrefix=$LAKEHOUSE_LOCATION_PREFIX,errorPath=$ERROR_PATH" \
 -f yaml
 ```
 
@@ -228,12 +232,13 @@ resource "google_dataflow_flex_template_job" "parquet_to_lakehouse_yaml" {
   parameters        = {
     filePattern = "<filePattern>"
     lakehouseTable = "<lakehouseTable>"
-    lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     errorPath = "<errorPath>"
     # gcsFilePath = "<gcsFilePath>"
+    # lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     # lakehouseConfigProperties = "<lakehouseConfigProperties>"
     # lakehousePartitionFields = "<lakehousePartitionFields>"
     # lakehouseTableProperties = "<lakehouseTableProperties>"
+    # lakehouseProjectId = "<lakehouseProjectId>"
     # lakehouseLocationPrefix = "<lakehouseLocationPrefix>"
   }
 }

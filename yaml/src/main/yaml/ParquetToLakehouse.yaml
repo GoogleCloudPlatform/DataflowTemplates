@@ -35,6 +35,7 @@ template:
       required: false
       type: text
     - lakehouse_common_options
+    - lakehouse_add_files_options
     - name: "lakehouseLocationPrefix"
       description: "An optional location prefix for data files."
       help: "A location prefix used by the catalog when registering data files in the Lakehouse table."
@@ -96,7 +97,7 @@ pipeline:
           type: rest
           uri: https://biglake.googleapis.com/iceberg/v1/restcatalog
           rest.auth.type: org.apache.iceberg.gcp.auth.GoogleAuthManager
-          header.x-goog-user-project: google.com:clouddfe
+          header.x-goog-user-project: "{{ lakehouseProjectId }}"
           {% endif %}
         {% if lakehouseConfigProperties %}
         config_properties: {{ lakehouseConfigProperties }}

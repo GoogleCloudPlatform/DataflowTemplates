@@ -99,11 +99,10 @@ public interface DeltaLakeToLakehouseYaml {
   @TemplateParameter.Text(
       order = 6,
       name = "lakehouseCatalogProperties",
-      optional = false,
+      optional = true,
       description = "Properties used to set up the Lakehouse catalog.",
       helpText = "A map of properties for setting up the Lakehouse catalog.",
       example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
-  @Validation.Required
   String getLakehouseCatalogProperties();
 
   @TemplateParameter.Text(
