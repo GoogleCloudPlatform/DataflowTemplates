@@ -34,7 +34,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,55 +42,56 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/** Integration test for {@link OracleToBigQueryYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PostgreSQLToBigQueryYaml.class)
+@TemplateIntegrationTest(OracleToBigQueryYaml.class)
 @RunWith(JUnit4.class)
-public class PostgreSQLToBigQueryYamlIT extends TemplateTestBase {
+public class OracleToBigQueryYamlIT extends TemplateTestBase {
 
-  private PostgresResourceManager postgresResourceManager;
+  private OracleResourceManager oracleResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
-  private static final String TABLE_NAME = "users";
+  private static final String TABLE_NAME = "USERS";
 
   @Before
   public void setUp() {
-    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    oracleResourceManager = OracleResourceManager.builder(testName).build();
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(postgresResourceManager, bigQueryResourceManager);
+    ResourceManagerUtils.cleanResources(oracleResourceManager, bigQueryResourceManager);
   }
 
   @Test
-  public void testPostgreSQLToBigQuery() throws IOException {
-    // 1. Setup PostgreSQL database and insert some test data
+  public void testOracleToBigQuery() throws IOException {
+    // 1. Setup Oracle database and insert test data
     JDBCResourceManager.JDBCSchema jdbcSchema =
-        new JDBCResourceManager.JDBCSchema(Map.of("id", "INTEGER", "name", "VARCHAR(100)"), "id");
+        new JDBCResourceManager.JDBCSchema(
+            Map.of("ID", "VARCHAR(50)", "NAME", "VARCHAR(100)"), "ID");
 
-    postgresResourceManager.createTable(TABLE_NAME, jdbcSchema);
-    postgresResourceManager.write(
+    oracleResourceManager.createTable(TABLE_NAME, jdbcSchema);
+    oracleResourceManager.write(
         TABLE_NAME,
-        java.util.List.of(Map.of("id", 1, "name", "Alice"), Map.of("id", 2, "name", "Bob")));
+        java.util.List.of(Map.of("ID", "1", "NAME", "Alice"), Map.of("ID", "2", "NAME", "Bob")));
 
     // 2. Setup BigQuery target dataset and table
     Schema bqSchema =
         Schema.of(
-            Field.of("id", StandardSQLTypeName.INT64),
-            Field.of("name", StandardSQLTypeName.STRING));
+            Field.of("ID", StandardSQLTypeName.STRING),
+            Field.of("NAME", StandardSQLTypeName.STRING));
     bigQueryResourceManager.createDataset(REGION);
     TableId bqTable = bigQueryResourceManager.createTable(TABLE_NAME, bqSchema);
 
     // 3. Launch the Pipeline
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("jdbcUrl", postgresResourceManager.getUri())
-            .addParameter("username", postgresResourceManager.getUsername())
-            .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("connectionProperties", "connectTimeout=30")
-            .addParameter("postgresTable", TABLE_NAME)
+            .addParameter("jdbcUrl", oracleResourceManager.getUri())
+            .addParameter("username", oracleResourceManager.getUsername())
+            .addParameter("password", oracleResourceManager.getPassword())
+            .addParameter("location", TABLE_NAME)
             .addParameter("table", toTableSpecLegacy(bqTable));
 
     LaunchInfo info = launchTemplate(options);

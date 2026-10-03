@@ -21,8 +21,8 @@ options:
         description: "How to create"
         help: >
           Specifies whether a table should be created if it does not exist. 
-          Valid inputs are 'Never' and 'IfNeeded'.
-        default: CREATE_IF_NEEDED           
+          Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.
+        default: CREATE_NEVER           
         required: false
         type: text
       - order: 2

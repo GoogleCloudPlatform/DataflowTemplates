@@ -50,7 +50,7 @@ pipeline:
       config:
         table: {{ table }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
-        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         num_streams: {{ numStreams | default(1) }}
 
 options:
