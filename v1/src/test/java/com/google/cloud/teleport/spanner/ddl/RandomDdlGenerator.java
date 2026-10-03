@@ -571,7 +571,9 @@ public abstract class RandomDdlGenerator {
         }
         if (rnd.nextBoolean()) {
           ReferentialAction action = generateRandomReferentialAction(rnd);
-          if (!isEnforced && action == ReferentialAction.ON_DELETE_CASCADE) {
+          if (!isEnforced
+              && (action == ReferentialAction.ON_DELETE_CASCADE
+                  || action == ReferentialAction.ON_DELETE_SET_NULL)) {
             action = ReferentialAction.ON_DELETE_NO_ACTION;
           }
           foreignKeyBuilder.referentialAction(Optional.of(action));
@@ -625,9 +627,15 @@ public abstract class RandomDdlGenerator {
   }
 
   private ReferentialAction generateRandomReferentialAction(Random rnd) {
-    return rnd.nextBoolean()
-        ? ReferentialAction.ON_DELETE_CASCADE
-        : ReferentialAction.ON_DELETE_NO_ACTION;
+    int actionChoice = rnd.nextInt(3);
+    switch (actionChoice) {
+      case 0:
+        return ReferentialAction.ON_DELETE_CASCADE;
+      case 1:
+        return ReferentialAction.ON_DELETE_SET_NULL;
+      default:
+        return ReferentialAction.ON_DELETE_NO_ACTION;
+    }
   }
 
   private String addDefaultValueToColumn(Type type) {

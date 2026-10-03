@@ -38,9 +38,9 @@ public abstract class ForeignKey implements Serializable {
     // Supported actions
     ON_DELETE_NO_ACTION("ON DELETE NO ACTION"),
     ON_DELETE_CASCADE("ON DELETE CASCADE"),
+    ON_DELETE_SET_NULL("ON DELETE SET NULL"),
     // Currently unsupported actions, listed here for completeness
     ON_DELETE_RESTRICT("ON DELETE RESTRICT"),
-    ON_DELETE_SET_NULL("ON DELETE SET NULL"),
     ON_DELETE_SET_DEFAULT("ON DELETE SET DEFAULT"),
     ON_UPDATE_NO_ACTION("ON UPDATE NO ACTION"),
     ON_UPDATE_CASCADE("ON UPDATE CASCADE"),
@@ -69,6 +69,8 @@ public abstract class ForeignKey implements Serializable {
             return ReferentialAction.ON_DELETE_CASCADE;
           case "NO ACTION":
             return ReferentialAction.ON_DELETE_NO_ACTION;
+          case "SET NULL":
+            return ReferentialAction.ON_DELETE_SET_NULL;
           default:
             throw new IllegalArgumentException(
                 "ON DELETE referential action not supported: " + action);
@@ -131,6 +133,7 @@ public abstract class ForeignKey implements Serializable {
       switch (action.get()) {
         case ON_DELETE_CASCADE:
         case ON_DELETE_NO_ACTION:
+        case ON_DELETE_SET_NULL:
           appendable.append(" " + action.get().getSqlString());
           break;
         default:
