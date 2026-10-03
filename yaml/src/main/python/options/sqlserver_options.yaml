@@ -23,42 +23,19 @@ options:
         required: false
         type: password
       - order: 4
-        name: "driverClassName"
-        description: "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr"
-        help: "The fully-qualified class name of the JDBC driver to use."
-        example: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-        required: false
-        default: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-        type: text
-      - order: 5
-        name: "driverJars"
-        description: "Comma-separated GCS paths of the JDBC driver jars."
-        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
-        example: "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar"
-        required: false
-        type: text
-      - order: 6
         name: "connectionProperties"
         description: "JDBC connection properties."
         help: "A semicolon-separated list of key-value pairs for the JDBC connection."
         example: "key1=value1;key2=value2"
         required: false
         type: text
-      - order: 7
+      - order: 5
         name: "connectionInitSql"
         description: "A list of SQL statements to execute upon connection initialization."
         help: "A list of SQL statements to execute when a new connection is established."
         example: '["SET TIME ZONE UTC"]'
         required: false
         type: text
-      - order: 8
-        name: "jdbcType"
-        description: "Type of JDBC source. Default: mssql."
-        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
-        example: "mssql"
-        required: false
-        type: text
-        default: "mssql"
 
   - name: "sqlserver_read_options"
     parameters:
@@ -93,7 +70,11 @@ options:
       - order: 5
         name: "fetchSize"
         description: "The number of rows to fetch from the database at a time."
-        help: "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors."
+        help: >
+          The number of rows to fetch per database call. It should ONLY be used 
+          if the default value throws memory errors. 
+          For SQL Server, this only takes effect if selectMethod=cursor is specified 
+          in connectionProperties.
         example: 50000
         required: false
         type: integer
@@ -143,3 +124,26 @@ options:
         example: false
         required: false
         type: boolean
+      - order: 5
+        name: "driverClassName"
+        description: "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriver"
+        help: "The fully-qualified class name of the JDBC driver to use."
+        example: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+        required: false
+        default: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+        type: text
+      - order: 6
+        name: "driverJars"
+        description: "Comma-separated GCS paths of the JDBC driver jars."
+        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
+        example: "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar"
+        required: false
+        type: text
+      - order: 7
+        name: "jdbcType"
+        description: "Type of JDBC source. Default: mssql."
+        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
+        example: "mssql"
+        required: false
+        type: text
+        default: "mssql"

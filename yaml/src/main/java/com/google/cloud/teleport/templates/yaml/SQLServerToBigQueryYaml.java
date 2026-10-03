@@ -18,32 +18,33 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "SQLServer_To_Iceberg_Yaml",
+    name = "SQLServer_to_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "SQL Server to Iceberg (YAML)",
+    displayName = "SQL Server to BigQuery (YAML)",
     description =
-        "The SQLServer to Iceberg template is a batch pipeline executes the user provided SQL query to read data from SQLServer table and outputs the records to Iceberg table.",
+        "The SQL Server to BigQuery template is a batch pipeline that copies data from a Microsoft SQL Server table into an existing BigQuery table. This pipeline uses JDBC to connect to SQL Server.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "SQLServerToIceberg.yaml",
+    yamlTemplateFile = "SQLServerToBigQuery.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
       "options/sqlserver_options.yaml",
-      "options/iceberg_options.yaml"
+      "options/bigquery_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The Input SQLServer instance and table must exist.",
-      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+      "The SQL Server instance and table must exist and be accessible from Dataflow workers.",
+      "The target BigQuery dataset and table must exist."
     },
     streaming = false,
     hidden = false)
-public interface SQLServerToIcebergYaml {
+public interface SQLServerToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -159,92 +160,43 @@ public interface SQLServerToIcebergYaml {
       order = 13,
       name = "table",
       optional = false,
-      description = "A fully-qualified table identifier.",
-      helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
-      example = "my_dataset.my_table")
+      description = "BigQuery table",
+      helpText =
+          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
+      example = "")
   @Validation.Required
   String getTable();
 
   @TemplateParameter.Text(
       order = 14,
-      name = "catalogName",
-      optional = false,
-      description = "Name of the catalog containing the table.",
-      helpText = "The name of the Iceberg catalog that contains the table.",
-      example = "my_hadoop_catalog")
-  @Validation.Required
-  String getCatalogName();
+      name = "createDisposition",
+      optional = true,
+      description = "How to create",
+      helpText =
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+      example = "")
+  @Default.String("CREATE_IF_NEEDED")
+  String getCreateDisposition();
 
   @TemplateParameter.Text(
       order = 15,
-      name = "catalogProperties",
-      optional = false,
-      description = "Properties used to set up the Iceberg catalog.",
-      helpText = "A map of properties for setting up the Iceberg catalog.",
-      example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
-  @Validation.Required
-  String getCatalogProperties();
+      name = "writeDisposition",
+      optional = true,
+      description = "How to write",
+      helpText =
+          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
+      example = "")
+  @Default.String("WRITE_APPEND")
+  String getWriteDisposition();
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 16,
-      name = "configProperties",
+      name = "numStreams",
       optional = true,
-      description = "Properties passed to the Hadoop Configuration.",
-      helpText = "A map of properties to pass to the Hadoop Configuration.",
-      example = "{\"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}")
-  String getConfigProperties();
-
-  @TemplateParameter.Text(
-      order = 17,
-      name = "drop",
-      optional = true,
-      description = "A list of field names to drop from the input record before writing.",
-      helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
-      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
-  String getDrop();
-
-  @TemplateParameter.Text(
-      order = 18,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 19,
-      name = "keep",
-      optional = true,
-      description = "A list of field names to keep in the input record.",
-      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
-  String getKeep();
-
-  @TemplateParameter.Text(
-      order = 20,
-      name = "only",
-      optional = true,
-      description = "The name of a single record field that should be written.",
-      helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
-      example = "my_record_field")
-  String getOnly();
-
-  @TemplateParameter.Text(
-      order = 21,
-      name = "partitionFields",
-      optional = true,
-      description = "Fields used to create a partition spec for new tables.",
-      helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
-      example = "[\"day(ts)\", \"bucket(id, 4)\"]")
-  String getPartitionFields();
-
-  @TemplateParameter.Text(
-      order = 22,
-      name = "tableProperties",
-      optional = true,
-      description = "Iceberg table properties to be set on table creation.",
-      helpText = "A map of Iceberg table properties to set when the table is created.",
-      example = "{\"commit.retry.num-retries\": \"2\"}")
-  String getTableProperties();
+      description = "Number of streams for BigQuery Storage Write API",
+      helpText =
+          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
+      example = "")
+  @Default.Integer(1)
+  Integer getNumStreams();
 }
