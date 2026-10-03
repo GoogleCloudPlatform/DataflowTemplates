@@ -33,6 +33,7 @@ public abstract class JDBCSource {
     ORACLE,
     MYSQL,
     POSTGRESQL,
+    SQLSERVER,
   }
 
   JDBCSource(Builder<?> builder) {

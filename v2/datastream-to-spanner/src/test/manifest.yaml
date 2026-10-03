@@ -174,3 +174,10 @@ scenarios:
     context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerWideRowForMaxTableNameIT
     description: "Validates live streaming replication when table names hit the maximum allowed length."
 
+  # ==================================================================
+  # SQL Server Live CDC Replication (v2/datastream-to-spanner)
+  # ==================================================================
+  - id: live-datatypes-sqlserver
+    type: datatypes
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.sqlserver.SQLServerDatastreamToSpannerDataTypesIT
