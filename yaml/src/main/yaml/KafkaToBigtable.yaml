@@ -1,0 +1,78 @@
+template:
+
+  name: "Kafka_To_Bigtable_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Kafka to Bigtable (YAML)"
+  description: >
+    The Kafka to Bigtable template is a streaming pipeline which ingests
+    data from an Apache Kafka topic, executes a user-defined mapping, and
+    writes the resulting records to Bigtable.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "KafkaToBigtable.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/kafka-to-bigtable
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Apache Kafka topic must exist.",
+    "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
+    "The output Bigtable table must exist."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "kafka_options"
+    - "maptofields_options"
+    - "windowinto_options"
+    - "bigtable_options"
+
+  parameters:
+    - kafka_read_options
+    - maptofields_common_options
+    - bigtable_common_options
+    - windowinto_common_options
+
+
+pipeline:
+  type: composite
+  transforms:
+    - type: ReadFromKafka
+      name: ReadFromKafka
+      config:
+        bootstrap_servers: {{ bootstrapServers }}
+        topic: {{ topic }}
+        confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
+        confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
+        consumer_config: {{ consumerConfigUpdates }}
+        file_descriptor_path: {{ fileDescriptorPath }}
+        format: {{ format | default('JSON') }}
+        message_name: {{ messageName }}
+        {% if schema %}
+        schema: |
+          {{ schema }}
+        {% endif %}
+        auto_offset_reset_config: 'earliest'
+    - type: MapToFields
+      name: ConvertStringsToBytes
+      input: ReadFromKafka
+      config:
+        language: {{ language }}
+        fields: {{ fields }}
+    - type: WindowInto
+      name: WindowInto
+      input: ConvertStringsToBytes
+      config:
+        windowing: {{ windowing }}
+    - type: WriteToBigTable
+      name: WriteToBigtable
+      input: WindowInto
+      config:
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        table: {{ tableId }}
+
+options:
+  streaming: true
