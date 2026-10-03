@@ -35,7 +35,6 @@ import org.apache.beam.sdk.metrics.Lineage;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
@@ -106,7 +105,34 @@ abstract class BatchSpannerRead
         .apply(
             "Generate Partitions",
             ParDo.of(new GeneratePartitionsFn(getSpannerConfig(), txView)).withSideInputs(txView))
-        .apply("Shuffle partitions", Reshuffle.viaRandomKey())
+        .apply(
+            "Assign Fixed Bucket",
+            ParDo.of(
+                new DoFn<
+                    PartitionedReadOperation,
+                    org.apache.beam.sdk.values.KV<Integer, PartitionedReadOperation>>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    c.output(
+                        org.apache.beam.sdk.values.KV.of(
+                            java.util.concurrent.ThreadLocalRandom.current().nextInt(400),
+                            c.element()));
+                  }
+                }))
+        .apply("Group by Fixed Bucket", org.apache.beam.sdk.transforms.GroupByKey.create())
+        .apply(
+            "Flatten Fixed Buckets",
+            ParDo.of(
+                new DoFn<
+                    org.apache.beam.sdk.values.KV<Integer, Iterable<PartitionedReadOperation>>,
+                    PartitionedReadOperation>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    for (PartitionedReadOperation op : c.element().getValue()) {
+                      c.output(op);
+                    }
+                  }
+                }))
         .apply(
             "Read from Partitions",
             ParDo.of(new ReadFromPartitionFn(getSpannerConfig(), txView)).withSideInputs(txView));
