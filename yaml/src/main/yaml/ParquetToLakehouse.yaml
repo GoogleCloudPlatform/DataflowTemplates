@@ -1,0 +1,127 @@
+template:
+  name: "Parquet_To_Lakehouse_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Parquet files to Lakehouse"
+  description: >
+    The Parquet files to Lakehouse template is a batch pipeline that matches Parquet files,
+    optionally copies them to Google Cloud Storage, and adds them to a Lakehouse table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "ParquetToLakehouse.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/lakehouse_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Parquet files must exist and be accessible.",
+     "The Output Lakehouse table must exist or be created, and the warehouse must be accessible."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "lakehouse_options"
+
+  parameters:
+    - name: "filePattern"
+      description: "Input file pattern for Parquet files."
+      help: "A file pattern (glob) matching the input Parquet files to add to the Lakehouse table."
+      example: "gs://your-bucket/path/*.parquet"
+      required: true
+      type: text
+    - name: "gcsFilePath"
+      description: "Optional destination GCS directory path to copy files to."
+      help: "An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. This will not be used if the files are already in GCS."
+      example: "gs://your-bucket/warehouse/data/"
+      required: false
+      type: text
+    - lakehouse_common_options
+    - lakehouse_add_files_options
+    - name: "lakehouseLocationPrefix"
+      description: "An optional location prefix for data files."
+      help: "A location prefix used by the catalog when registering data files in the Lakehouse table."
+      example: "gs://your-bucket/warehouse"
+      required: false
+      type: text
+    - name: "errorPath"
+      description: "Output path for error records."
+      help: "The Cloud Storage path where failed records will be written in JSON format."
+      example: "gs://your-bucket/errors/error.json"
+      required: true
+      type: text
+
+pipeline:
+  transforms:
+    - type: Create
+      name: CreateGlobInput
+      config:
+        reshuffle: true
+        elements:
+          - "{{ filePattern }}"
+
+    - type: PyTransform
+      name: MatchAllFiles
+      input: CreateGlobInput
+      config:
+        constructor: __callable__
+        kwargs:
+          source: |
+            def my_ptransform(pcoll):
+              from apache_beam.io.fileio import MatchAll
+              from apache_beam.transforms.util import Reshuffle
+              return pcoll | beam.Map(lambda row: row.element) | MatchAll() | Reshuffle()
+
+    - type: MapToFields
+      name: MapToFields
+      input: MatchAllFiles
+      config:
+        language: python
+        fields:
+          path:
+            callable: "lambda row: str(row.path)"
+
+    - type: CopyFilesToGCS
+      name: CopyFilesToGCS
+      input: MapToFields
+      config:
+        gcs_file_path: "{{ gcsFilePath | default('') }}"
+
+    - type: IcebergAddFiles
+      name: IcebergAddFiles
+      input: CopyFilesToGCS
+      config:
+        table: "{{ lakehouseTable }}"
+        catalog_properties:
+          {% if lakehouseCatalogProperties %}
+          {{ lakehouseCatalogProperties }}
+          {% else %}
+          type: rest
+          uri: https://biglake.googleapis.com/iceberg/v1/restcatalog
+          rest.auth.type: org.apache.iceberg.gcp.auth.GoogleAuthManager
+          header.x-goog-user-project: "{{ lakehouseProjectId }}"
+          {% endif %}
+        {% if lakehouseConfigProperties %}
+        config_properties: {{ lakehouseConfigProperties }}
+        {% endif %}
+        {% if lakehouseLocationPrefix %}
+        location_prefix: "{{ lakehouseLocationPrefix }}"
+        {% endif %}
+        {% if lakehousePartitionFields %}
+        partition_fields: {{ lakehousePartitionFields }}
+        {% endif %}
+        {% if lakehouseTableProperties %}
+        table_properties: {{ lakehouseTableProperties }}
+        {% endif %}
+        error_handling:
+          output: errors
+
+    - type: WriteToJson
+      name: Write errors
+      input: IcebergAddFiles.errors
+      config:
+        path: "{{ errorPath }}"
+
+providers:
+  - include: gs://dataflow-templates/extra-python-packages/2026-08-30/yaml_provider_listing_0.3.1.yaml
+
+options:
+  streaming: false

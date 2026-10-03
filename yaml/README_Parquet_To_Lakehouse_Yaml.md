@@ -1,8 +1,9 @@
 
-Delta Lake to Lakehouse template
+Parquet files to Lakehouse template
 ---
-The Delta Lake to Lakehouse template is a batch pipeline that reads data from a
-Delta Lake table and outputs the records to a Lakehouse table.
+The Parquet files to Lakehouse template is a batch pipeline that matches Parquet
+files, optionally copies them to Google Cloud Storage, and adds them to a
+Lakehouse table.
 
 
 
@@ -14,23 +15,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **deltaLakeTable**: The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table. For example, `gs://your-bucket/path/to/table`.
+* **filePattern**: A file pattern (glob) matching the input Parquet files to add to the Lakehouse table. For example, `gs://your-bucket/path/*.parquet`.
 * **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **lakehouseCatalogName**: The name of the Lakehouse catalog that contains the table. For example, `my_hadoop_catalog`.
+* **errorPath**: The Cloud Storage path where failed records will be written in JSON format. For example, `gs://your-bucket/errors/error.json`.
 
 ### Optional parameters
 
-* **deltaLakeVersion**: Version of the Delta Lake table to read. Cannot be set if timestamp is set. For example, `0`.
-* **deltaLakeTimestamp**: Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set. For example, `2026-05-20T15:43:26Z`.
-* **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
+* **gcsFilePath**: An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. For example, `gs://your-bucket/warehouse/data/`.
 * **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
-* **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **lakehouseFilter**: A filter expression to apply to records from the Lakehouse table. For example, `age > 18`.
-* **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
-* **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
+* **lakehouseProjectId**: The Google Cloud project ID used for the default BigLake Iceberg REST catalog when lakehouseCatalogProperties is not provided. For example, `your-project-id`.
+* **lakehouseLocationPrefix**: A location prefix used by the catalog when registering data files in the Lakehouse table. For example, `gs://your-bucket/warehouse`.
 
 
 
@@ -47,7 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/DeltaLakeToLakehouseYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/ParquetToLakehouseYaml.java)
 
 ### Templates Plugin
 
@@ -89,7 +86,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
+-DtemplateName="Parquet_To_Lakehouse_Yaml" \
 -f yaml
 ```
 
@@ -100,7 +97,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/DeltaLake_To_Lakehouse_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/Parquet_To_Lakehouse_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -120,44 +117,36 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Lakehouse_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Parquet_To_Lakehouse_Yaml"
 
 ### Required
-export DELTA_LAKE_TABLE=<deltaLakeTable>
+export FILE_PATTERN=<filePattern>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
+export ERROR_PATH=<errorPath>
 
 ### Optional
-export DELTA_LAKE_VERSION=<deltaLakeVersion>
-export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
-export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export GCS_FILE_PATH=<gcsFilePath>
 export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
-export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
-export LAKEHOUSE_KEEP=<lakehouseKeep>
-export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_PROJECT_ID=<lakehouseProjectId>
+export LAKEHOUSE_LOCATION_PREFIX=<lakehouseLocationPrefix>
 
-gcloud dataflow flex-template run "deltalake-to-lakehouse-yaml-job" \
+gcloud dataflow flex-template run "parquet-to-lakehouse-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "deltaLakeTable=$DELTA_LAKE_TABLE" \
-  --parameters "deltaLakeVersion=$DELTA_LAKE_VERSION" \
-  --parameters "deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP" \
-  --parameters "deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG" \
+  --parameters "filePattern=$FILE_PATTERN" \
+  --parameters "gcsFilePath=$GCS_FILE_PATH" \
   --parameters "lakehouseTable=$LAKEHOUSE_TABLE" \
   --parameters "lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES" \
   --parameters "lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES" \
   --parameters "lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS" \
   --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
-  --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
-  --parameters "lakehouseDrop=$LAKEHOUSE_DROP" \
-  --parameters "lakehouseFilter=$LAKEHOUSE_FILTER" \
-  --parameters "lakehouseKeep=$LAKEHOUSE_KEEP" \
-  --parameters "lakehouseOnly=$LAKEHOUSE_ONLY"
+  --parameters "lakehouseProjectId=$LAKEHOUSE_PROJECT_ID" \
+  --parameters "lakehouseLocationPrefix=$LAKEHOUSE_LOCATION_PREFIX" \
+  --parameters "errorPath=$ERROR_PATH"
 ```
 
 For more information about the command, please check:
@@ -176,31 +165,27 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export DELTA_LAKE_TABLE=<deltaLakeTable>
+export FILE_PATTERN=<filePattern>
 export LAKEHOUSE_TABLE=<lakehouseTable>
-export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
+export ERROR_PATH=<errorPath>
 
 ### Optional
-export DELTA_LAKE_VERSION=<deltaLakeVersion>
-export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
-export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export GCS_FILE_PATH=<gcsFilePath>
 export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
-export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
-export LAKEHOUSE_KEEP=<lakehouseKeep>
-export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_PROJECT_ID=<lakehouseProjectId>
+export LAKEHOUSE_LOCATION_PREFIX=<lakehouseLocationPrefix>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="deltalake-to-lakehouse-yaml-job" \
--DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
--Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeVersion=$DELTA_LAKE_VERSION,deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY" \
+-DjobName="parquet-to-lakehouse-yaml-job" \
+-DtemplateName="Parquet_To_Lakehouse_Yaml" \
+-Dparameters="filePattern=$FILE_PATTERN,gcsFilePath=$GCS_FILE_PATH,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseProjectId=$LAKEHOUSE_PROJECT_ID,lakehouseLocationPrefix=$LAKEHOUSE_LOCATION_PREFIX,errorPath=$ERROR_PATH" \
 -f yaml
 ```
 
@@ -218,7 +203,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/DeltaLake_To_Lakehouse_Yaml
+cd yaml/terraform/Parquet_To_Lakehouse_Yaml
 terraform init
 terraform apply
 ```
@@ -238,27 +223,23 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "deltalake_to_lakehouse_yaml" {
+resource "google_dataflow_flex_template_job" "parquet_to_lakehouse_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/DeltaLake_To_Lakehouse_Yaml"
-  name              = "deltalake-to-lakehouse-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Parquet_To_Lakehouse_Yaml"
+  name              = "parquet-to-lakehouse-yaml"
   region            = var.region
   parameters        = {
-    deltaLakeTable = "<deltaLakeTable>"
+    filePattern = "<filePattern>"
     lakehouseTable = "<lakehouseTable>"
-    lakehouseCatalogName = "<lakehouseCatalogName>"
-    # deltaLakeVersion = "<deltaLakeVersion>"
-    # deltaLakeTimestamp = "<deltaLakeTimestamp>"
-    # deltaLakeHadoopConfig = ""{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": }""
+    errorPath = "<errorPath>"
+    # gcsFilePath = "<gcsFilePath>"
     # lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     # lakehouseConfigProperties = "<lakehouseConfigProperties>"
     # lakehousePartitionFields = "<lakehousePartitionFields>"
     # lakehouseTableProperties = "<lakehouseTableProperties>"
-    # lakehouseDrop = "<lakehouseDrop>"
-    # lakehouseFilter = "<lakehouseFilter>"
-    # lakehouseKeep = "<lakehouseKeep>"
-    # lakehouseOnly = "<lakehouseOnly>"
+    # lakehouseProjectId = "<lakehouseProjectId>"
+    # lakehouseLocationPrefix = "<lakehouseLocationPrefix>"
   }
 }
 ```
