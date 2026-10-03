@@ -28,6 +28,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.NoSuchElementException;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Before;
@@ -51,7 +55,7 @@ public class TableConfigurationTest {
   @Test
   public void testEmptyConfig() {
     TableConfiguration config = TableConfiguration.empty();
-    assertFalse(config.hasFilters());
+    assertFalse(config.hasTableFilters());
     assertTrue(config.getSourceTables().isEmpty());
     assertTrue(config.isSourceTableAllowed("any_table"));
     assertTrue(config.isSpannerTableAllowed("any_table", mockSchemaMapper));
@@ -72,7 +76,7 @@ public class TableConfigurationTest {
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(3, config.getSourceTables().size());
     assertTrue(config.getSourceTables().contains("table1"));
     assertTrue(config.getSourceTables().contains("table2"));
@@ -99,7 +103,7 @@ public class TableConfigurationTest {
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(3, config.getSourceTables().size());
     assertTrue(config.getSourceTables().contains("tableA"));
     assertTrue(config.getSourceTables().contains("tableB"));
@@ -124,7 +128,7 @@ public class TableConfigurationTest {
     options.setGcsInputDirectory(null);
 
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
-    assertTrue(config.hasFilters());
+    assertTrue(config.hasTableFilters());
     assertEquals(2, config.getSourceTables().size());
   }
 
@@ -174,5 +178,50 @@ public class TableConfigurationTest {
     RuntimeException thrown =
         assertThrows(RuntimeException.class, () -> TableConfiguration.parseFromOptions(options));
     assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
+  }
+
+  @Test
+  public void testShardIdsUnsetOrOnlySeparatorsDisablesShardSubsetting() {
+    TableConfiguration unset = TableConfiguration.parseFromOptions(options);
+    options.setShardIds(",, ,");
+    TableConfiguration onlySeparators = TableConfiguration.parseFromOptions(options);
+
+    assertFalse(unset.hasShardFilter());
+    assertTrue(unset.getShardIds().isEmpty());
+    assertFalse(onlySeparators.hasShardFilter());
+    assertTrue(onlySeparators.getShardIds().isEmpty());
+  }
+
+  @Test
+  public void testShardIdsTrimmedBlankEntriesSkippedAndDeduplicated() {
+    options.setShardIds(" b, a ,,b , c ");
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasShardFilter());
+    assertEquals(Arrays.asList("b", "a", "c"), new ArrayList<>(config.getShardIds()));
+    assertThrows(UnsupportedOperationException.class, () -> config.getShardIds().add("d"));
+  }
+
+  @Test
+  public void testTableConfigFileOnlyNonBlankSpannerQueriesAreConfigured() throws IOException {
+    File tableConfigFile = tempFolder.newFile("tables.json");
+    try (FileWriter writer = new FileWriter(tableConfigFile)) {
+      writer.write(
+          "{\"tableNames\":[\"T1\",\"T2\",\"T3\",\"T4\"],\"optionalConfigurations\":{"
+              + "\"T1\":{\"spannerQuery\":\"SELECT * FROM T1 WHERE id < 5\"},"
+              + "\"T2\":{},"
+              + "\"T3\":{\"spannerQuery\":null},"
+              + "\"T4\":{\"spannerQuery\":\"  \"}}}");
+    }
+    options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasSpannerQueries());
+    assertEquals(
+        Collections.singletonMap("T1", "SELECT * FROM T1 WHERE id < 5"),
+        config.getSpannerQueries());
+    assertEquals(new HashSet<>(Arrays.asList("T1", "T2", "T3", "T4")), config.getSourceTables());
   }
 }

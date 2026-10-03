@@ -1,0 +1,374 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "plugin-test1",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t17": {
+      "Name": "AccountRoles",
+      "ColIds": [
+        "c_migration_shard_id",
+        "c10",
+        "c11"
+      ],
+      "ShardIdColumn": "c_migration_shard_id",
+      "ColDefs": {
+        "c_migration_shard_id": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Id": "c_migration_shard_id"
+        },
+        "c10": {
+          "Name": "role_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: role_id bigint(19)",
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "role_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: role_name varchar(255)",
+          "Id": "c11"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c_migration_shard_id",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c10",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table AccountRoles",
+      "Id": "t17"
+    },
+    "t18": {
+      "Name": "Users",
+      "ColIds": [
+        "c_migration_shard_id",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16"
+      ],
+      "ShardIdColumn": "c_migration_shard_id",
+      "ColDefs": {
+        "c_migration_shard_id": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Id": "c_migration_shard_id"
+        },
+        "c12": {
+          "Name": "user_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: user_id bigint(19)",
+          "Id": "c12"
+        },
+        "c13": {
+          "Name": "event_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: event_id varchar(255)",
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: full_name varchar(255)",
+          "Id": "c14"
+        },
+        "c15": {
+          "Name": "age",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: age int(10)",
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "created_at",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: created_at timestamp",
+          "Id": "c16"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c_migration_shard_id",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c13",
+          "Desc": false,
+          "Order": 3
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t18"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t17": {
+      "Name": "AccountRoles",
+      "Schema": "plugin-test1",
+      "ColIds": [
+        "c10",
+        "c11"
+      ],
+      "ColDefs": {
+        "c10": {
+          "Name": "role_id",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "role_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Id": "c11"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c10",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t17"
+    },
+    "t18": {
+      "Name": "Users",
+      "Schema": "plugin-test1",
+      "ColIds": [
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16"
+      ],
+      "ColDefs": {
+        "c12": {
+          "Name": "user_id",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Id": "c12"
+        },
+        "c13": {
+          "Name": "event_id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "full_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Id": "c14"
+        },
+        "c15": {
+          "Name": "age",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "created_at",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Id": "c16"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c13",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t18"
+    }
+  },
+  "SchemaIssues": {
+    "t17": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
+    },
+    "t18": {
+      "ColumnLevelIssues": {
+        "c15": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "AccountRoles": {
+      "Name": "AccountRoles",
+      "Cols": {
+        "role_id": "role_id",
+        "role_name": "role_name"
+      }
+    },
+    "Users": {
+      "Name": "Users",
+      "Cols": {
+        "age": "age",
+        "created_at": "created_at",
+        "event_id": "event_id",
+        "full_name": "full_name",
+        "user_id": "user_id"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": true,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "span-cloud-ck-testing-external",
+  "SpInstanceId": "ea-functional-tests",
+  "Source": "mysql",
+  "DatabaseOptions": {
+    "DbName": "",
+    "DefaultTimezone": ""
+  },
+  "DefaultIdentityOptions": {
+    "SkipRangeMin": "",
+    "SkipRangeMax": "",
+    "StartCounterWith": ""
+  }
+}

@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
@@ -87,11 +88,23 @@ public class SourceReaderTransform
             ? gcsInputDirectory.substring(0, gcsInputDirectory.length() - 1)
             : gcsInputDirectory;
 
-    if (tableConfig == null || !tableConfig.hasFilters()) {
+    boolean filterByTables = tableConfig != null && tableConfig.hasTableFilters();
+    boolean filterByShards = tableConfig != null && tableConfig.hasShardFilter();
+    if (!filterByTables && !filterByShards) {
       filePatterns.add(cleanPath + "/**.avro");
-    } else {
+    } else if (!filterByShards) {
       for (String table : tableConfig.getSourceTables()) {
         filePatterns.add(cleanPath + "/" + table + "/**.avro");
+      }
+    } else {
+      // Bulk layout is <root>/<table>/<shardId>/*.avro. The '/' after the shard ID keeps shard_1
+      // from matching shard_10; '*' matches exactly one segment (the table directory).
+      Collection<String> tableSegments =
+          filterByTables ? tableConfig.getSourceTables() : List.of("*");
+      for (String table : tableSegments) {
+        for (String shardId : tableConfig.getShardIds()) {
+          filePatterns.add(cleanPath + "/" + table + "/" + shardId + "/**.avro");
+        }
       }
     }
     return filePatterns;

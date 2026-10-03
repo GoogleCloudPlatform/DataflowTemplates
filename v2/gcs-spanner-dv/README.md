@@ -83,5 +83,42 @@ FROM `your_project.your_dataset.TableValidationStats`
 WHERE run_id = 'your_run_id';
 ```
 
+## Validating a subset of shards
+
+To validate only some shards of a sharded bulk migration:
+
+1. Set `shardIds` to the logical shard IDs to validate, i.e. the `<shardId>` directory names under `gcsInputDirectory/<table>/`:
+   ```shell
+   --parameters "shardIds=shard_001,shard_007"
+   ```
+2. Every table being validated must be filtered to the same shards on the Spanner side, in one of two ways. A table with neither makes the job fail; leave tables you don't want to validate out of `tableNames`.
+   - The session file has a `ShardIdColumn` for the table. Nothing more to do.
+   - Otherwise, add a non-blank `spannerQuery` for the table in the `tableConfigurationFilePath` file.
+   - If a table has both, its `spannerQuery` is used and the `ShardIdColumn` is ignored.
+3. Write each `spannerQuery` as follows:
+   1. Under `optionalConfigurations`, use the table's **source** (pre-migration) name as the key.
+   2. Write it **strictly** in the format `SELECT * FROM <spanner-table-name> WHERE <condition>`.
+   3. The template reads the table's Spanner rows with this query, so its `WHERE` condition must match all rows of the shards in `shardIds`, and only those. Update it whenever `shardIds` changes.
+
+   > [!IMPORTANT]
+   > The query runs on your Spanner database. `<spanner-table-name>` and every column must be named exactly as in your **Spanner DDL** (after any renames), and the SQL must be in your **Spanner database's dialect** (GoogleSQL or PostgreSQL, including its identifier quoting).
+
+Example `tableConfigurationFilePath` file. `AccountRolesSrc` is the source table name; the migration renamed it to `AccountRoles` in Spanner, so the query uses `AccountRoles`:
+```json
+{
+  "tableNames": ["Users", "AccountRolesSrc"],
+  "optionalConfigurations": {
+    "Users": {
+      "spannerQuery": "SELECT * FROM Users WHERE user_id <= 2"
+    },
+    "AccountRolesSrc": {
+      "spannerQuery": "SELECT * FROM AccountRoles WHERE role_id <= 1"
+    }
+  }
+}
+```
+
+Note: validating a subset only reads less from Spanner when the `spannerQuery` filters on the table's primary-key columns or on indexed columns. Otherwise Spanner still scans the whole table.
+
 ## References
 - See [README_Avro_to_Spanner_Data_Validator.md](README_Avro_to_Spanner_Data_Validator.md) for full commands to build and run the template.

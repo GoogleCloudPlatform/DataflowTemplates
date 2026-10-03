@@ -24,6 +24,9 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import org.apache.beam.sdk.io.FileSystems;
@@ -33,8 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Configuration class for table-based filtering in Data Validation pipeline. Encapsulates parsing,
- * matching, and validation of source and Spanner tables.
+ * Configuration class for the Data Validation pipeline: table-based filtering, the selected shard
+ * IDs, and per-table configuration (e.g. {@code spannerQuery}). Encapsulates parsing, matching, and
+ * validation of source and Spanner tables.
  */
 public class TableConfiguration implements Serializable {
 
@@ -42,20 +46,35 @@ public class TableConfiguration implements Serializable {
 
   private final Set<String> configuredSourceTables;
 
-  private TableConfiguration(Set<String> configuredSourceTables) {
+  /** Logical shard IDs from {@code --shardIds}: trimmed, de-duplicated, in input order. */
+  private final Set<String> shardIds;
+
+  /**
+   * Source table name (config key, as written) to its per-table configuration. Only tables with a
+   * non-blank {@code spannerQuery} are present.
+   */
+  private final Map<String, TableLevelConfig> tableLevelConfigs;
+
+  private TableConfiguration(
+      Set<String> configuredSourceTables,
+      Set<String> shardIds,
+      Map<String, TableLevelConfig> tableLevelConfigs) {
     this.configuredSourceTables = Collections.unmodifiableSet(configuredSourceTables);
+    this.shardIds = Collections.unmodifiableSet(new LinkedHashSet<>(shardIds));
+    this.tableLevelConfigs = Collections.unmodifiableMap(new LinkedHashMap<>(tableLevelConfigs));
   }
 
   /** Creates an empty configuration with no filters. Useful for testing. */
   public static TableConfiguration empty() {
-    return new TableConfiguration(new HashSet<>());
+    return new TableConfiguration(new HashSet<>(), Collections.emptySet(), new LinkedHashMap<>());
   }
 
   /**
    * Parses and validates table configuration from pipeline options.
    *
    * @param options The pipeline options.
-   * @return A TableConfiguration instance containing the configured source tables.
+   * @return A TableConfiguration instance containing the configured source tables, the selected
+   *     shard IDs, and the per-table configuration (e.g. {@code spannerQuery}).
    */
   public static TableConfiguration parseFromOptions(GCSSpannerDVOptions options) {
     String tablesConfig = options.getTables();
@@ -70,6 +89,7 @@ public class TableConfiguration implements Serializable {
     }
 
     Set<String> configuredTables = new HashSet<>();
+    Map<String, TableLevelConfig> tableLevelConfigs = new LinkedHashMap<>();
 
     if (hasTablesConfig) {
       for (String table : tablesConfig.split(",")) {
@@ -94,6 +114,19 @@ public class TableConfiguration implements Serializable {
               }
             }
           }
+
+          if (fileConfig != null && fileConfig.getOptionalConfigurations() != null) {
+            for (Map.Entry<String, TableLevelConfig> entry :
+                fileConfig.getOptionalConfigurations().entrySet()) {
+              // A null entry or a null, absent or blank spannerQuery means "not configured".
+              if (entry.getValue() == null
+                  || entry.getValue().getSpannerQuery() == null
+                  || entry.getValue().getSpannerQuery().trim().isEmpty()) {
+                continue;
+              }
+              tableLevelConfigs.put(entry.getKey(), entry.getValue());
+            }
+          }
         }
       } catch (Exception e) {
         throw new RuntimeException(
@@ -101,17 +134,63 @@ public class TableConfiguration implements Serializable {
       }
     }
 
-    TableConfiguration config = new TableConfiguration(configuredTables);
-
-    return config;
+    return new TableConfiguration(
+        configuredTables, parseShardIds(options.getShardIds()), tableLevelConfigs);
   }
 
-  public boolean hasFilters() {
+  /**
+   * Parses {@code --shardIds} the same way as {@code --tables}: split on {@code ,}, trim, skip
+   * empty entries and de-duplicate, keeping first-occurrence order.
+   */
+  private static Set<String> parseShardIds(String shardIdsConfig) {
+    Set<String> shardIds = new LinkedHashSet<>();
+    if (shardIdsConfig != null) {
+      for (String shardId : shardIdsConfig.split(",")) {
+        String trimmed = shardId.trim();
+        if (!trimmed.isEmpty()) {
+          shardIds.add(trimmed);
+        }
+      }
+    }
+    return shardIds;
+  }
+
+  public boolean hasTableFilters() {
     return configuredSourceTables != null && !configuredSourceTables.isEmpty();
   }
 
   public Set<String> getSourceTables() {
     return configuredSourceTables;
+  }
+
+  /** Returns true iff {@code --shardIds} selects at least one shard. */
+  public boolean hasShardFilter() {
+    return !shardIds.isEmpty();
+  }
+
+  /**
+   * Returns the selected logical shard IDs: unmodifiable, trimmed, de-duplicated, in input order.
+   * Empty when shard subsetting is off.
+   */
+  public Set<String> getShardIds() {
+    return shardIds;
+  }
+
+  /** Returns true iff at least one table has a {@code spannerQuery} configured. */
+  public boolean hasSpannerQueries() {
+    return !tableLevelConfigs.isEmpty();
+  }
+
+  /**
+   * Returns an unmodifiable map of source table name (config key, as written) to the raw {@code
+   * spannerQuery} text. Never null.
+   */
+  public Map<String, String> getSpannerQueries() {
+    Map<String, String> spannerQueries = new LinkedHashMap<>();
+    for (Map.Entry<String, TableLevelConfig> entry : tableLevelConfigs.entrySet()) {
+      spannerQueries.put(entry.getKey(), entry.getValue().getSpannerQuery());
+    }
+    return Collections.unmodifiableMap(spannerQueries);
   }
 
   /**
@@ -121,7 +200,7 @@ public class TableConfiguration implements Serializable {
    * @return true if allowed or no filters are configured, false otherwise.
    */
   public boolean isSourceTableAllowed(String sourceTableName) {
-    if (!hasFilters()) {
+    if (!hasTableFilters()) {
       return true;
     }
     return configuredSourceTables.contains(sourceTableName);
@@ -136,7 +215,7 @@ public class TableConfiguration implements Serializable {
    * @return true if allowed or no filters are configured, false otherwise.
    */
   public boolean isSpannerTableAllowed(String spannerTableName, ISchemaMapper schemaMapper) {
-    if (!hasFilters()) {
+    if (!hasTableFilters()) {
       return true;
     }
     try {
