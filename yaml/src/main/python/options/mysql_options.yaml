@@ -23,42 +23,19 @@ options:
         required: false
         type: password
       - order: 4
-        name: "driverClassName"
-        description: "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver"
-        help: "The fully-qualified class name of the JDBC driver to use."
-        example: "com.mysql.jdbc.Driver"
-        required: false
-        default: "com.mysql.jdbc.Driver"
-        type: text
-      - order: 5
-        name: "driverJars"
-        description: "Comma-separated GCS paths of the JDBC driver jars."
-        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
-        example: "gs://your-bucket/mysql-42.2.23.jar"
-        required: false
-        type: text
-      - order: 6
         name: "connectionProperties"
         description: "JDBC connection properties."
         help: "A semicolon-separated list of key-value pairs for the JDBC connection."
         example: "key1=value1;key2=value2"
         required: false
         type: text
-      - order: 7
+      - order: 5
         name: "connectionInitSql"
         description: "A list of SQL statements to execute upon connection initialization."
         help: "A list of SQL statements to execute when a new connection is established."
         example: '["SET TIME ZONE UTC"]'
         required: false
         type: text
-      - order: 8
-        name: "jdbcType"
-        description: "Type of JDBC source. Default: mysql."
-        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
-        example: "mysql"
-        required: false
-        type: text
-        default: "mysql"
 
   - name: "mysql_read_options"
     parameters:
@@ -143,3 +120,26 @@ options:
         example: false
         required: false
         type: boolean
+      - order: 5
+        name: "driverClassName"
+        description: "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver"
+        help: "The fully-qualified class name of the JDBC driver to use."
+        example: "com.mysql.jdbc.Driver"
+        required: false
+        default: "com.mysql.jdbc.Driver"
+        type: text
+      - order: 6
+        name: "driverJars"
+        description: "Comma-separated GCS paths of the JDBC driver jars."
+        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
+        example: "gs://your-bucket/mysql-42.2.23.jar"
+        required: false
+        type: text
+      - order: 7
+        name: "jdbcType"
+        description: "Type of JDBC source. Default: mysql."
+        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
+        example: "mysql"
+        required: false
+        type: text
+        default: "mysql"

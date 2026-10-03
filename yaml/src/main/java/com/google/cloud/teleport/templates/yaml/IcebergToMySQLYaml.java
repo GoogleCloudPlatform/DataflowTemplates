@@ -76,6 +76,62 @@ public interface IcebergToMySQLYaml {
 
   @TemplateParameter.Text(
       order = 4,
+      name = "connectionProperties",
+      optional = true,
+      description = "JDBC connection properties.",
+      helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
+      example = "key1=value1;key2=value2")
+  String getConnectionProperties();
+
+  @TemplateParameter.Text(
+      order = 5,
+      name = "connectionInitSql",
+      optional = true,
+      description = "A list of SQL statements to execute upon connection initialization.",
+      helpText = "A list of SQL statements to execute when a new connection is established.",
+      example = "[\"SET TIME ZONE UTC\"]")
+  String getConnectionInitSql();
+
+  @TemplateParameter.Text(
+      order = 6,
+      name = "location",
+      optional = false,
+      description = "The name of the table to write to.",
+      helpText = "The name of the database table to write data to.",
+      example = "public.my_destination_table")
+  @Validation.Required
+  String getLocation();
+
+  @TemplateParameter.Text(
+      order = 7,
+      name = "writeStatement",
+      optional = true,
+      description = "The SQL statement to use for inserting records.",
+      helpText = "The SQL query for inserting records, with placeholders for values.",
+      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
+  String getWriteStatement();
+
+  @TemplateParameter.Integer(
+      order = 8,
+      name = "batchSize",
+      optional = true,
+      description = "The number of records to group for each write operation.",
+      helpText = "The number of records to group together for each write.",
+      example = "1000")
+  @Default.Integer(1000)
+  Integer getBatchSize();
+
+  @TemplateParameter.Boolean(
+      order = 9,
+      name = "autoSharding",
+      optional = true,
+      description = "If true, enables using a dynamically determined number of shards to write.",
+      helpText = "If true, a dynamic number of shards will be used for writing.",
+      example = "False")
+  Boolean getAutoSharding();
+
+  @TemplateParameter.Text(
+      order = 10,
       name = "driverClassName",
       optional = true,
       description =
@@ -86,7 +142,7 @@ public interface IcebergToMySQLYaml {
   String getDriverClassName();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 11,
       name = "driverJars",
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
@@ -95,25 +151,7 @@ public interface IcebergToMySQLYaml {
   String getDriverJars();
 
   @TemplateParameter.Text(
-      order = 6,
-      name = "connectionProperties",
-      optional = true,
-      description = "JDBC connection properties.",
-      helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2")
-  String getConnectionProperties();
-
-  @TemplateParameter.Text(
-      order = 7,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 8,
+      order = 12,
       name = "jdbcType",
       optional = true,
       description = "Type of JDBC source. Default: mysql.",
@@ -122,44 +160,6 @@ public interface IcebergToMySQLYaml {
       example = "mysql")
   @Default.String("mysql")
   String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 9,
-      name = "location",
-      optional = false,
-      description = "The name of the table to write to.",
-      helpText = "The name of the database table to write data to.",
-      example = "public.my_destination_table")
-  @Validation.Required
-  String getLocation();
-
-  @TemplateParameter.Text(
-      order = 10,
-      name = "writeStatement",
-      optional = true,
-      description = "The SQL statement to use for inserting records.",
-      helpText = "The SQL query for inserting records, with placeholders for values.",
-      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
-  String getWriteStatement();
-
-  @TemplateParameter.Integer(
-      order = 11,
-      name = "batchSize",
-      optional = true,
-      description = "The number of records to group for each write operation.",
-      helpText = "The number of records to group together for each write.",
-      example = "1000")
-  @Default.Integer(1000)
-  Integer getBatchSize();
-
-  @TemplateParameter.Boolean(
-      order = 12,
-      name = "autoSharding",
-      optional = true,
-      description = "If true, enables using a dynamically determined number of shards to write.",
-      helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "False")
-  Boolean getAutoSharding();
 
   @TemplateParameter.Text(
       order = 13,

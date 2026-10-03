@@ -22,29 +22,29 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PostgreSQL_to_BigQuery_Yaml",
+    name = "MySQL_to_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "PostgreSQL to BigQuery (YAML)",
+    displayName = "MySQL to BigQuery (YAML)",
     description =
-        "The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to connect to PostgreSQL.",
+        "The MySQL to BigQuery template is a batch pipeline that copies data from a MySQL table into an existing BigQuery table. This pipeline uses JDBC to connect to MySQL.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PostgreSQLToBigQuery.yaml",
+    yamlTemplateFile = "MySQLToBigQuery.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
-      "options/postgres_options.yaml",
+      "options/mysql_options.yaml",
       "options/bigquery_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The PostgreSQL database must be accessible from the Dataflow workers.",
+      "The MySQL instance and table must exist and be accessible from Dataflow workers.",
       "The target BigQuery dataset and table must exist."
     },
     streaming = false,
     hidden = false)
-public interface PostgreSQLToBigQueryYaml {
+public interface MySQLToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -52,7 +52,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:mysql://your-host:3306/your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -85,24 +85,33 @@ public interface PostgreSQLToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 5,
-      name = "postgresTable",
+      name = "connectionInitSql",
       optional = true,
-      description = "The name of the Postgres table.",
-      helpText = "The name of the database table.",
-      example = "public.my_table")
-  String getPostgresTable();
+      description = "A list of SQL statements to execute upon connection initialization.",
+      helpText = "A list of SQL statements to execute when a new connection is established.",
+      example = "[\"SET TIME ZONE UTC\"]")
+  String getConnectionInitSql();
 
   @TemplateParameter.Text(
       order = 6,
-      name = "query",
+      name = "location",
       optional = true,
-      description = "The SQL query/statement to execute.",
-      helpText = "The SQL query/statement to execute on the source/sink.",
-      example = "SELECT * FROM my_table WHERE status = 'active'")
-  String getQuery();
+      description = "The name of the table to read from.",
+      helpText = "The name of the database table to read data from.",
+      example = "public.my_table")
+  String getLocation();
 
   @TemplateParameter.Text(
       order = 7,
+      name = "readQuery",
+      optional = true,
+      description = "The SQL query to execute for reading data.",
+      helpText = "The SQL query to execute on the source to extract data.",
+      example = "SELECT * FROM my_table WHERE status = 'active'")
+  String getReadQuery();
+
+  @TemplateParameter.Text(
+      order = 8,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -111,7 +120,7 @@ public interface PostgreSQLToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -120,7 +129,7 @@ public interface PostgreSQLToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 10,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -130,17 +139,16 @@ public interface PostgreSQLToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 10,
+      order = 11,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText =
-          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
+      helpText = "Whether to disable auto-commit on read.",
       example = "True")
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 12,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -149,7 +157,7 @@ public interface PostgreSQLToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -160,7 +168,7 @@ public interface PostgreSQLToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -171,7 +179,7 @@ public interface PostgreSQLToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -182,7 +190,7 @@ public interface PostgreSQLToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 16,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",

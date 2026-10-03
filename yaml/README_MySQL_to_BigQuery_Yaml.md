@@ -1,14 +1,11 @@
 
-Pub/Sub to BigQuery (YAML) template
+MySQL to BigQuery (YAML) template
 ---
-The Pub/Sub to BigQuery template is a streaming pipeline that reads
-JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting
-records to BigQuery.
+The MySQL to BigQuery template is a batch pipeline that copies data from a MySQL
+table into an existing BigQuery table. This pipeline uses JDBC to connect to
+MySQL.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_To_BigQuery_Yaml).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
@@ -18,19 +15,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
-* **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
-* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
+* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:mysql://your-host:3306/your-db`.
 * **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects. For example, `my-project:my_dataset.my_table`.
 
 ### Optional parameters
 
-* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.
-* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.
-* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.
-* **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
-* **errorHandling**: This option specifies whether and where to output error rows.
-* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **username**: The database username. For example, `my_user`.
+* **password**: The database password. For example, `my_secret_password`.
+* **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
+* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
+* **location**: The name of the database table to read data from. For example, `public.my_table`.
+* **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
+* **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
+* **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For example, `50000`.
+* **disableAutoCommit**: Whether to disable auto-commit on read. For example, `True`.
+* **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'. For example, `CREATE_IF_NEEDED`. Defaults to: CREATE_IF_NEEDED.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1. For example, `1`.
@@ -50,7 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToBigQueryYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/MySQLToBigQueryYaml.java)
 
 ### Templates Plugin
 
@@ -92,7 +92,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="PubSub_To_BigQuery_Yaml" \
+-DtemplateName="MySQL_to_BigQuery_Yaml" \
 -f yaml
 ```
 
@@ -103,7 +103,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_BigQuery_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/MySQL_to_BigQuery_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -123,38 +123,44 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_BigQuery_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MySQL_to_BigQuery_Yaml"
 
 ### Required
-export TOPIC=<topic>
-export FORMAT=<format>
-export SCHEMA=<schema>
+export JDBC_URL=<jdbcUrl>
 export TABLE=<table>
 
 ### Optional
-export ATTRIBUTES=<attributes>
-export ATTRIBUTES_MAP=<attributesMap>
-export ID_ATTRIBUTE=<idAttribute>
-export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export ERROR_HANDLING=<errorHandling>
-export SUBSCRIPTION=<subscription>
+export USERNAME=<username>
+export PASSWORD=<password>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export CONNECTION_INIT_SQL=<connectionInitSql>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
+export PARTITION_COLUMN=<partitionColumn>
+export NUM_PARTITIONS=<numPartitions>
+export FETCH_SIZE=<fetchSize>
+export DISABLE_AUTO_COMMIT=<disableAutoCommit>
+export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
 
-gcloud dataflow flex-template run "pubsub-to-bigquery-yaml-job" \
+gcloud dataflow flex-template run "mysql-to-bigquery-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "topic=$TOPIC" \
-  --parameters "format=$FORMAT" \
-  --parameters "schema=$SCHEMA" \
-  --parameters "attributes=$ATTRIBUTES" \
-  --parameters "attributesMap=$ATTRIBUTES_MAP" \
-  --parameters "idAttribute=$ID_ATTRIBUTE" \
-  --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
-  --parameters "errorHandling=$ERROR_HANDLING" \
-  --parameters "subscription=$SUBSCRIPTION" \
+  --parameters "jdbcUrl=$JDBC_URL" \
+  --parameters "username=$USERNAME" \
+  --parameters "password=$PASSWORD" \
+  --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
+  --parameters "location=$LOCATION" \
+  --parameters "readQuery=$READ_QUERY" \
+  --parameters "partitionColumn=$PARTITION_COLUMN" \
+  --parameters "numPartitions=$NUM_PARTITIONS" \
+  --parameters "fetchSize=$FETCH_SIZE" \
+  --parameters "disableAutoCommit=$DISABLE_AUTO_COMMIT" \
+  --parameters "outputParallelization=$OUTPUT_PARALLELIZATION" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -177,18 +183,21 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TOPIC=<topic>
-export FORMAT=<format>
-export SCHEMA=<schema>
+export JDBC_URL=<jdbcUrl>
 export TABLE=<table>
 
 ### Optional
-export ATTRIBUTES=<attributes>
-export ATTRIBUTES_MAP=<attributesMap>
-export ID_ATTRIBUTE=<idAttribute>
-export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export ERROR_HANDLING=<errorHandling>
-export SUBSCRIPTION=<subscription>
+export USERNAME=<username>
+export PASSWORD=<password>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export CONNECTION_INIT_SQL=<connectionInitSql>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
+export PARTITION_COLUMN=<partitionColumn>
+export NUM_PARTITIONS=<numPartitions>
+export FETCH_SIZE=<fetchSize>
+export DISABLE_AUTO_COMMIT=<disableAutoCommit>
+export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -198,9 +207,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="pubsub-to-bigquery-yaml-job" \
--DtemplateName="PubSub_To_BigQuery_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-DjobName="mysql-to-bigquery-yaml-job" \
+-DtemplateName="MySQL_to_BigQuery_Yaml" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -218,7 +227,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/PubSub_To_BigQuery_Yaml
+cd yaml/terraform/MySQL_to_BigQuery_Yaml
 terraform init
 terraform apply
 ```
@@ -238,23 +247,26 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "pubsub_to_bigquery_yaml" {
+resource "google_dataflow_flex_template_job" "mysql_to_bigquery_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_BigQuery_Yaml"
-  name              = "pubsub-to-bigquery-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MySQL_to_BigQuery_Yaml"
+  name              = "mysql-to-bigquery-yaml"
   region            = var.region
   parameters        = {
-    topic = "<topic>"
-    format = "<format>"
-    schema = "<schema>"
+    jdbcUrl = "<jdbcUrl>"
     table = "<table>"
-    # attributes = "<attributes>"
-    # attributesMap = "<attributesMap>"
-    # idAttribute = "<idAttribute>"
-    # timestampAttribute = "<timestampAttribute>"
-    # errorHandling = "<errorHandling>"
-    # subscription = "<subscription>"
+    # username = "<username>"
+    # password = "<password>"
+    # connectionProperties = "<connectionProperties>"
+    # connectionInitSql = "<connectionInitSql>"
+    # location = "<location>"
+    # readQuery = "<readQuery>"
+    # partitionColumn = "<partitionColumn>"
+    # numPartitions = "<numPartitions>"
+    # fetchSize = "<fetchSize>"
+    # disableAutoCommit = "<disableAutoCommit>"
+    # outputParallelization = "<outputParallelization>"
     # createDisposition = "CREATE_IF_NEEDED"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"
