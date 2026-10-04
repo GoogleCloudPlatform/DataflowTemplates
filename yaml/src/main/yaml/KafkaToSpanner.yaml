@@ -1,0 +1,66 @@
+template:
+
+  name: "Kafka_To_Spanner_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Kafka to Spanner (YAML)"
+  description: >
+    The Kafka to Spanner template is a streaming pipeline which ingests
+    data from an Apache Kafka topic and writes the resulting records to
+    Cloud Spanner.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "KafkaToSpanner.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/kafka-to-spanner
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Apache Kafka topic must exist.",
+    "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
+    "The output Cloud Spanner instance, database, and table must exist."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "kafka_options"
+    - "spanner_options"
+
+  parameters:
+    - kafka_read_options
+    - spanner_common_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromKafka
+      name: ReadFromKafka
+      config:
+        bootstrap_servers: {{ bootstrapServers }}
+        topic: {{ topic }}
+        confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
+        confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
+        consumer_config: {{ consumerConfigUpdates }}
+        file_descriptor_path: {{ fileDescriptorPath }}
+        format: {{ format | default('JSON') }}
+        max_read_time_seconds: {{ maxReadTimeSeconds }}
+        message_name: {{ messageName }}
+        {% if schema %}
+        schema: |
+          {{ schema }}
+        {% endif %}
+        auto_offset_reset_config: 'earliest'
+    - type: WriteToSpanner
+      name: WriteToSpanner
+      config:
+        project_id: {{ projectId }}
+        instance_id: {{ instanceId }}
+        database_id: {{ databaseId }}
+        table: {{ tableId }}
+  windowing:
+    type: fixed
+    size: 60
+
+options:
+  streaming: true

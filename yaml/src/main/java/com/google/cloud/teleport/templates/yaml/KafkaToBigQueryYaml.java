@@ -65,17 +65,8 @@ public interface KafkaToBigQueryYaml {
   @Validation.Required
   String getTopic();
 
-  @TemplateParameter.Boolean(
-      order = 3,
-      name = "allowDuplicates",
-      optional = true,
-      description = "If the Kafka read allows duplicates.",
-      helpText = "If the Kafka read allows duplicates. For example: true",
-      example = "true")
-  Boolean getAllowDuplicates();
-
   @TemplateParameter.Text(
-      order = 4,
+      order = 3,
       name = "confluentSchemaRegistrySubject",
       optional = true,
       description = "The subject name for the Confluent Schema Registry.",
@@ -84,7 +75,7 @@ public interface KafkaToBigQueryYaml {
   String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 4,
       name = "confluentSchemaRegistryUrl",
       optional = true,
       description = "The URL for the Confluent Schema Registry.",
@@ -94,7 +85,7 @@ public interface KafkaToBigQueryYaml {
   String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 5,
       name = "consumerConfigUpdates",
       optional = true,
       description =
@@ -105,7 +96,7 @@ public interface KafkaToBigQueryYaml {
   String getConsumerConfigUpdates();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       name = "fileDescriptorPath",
       optional = true,
       description = "The path to the Protocol Buffer File Descriptor Set file.",
@@ -115,7 +106,7 @@ public interface KafkaToBigQueryYaml {
   String getFileDescriptorPath();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       name = "format",
       optional = true,
       description = "The encoding format for the data stored in Kafka.",
@@ -124,6 +115,15 @@ public interface KafkaToBigQueryYaml {
       example = "JSON")
   @Default.String("JSON")
   String getFormat();
+
+  @TemplateParameter.Integer(
+      order = 8,
+      name = "maxReadTimeSeconds",
+      optional = true,
+      description = "Upper bound of how long to read from Kafka.",
+      helpText = "Upper bound of how long to read from Kafka in seconds. For example: 60",
+      example = "60")
+  Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
       order = 9,
@@ -136,44 +136,8 @@ public interface KafkaToBigQueryYaml {
       example = "MyMessage")
   String getMessageName();
 
-  @TemplateParameter.Boolean(
-      order = 10,
-      name = "offsetDeduplication",
-      optional = true,
-      description = "If the redistribute is using offset deduplication mode.",
-      helpText = "If the redistribute is using offset deduplication mode. For example: true",
-      example = "true")
-  Boolean getOffsetDeduplication();
-
-  @TemplateParameter.Boolean(
-      order = 11,
-      name = "redistributeByRecordKey",
-      optional = true,
-      description = "If the redistribute keys by the Kafka record key.",
-      helpText = "If the redistribute keys by the Kafka record key. For example: true",
-      example = "true")
-  Boolean getRedistributeByRecordKey();
-
-  @TemplateParameter.Integer(
-      order = 12,
-      name = "redistributeNumKeys",
-      optional = true,
-      description = "The number of keys for redistributing Kafka inputs.",
-      helpText = "The number of keys for redistributing Kafka inputs. For example: 10",
-      example = "10")
-  Integer getRedistributeNumKeys();
-
-  @TemplateParameter.Boolean(
-      order = 13,
-      name = "redistributed",
-      optional = true,
-      description = "If the Kafka read should be redistributed.",
-      helpText = "If the Kafka read should be redistributed. For example: true",
-      example = "true")
-  Boolean getRedistributed();
-
   @TemplateParameter.Text(
-      order = 14,
+      order = 10,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -184,7 +148,7 @@ public interface KafkaToBigQueryYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 11,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -195,7 +159,7 @@ public interface KafkaToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 12,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -206,7 +170,7 @@ public interface KafkaToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 13,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -217,7 +181,7 @@ public interface KafkaToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 18,
+      order = 14,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
@@ -228,7 +192,7 @@ public interface KafkaToBigQueryYaml {
   Integer getNumStreams();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 15,
       name = "outputDeadletterTable",
       optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",

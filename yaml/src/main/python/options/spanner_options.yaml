@@ -1,0 +1,31 @@
+options:
+  - name: "spanner_common_options"
+    parameters:
+      - order: 1
+        name: "projectId"
+        description: "Cloud Spanner Project ID."
+        help: "The Google Cloud project ID of the Cloud Spanner instance."
+        example: "your-project-id"
+        required: false
+        type: text
+      - order: 2
+        name: "instanceId"
+        description: "Cloud Spanner Instance ID."
+        help: "The Cloud Spanner instance ID."
+        example: "your-instance-id"
+        required: true
+        type: text
+      - order: 3
+        name: "databaseId"
+        description: "Cloud Spanner Database ID."
+        help: "The Cloud Spanner database ID."
+        example: "your-database-id"
+        required: true
+        type: text
+      - order: 4
+        name: "tableId"
+        description: "Cloud Spanner Table ID."
+        help: "The Cloud Spanner table ID to write the output to."
+        example: "your-table-id"
+        required: true
+        type: text
