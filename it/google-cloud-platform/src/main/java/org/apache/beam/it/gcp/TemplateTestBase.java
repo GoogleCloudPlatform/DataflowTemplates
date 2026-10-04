@@ -348,36 +348,7 @@ public abstract class TemplateTestBase {
   public static String stageTemplate(
       Template templateMetadata, String pomPath, Credentials credentials)
       throws ExecutionException {
-    return stageTemplate(
-        templateMetadata.name(),
-        templateMetadata.flexContainerName(),
-        templateMetadata.type() == TemplateType.XLANG,
-        pomPath,
-        credentials);
-  }
-
-  /**
-   * Same as {@link #stageTemplate(Template, String, Credentials)}, but takes the template
-   * identifiers directly. Useful to stage a template whose class is not on the test classpath (e.g.
-   * a template from another Maven module).
-   *
-   * @param templateName the {@link Template#name()} of the template to stage.
-   * @param flexContainerName the {@link Template#flexContainerName()} of the template, or null /
-   *     empty for Classic templates.
-   * @param xlang whether the template is of type {@link TemplateType#XLANG} (requires shading).
-   * @param pomPath path to the pom.xml of the Maven module containing the template, relative to the
-   *     current working directory.
-   * @param credentials credentials used to access the staging bucket.
-   * @return the GCS path of the staged template spec.
-   */
-  public static String stageTemplate(
-      String templateName,
-      @Nullable String flexContainerName,
-      boolean xlang,
-      String pomPath,
-      Credentials credentials)
-      throws ExecutionException {
-    boolean flex = !Strings.isNullOrEmpty(flexContainerName);
+    boolean flex = !Strings.isNullOrEmpty(templateMetadata.flexContainerName());
 
     // Use bucketName unless only artifactBucket is provided
     String bucketName;
@@ -394,19 +365,18 @@ public abstract class TemplateTestBase {
               + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
     }
 
-    String blobPath = String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateName);
+    String blobPath =
+        String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
     String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
 
-    String identifier = flex ? flexContainerName : templateName;
+    String identifier = flex ? templateMetadata.flexContainerName() : templateMetadata.name();
 
     stagedTemplates.get(
         identifier,
         () -> {
-          LOG.info("Staging template {} from source", templateName);
+          LOG.info("Staging template {} from source", templateMetadata.name());
 
-          // Canonical path so that cross-module paths (e.g. ../other-module/pom.xml) resolve to a
-          // clean module path for the Maven reactor.
-          File pom = new File(pomPath).getCanonicalFile();
+          File pom = new File(pomPath).getAbsoluteFile();
           if (!pom.exists()) {
             throw new IllegalArgumentException(
                 "To use tests staging templates, please run in the Maven module directory"
@@ -425,8 +395,7 @@ public abstract class TemplateTestBase {
           }
 
           String[] mavenCmd =
-              buildMavenStageCommand(
-                  STAGING_PREFIX, pom, bucketName, templateName, flexContainerName, !xlang);
+              buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, templateMetadata);
           LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
           try {
@@ -505,12 +474,7 @@ public abstract class TemplateTestBase {
    * accordingly.
    */
   private static String[] buildMavenStageCommand(
-      String prefix,
-      File pom,
-      String bucketName,
-      String templateName,
-      @Nullable String flexContainerName,
-      boolean skipShade) {
+      String prefix, File pom, String bucketName, Template templateMetadata) {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild;
 
@@ -529,13 +493,15 @@ public abstract class TemplateTestBase {
       moduleBuild = ".";
     }
 
-    // skipShade: shading is skipped for now due to flakiness / slowness in the process, except for
-    // XLANG templates, which MUST use shading because they're built using a custom Dockerfile
+    // Skip shading for now due to flakiness / slowness in the process, except for XLANG
+    // templates, which MUST use shading because they're built using a custom Dockerfile
     // that will copy only the shaded jar to the docker image.
+    boolean skipShade = templateMetadata.type() != TemplateType.XLANG;
 
     String templateOrContainer;
+    @Nullable String flexContainerName = templateMetadata.flexContainerName();
     if (Strings.isNullOrEmpty(flexContainerName)) {
-      templateOrContainer = "-DtemplateName=" + templateName;
+      templateOrContainer = "-DtemplateName=" + templateMetadata.name();
     } else {
       templateOrContainer = "-DflexContainerName=" + flexContainerName;
     }

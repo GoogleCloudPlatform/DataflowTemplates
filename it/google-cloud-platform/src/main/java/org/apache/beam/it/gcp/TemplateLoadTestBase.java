@@ -65,32 +65,6 @@ public class TemplateLoadTestBase extends LoadTestBase {
     }
   }
 
-  /**
-   * Same as {@link #getTemplateSpecPath()}, but for a template other than the one specified via
-   * {@link TemplateLoadTest}, e.g. an additional template used by a multi-template load test whose
-   * class may live in a different Maven module (and not be on the test classpath).
-   *
-   * @param templateName the {@link Template#name()} of the template.
-   * @param flexContainerName the {@link Template#flexContainerName()} of the template, or null /
-   *     empty for Classic templates.
-   * @param pomPath path to the pom.xml of the Maven module containing the template, relative to the
-   *     current module directory (e.g. {@code "../other-module/pom.xml"}).
-   */
-  protected String getTemplateSpecPath(
-      String templateName, String flexContainerName, String pomPath) {
-    String specPath = TestProperties.specPath();
-    if (specPath != null && !specPath.isEmpty()) {
-      LOG.info("A spec path was given, not staging template {}: {}", templateName, specPath);
-      return specPath;
-    }
-    try {
-      return TemplateTestBase.stageTemplate(
-          templateName, flexContainerName, false, pomPath, CREDENTIALS);
-    } catch (ExecutionException e) {
-      throw new RuntimeException("Error staging template " + templateName, e);
-    }
-  }
-
   private Template getTemplateAnnotation() {
     TemplateLoadTest annotation = getClass().getAnnotation(TemplateLoadTest.class);
     if (annotation == null) {
