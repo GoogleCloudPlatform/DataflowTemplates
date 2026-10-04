@@ -335,15 +335,6 @@ public abstract class TemplateTestBase {
   /**
    * Builds and stages the given template from the local source tree (i.e. the checked out code)
    * using the Templates Maven Plugin, and returns the GCS path of the staged template spec.
-   *
-   * <p>Staged templates are cached per JVM, so calling this multiple times for the same template is
-   * cheap. Staged templates are cleaned up on JVM shutdown.
-   *
-   * @param templateMetadata the {@link Template} annotation of the template to stage.
-   * @param pomPath path to the pom.xml of the Maven module containing the template, relative to the
-   *     current working directory (usually the module directory when run through Maven).
-   * @param credentials credentials used to access the staging bucket.
-   * @return the GCS path of the staged template spec.
    */
   public static String stageTemplate(
       Template templateMetadata, String pomPath, Credentials credentials)
