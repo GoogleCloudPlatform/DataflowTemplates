@@ -135,26 +135,26 @@ public final class KafkaToBigtableYamlIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     LOG.info("Publishing messages into the Kafka topic...");
-    KafkaProducer<String, String> kafkaProducer =
-        kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
-
-    for (int i = 1; i <= 10; i++) {
-      long id1 = Long.parseLong(i + "1");
-      long id2 = Long.parseLong(i + "2");
-      publish(
-          kafkaProducer,
-          topicName,
-          String.valueOf(id1),
-          "{\"key\": \"row"
-              + id1
-              + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq1\", \"value\": \"value1\", \"timestamp_micros\": 5000}");
-      publish(
-          kafkaProducer,
-          topicName,
-          String.valueOf(id2),
-          "{\"key\": \"row"
-              + id2
-              + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq2\", \"value\": \"value2\", \"timestamp_micros\": 1000}");
+    try (KafkaProducer<String, String> kafkaProducer =
+        kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer())) {
+      for (int i = 1; i <= 10; i++) {
+        long id1 = Long.parseLong(i + "1");
+        long id2 = Long.parseLong(i + "2");
+        publish(
+            kafkaProducer,
+            topicName,
+            String.valueOf(id1),
+            "{\"key\": \"row"
+                + id1
+                + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq1\", \"value\": \"value1\", \"timestamp_micros\": 5000}");
+        publish(
+            kafkaProducer,
+            topicName,
+            String.valueOf(id2),
+            "{\"key\": \"row"
+                + id2
+                + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq2\", \"value\": \"value2\", \"timestamp_micros\": 1000}");
+      }
     }
 
     LOG.info("Waiting for pipeline condition...");

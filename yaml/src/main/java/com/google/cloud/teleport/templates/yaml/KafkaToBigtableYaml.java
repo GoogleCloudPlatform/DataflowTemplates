@@ -145,7 +145,7 @@ public interface KafkaToBigtableYaml {
       description = "Language used to define the expressions.",
       helpText =
           "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
-      example = "")
+      example = "python")
   @Validation.Required
   String getLanguage();
 
@@ -156,7 +156,7 @@ public interface KafkaToBigtableYaml {
       description = "Field mapping configuration",
       helpText =
           "The output fields to compute, each mapping to the expression or callable that creates them.",
-      example = "")
+      example = "{\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"}}")
   @Validation.Required
   String getFields();
 
