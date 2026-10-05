@@ -106,6 +106,9 @@ public class SourceReaderTransform
           filePatterns.add(cleanPath + "/" + table + "/" + shardId + "/**.avro");
         }
       }
+      // Future Extensibility: GCS lists everything under the prefix before the first wildcard, so
+      // without a table filter each shard re-lists all of <root>. For many shards, match
+      // <root>/**.avro once and filter on the shard path segment instead.
     }
     return filePatterns;
   }

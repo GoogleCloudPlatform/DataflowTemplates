@@ -27,6 +27,9 @@ import java.io.Serializable;
 public class TableLevelConfig implements Serializable {
 
   /** The Spanner read query for this table, or {@code null} when not configured. */
+  // Future Extensibility: accept a list of non-overlapping queries (one ReadOperation each, same
+  // table tag) so a large shard subset can stay within Spanner's query limits
+  // (https://docs.cloud.google.com/spanner/quotas#query-limits).
   private final String spannerQuery;
 
   // Example future fields:

@@ -52,7 +52,6 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     this.tableConfig = tableConfig;
   }
 
-  // TODO: @aasthabharill to check if there's a better way to generalize dialect specific changes
   @ProcessElement
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
@@ -92,8 +91,8 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     List<ReadOperation> readOperations = new ArrayList<>();
     List<String> errors = new ArrayList<>();
 
-    Map<String, String> keyBySpannerTable =
-        resolveSpannerQueryKeys(ddl, schemaMapper, spannerQueries, errors);
+    Map<String, String> queryBySpannerTable =
+        resolveSpannerQueries(ddl, schemaMapper, spannerQueries, errors);
 
     for (String tableName : ddl.getTablesOrderedByReference()) {
       // With --shardIds, skip a Spanner-only table silently: it has no source rows for any shard.
@@ -104,18 +103,17 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
         continue;
       }
-      String key = keyBySpannerTable.get(tableName);
-      String spannerQuery = key == null ? null : spannerQueries.get(key);
+      String spannerQuery = queryBySpannerTable.get(tableName);
       Statement statement;
-      if (spannerQuery != null && !hasShardFilter) {
-        // spannerQuery without --shardIds: use the query, but the GCS side reads every shard.
-        LOG.warn(
-            "Table '{}' is read from Spanner with its spannerQuery, but --shardIds isn't set, so"
-                + " the GCS side reads every shard",
-            tableName);
-        statement = Statement.of(wrapSpannerQuery(tableName, normalizeSpannerQuery(spannerQuery)));
-      } else if (spannerQuery != null) {
-        // spannerQuery with --shardIds: the query wins over any ShardIdColumn in the session file.
+      if (spannerQuery != null) {
+        if (!hasShardFilter) {
+          // spannerQuery without --shardIds: use the query, but the GCS side reads every shard.
+          LOG.warn(
+              "Table '{}' is read from Spanner with its spannerQuery, but --shardIds isn't set, so"
+                  + " the GCS side reads every shard",
+              tableName);
+        }
+        // With --shardIds, the query wins over any ShardIdColumn in the session file.
         statement = Statement.of(wrapSpannerQuery(tableName, normalizeSpannerQuery(spannerQuery)));
       } else if (!hasShardFilter) {
         // No spannerQuery and no --shardIds: read the whole table.
@@ -127,8 +125,8 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
           errors.add(
               String.format(
                   "table '%s': --shardIds is set, but the table has no ShardIdColumn in the session"
-                      + " file and no spannerQuery",
-                  tableName));
+                      + " file and no spannerQuery for source table '%s'",
+                  tableName, schemaMapper.getSourceTableName("", tableName)));
           continue;
         }
         statement =
@@ -149,14 +147,14 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
   /**
    * Resolves each {@code spannerQuery} key (a source table name) to its Spanner table. Returns the
-   * key for each Spanner table, and adds an error for every bad key.
+   * {@code spannerQuery} for each Spanner table, and adds an error for every bad key.
    */
-  private Map<String, String> resolveSpannerQueryKeys(
+  private Map<String, String> resolveSpannerQueries(
       Ddl ddl,
       ISchemaMapper schemaMapper,
       Map<String, String> spannerQueries,
       List<String> errors) {
-    Map<String, String> keyBySpannerTable = new HashMap<>();
+    Map<String, String> queryBySpannerTable = new HashMap<>();
     for (String key : spannerQueries.keySet()) {
       // A query for a table left out of tableNames is unused, not wrong.
       if (!tableConfig.isSourceTableAllowed(key)) {
@@ -179,9 +177,9 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
         continue;
       }
       // Key by the DDL's own name, so a mapper name differing only in case still matches.
-      keyBySpannerTable.put(table.name(), key);
+      queryBySpannerTable.put(table.name(), spannerQueries.get(key));
     }
-    return keyBySpannerTable;
+    return queryBySpannerTable;
   }
 
   /** Returns the full-table query for {@code spannerTableName}, tagged with its table name. */
@@ -200,11 +198,11 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
    */
   static Statement shardFilterStatement(
       Dialect dialect, String spannerTableName, String shardIdColumn, Collection<String> shardIds) {
-    String quote = quote(dialect);
+    String column = quote(dialect) + shardIdColumn + quote(dialect);
     String filter =
         dialect == Dialect.POSTGRESQL
-            ? String.format(" WHERE %s%s%s = ANY($1)", quote, shardIdColumn, quote)
-            : String.format(" WHERE %s%s%s IN UNNEST(@p1)", quote, shardIdColumn, quote);
+            ? " WHERE " + column + " = ANY($1)"
+            : " WHERE " + column + " IN UNNEST(@p1)";
     return Statement.newBuilder(baselineQuery(dialect, spannerTableName) + filter)
         .bind("p1")
         .toStringArray(shardIds)
@@ -222,12 +220,10 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
    */
   static String wrapSpannerQuery(String spannerTableName, String normalizedQuery) {
     // readAll merges all tables; ComparisonRecordMapper reads this tag to find and hash the table.
-    return "SELECT *, '"
-        + spannerTableName
-        + "' AS __tableName__ FROM (\n"
-        + normalizedQuery
-        // Spanner's PostgreSQL dialect requires an alias on a subquery in FROM.
-        + "\n) AS __dv_src__";
+    // Spanner's PostgreSQL dialect requires an alias on a subquery in FROM.
+    return String.format(
+        "SELECT *, '%s' AS __tableName__ FROM (\n%s\n) AS __dv_src__",
+        spannerTableName, normalizedQuery);
   }
 
   /** Returns true iff {@code spannerTableName} maps back to a source table. */
@@ -240,6 +236,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     }
   }
 
+  // TODO: @aasthabharill to check if there's a better way to generalize dialect specific changes
   private static String quote(Dialect dialect) {
     return dialect == Dialect.POSTGRESQL ? "\"" : "`";
   }
