@@ -120,26 +120,3 @@ options:
         example: false
         required: false
         type: boolean
-      - order: 5
-        name: "driverClassName"
-        description: "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver"
-        help: "The fully-qualified class name of the JDBC driver to use."
-        example: "com.mysql.jdbc.Driver"
-        required: false
-        default: "com.mysql.jdbc.Driver"
-        type: text
-      - order: 6
-        name: "driverJars"
-        description: "Comma-separated GCS paths of the JDBC driver jars."
-        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
-        example: "gs://your-bucket/mysql-42.2.23.jar"
-        required: false
-        type: text
-      - order: 7
-        name: "jdbcType"
-        description: "Type of JDBC source. Default: mysql."
-        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
-        example: "mysql"
-        required: false
-        type: text
-        default: "mysql"

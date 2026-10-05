@@ -29,9 +29,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **writeStatement**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mysql-42.2.23.jar`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mysql`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
@@ -142,9 +139,6 @@ export CONNECTION_INIT_SQL=<connectionInitSql>
 export WRITE_STATEMENT=<writeStatement>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
-export JDBC_TYPE=mysql
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
@@ -163,9 +157,6 @@ gcloud dataflow flex-template run "iceberg-to-mysql-yaml-job" \
   --parameters "writeStatement=$WRITE_STATEMENT" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autoSharding=$AUTO_SHARDING" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
-  --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "table=$TABLE" \
   --parameters "catalogName=$CATALOG_NAME" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
@@ -205,9 +196,6 @@ export CONNECTION_INIT_SQL=<connectionInitSql>
 export WRITE_STATEMENT=<writeStatement>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
-export JDBC_TYPE=mysql
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
@@ -220,7 +208,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-mysql-yaml-job" \
 -DtemplateName="Iceberg_To_MySql_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,jdbcType=$JDBC_TYPE,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP" \
 -f yaml
 ```
 
@@ -277,9 +265,6 @@ resource "google_dataflow_flex_template_job" "iceberg_to_mysql_yaml" {
     # writeStatement = "<writeStatement>"
     # batchSize = "1000"
     # autoSharding = "<autoSharding>"
-    # driverClassName = "com.mysql.jdbc.Driver"
-    # driverJars = "<driverJars>"
-    # jdbcType = "mysql"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
     # keep = "<keep>"
