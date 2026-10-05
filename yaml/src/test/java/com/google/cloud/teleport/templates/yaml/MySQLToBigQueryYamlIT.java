@@ -18,6 +18,9 @@ package com.google.cloud.teleport.templates.yaml;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -73,9 +76,13 @@ public class MySQLToBigQueryYamlIT extends TemplateTestBase {
         TABLE_NAME,
         java.util.List.of(Map.of("id", 1, "name", "Alice"), Map.of("id", 2, "name", "Bob")));
 
-    // 2. Setup BigQuery target dataset and table name
+    // 2. Setup BigQuery target dataset and table
+    Schema bqSchema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("name", StandardSQLTypeName.STRING));
     bigQueryResourceManager.createDataset(REGION);
-    TableId bqTable = TableId.of(PROJECT, bigQueryResourceManager.getDatasetId(), TABLE_NAME);
+    TableId bqTable = bigQueryResourceManager.createTable(TABLE_NAME, bqSchema);
 
     // 3. Launch the Pipeline
     LaunchConfig.Builder options =
@@ -84,9 +91,7 @@ public class MySQLToBigQueryYamlIT extends TemplateTestBase {
             .addParameter("username", mySQLResourceManager.getUsername())
             .addParameter("password", mySQLResourceManager.getPassword())
             .addParameter("location", TABLE_NAME)
-            .addParameter(
-                "table",
-                bqTable.getProject() + ":" + bqTable.getDataset() + "." + bqTable.getTable());
+            .addParameter("table", toTableSpecLegacy(bqTable));
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
