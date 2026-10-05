@@ -88,6 +88,7 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     createSpannerDDL(gsqlSpannerResourceManager, SPANNER_GSQL_DDL_RESOURCE);
     runPipeline(gsqlSpannerResourceManager, "GSQL");
     verifyData(gsqlSpannerResourceManager);
+    verifyUpdatesAndDeletes(gsqlSpannerResourceManager);
   }
 
   @Test
@@ -95,6 +96,7 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     createSpannerDDL(pgDialectSpannerResourceManager, SPANNER_PG_DDL_RESOURCE);
     runPipeline(pgDialectSpannerResourceManager, "PG");
     verifyData(pgDialectSpannerResourceManager);
+    verifyUpdatesAndDeletes(pgDialectSpannerResourceManager);
   }
 
   private void runPipeline(SpannerResourceManager spannerResourceManager, String jobSuffix)
@@ -129,6 +131,56 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     assertDefaultsApplied(spannerResourceManager);
     assertSourceNullsBeatDefaults(spannerResourceManager);
     assertLabelMatchesSource(spannerResourceManager);
+    assertPlainColumnGeneratedInSpanner(spannerResourceManager);
+  }
+
+  /** Migrated rows can be updated and deleted, and Spanner recomputes the generated columns. */
+  private void verifyUpdatesAndDeletes(SpannerResourceManager spannerResourceManager) {
+    spannerResourceManager.executeDMLStatements(
+        ImmutableList.of(
+            "UPDATE products SET price = 7, sku = 'new' WHERE id = 1",
+            "UPDATE gc_virtual SET a = 10 WHERE id = 1",
+            "UPDATE gc_nullable SET x = 1 WHERE id = 2",
+            "UPDATE defaults_all SET d_spanner_notnull = 1 WHERE id = 1",
+            "UPDATE plain_to_gc SET last_name = 'Byron' WHERE id = 1",
+            "DELETE FROM products WHERE id = 3",
+            "DELETE FROM gc_pk WHERE k = 2"));
+
+    ImmutableList<Struct> products =
+        spannerResourceManager.runQuery(
+            "SELECT id, price, qty, total, sku, sku_upper FROM products ORDER BY id");
+    assertThat(products).hasSize(2);
+    assertProduct(products.get(0), 1L, 7L, 2L, 14L, "new", "NEW");
+    assertProduct(products.get(1), 2L, 5L, 6L, 30L, "xyz", "XYZ");
+
+    assertThat(
+            spannerResourceManager
+                .runQuery("SELECT doubled FROM gc_virtual WHERE id = 1")
+                .get(0)
+                .getLong("doubled"))
+        .isEqualTo(20L);
+    assertThat(
+            spannerResourceManager
+                .runQuery("SELECT sum_xy FROM gc_nullable WHERE id = 2")
+                .get(0)
+                .getLong("sum_xy"))
+        .isEqualTo(6L);
+    assertThat(
+            spannerResourceManager
+                .runQuery("SELECT d_derived FROM defaults_all WHERE id = 1")
+                .get(0)
+                .getLong("d_derived"))
+        .isEqualTo(2L);
+    assertThat(
+            spannerResourceManager
+                .runQuery("SELECT full_name FROM plain_to_gc WHERE id = 1")
+                .get(0)
+                .getString("full_name"))
+        .isEqualTo("Ada Byron");
+
+    ImmutableList<Struct> keys = spannerResourceManager.runQuery("SELECT k, tag FROM gc_pk");
+    assertThat(keys).hasSize(1);
+    assertThat(keys.get(0).getLong("k")).isEqualTo(11L);
   }
 
   /** total and sku_upper are generated in Spanner, so the pipeline must not write them. */
@@ -257,5 +309,17 @@ public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerIT
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).getString("label")).isEqualTo("2-3");
     assertThat(rows.get(1).getString("label")).isEqualTo("10-20");
+  }
+
+  /**
+   * full_name is a plain column at source and generated in Spanner, so the pipeline skips it and
+   * Spanner computes it, even for the row where the source value is null.
+   */
+  private void assertPlainColumnGeneratedInSpanner(SpannerResourceManager spannerResourceManager) {
+    ImmutableList<Struct> rows =
+        spannerResourceManager.runQuery("SELECT id, full_name FROM plain_to_gc ORDER BY id");
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).getString("full_name")).isEqualTo("Ada Lovelace");
+    assertThat(rows.get(1).getString("full_name")).isEqualTo("Alan Turing");
   }
 }

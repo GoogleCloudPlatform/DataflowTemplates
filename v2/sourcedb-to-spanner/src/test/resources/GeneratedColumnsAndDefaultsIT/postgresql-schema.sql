@@ -75,3 +75,14 @@ CREATE TABLE gc_virtual (
 INSERT INTO gc_virtual (id, a, tag) VALUES
     (1, 4, 'four'),
     (2, 25, 'twentyfive');
+
+CREATE TABLE plain_to_gc (
+    id         bigint      NOT NULL PRIMARY KEY,
+    first_name varchar(20) NOT NULL,
+    last_name  varchar(20) NOT NULL,
+    full_name  varchar(41)
+);
+
+INSERT INTO plain_to_gc (id, first_name, last_name, full_name) VALUES
+    (1, 'Ada', 'Lovelace', 'Ada Lovelace'),
+    (2, 'Alan', 'Turing', NULL);

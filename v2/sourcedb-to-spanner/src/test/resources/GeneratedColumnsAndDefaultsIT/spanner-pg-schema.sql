@@ -55,3 +55,11 @@ CREATE TABLE gc_virtual (
     doubled bigint      GENERATED ALWAYS AS (a * 2) VIRTUAL,
     PRIMARY KEY (id)
 );
+
+CREATE TABLE plain_to_gc (
+    id         bigint      NOT NULL,
+    first_name varchar(20) NOT NULL,
+    last_name  varchar(20) NOT NULL,
+    full_name  varchar(41) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED,
+    PRIMARY KEY (id)
+);

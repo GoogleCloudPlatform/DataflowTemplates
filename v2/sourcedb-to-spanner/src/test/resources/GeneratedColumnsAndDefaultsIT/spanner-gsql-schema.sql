@@ -53,3 +53,11 @@ CREATE TABLE gc_virtual (
     tag     STRING(20) NOT NULL,
     doubled INT64      AS (a * 2),
 ) PRIMARY KEY (id);
+
+-- full_name is a plain column at source, changed to a generated column here.
+CREATE TABLE plain_to_gc (
+    id         INT64      NOT NULL,
+    first_name STRING(20) NOT NULL,
+    last_name  STRING(20) NOT NULL,
+    full_name  STRING(41) AS (CONCAT(first_name, ' ', last_name)) STORED,
+) PRIMARY KEY (id);
