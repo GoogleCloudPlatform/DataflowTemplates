@@ -295,5 +295,38 @@
                 </dependency>
             </dependencies>
         </profile>
+        <profile>
+            <id>templatesIntegrationTests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <!-- Spanner PR workflow passes threadCount=48 (itParallelism); treat it as an
+                                 absolute cap instead of multiplying it by the runner's core count. -->
+                            <perCoreThreadCount>false</perCoreThreadCount>
+                            <!-- Split threadCount 1:1 between class runners and test methods, so at most
+                                 threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
+                            <threadCountClasses>1</threadCountClasses>
+                            <threadCountMethods>1</threadCountMethods>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Spanner PR workflow passes threadCount=48 (itParallelism); treat it as an
+                                 absolute cap instead of multiplying it by the runner's core count. -->
+                            <perCoreThreadCount>false</perCoreThreadCount>
+                            <!-- Split threadCount 1:1 between class runners and test methods, so at most
+                                 threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
+                            <threadCountClasses>1</threadCountClasses>
+                            <threadCountMethods>1</threadCountMethods>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
