@@ -310,11 +310,6 @@
                                  threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
                             <threadCountClasses>1</threadCountClasses>
                             <threadCountMethods>1</threadCountMethods>
-                            <!-- Deterministic, longest-test-first class order from .surefire-spanner-it, which the
-                                 Spanner PR workflow installs from src/test/resources/it-run-order.stats
-                                 (see v2/spanner-common/src/test/resources/it-run-order/it_run_order.py). -->
-                            <runOrder>balanced</runOrder>
-                            <runOrderStatisticsFileChecksum>spanner-it</runOrderStatisticsFileChecksum>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -328,11 +323,6 @@
                                  threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
                             <threadCountClasses>1</threadCountClasses>
                             <threadCountMethods>1</threadCountMethods>
-                            <!-- Deterministic, longest-test-first class order from .surefire-spanner-it, which the
-                                 Spanner PR workflow installs from src/test/resources/it-run-order.stats
-                                 (see v2/spanner-common/src/test/resources/it-run-order/it_run_order.py). -->
-                            <runOrder>balanced</runOrder>
-                            <runOrderStatisticsFileChecksum>spanner-it</runOrderStatisticsFileChecksum>
                         </configuration>
                     </plugin>
                 </plugins>
