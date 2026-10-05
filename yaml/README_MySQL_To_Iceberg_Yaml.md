@@ -30,7 +30,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
 * **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
 * **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For example, `50000`.
-* **disableAutoCommit**: Whether to disable auto-commit on read. For example, `True`.
+* **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Postgres. For example, `True`.
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.

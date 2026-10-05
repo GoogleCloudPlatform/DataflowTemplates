@@ -22,7 +22,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "MySQL_To_BigQuery_Yaml",
+    name = "MySQL_to_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "MySQL to BigQuery (YAML)",
@@ -143,7 +143,8 @@ public interface MySQLToBigQueryYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
       example = "True")
   Boolean getDisableAutoCommit();
 
