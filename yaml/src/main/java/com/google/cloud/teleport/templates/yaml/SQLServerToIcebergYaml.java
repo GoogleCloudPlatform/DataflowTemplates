@@ -142,7 +142,8 @@ public interface SQLServerToIcebergYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
       example = "True")
   Boolean getDisableAutoCommit();
 

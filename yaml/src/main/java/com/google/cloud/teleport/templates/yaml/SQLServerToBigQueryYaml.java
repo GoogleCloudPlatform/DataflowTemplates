@@ -22,7 +22,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "SQLServer_to_BigQuery_Yaml",
+    name = "SQLServer_To_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "SQL Server to BigQuery (YAML)",
@@ -143,7 +143,8 @@ public interface SQLServerToBigQueryYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
       example = "True")
   Boolean getDisableAutoCommit();
 
@@ -173,9 +174,9 @@ public interface SQLServerToBigQueryYaml {
       optional = true,
       description = "How to create",
       helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
       example = "")
-  @Default.String("CREATE_IF_NEEDED")
+  @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
   @TemplateParameter.Text(

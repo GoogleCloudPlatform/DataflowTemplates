@@ -1,5 +1,5 @@
 template:
-  name: "SQLServer_to_BigQuery_Yaml"
+  name: "SQLServer_To_BigQuery_Yaml"
   category: "BATCH"
   type: "YAML"
   display_name: "SQL Server to BigQuery (YAML)"

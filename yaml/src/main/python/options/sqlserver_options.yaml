@@ -81,7 +81,7 @@ options:
       - order: 6
         name: "disableAutoCommit"
         description: "Whether to disable auto-commit on read."
-        help: "Whether to disable auto-commit on read."
+        help: "Whether to disable auto-commit on read. Required for some databases like Postgres."
         example: true
         required: false
         type: boolean
