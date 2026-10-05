@@ -1,5 +1,5 @@
 template:
-  name: "MySQL_to_BigQuery_Yaml"
+  name: "MySQL_To_BigQuery_Yaml"
   category: "BATCH"
   type: "YAML"
   display_name: "MySQL to BigQuery (YAML)"
