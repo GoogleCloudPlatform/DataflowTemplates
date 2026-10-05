@@ -173,9 +173,9 @@ public interface MySQLToBigQueryYaml {
       optional = true,
       description = "How to create",
       helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
-      example = "CREATE_IF_NEEDED")
-  @Default.String("CREATE_IF_NEEDED")
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
+      example = "")
+  @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
   @TemplateParameter.Text(
