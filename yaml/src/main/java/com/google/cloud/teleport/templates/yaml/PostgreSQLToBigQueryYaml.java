@@ -166,7 +166,7 @@ public interface PostgreSQLToBigQueryYaml {
       description = "How to create",
       helpText =
           "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
-      example = "")
+      example = "CREATE_NEVER")
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
