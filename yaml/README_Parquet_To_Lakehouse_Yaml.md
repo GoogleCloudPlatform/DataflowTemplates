@@ -21,7 +21,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **gcsFilePath**: An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. For example, `gs://your-bucket/warehouse/data/`.
+* **gcsFilePath**: An optional Google Cloud Storage directory path to copy the matched Parquet files into before registering them in the Lakehouse table. This will not be used if the files are already in GCS. For example, `gs://your-bucket/warehouse/data/`.
 * **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
