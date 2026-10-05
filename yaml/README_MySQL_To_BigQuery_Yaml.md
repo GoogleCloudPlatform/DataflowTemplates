@@ -29,7 +29,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
 * **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
 * **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For example, `50000`.
-* **disableAutoCommit**: Whether to disable auto-commit on read. For example, `True`.
+* **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Postgres. For example, `True`.
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
