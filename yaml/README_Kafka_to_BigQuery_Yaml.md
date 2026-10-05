@@ -40,7 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **redistributeNumKeys**: The number of keys for redistributing Kafka inputs. For example: 10 For example, `10`.
 * **redistributed**: If the Kafka read should be redistributed. For example: true For example, `true`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
-* **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'. Defaults to: CREATE_IF_NEEDED.
+* **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
 
@@ -153,7 +153,7 @@ export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
 export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
 export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
 
@@ -216,7 +216,7 @@ export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
 export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
 export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
-export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
 
@@ -288,7 +288,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_yaml" {
     # redistributeNumKeys = "<redistributeNumKeys>"
     # redistributed = "<redistributed>"
     # schema = "<schema>"
-    # createDisposition = "CREATE_IF_NEEDED"
+    # createDisposition = "CREATE_NEVER"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"
   }

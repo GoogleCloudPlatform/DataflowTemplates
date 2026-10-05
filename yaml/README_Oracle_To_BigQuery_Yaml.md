@@ -1,9 +1,9 @@
 
-PostgreSQL to BigQuery (YAML) template
+Oracle to BigQuery (YAML) template
 ---
-The PostgreSQL to BigQuery template is a batch pipeline that copies data from a
-PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to
-connect to PostgreSQL.
+The Oracle to BigQuery template is a batch pipeline that copies data from an
+Oracle table into an existing BigQuery table. This pipeline uses JDBC to connect
+to Oracle.
 
 
 
@@ -15,7 +15,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:postgresql://your-host:5432/your-db`.
+* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:oracle://your-host:1521/serviceName`.
 * **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.
 
 ### Optional parameters
@@ -23,12 +23,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **postgresTable**: The name of the database table. For example, `public.my_table`.
-* **query**: The SQL query/statement to execute on the source/sink. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **location**: The name of the database table to read data from. For example, `my_table`.
+* **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
 * **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
 * **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For example, `50000`.
-* **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Postgres. For example, `True`.
+* **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Oracle. For example, `True`.
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. Defaults to: WRITE_APPEND.
@@ -49,7 +49,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PostgreSQLToBigQueryYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/OracleToBigQueryYaml.java)
 
 ### Templates Plugin
 
@@ -91,7 +91,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="PostgreSQL_to_BigQuery_Yaml" \
+-DtemplateName="Oracle_To_BigQuery_Yaml" \
 -f yaml
 ```
 
@@ -102,7 +102,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PostgreSQL_to_BigQuery_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/Oracle_To_BigQuery_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -122,7 +122,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PostgreSQL_to_BigQuery_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Oracle_To_BigQuery_Yaml"
 
 ### Required
 export JDBC_URL=<jdbcUrl>
@@ -132,8 +132,8 @@ export TABLE=<table>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export POSTGRES_TABLE=<postgresTable>
-export QUERY=<query>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
 export NUM_PARTITIONS=<numPartitions>
 export FETCH_SIZE=<fetchSize>
@@ -143,7 +143,7 @@ export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
 
-gcloud dataflow flex-template run "postgresql-to-bigquery-yaml-job" \
+gcloud dataflow flex-template run "oracle-to-bigquery-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -151,8 +151,8 @@ gcloud dataflow flex-template run "postgresql-to-bigquery-yaml-job" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "postgresTable=$POSTGRES_TABLE" \
-  --parameters "query=$QUERY" \
+  --parameters "location=$LOCATION" \
+  --parameters "readQuery=$READ_QUERY" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "fetchSize=$FETCH_SIZE" \
@@ -187,8 +187,8 @@ export TABLE=<table>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export POSTGRES_TABLE=<postgresTable>
-export QUERY=<query>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
 export NUM_PARTITIONS=<numPartitions>
 export FETCH_SIZE=<fetchSize>
@@ -203,9 +203,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="postgresql-to-bigquery-yaml-job" \
--DtemplateName="PostgreSQL_to_BigQuery_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,postgresTable=$POSTGRES_TABLE,query=$QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-DjobName="oracle-to-bigquery-yaml-job" \
+-DtemplateName="Oracle_To_BigQuery_Yaml" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -223,7 +223,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/PostgreSQL_to_BigQuery_Yaml
+cd yaml/terraform/Oracle_To_BigQuery_Yaml
 terraform init
 terraform apply
 ```
@@ -243,11 +243,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "postgresql_to_bigquery_yaml" {
+resource "google_dataflow_flex_template_job" "oracle_to_bigquery_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PostgreSQL_to_BigQuery_Yaml"
-  name              = "postgresql-to-bigquery-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Oracle_To_BigQuery_Yaml"
+  name              = "oracle-to-bigquery-yaml"
   region            = var.region
   parameters        = {
     jdbcUrl = "<jdbcUrl>"
@@ -255,8 +255,8 @@ resource "google_dataflow_flex_template_job" "postgresql_to_bigquery_yaml" {
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"
-    # postgresTable = "<postgresTable>"
-    # query = "<query>"
+    # location = "<location>"
+    # readQuery = "<readQuery>"
     # partitionColumn = "<partitionColumn>"
     # numPartitions = "<numPartitions>"
     # fetchSize = "<fetchSize>"

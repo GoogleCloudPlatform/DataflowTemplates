@@ -22,29 +22,29 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PostgreSQL_to_BigQuery_Yaml",
+    name = "Oracle_To_BigQuery_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "PostgreSQL to BigQuery (YAML)",
+    displayName = "Oracle to BigQuery (YAML)",
     description =
-        "The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. This pipeline uses JDBC to connect to PostgreSQL.",
+        "The Oracle to BigQuery template is a batch pipeline that copies data from an Oracle table into an existing BigQuery table. This pipeline uses JDBC to connect to Oracle.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PostgreSQLToBigQuery.yaml",
+    yamlTemplateFile = "OracleToBigQuery.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
-      "options/postgres_options.yaml",
+      "options/oracle_options.yaml",
       "options/bigquery_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The PostgreSQL database must be accessible from the Dataflow workers.",
+      "The Oracle instance and table must exist and be accessible from Dataflow workers.",
       "The target BigQuery dataset and table must exist."
     },
     streaming = false,
     hidden = false)
-public interface PostgreSQLToBigQueryYaml {
+public interface OracleToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -52,7 +52,7 @@ public interface PostgreSQLToBigQueryYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:oracle://your-host:1521/serviceName")
   @Validation.Required
   String getJdbcUrl();
 
@@ -85,21 +85,21 @@ public interface PostgreSQLToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 5,
-      name = "postgresTable",
+      name = "location",
       optional = true,
-      description = "The name of the Postgres table.",
-      helpText = "The name of the database table.",
-      example = "public.my_table")
-  String getPostgresTable();
+      description = "The name of the table to read from.",
+      helpText = "The name of the database table to read data from.",
+      example = "my_table")
+  String getLocation();
 
   @TemplateParameter.Text(
       order = 6,
-      name = "query",
+      name = "readQuery",
       optional = true,
-      description = "The SQL query/statement to execute.",
-      helpText = "The SQL query/statement to execute on the source/sink.",
+      description = "The SQL query to execute for reading data.",
+      helpText = "The SQL query to execute on the source to extract data.",
       example = "SELECT * FROM my_table WHERE status = 'active'")
-  String getQuery();
+  String getReadQuery();
 
   @TemplateParameter.Text(
       order = 7,
@@ -134,8 +134,7 @@ public interface PostgreSQLToBigQueryYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText =
-          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
+      helpText = "Whether to disable auto-commit on read. Required for some databases like Oracle.",
       example = "True")
   Boolean getDisableAutoCommit();
 
