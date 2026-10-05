@@ -59,6 +59,7 @@ func main() {
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
+		mvnFlags.RedirectTestOutputToFile(flags.RedirectLog()),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
