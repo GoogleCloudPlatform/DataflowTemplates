@@ -109,9 +109,7 @@ public final class Mod implements Serializable {
   }
 
   private Long cbtTimestampToLongMicros(Instant commitTimestamp) {
-    long epochMicros = commitTimestamp.toEpochMilli() * 1000;
-    long nanosAsMicros = commitTimestamp.getNano() / 1000;
-    return epochMicros + nanosAsMicros;
+    return commitTimestamp.getEpochSecond() * 1_000_000L + commitTimestamp.getNano() / 1_000;
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
