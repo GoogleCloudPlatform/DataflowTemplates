@@ -100,7 +100,7 @@ public class ProcessDml {
       }
 
       // TODO(dhercher): More complex compare w/o String.join
-      String lastSortKey = myState.read();
+      String lastSortKey = dmlInfo.normalizeSortKey(myState.read());
       String currentSortKey = dmlInfo.getOrderByValueString();
 
       // If there is no PK then state can be skipped
