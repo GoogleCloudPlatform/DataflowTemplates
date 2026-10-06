@@ -28,7 +28,7 @@ import org.joda.time.Instant;
 
 public class BigtableChangeStreamsToKafkaOptionsUtils {
   public static Instant getStartTimestamp(BigtableChangeStreamsToKafkaOptions options) {
-    if (options.getBigtableChangeStreamStartTimestamp().isEmpty()) {
+    if (StringUtils.isEmpty(options.getBigtableChangeStreamStartTimestamp())) {
       return Instant.now();
     } else {
       Timestamp ts = Timestamp.parseTimestamp(options.getBigtableChangeStreamStartTimestamp());
