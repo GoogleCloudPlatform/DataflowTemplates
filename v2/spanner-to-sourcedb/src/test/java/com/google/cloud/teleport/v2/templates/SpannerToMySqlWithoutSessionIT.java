@@ -93,7 +93,9 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToMySqlWithoutSessionIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlWithoutSessionIT.MYSQL_SCHEMA_FILE_RESOURCE);

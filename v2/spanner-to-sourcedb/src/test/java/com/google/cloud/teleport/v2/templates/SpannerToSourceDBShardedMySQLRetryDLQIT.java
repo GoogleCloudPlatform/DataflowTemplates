@@ -93,12 +93,16 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName + "shardA");
         createMySQLSchema(
             jdbcResourceManagerShardA,
             SpannerToSourceDBShardedMySQLRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName + "shardB");
         createMySQLSchema(
             jdbcResourceManagerShardB,
             SpannerToSourceDBShardedMySQLRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);

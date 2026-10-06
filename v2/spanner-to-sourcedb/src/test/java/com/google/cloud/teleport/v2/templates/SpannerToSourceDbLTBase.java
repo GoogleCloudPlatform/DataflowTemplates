@@ -33,7 +33,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -137,7 +136,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
-            .maybeUseStaticInstance(Optional.of(2))
+            .maybeUseStaticInstance()
             .build();
     String ddl =
         String.join(
@@ -162,7 +161,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
       builder.setInstanceId(metadataInstanceId).useStaticInstance();
     } else {
-      builder.maybeUseStaticInstance(Optional.of(2));
+      builder.maybeUseStaticInstance();
     }
 
     SpannerResourceManager spannerMetadataResourceManager = builder.build();

@@ -87,7 +87,9 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
             createSpannerDBAndTableWithNColumns(TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName);
 
         createMySQLTableWithNColumns(jdbcResourceManager, TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
 

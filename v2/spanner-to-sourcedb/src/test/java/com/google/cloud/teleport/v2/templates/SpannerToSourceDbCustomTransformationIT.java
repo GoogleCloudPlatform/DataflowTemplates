@@ -103,7 +103,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             createSpannerDatabase(SpannerToSourceDbCustomTransformationIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager =
+            com.google.cloud.teleport.v2.templates.mysql.SharedMySQLReverseITContainer
+                .createResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager,
