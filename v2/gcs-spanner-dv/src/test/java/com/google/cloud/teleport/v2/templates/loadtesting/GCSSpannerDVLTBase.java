@@ -44,8 +44,6 @@ import org.junit.After;
 /**
  * Base class for Load Tests (LT) of the GCS-to-Spanner Data Validation ({@code gcs-spanner-dv})
  * template.
- *
- * <p>This class provides common infrastructure for large-scale data validation tests, including:
  */
 public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
 
