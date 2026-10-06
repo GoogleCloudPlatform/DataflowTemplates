@@ -180,15 +180,6 @@ public interface IcebergToMySQLYaml {
 
   @TemplateParameter.Text(
       order = 15,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 16,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -197,7 +188,7 @@ public interface IcebergToMySQLYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 16,
       name = "filter",
       optional = true,
       description = "An optional filter expression to apply to the input records.",

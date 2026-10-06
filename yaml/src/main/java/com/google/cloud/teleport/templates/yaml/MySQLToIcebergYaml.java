@@ -206,15 +206,6 @@ public interface MySQLToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 18,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 19,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -223,7 +214,7 @@ public interface MySQLToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 19,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -232,7 +223,7 @@ public interface MySQLToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 20,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -241,7 +232,7 @@ public interface MySQLToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 21,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
