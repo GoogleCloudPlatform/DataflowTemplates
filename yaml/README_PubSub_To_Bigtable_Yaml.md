@@ -22,8 +22,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
 * **projectId**: The Google Cloud project ID of the Bigtable instance.
 * **instanceId**: The Bigtable instance ID.
 * **tableId**: Bigtable table ID to write the output to.

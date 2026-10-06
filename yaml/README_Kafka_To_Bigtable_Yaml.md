@@ -20,8 +20,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **bootstrapServers**: A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2 For example, `host1:port1,host2:port2,localhost:9092,127.0.0.1:9093`.
 * **topic**: Kafka topic to read from. For example: my_topic For example, `my_topic`.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
 * **projectId**: The Google Cloud project ID of the Bigtable instance.
 * **instanceId**: The Bigtable instance ID.
 * **tableId**: Bigtable table ID to write the output to.

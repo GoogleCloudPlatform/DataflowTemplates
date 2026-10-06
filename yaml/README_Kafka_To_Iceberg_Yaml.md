@@ -228,7 +228,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-iceberg-yaml-job" \
 -DtemplateName="Kafka_To_Iceberg_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
 -f yaml
 ```
 
