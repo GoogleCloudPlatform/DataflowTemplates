@@ -46,6 +46,9 @@ public final class Mod implements Serializable {
 
   private static final long serialVersionUID = 169227493747673831L;
 
+  private static final ObjectMapper OBJECT_MAPPER =
+      new ObjectMapper(RowJsonUtils.createJsonFactory(100 * 1024 * 1024));
+
   private String changeJson;
   private long commitTimestampSeconds;
   private int commitTimestampNanos;
@@ -142,8 +145,7 @@ public final class Mod implements Serializable {
   }
 
   public static Mod fromJson(String json) throws IOException {
-    RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
-    return new ObjectMapper().readValue(json, Mod.class);
+    return OBJECT_MAPPER.readValue(json, Mod.class);
   }
 
   /**
@@ -188,7 +190,7 @@ public final class Mod implements Serializable {
   }
 
   public String toJson() throws JsonProcessingException {
-    return new ObjectMapper().writeValueAsString(this);
+    return OBJECT_MAPPER.writeValueAsString(this);
   }
 
   private String encodeBytes(ByteString rowKey) {
@@ -201,7 +203,7 @@ public final class Mod implements Serializable {
 
   private String convertPropertiesToJson(Map<String, Object> propertiesMap) {
     try {
-      return new ObjectMapper().writeValueAsString(propertiesMap);
+      return OBJECT_MAPPER.writeValueAsString(propertiesMap);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
