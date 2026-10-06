@@ -1,7 +1,10 @@
 # AGENTS.md: GCS Spanner Data Validator
 
 > [!IMPORTANT]
-> **For AI agents:** If this document conflicts with the code, the code wins — fix this document. When your change affects options, pipeline stages, BigQuery schemas, or a documented bug, update the matching section here (including the Mermaid diagram) in the same PR.
+> **For AI agents: this document may be stale. The code is the source of truth.**
+> *   **Verify before relying:** Treat statements here as claims. Confirm the ones your task depends on against the code you read for the task. If they conflict, follow the code and update this document to match.
+> *   **Coverage check:** **Supported Features & Configurations** must describe every user-facing feature. If a template parameter in `GCSSpannerDVOptions.java` (or a pipeline stage, BigQuery column, or known bug you come across) is missing here, this document is stale. Update the matching section.
+> *   **When to update:** Update this document (including the Mermaid diagram) in the same change only if your change adds or alters an option, pipeline stage, BigQuery schema, invariant, or known bug. Refactors, tests, and other internal changes need no update.
 
 ## Commands
 
