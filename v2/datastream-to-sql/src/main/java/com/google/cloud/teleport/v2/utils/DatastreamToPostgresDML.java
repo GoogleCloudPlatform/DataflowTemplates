@@ -82,9 +82,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       String columnValue, String columnName, Map<String, String> tableSchema) {
     String dataType = tableSchema.get(columnName);
     if (dataType == null) {
-      dataType = tableSchema.get(applyCasingLogic(columnName, this.columnCasing));
-    }
-    if (dataType == null) {
       return columnValue;
     }
     switch (dataType.toUpperCase()) {

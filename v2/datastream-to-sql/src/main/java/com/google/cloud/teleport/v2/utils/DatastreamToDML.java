@@ -122,7 +122,7 @@ public abstract class DatastreamToDML
     return applyCasingLogic(name, this.defaultCasing);
   }
 
-  protected String applyCasingLogic(String name, String casingOption) {
+  private String applyCasingLogic(String name, String casingOption) {
     if (name == null || name.isEmpty()) {
       return name;
     }
@@ -316,7 +316,10 @@ public abstract class DatastreamToDML
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-    List<String> sourcePrimaryKeys = this.getSourcePrimaryKeyFields(rowObj, primaryKeys);
+    List<String> sourcePrimaryKeys =
+        primaryKeys.isEmpty()
+            ? row.getPrimaryKeys()
+            : this.getSourcePrimaryKeyFields(rowObj, primaryKeys);
     List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
     List<String> orderByValues =
         getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);

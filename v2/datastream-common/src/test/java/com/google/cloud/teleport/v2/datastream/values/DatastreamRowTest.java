@@ -210,4 +210,93 @@ public class DatastreamRowTest {
             "{}");
     assertEquals("1758835512-extra_val", mismatchedFieldsInfo.getOrderByValueString());
   }
+
+  @Test
+  public void testNormalizeSortKeyLegacyStateCompatibilityAndEdgeCases() {
+    List<String> pgFields = Arrays.asList("_metadata_timestamp", "_metadata_lsn");
+    DmlInfo newEvent =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "foo",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            pgFields,
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/2902D0D1'"),
+            "{}");
+
+    // 1. Legacy unpadded state vs new padded event at the exact same timestamp
+    String legacyUnpaddedState = "1758835512-'17/2902D0D0'";
+    String normalizedLegacy = newEvent.normalizeSortKey(legacyUnpaddedState);
+    assertEquals("1758835512-'00000017/2902D0D0'", normalizedLegacy);
+    assertTrue(newEvent.getOrderByValueString().compareTo(normalizedLegacy) > 0);
+
+    // 2. Idempotency when state is already normalized
+    assertEquals(normalizedLegacy, newEvent.normalizeSortKey(normalizedLegacy));
+
+    // 3. Legacy backfill state ("1758835512-null") and already-normalized backfill ("1758835512-")
+    assertEquals("1758835512-", newEvent.normalizeSortKey("1758835512-null"));
+    assertEquals("1758835512-", newEvent.normalizeSortKey("1758835512-"));
+    assertTrue(
+        newEvent.getOrderByValueString().compareTo(newEvent.normalizeSortKey("1758835512-null"))
+            > 0);
+
+    // 4. ISO-8601 timestamp containing hyphens
+    assertEquals(
+        "'2026-09-25T21:25:12.027Z'-'00000017/2902D0D0'",
+        newEvent.normalizeSortKey("'2026-09-25T21:25:12.027Z'-'17/2902D0D0'"));
+
+    // 5. With trailing _metadata_deleted field
+    DmlInfo withDeletedEvent =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "foo",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            Arrays.asList("_metadata_timestamp", "_metadata_lsn", "_metadata_deleted"),
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'17/2902D0D1'", "0"),
+            "{}");
+    assertEquals(
+        "1758835512-'00000017/2902D0D0'-0",
+        withDeletedEvent.normalizeSortKey("1758835512-'17/2902D0D0'-0"));
+    assertEquals("1758835512--0", withDeletedEvent.normalizeSortKey("1758835512-null-0"));
+    assertEquals("1758835512--0", withDeletedEvent.normalizeSortKey("1758835512--0"));
+    // Malformed sortKey missing trailing dash
+    assertEquals("malformed_no_dash", withDeletedEvent.normalizeSortKey("malformed_no_dash"));
+
+    // 6. Null sortKey, non-LSN orderByFields, lsnFieldIdx == 0, and missing start dash
+    assertEquals(null, newEvent.normalizeSortKey(null));
+    assertEquals("malformed_no_dash", newEvent.normalizeSortKey("malformed_no_dash"));
+
+    DmlInfo mysqlEvent =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "foo",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position"),
+            Arrays.asList("20374293074"),
+            Arrays.asList("1758835512", "'mysql-bin.000001'", "456"),
+            "{}");
+    assertEquals(
+        "1758835512-'mysql-bin.000001'-456",
+        mysqlEvent.normalizeSortKey("1758835512-'mysql-bin.000001'-456"));
+
+    DmlInfo lsnOnlyEvent =
+        DmlInfo.of(
+            "{}",
+            "INSERT ...",
+            "foo",
+            "datasourceresponse",
+            Arrays.asList("datasourceresponseid"),
+            Arrays.asList("_metadata_lsn"),
+            Arrays.asList("20374293074"),
+            Arrays.asList("'17/2902D0D1'"),
+            "{}");
+    assertEquals("'00000017/2902D0D0'", lsnOnlyEvent.normalizeSortKey("'17/2902D0D0'"));
+  }
 }

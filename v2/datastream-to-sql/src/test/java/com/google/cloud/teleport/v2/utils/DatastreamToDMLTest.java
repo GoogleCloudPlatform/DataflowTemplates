@@ -1425,8 +1425,9 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Verifies that when the destination table has no primary keys, primaryKeyValues and allPkFields
-   * are empty and a plain INSERT statement (without ON CONFLICT) is generated.
+   * Verifies that when the destination table has no primary keys, allPkFields is empty and a plain
+   * INSERT statement (without ON CONFLICT) is generated, while primaryKeyValues falls back to
+   * _metadata_primary_keys to avoid hot keys on stateWindowKey.
    */
   @Test
   public void testConvertJsonToDmlInfo_noPrimaryKeys() {
@@ -1456,8 +1457,8 @@ public class DatastreamToDMLTest {
     DmlInfo dmlInfo = dml.convertJsonToDmlInfo(getRowObj(json), json);
 
     assertThat(dmlInfo.getAllPkFields()).isEmpty();
-    assertThat(dmlInfo.getPrimaryKeyValues()).isEmpty();
-    assertEquals("foo.audit_log:", dmlInfo.getStateWindowKey());
+    assertThat(dmlInfo.getPrimaryKeyValues()).containsExactly("100", "'val'").inOrder();
+    assertEquals("foo.audit_log:100-'val'", dmlInfo.getStateWindowKey());
     assertEquals(
         "INSERT INTO \"foo\".\"audit_log\" (\"col1\",\"col2\") VALUES (100,'val');",
         dmlInfo.getDmlSql());

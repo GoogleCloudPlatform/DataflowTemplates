@@ -89,6 +89,40 @@ public abstract class DmlInfo implements Serializable {
     return String.join("-", normalizedValues);
   }
 
+  public String normalizeSortKey(String sortKey) {
+    if (sortKey == null) {
+      return null;
+    }
+    List<String> fields = this.getOrderByFields();
+    if (fields == null) {
+      return sortKey;
+    }
+    int lsnFieldIdx = fields.indexOf("_metadata_lsn");
+    if (lsnFieldIdx < 0) {
+      return sortKey;
+    }
+
+    int trailingFields = fields.size() - 1 - lsnFieldIdx;
+    int endIdx = sortKey.length();
+    for (int i = 0; i < trailingFields; i++) {
+      int dashIdx = sortKey.lastIndexOf('-', endIdx - 1);
+      if (dashIdx < 0) {
+        return sortKey;
+      }
+      endIdx = dashIdx;
+    }
+
+    int startDashIdx = lsnFieldIdx == 0 ? -1 : sortKey.lastIndexOf('-', endIdx - 1);
+    if (lsnFieldIdx > 0 && startDashIdx < 0) {
+      return sortKey;
+    }
+
+    String prefix = startDashIdx < 0 ? "" : sortKey.substring(0, startDashIdx + 1);
+    String lsnSegment = sortKey.substring(startDashIdx + 1, endIdx);
+    String suffix = sortKey.substring(endIdx);
+    return prefix + normalizeLsnValue(lsnSegment) + suffix;
+  }
+
   static String normalizeLsnValue(String lsnValue) {
     if (lsnValue == null
         || lsnValue.isEmpty()
