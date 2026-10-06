@@ -323,6 +323,26 @@
                                  threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
                             <threadCountClasses>1</threadCountClasses>
                             <threadCountMethods>1</threadCountMethods>
+                            <!-- Run @DirectRunnerTest ITs in the IT job (instead of the smoke job).
+                                 TemplateTestBase still selects DirectRunner based on the category.
+                                 combine.self="override" is required so the empty value clears the
+                                 parent's ${direct-runner.tests} exclusion instead of inheriting it. -->
+                            <excludedGroups combine.self="override"></excludedGroups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesIntegrationSmokeTests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- @DirectRunnerTest ITs of this module run in the IT job instead. -->
+                            <excludedGroups>com.google.cloud.teleport.metadata.DirectRunnerTest</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>

@@ -49,6 +49,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
@@ -66,6 +67,8 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+  // For direct runner pipeline execution it will spin up 15 threads per pipeline.
+  private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
@@ -412,6 +415,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
 
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      params.put("targetParallelism", TARGET_PARALLALISM_FOR_DIRECTRUNNER);
+      // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
+      // element per transform, which is very costly for large elements such as CollationMapper
+      // and causes heavy GC when many pipelines share one test JVM.
+      params.putIfAbsent("enforceImmutability", "false");
+      params.putIfAbsent("enforceEncodability", "false");
+    }
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
@@ -645,7 +657,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   @Override
   protected PipelineOperator.Config.Builder wrapConfiguration(
       PipelineOperator.Config.Builder builder) {
-    if (System.getProperty("directRunnerTest") != null) {
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
       return builder.setTimeoutAfter(Duration.ofMinutes(15));
     }
     return builder;
