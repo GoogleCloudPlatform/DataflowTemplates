@@ -289,9 +289,8 @@ public final class BigtableChangeStreamsToKafka {
   private static DeadLetterQueueManager buildDlqManager(
       BigtableChangeStreamsToKafkaOptions options) {
     String tempLocation =
-        options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
-            ? options.as(DataflowPipelineOptions.class).getTempLocation()
-            : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
+        StringUtils.defaultString(options.as(DataflowPipelineOptions.class).getTempLocation());
+    tempLocation = StringUtils.appendIfMissing(tempLocation, "/");
     String dlqDirectory =
         options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
 
