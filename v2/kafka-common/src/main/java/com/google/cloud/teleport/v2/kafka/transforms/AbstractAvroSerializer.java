@@ -51,7 +51,7 @@ public abstract class AbstractAvroSerializer implements Serializer<GenericRecord
       encoder.flush();
       return out.toByteArray();
     } catch (IOException e) {
-      throw new SerializationException("Error serializing avro message", e.getCause());
+      throw new SerializationException("Error serializing avro message", e);
     }
   }
 
