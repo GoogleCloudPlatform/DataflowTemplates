@@ -797,6 +797,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       List<Element> elements = new ArrayList<>();
 
       // Base image to use
+      if (baseContainerImage != null && baseContainerImage.startsWith(":")) {
+        baseContainerImage = BASE_CONTAINER_IMAGE.split(":")[0] + baseContainerImage;
+      }
       elements.add(element("from", element("image", baseContainerImage)));
 
       // Target image to stage
@@ -1288,8 +1291,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + "']\n"
                       + "options:\n"
                       + "  logging: CLOUD_LOGGING_ONLY\n"
-                      + "  requestedVerifyOption: VERIFIED"
-                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
+                      + "  requestedVerifyOption: VERIFIED\n"
+                      + "  workerRelease: regular"
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n  workerRelease: regular\n"));
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());

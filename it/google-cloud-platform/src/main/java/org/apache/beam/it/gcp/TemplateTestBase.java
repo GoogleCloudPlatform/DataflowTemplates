@@ -486,36 +486,44 @@ public abstract class TemplateTestBase {
       templateOrContainer = "-DflexContainerName=" + flexContainerName;
     }
 
-    return new String[] {
-      "mvn",
-      "compile",
-      "package",
-      "-q",
-      "-f",
-      pomPath,
-      "-pl",
-      moduleBuild,
-      "-am",
-      "-PtemplatesStage,pluginOutputDir",
-      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
-      // Skip shading for now due to flakiness / slowness in the process.
-      "-DskipShade=" + skipShade,
-      "-DskipTests",
-      "-Dmaven.test.skip",
-      "-Dcheckstyle.skip",
-      "-Dmdep.analyze.skip",
-      "-Dspotless.check.skip",
-      "-Denforcer.skip",
-      "-DprojectId=" + TestProperties.project(),
-      "-Dregion=" + TestProperties.region(),
-      "-DbucketName=" + bucketName,
-      "-DgcpTempLocation=" + bucketName,
-      "-DstagePrefix=" + prefix,
-      templateOrContainer,
-      "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
-      // Print stacktrace when command fails
-      "-e"
-    };
+    List<String> mavenCmd =
+        new ArrayList<>(
+            List.of(
+                "mvn",
+                "compile",
+                "package",
+                "-q",
+                "-f",
+                pomPath,
+                "-pl",
+                moduleBuild,
+                "-am",
+                "-PtemplatesStage,pluginOutputDir",
+                "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
+                // Skip shading for now due to flakiness / slowness in the process.
+                "-DskipShade=" + skipShade,
+                "-DskipTests",
+                "-Dmaven.test.skip",
+                "-Dcheckstyle.skip",
+                "-Dmdep.analyze.skip",
+                "-Dspotless.check.skip",
+                "-Denforcer.skip",
+                "-DprojectId=" + TestProperties.project(),
+                "-Dregion=" + TestProperties.region(),
+                "-DbucketName=" + bucketName,
+                "-DgcpTempLocation=" + bucketName,
+                "-DstagePrefix=" + prefix,
+                templateOrContainer,
+                "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
+                // Print stacktrace when command fails
+                "-e"));
+    if (!Strings.isNullOrEmpty(System.getProperty("baseContainerImage"))) {
+      mavenCmd.add("-DbaseContainerImage=" + System.getProperty("baseContainerImage"));
+    }
+    if (!Strings.isNullOrEmpty(System.getProperty("basePythonContainerImage"))) {
+      mavenCmd.add("-DbasePythonContainerImage=" + System.getProperty("basePythonContainerImage"));
+    }
+    return mavenCmd.toArray(new String[0]);
   }
 
   public GcsResourceManager setUpSpannerITGcsResourceManager() {
