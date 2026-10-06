@@ -49,6 +49,7 @@ public class BigtableSource implements Serializable {
     } else {
       this.columnFamiliesToIgnore =
           Arrays.stream(ignoreColumnFamilies.trim().split("[\\s]*,[\\s]*"))
+              .filter(StringUtils::isNotBlank)
               .collect(Collectors.toSet());
     }
 
@@ -57,7 +58,9 @@ public class BigtableSource implements Serializable {
       columnsToIgnore = Collections.emptySet();
     } else {
       columnsToIgnore =
-          Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
+          Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*"))
+              .filter(StringUtils::isNotBlank)
+              .collect(Collectors.toSet());
     }
 
     ignoredColumnsMap = new HashMap<>();
