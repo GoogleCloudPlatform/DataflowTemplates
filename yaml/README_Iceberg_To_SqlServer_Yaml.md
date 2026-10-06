@@ -220,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-sqlserver-yaml-job" \
 -DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,jdbcType=$JDBC_TYPE" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,jdbcType=$JDBC_TYPE" \
 -f yaml
 ```
 
