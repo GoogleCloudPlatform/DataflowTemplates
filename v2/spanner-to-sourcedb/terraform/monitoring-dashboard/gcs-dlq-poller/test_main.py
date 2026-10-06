@@ -1,0 +1,238 @@
+#
+# Copyright (C) 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+#
+
+"""Unit tests for the GCS DLQ Poller Cloud Function."""
+
+import json
+import os
+import sys
+from types import SimpleNamespace
+import unittest
+from unittest import mock
+
+# Provide lightweight stubs if Cloud Function SDK packages are not installed in
+# the local test runner environment.
+if "functions_framework" not in sys.modules:
+  ff_stub = SimpleNamespace(http=lambda fn: fn)
+  sys.modules["functions_framework"] = ff_stub
+
+try:
+  from google.cloud import monitoring_v3  # pylint: disable=unused-import
+  from google.cloud import storage  # pylint: disable=unused-import
+except ImportError:
+  google_mod = sys.modules.setdefault("google", SimpleNamespace())
+  cloud_mod = getattr(google_mod, "cloud", SimpleNamespace())
+  sys.modules["google.cloud"] = cloud_mod
+
+  class _FakeTimeSeries:
+
+    def __init__(self):
+      self.metric = SimpleNamespace(type="", labels={})
+      self.resource = SimpleNamespace(type="", labels={})
+      self.metric_kind = None
+      self.value_type = None
+      self.points = []
+
+  monitoring_stub = SimpleNamespace(
+      MetricServiceClient=mock.MagicMock,
+      TimeInterval=lambda d: d,
+      TimeSeries=_FakeTimeSeries,
+      Point=lambda d: d,
+      MetricDescriptor=SimpleNamespace(
+          MetricKind=SimpleNamespace(GAUGE="GAUGE"),
+          ValueType=SimpleNamespace(INT64="INT64"),
+      ),
+  )
+  storage_stub = SimpleNamespace(Client=mock.MagicMock)
+  cloud_mod.monitoring_v3 = monitoring_stub
+  cloud_mod.storage = storage_stub
+  sys.modules["google.cloud.monitoring_v3"] = monitoring_stub
+  sys.modules["google.cloud.storage"] = storage_stub
+
+import main  # pylint: disable=g-import-not-at-top
+
+
+class GcsDlqPollerTest(unittest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    main._storage_client = None
+    main._metric_client = None
+
+  def test_parse_gcs_uri_valid(self):
+    self.assertEqual(
+        main._parse_gcs_uri("gs://my-bucket/dlq/"), ("my-bucket", "dlq")
+    )
+    self.assertEqual(
+        main._parse_gcs_uri("  gs://my-bucket/nested/dlq/path// "),
+        ("my-bucket", "nested/dlq/path"),
+    )
+    self.assertEqual(main._parse_gcs_uri("gs://my-bucket"), ("my-bucket", ""))
+
+  def test_parse_gcs_uri_invalid_raises_value_error(self):
+    for invalid_uri in ("", "   ", "my-bucket/dlq", "gs://", "gs:///dlq"):
+      with self.subTest(invalid_uri=invalid_uri):
+        with self.assertRaises(ValueError):
+          main._parse_gcs_uri(invalid_uri)
+
+  def test_count_blobs_filters_directories_and_temp_files(self):
+    mock_storage = mock.MagicMock()
+    mock_storage.list_blobs.return_value = [
+        SimpleNamespace(name="dlq/severe/"),
+        SimpleNamespace(name="dlq/severe/2026/10/06/"),
+        SimpleNamespace(
+            name="dlq/severe/2026/10/06/12/00/error-W-P-00000-of-00020.json"
+        ),
+        SimpleNamespace(
+            name="dlq/severe/2026/10/06/12/00/.temp-beam-12345"
+        ),
+        SimpleNamespace(name="dlq/severe/tmp/.temp-1"),
+        SimpleNamespace(name="dlq/severe/tmp_severe/shard-0"),
+        SimpleNamespace(
+            name="dlq/severe/2026/10/06/12/01/error-W-P-00001-of-00020.json"
+        ),
+    ]
+
+    count = main._count_blobs(mock_storage, "my-bucket", "dlq/severe/")
+    self.assertEqual(count, 2)
+    mock_storage.list_blobs.assert_called_once_with(
+        "my-bucket",
+        prefix="dlq/severe/",
+        page_size=main.GCS_LIST_PAGE_SIZE,
+        fields="items(name),nextPageToken",
+    )
+
+  def test_count_blobs_respects_max_count_limit(self):
+    mock_storage = mock.MagicMock()
+    # Create an iterator that would yield 100 files if not short-circuited.
+    blobs_iter = (
+        SimpleNamespace(name=f"dlq/severe/file-{i}.json") for i in range(100)
+    )
+    mock_storage.list_blobs.return_value = blobs_iter
+
+    count = main._count_blobs(
+        mock_storage, "my-bucket", "dlq/severe/", max_count_limit=5
+    )
+    self.assertEqual(count, 5)
+    # Verify the generator was short-circuited right at the 5th item.
+    self.assertEqual(next(blobs_iter).name, "dlq/severe/file-5.json")
+
+  @mock.patch.object(main, "_get_metric_client")
+  @mock.patch.object(main, "_get_storage_client")
+  def test_poll_gcs_dlq_success_multi_shard(
+      self, mock_get_storage, mock_get_metric
+  ):
+    mock_storage = mock.MagicMock()
+    mock_metric = mock.MagicMock()
+    mock_get_storage.return_value = mock_storage
+    mock_get_metric.return_value = mock_metric
+
+    # Shard 1: 2 severe, 1 retry; Shard 2: 0 severe, 3 retry.
+    def fake_list_blobs(bucket_name, prefix, **kwargs):
+      del kwargs
+      data = {
+          ("shard1-bucket", "dlq/severe/"): [
+              SimpleNamespace(name="dlq/severe/err1.json"),
+              SimpleNamespace(name="dlq/severe/err2.json"),
+          ],
+          ("shard1-bucket", "dlq/retry/"): [
+              SimpleNamespace(name="dlq/retry/ret1.json"),
+          ],
+          ("shard2-bucket", "dlq/severe/"): [],
+          ("shard2-bucket", "dlq/retry/"): [
+              SimpleNamespace(name="dlq/retry/ret1.json"),
+              SimpleNamespace(name="dlq/retry/ret2.json"),
+              SimpleNamespace(name="dlq/retry/ret3.json"),
+          ],
+      }
+      return data.get((bucket_name, prefix), [])
+
+    mock_storage.list_blobs.side_effect = fake_list_blobs
+
+    request = mock.MagicMock()
+    request.get_json.return_value = {
+        "project_id": "test-project",
+        "migration_id": "smt-test",
+        "dlq_directories": "gs://shard1-bucket/dlq/, gs://shard2-bucket/dlq",
+    }
+
+    body_str, status_code, _ = main.poll_gcs_dlq(request)
+    self.assertEqual(status_code, 200)
+    body = json.loads(body_str)
+    self.assertEqual(body["status"], "ok")
+    self.assertEqual(body["totals"], {"severe": 2, "retry": 4})
+    self.assertEqual(
+        body["directories"],
+        {
+            "gs://shard1-bucket/dlq": {"severe": 2, "retry": 1},
+            "gs://shard2-bucket/dlq": {"severe": 0, "retry": 3},
+        },
+    )
+
+    mock_metric.create_time_series.assert_called_once()
+    call_kwargs = mock_metric.create_time_series.call_args.kwargs
+    self.assertEqual(call_kwargs["name"], "projects/test-project")
+    self.assertEqual(len(call_kwargs["time_series"]), 4)
+    labels_set = {
+        (
+            ts.metric.labels["migration_id"],
+            ts.metric.labels["dlq_category"],
+            ts.metric.labels["dlq_directory"],
+        )
+        for ts in call_kwargs["time_series"]
+    }
+    self.assertEqual(
+        labels_set,
+        {
+            ("smt-test", "severe", "gs://shard1-bucket/dlq"),
+            ("smt-test", "retry", "gs://shard1-bucket/dlq"),
+            ("smt-test", "severe", "gs://shard2-bucket/dlq"),
+            ("smt-test", "retry", "gs://shard2-bucket/dlq"),
+        },
+    )
+
+  @mock.patch.object(main, "_get_metric_client")
+  @mock.patch.object(main, "_get_storage_client")
+  def test_poll_gcs_dlq_invalid_uri_fails_closed(
+      self, mock_get_storage, mock_get_metric
+  ):
+    request = mock.MagicMock()
+    request.get_json.return_value = {
+        "project_id": "test-project",
+        "migration_id": "smt-test",
+        "dlq_directories": "gs://valid-bucket/dlq, gs://",
+    }
+
+    body_str, status_code, _ = main.poll_gcs_dlq(request)
+    self.assertEqual(status_code, 400)
+    body = json.loads(body_str)
+    self.assertEqual(body["status"], "error")
+    # Ensure neither GCS nor Cloud Monitoring was called when a URI is invalid.
+    mock_get_storage.assert_not_called()
+    mock_get_metric.assert_not_called()
+
+  def test_poll_gcs_dlq_missing_configuration_returns_400(self):
+    with mock.patch.dict(os.environ, {}, clear=True):
+      request = mock.MagicMock()
+      request.get_json.return_value = {}
+      body_str, status_code, _ = main.poll_gcs_dlq(request)
+      self.assertEqual(status_code, 400)
+      body = json.loads(body_str)
+      self.assertEqual(body["status"], "error")
+
+
+if __name__ == "__main__":
+  unittest.main()
