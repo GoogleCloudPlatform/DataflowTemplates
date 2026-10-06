@@ -74,7 +74,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
@@ -207,8 +206,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   protected boolean generateSBOM;
 
   private boolean internalMaven;
-  // used to track if same images are scanned
-  private static final Set<ImmutablePair<String, TemplateType>> SCANNED_TYPES = new HashSet<>();
 
   private String mavenRepo;
 
@@ -516,6 +513,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String currentTemplateName = definition.getTemplateAnnotation().name();
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
+    if (!containerStageTracker.isStaged(containerName, currentTemplateName)
+        && !Strings.isNullOrEmpty(
+            PromoteHelper.getDigestFromTag(
+                targetImagePath,
+                new PromoteHelper.ArtifactRegImageSpec(targetImagePath),
+                stagePrefix))) {
+      LOG.info(
+          "Container image {}:{} already exists, marking {} as staged.",
+          targetImagePath,
+          stagePrefix,
+          containerName);
+      containerStageTracker.setStaged(containerName);
+    }
+
     boolean stageImageBeforePromote =
         generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
     String imagePath =
@@ -601,8 +612,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (!containerStageTracker.isStaged(containerName, currentTemplateName)) {
         // generate SBOM
         File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-        performVulnerabilityScanAndGenerateUserSBOM(
-            imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
+        performVulnerabilityScanAndGenerateUserSBOM(imagePathTag, buildProjectId, buildDir);
         GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
         Failsafe.with(
                 GenerateSBOMRunnable.sbomRetryPolicy(),
@@ -1511,25 +1521,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir, TemplateType imageType)
+  private static void performVulnerabilityScanAndGenerateUserSBOM(
+      String imagePathTag, String buildProjectId, File buildDir)
       throws IOException, InterruptedException {
     LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
-
-    // Continuous scanning is expensive. Images are built on identical dependencies and only differ
-    // by entry point. We only need to check once.
-    ImmutablePair<String, TemplateType> uniqueImage =
-        ImmutablePair.of(buildDir.getPath(), imageType);
-    String maybeScan = "";
-    if (!SCANNED_TYPES.contains(uniqueImage)) {
-      maybeScan =
-          "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
-              + imagePathTag
-              + "\n";
-      SCANNED_TYPES.add(uniqueImage);
-    }
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1555,7 +1550,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --uri="
               + imagePathTag
               + "\n"
-              + maybeScan
+              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
+              + "  args:\n"
+              + "  - --image="
+              + imagePathTag
+              + "\n"
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n");
     }
