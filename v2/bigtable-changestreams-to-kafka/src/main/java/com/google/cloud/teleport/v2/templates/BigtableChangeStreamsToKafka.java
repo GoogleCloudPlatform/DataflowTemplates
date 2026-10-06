@@ -178,9 +178,6 @@ public final class BigtableChangeStreamsToKafka {
     // Register the coders.
     pipeline
         .getCoderRegistry()
-        .registerCoderForType(STRING_CODER.getEncodedTypeDescriptor(), STRING_CODER);
-    pipeline
-        .getCoderRegistry()
         .registerCoderForType(
             FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
