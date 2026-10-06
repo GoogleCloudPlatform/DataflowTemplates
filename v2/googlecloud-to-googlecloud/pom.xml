@@ -34,7 +34,7 @@
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
-        <version>0.6.1</version>
+        <version>${protobuf-maven-plugin.version}</version>
         <configuration>
           <protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>
           <pluginId>grpc-java</pluginId>
@@ -128,7 +128,7 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-spanner</artifactId>
-      <version>6.113.0</version>
+      <version>${google-cloud-spanner.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
