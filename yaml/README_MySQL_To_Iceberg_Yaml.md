@@ -37,7 +37,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
@@ -156,7 +155,6 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -186,7 +184,6 @@ gcloud dataflow flex-template run "mysql-to-iceberg-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
@@ -231,7 +228,6 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -244,7 +240,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mysql-to-iceberg-yaml-job" \
 -DtemplateName="MySQL_To_Iceberg_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -309,7 +305,6 @@ resource "google_dataflow_flex_template_job" "mysql_to_iceberg_yaml" {
     # outputParallelization = "<outputParallelization>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
-    # filter = "<filter>"
     # keep = "<keep>"
     # only = "<only>"
     # partitionFields = "<partitionFields>"

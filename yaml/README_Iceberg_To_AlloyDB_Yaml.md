@@ -23,8 +23,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
@@ -132,8 +132,8 @@ export JDBC_URL=<jdbcUrl>
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
+export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
@@ -151,8 +151,8 @@ gcloud dataflow flex-template run "iceberg-to-alloydb-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
+  --parameters "filter=$FILTER" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
@@ -187,8 +187,8 @@ export JDBC_URL=<jdbcUrl>
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
+export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
@@ -204,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-alloydb-yaml-job" \
 -DtemplateName="Iceberg_To_AlloyDB_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,alloydbTable=$ALLOYDB_TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,alloydbTable=$ALLOYDB_TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
 -f yaml
 ```
 
@@ -255,8 +255,8 @@ resource "google_dataflow_flex_template_job" "iceberg_to_alloydb_yaml" {
     jdbcUrl = "<jdbcUrl>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
-    # filter = "<filter>"
     # keep = "<keep>"
+    # filter = "<filter>"
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"

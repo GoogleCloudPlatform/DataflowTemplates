@@ -96,21 +96,21 @@ public interface IcebergToOracleYaml {
 
   @TemplateParameter.Text(
       order = 6,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 7,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
       example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
+
+  @TemplateParameter.Text(
+      order = 7,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
 
   @TemplateParameter.Text(
       order = 8,
