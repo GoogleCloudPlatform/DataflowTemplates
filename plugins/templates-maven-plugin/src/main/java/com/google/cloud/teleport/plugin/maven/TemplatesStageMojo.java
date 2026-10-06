@@ -604,7 +604,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         performVulnerabilityScanAndGenerateUserSBOM(
             imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
         GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
-        Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
+        Failsafe.with(
+                GenerateSBOMRunnable.sbomRetryPolicy(),
+                GenerateSBOMRunnable.sbomScanningRetryPolicy())
+            .run(runnable);
         String digest = runnable.getDigest();
 
         if (stageImageBeforePromote) {
@@ -1794,14 +1797,33 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       digest = matcher.group("DIGEST");
     }
 
+    private static boolean isScanningInProgress(Throwable throwable) {
+      return throwable.getCause() != null
+          && throwable.getCause().getMessage() != null
+          && throwable.getCause().getMessage().contains("discovery occurrence has status SCANNING");
+    }
+
     private static <T> RetryPolicy<T> sbomRetryPolicy() {
       return RetryPolicy.<T>builder()
           .handleIf(
               throwable ->
                   throwable.getMessage() != null
-                      && throwable.getMessage().contains("Error generating SBOM."))
+                      && throwable.getMessage().contains("Error generating SBOM.")
+                      && !isScanningInProgress(throwable))
           .withBackoff(Duration.ofSeconds(10), Duration.ofSeconds(60))
           .withMaxRetries(5)
+          .build();
+    }
+
+    private static <T> RetryPolicy<T> sbomScanningRetryPolicy() {
+      return RetryPolicy.<T>builder()
+          .handleIf(
+              throwable ->
+                  throwable.getMessage() != null
+                      && throwable.getMessage().contains("Error generating SBOM.")
+                      && isScanningInProgress(throwable))
+          .withBackoff(Duration.ofSeconds(20), Duration.ofSeconds(60))
+          .withMaxRetries(20) // up to 20 minutes waiting for scan to be finished
           .build();
     }
   }
