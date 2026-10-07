@@ -18,6 +18,9 @@ package com.google.cloud.teleport.templates.yaml;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -63,16 +66,19 @@ public class GcsCsvToBigQueryYamlIT extends TemplateTestBase {
     gcsClient.createArtifact("input/data.csv", csvContent);
 
     // 2. Setup BigQuery target dataset and table
+    Schema bqSchema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("name", StandardSQLTypeName.STRING),
+            Field.of("age", StandardSQLTypeName.INT64));
     bigQueryResourceManager.createDataset(REGION);
-    TableId bqTable = TableId.of(PROJECT, bigQueryResourceManager.getDatasetId(), TABLE_NAME);
+    TableId bqTable = bigQueryResourceManager.createTable(TABLE_NAME, bqSchema);
 
     // 3. Launch the Pipeline
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("csvPath", getGcsPath("input/data.csv"))
-            .addParameter(
-                "table",
-                bqTable.getProject() + ":" + bqTable.getDataset() + "." + bqTable.getTable());
+            .addParameter("table", toTableSpecLegacy(bqTable));
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
