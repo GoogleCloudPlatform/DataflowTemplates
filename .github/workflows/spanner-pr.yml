@@ -173,7 +173,8 @@ jobs:
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
-        --it-cloud-proxy-host="10.128.0.16"
+        --it-cloud-proxy-host="10.128.0.16" \
+        --it-base-container-image=":dev-image-latest"
     - name: Upload Smoke Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
@@ -223,6 +224,7 @@ jobs:
         --it-cloud-proxy-host="10.128.0.16" \
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
+        --it-base-container-image=":dev-image-latest" \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
