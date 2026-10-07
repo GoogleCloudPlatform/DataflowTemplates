@@ -20,13 +20,13 @@ mvn test -pl v2/gcs-spanner-dv -Dspotless.check.skip=true -Dcheckstyle.skip=true
 mvn spotless:check -pl v2/gcs-spanner-dv
 
 # Integration test (DataflowRunner tests stage the template from local source into -DstageBucket):
-mvn clean test -pl v2/gcs-spanner-dv -Dtest=<it_test_name> -Dsurefire.failIfNoSpecifiedTests=false -Dproject=<project_id> -Dregion=<region> -DartifactBucket=<bucket_name> -DstageBucket=<bucket_name> -DspannerInstanceId=<spanner_instance_id> -Dspotless.check.skip=true -Dcheckstyle.skip=true -Djacoco.skip=true
+mvn clean test -pl v2/gcs-spanner-dv -Dtest=<it_test_name> -Dproject=<project_id> -Dregion=<region> -DartifactBucket=<bucket_name> -DstageBucket=<bucket_name> -DspannerInstanceId=<spanner_instance_id> -Dspotless.check.skip=true -Dcheckstyle.skip=true -Djacoco.skip=true
 
 # Build & stage the Flex Template:
 mvn clean package -PtemplatesStage -DskipTests -DprojectId=<project_id> -DbucketName=<bucket_name> -DstagePrefix=<stage_prefix> -DtemplateName="Avro_to_Spanner_Data_Validator" -pl v2/gcs-spanner-dv -am
 
 # Load test:
-mvn verify -PtemplatesLoadTests -pl v2/gcs-spanner-dv -Dtest=<lt_test_name> -Dsurefire.failIfNoSpecifiedTests=false -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=<bucket_name> -DstageBucket=<bucket_name> -DspecPath=<staged_template_spec_path> -DexportProject=<project_id> -DexportDataset=<dataset> -DexportTable=<table> -Dspotless.check.skip=true -Dcheckstyle.skip=true -Djacoco.skip=true
+mvn verify -PtemplatesLoadTests -pl v2/gcs-spanner-dv -Dtest=<lt_test_name> -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=<bucket_name> -DstageBucket=<bucket_name> -DspecPath=<staged_template_spec_path> -DexportProject=<project_id> -DexportDataset=<dataset> -DexportTable=<table> -Dspotless.check.skip=true -Dcheckstyle.skip=true -Djacoco.skip=true
 ```
 
 *   **Runner selection:** The test's category decides the runner: tests tagged `DirectRunnerTest` always run on DirectRunner; all others run on DataflowRunner. To iterate quickly on a DataflowRunner test, run just that test method locally with `-DdirectRunnerTest` (except tests using custom transformations, which must not run on DirectRunner).
