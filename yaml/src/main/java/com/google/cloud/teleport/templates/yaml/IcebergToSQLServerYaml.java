@@ -195,35 +195,4 @@ public interface IcebergToSQLServerYaml {
       helpText = "If true, a dynamic number of shards will be used for writing.",
       example = "False")
   Boolean getAutoSharding();
-
-  @TemplateParameter.Text(
-      order = 17,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriver",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 18,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 19,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: mssql.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mssql")
-  @Default.String("mssql")
-  String getJdbcType();
 }

@@ -124,26 +124,3 @@ options:
         example: false
         required: false
         type: boolean
-      - order: 5
-        name: "driverClassName"
-        description: "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriver"
-        help: "The fully-qualified class name of the JDBC driver to use."
-        example: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-        required: false
-        default: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-        type: text
-      - order: 6
-        name: "driverJars"
-        description: "Comma-separated GCS paths of the JDBC driver jars."
-        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
-        example: "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar"
-        required: false
-        type: text
-      - order: 7
-        name: "jdbcType"
-        description: "Type of JDBC source. Default: mssql."
-        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
-        example: "mssql"
-        required: false
-        type: text
-        default: "mssql"
