@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assume.assumeTrue;
 
 import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
@@ -56,11 +55,14 @@ import org.slf4j.LoggerFactory;
  * Manually-invoked benchmark for {@link SourceDbToSpanner} against the permanent, pre-populated
  * MySQL benchmark fleet.
  *
- * <p>Pick a scenario and run it:
+ * <p>Classes ending in {@code ManualLT} are excluded from the scheduled load-test sweep (see the
+ * {@code templatesLoadTests} profile in the root {@code pom.xml}), so this only runs when named
+ * explicitly via {@code -Dtest}, e.g. through the {@code specific_test} input of the Spanner
+ * load-test workflow, or locally:
  *
  * <pre>{@code
  * mvn test -pl v2/sourcedb-to-spanner -am \
- *   -Dtest=MySQLLargeLT#allTablesOneShard -Dsurefire.failIfNoSpecifiedTests=false
+ *   -Dtest=MySQLLargeManualLT#allTablesOneShard -Dsurefire.failIfNoSpecifiedTests=false
  * }</pre>
  *
  * <p>Everything else is fixed in {@link Scenario} and the constants below, so a run needs no
@@ -76,19 +78,15 @@ import org.slf4j.LoggerFactory;
  *   <tr><td>{@code allTablesAllShards}<td>5,000<td>1,000<td>200 TB
  * </table>
  *
- * <p>The category makes this dispatchable by name from the Spanner load-test workflow, but the
- * weekly schedule runs the whole category with no {@code -Dtest}, which would sweep in a run of
- * this size. {@link #setUpClass()} therefore skips unless the class is named explicitly.
- *
  * <p>Each run scales the instance to {@value #TARGET_NODES} nodes, creates and drops its own
  * database, and restores the instance to {@value #IDLE_NODES} nodes.
  */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLLargeLT extends SourceDbToSpannerLTBase {
+public class MySQLLargeManualLT extends SourceDbToSpannerLTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLLargeLT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLLargeManualLT.class);
 
   private static final String DATAFLOW_PROJECT = "span-cloud-migrations-testing";
   private static final String REGION = "asia-southeast1";
@@ -148,9 +146,6 @@ public class MySQLLargeLT extends SourceDbToSpannerLTBase {
 
   @BeforeClass
   public static void setUpClass() {
-    assumeTrue(
-        "Skipped: name this class in -Dtest to run it.",
-        System.getProperty("test", "").contains(MySQLLargeLT.class.getSimpleName()));
     System.setProperty("project", DATAFLOW_PROJECT);
     System.setProperty("region", REGION);
     System.setProperty("artifactBucket", BUCKET);
