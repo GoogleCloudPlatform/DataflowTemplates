@@ -43,7 +43,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Create release branch
         run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
         env:
@@ -159,7 +158,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -202,7 +200,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -245,7 +242,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -288,7 +284,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Push tags
         run: |
           git push -u origin --tags
