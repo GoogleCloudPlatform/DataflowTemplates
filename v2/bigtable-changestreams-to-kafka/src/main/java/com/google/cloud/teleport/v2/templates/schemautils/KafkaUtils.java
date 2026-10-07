@@ -166,18 +166,16 @@ public class KafkaUtils implements Serializable {
         (String) FORMATTERS.get(KafkaFields.COLUMN_FAMILY).format(this, changeJsonParsed));
     changelogEntryMessage.setCommitTimestamp(
         (Long) FORMATTERS.get(KafkaFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-    changelogEntryMessage.setColumn(
-        ByteBuffer.wrap(
-            (byte[]) FORMATTERS.get(KafkaFields.COLUMN_BYTES).format(this, changeJsonParsed)));
+    byte[] columnBytes = (byte[]) FORMATTERS.get(KafkaFields.COLUMN).format(this, changeJsonParsed);
+    changelogEntryMessage.setColumn(columnBytes == null ? null : ByteBuffer.wrap(columnBytes));
     changelogEntryMessage.setTimestamp(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampFrom(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampTo(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    changelogEntryMessage.setValue(
-        ByteBuffer.wrap(
-            (byte[]) FORMATTERS.get(KafkaFields.VALUE_BYTES).format(this, changeJsonParsed)));
+    byte[] valueBytes = (byte[]) FORMATTERS.get(KafkaFields.VALUE).format(this, changeJsonParsed);
+    changelogEntryMessage.setValue(valueBytes == null ? null : ByteBuffer.wrap(valueBytes));
 
     changelogEntryMessage.setSourceInstance(
         (String) FORMATTERS.get(KafkaFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
@@ -210,18 +208,16 @@ public class KafkaUtils implements Serializable {
         (String) FORMATTERS.get(KafkaFields.COLUMN_FAMILY).format(this, changeJsonParsed));
     changelogEntryMessage.setCommitTimestamp(
         (Long) FORMATTERS.get(KafkaFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-    changelogEntryMessage.setColumn(
-        b64.encodeToString(
-            (byte[]) FORMATTERS.get(KafkaFields.COLUMN_BYTES).format(this, changeJsonParsed)));
+    byte[] columnBytes = (byte[]) FORMATTERS.get(KafkaFields.COLUMN).format(this, changeJsonParsed);
+    changelogEntryMessage.setColumn(columnBytes == null ? null : b64.encodeToString(columnBytes));
     changelogEntryMessage.setTimestamp(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampFrom(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampTo(
         (Long) FORMATTERS.get(KafkaFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    changelogEntryMessage.setValue(
-        b64.encodeToString(
-            (byte[]) FORMATTERS.get(KafkaFields.VALUE_BYTES).format(this, changeJsonParsed)));
+    byte[] valueBytes = (byte[]) FORMATTERS.get(KafkaFields.VALUE).format(this, changeJsonParsed);
+    changelogEntryMessage.setValue(valueBytes == null ? null : b64.encodeToString(valueBytes));
 
     changelogEntryMessage.setSourceInstance(
         (String) FORMATTERS.get(KafkaFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
