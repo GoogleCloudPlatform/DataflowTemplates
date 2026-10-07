@@ -91,18 +91,25 @@ class GcsDlqPollerTest(unittest.TestCase):
   def test_count_blobs_filters_directories_and_temp_files(self):
     mock_storage = mock.MagicMock()
     mock_storage.list_blobs.return_value = [
-        SimpleNamespace(name="dlq/severe/"),
-        SimpleNamespace(name="dlq/severe/2026/10/06/"),
+        SimpleNamespace(name="dlq/severe/", size=0),
+        SimpleNamespace(name="dlq/severe/2026/10/06/", size=0),
         SimpleNamespace(
-            name="dlq/severe/2026/10/06/12/00/error-W-P-00000-of-00020.json"
+            name="dlq/severe/2026/10/06/12/00/error-W-P-00000-of-00020.json",
+            size=512,
         ),
         SimpleNamespace(
-            name="dlq/severe/2026/10/06/12/00/.temp-beam-12345"
+            name="dlq/severe/2026/10/06/12/00/.temp-beam-12345",
+            size=128,
         ),
-        SimpleNamespace(name="dlq/severe/tmp/.temp-1"),
-        SimpleNamespace(name="dlq/severe/tmp_severe/shard-0"),
+        SimpleNamespace(name="dlq/severe/tmp/.temp-1", size=64),
+        SimpleNamespace(name="dlq/severe/tmp_severe/shard-0", size=64),
         SimpleNamespace(
-            name="dlq/severe/2026/10/06/12/01/error-W-P-00001-of-00020.json"
+            name="dlq/severe/2026/10/06/12/00/empty-placeholder.json",
+            size=0,
+        ),
+        SimpleNamespace(
+            name="dlq/severe/2026/10/06/12/01/error-W-P-00001-of-00020.json",
+            size=256,
         ),
     ]
 
@@ -112,8 +119,30 @@ class GcsDlqPollerTest(unittest.TestCase):
         "my-bucket",
         prefix="dlq/severe/",
         page_size=main.GCS_LIST_PAGE_SIZE,
-        fields="items(name),nextPageToken",
+        fields="items(name,size),nextPageToken",
+        timeout=main.RPC_TIMEOUT_SECONDS,
     )
+
+  def test_count_blobs_allows_tmp_in_base_dlq_prefix(self):
+    mock_storage = mock.MagicMock()
+    prefix = "migration/tmp/dlq/severe/"
+    mock_storage.list_blobs.return_value = [
+        SimpleNamespace(
+            name="migration/tmp/dlq/severe/2026/10/06/12/00/err-0.json",
+            size=100,
+        ),
+        SimpleNamespace(
+            name="migration/tmp/dlq/severe/2026/10/06/12/00/.temp-beam-1",
+            size=100,
+        ),
+        SimpleNamespace(
+            name="migration/tmp/dlq/severe/tmp/.temp-2",
+            size=100,
+        ),
+    ]
+
+    count = main._count_blobs(mock_storage, "my-bucket", prefix)
+    self.assertEqual(count, 1)
 
   def test_count_blobs_respects_max_count_limit(self):
     mock_storage = mock.MagicMock()
@@ -132,7 +161,7 @@ class GcsDlqPollerTest(unittest.TestCase):
 
   @mock.patch.object(main, "_get_metric_client")
   @mock.patch.object(main, "_get_storage_client")
-  def test_poll_gcs_dlq_success_multi_shard(
+  def test_poll_gcs_dlq_success_multi_shard_and_deduplicates_uris(
       self, mock_get_storage, mock_get_metric
   ):
     mock_storage = mock.MagicMock()
@@ -166,7 +195,10 @@ class GcsDlqPollerTest(unittest.TestCase):
     request.get_json.return_value = {
         "project_id": "test-project",
         "migration_id": "smt-test",
-        "dlq_directories": "gs://shard1-bucket/dlq/, gs://shard2-bucket/dlq",
+        "dlq_directories": (
+            "gs://shard1-bucket/dlq/, gs://shard1-bucket/dlq,"
+            " gs://shard2-bucket/dlq"
+        ),
     }
 
     body_str, status_code, _ = main.poll_gcs_dlq(request)
@@ -185,6 +217,7 @@ class GcsDlqPollerTest(unittest.TestCase):
     mock_metric.create_time_series.assert_called_once()
     call_kwargs = mock_metric.create_time_series.call_args.kwargs
     self.assertEqual(call_kwargs["name"], "projects/test-project")
+    self.assertEqual(call_kwargs["timeout"], main.RPC_TIMEOUT_SECONDS)
     self.assertEqual(len(call_kwargs["time_series"]), 4)
     labels_set = {
         (
@@ -223,6 +256,21 @@ class GcsDlqPollerTest(unittest.TestCase):
     # Ensure neither GCS nor Cloud Monitoring was called when a URI is invalid.
     mock_get_storage.assert_not_called()
     mock_get_metric.assert_not_called()
+
+  def test_parse_max_count_limit_rejects_invalid_values(self):
+    for invalid_limit in (0, -5, "abc", True, False):
+      with self.subTest(invalid_limit=invalid_limit):
+        with self.assertRaises(ValueError):
+          main._parse_max_count_limit(invalid_limit)
+
+  def test_poll_gcs_dlq_non_dict_json_body_falls_back_gracefully(self):
+    with mock.patch.dict(os.environ, {}, clear=True):
+      request = mock.MagicMock()
+      request.get_json.return_value = ["not", "a", "dict"]
+      body_str, status_code, _ = main.poll_gcs_dlq(request)
+      self.assertEqual(status_code, 400)
+      body = json.loads(body_str)
+      self.assertEqual(body["status"], "error")
 
   def test_poll_gcs_dlq_missing_configuration_returns_400(self):
     with mock.patch.dict(os.environ, {}, clear=True):

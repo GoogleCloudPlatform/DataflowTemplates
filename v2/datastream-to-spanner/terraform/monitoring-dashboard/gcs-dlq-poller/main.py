@@ -35,7 +35,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import functions_framework
 from google.cloud import monitoring_v3
@@ -49,6 +49,11 @@ METRIC_TYPE = "custom.googleapis.com/migration/gcs_dlq_file_count"
 # deadLetterQueueDirectory:
 # - "severe": permanent errors that require manual intervention and block cutover.
 # - "retry": transient errors that are automatically re-ingested by Dataflow.
+#   Note: When PubSubNotifiedDlqIO (dlqGcsPubSubSubscription) is enabled,
+#   finalized files in "retry/" are reconsumed and deleted within seconds of
+#   creation (after 1-minute windowing in "tmp_retry/"). Thus, the GCS "retry"
+#   file count reflects any unconsumed retry backlog in GCS, while active retry
+#   churn is tracked by the Dataflow "retryable_errors" counter on the dashboard.
 DLQ_CATEGORIES = ("severe", "retry")
 
 # Number of object names fetched per GCS list_blobs HTTP page.
@@ -75,6 +80,11 @@ TEMP_FILE_MARKERS = (
 
 # Cloud Monitoring API allows at most 200 time series per create_time_series call.
 MAX_TIME_SERIES_PER_BATCH = 200
+
+# Per-RPC timeout (in seconds) for GCS list_blobs and Cloud Monitoring
+# create_time_series calls so a slow call cannot exceed the 60-second Cloud
+# Scheduler cycle and cause overlapping invocations.
+RPC_TIMEOUT_SECONDS = 30
 
 # Global client instances cached across warm Cloud Function invocations to avoid
 # re-initializing gRPC/HTTP channels on every 1-minute poll.
@@ -131,19 +141,39 @@ def _parse_gcs_uri(uri: str) -> Tuple[str, str]:
   return bucket_name, prefix
 
 
-def _is_valid_dlq_blob(blob_name: str) -> bool:
-  """Returns True if the GCS object name represents a finalized DLQ file.
+def _is_valid_dlq_blob(
+    blob_name: str,
+    prefix: str = "",
+    blob_size: Optional[int] = None,
+) -> bool:
+  """Returns True if the GCS object represents a non-empty finalized DLQ file.
 
-  Excludes 0-byte directory placeholder objects (ending in '/') and Apache Beam
-  temporary staging files (e.g., '.temp-beam-...', '/tmp/.temp', '/tmp_retry/').
+  Excludes 0-byte objects, directory placeholder objects (ending in '/'), and
+  Apache Beam temporary staging files (e.g., '.temp-beam-...', '/tmp/.temp',
+  '/tmp_retry/'). Temporary file markers are checked against the path relative
+  to `prefix` so that user-configured DLQ base paths containing '/tmp/' (such
+  as Dataflow's default `<tempLocation>/dlq/`) do not cause valid DLQ files to
+  be ignored.
 
   Args:
-    blob_name: The GCS object key name.
+    blob_name: The full GCS object key name.
+    prefix: The category prefix being listed (e.g., 'tmp/dlq/severe/').
+    blob_size: Optional size of the GCS object in bytes.
   """
   if not blob_name or blob_name.endswith("/"):
     return False
+  if blob_size is not None and blob_size <= 0:
+    return False
+  relative_name = (
+      blob_name[len(prefix) :]
+      if prefix and blob_name.startswith(prefix)
+      else blob_name
+  )
+  if not relative_name or relative_name.endswith("/"):
+    return False
+  normalized_relative = f"/{relative_name.lstrip('/')}"
   for marker in TEMP_FILE_MARKERS:
-    if marker in blob_name:
+    if marker in normalized_relative:
       return False
   return True
 
@@ -168,16 +198,21 @@ def _count_blobs(
     `max_count_limit`.
   """
   count = 0
-  # Request only object names and pagination tokens with an explicit page_size
-  # of 1000 to minimize response payload size and HTTP round-trips.
+  # Request only object names, sizes, and pagination tokens with an explicit
+  # page_size of 1000 to minimize response payload size and HTTP round-trips.
   blobs = storage_client.list_blobs(
       bucket_name,
       prefix=prefix,
       page_size=GCS_LIST_PAGE_SIZE,
-      fields="items(name),nextPageToken",
+      fields="items(name,size),nextPageToken",
+      timeout=RPC_TIMEOUT_SECONDS,
   )
   for blob in blobs:
-    if _is_valid_dlq_blob(blob.name):
+    if _is_valid_dlq_blob(
+        blob.name,
+        prefix=prefix,
+        blob_size=getattr(blob, "size", None),
+    ):
       count += 1
       # Short-circuit pagination once the cap is reached so the Cloud Function
       # cannot time out or incur excessive GCS Class A list costs during a
@@ -222,6 +257,10 @@ def _parse_max_count_limit(raw_limit) -> int:
   """
   if raw_limit is None or str(raw_limit).strip() == "":
     return DEFAULT_MAX_DLQ_COUNT_LIMIT
+  if isinstance(raw_limit, bool):
+    raise ValueError(
+        f"Invalid max_dlq_count_limit '{raw_limit}': must be a positive integer."
+    )
   try:
     limit = int(str(raw_limit).strip())
   except ValueError as exc:
@@ -284,7 +323,7 @@ def _publish_dlq_metrics(
       point = monitoring_v3.Point(
           {"interval": interval, "value": {"int64_value": count}}
       )
-      series.points = [point]
+      series.points.append(point)
       time_series_list.append(series)
 
   # Batch time series writes (up to 200 series per API request).
@@ -293,6 +332,7 @@ def _publish_dlq_metrics(
     metric_client.create_time_series(
         name=f"projects/{project_id}",
         time_series=batch,
+        timeout=RPC_TIMEOUT_SECONDS,
     )
 
 
@@ -322,21 +362,25 @@ def poll_gcs_dlq(request):
   """
   # Allow optional per-request JSON overrides in addition to environment vars.
   try:
-    req_json = request.get_json(silent=True) or {}
+    req_json = request.get_json(silent=True)
   except Exception:
+    req_json = {}
+  if not isinstance(req_json, dict):
     req_json = {}
 
   # Resolve project ID, migration ID, and DLQ directory list.
-  project_id = (
+  raw_project_id = (
       req_json.get("project_id")
       or os.environ.get("PROJECT_ID")
       or os.environ.get("GCP_PROJECT")
       or os.environ.get("GOOGLE_CLOUD_PROJECT")
       or ""
-  ).strip()
-  migration_id = (
+  )
+  project_id = str(raw_project_id).strip()
+  raw_migration_id = (
       req_json.get("migration_id") or os.environ.get("MIGRATION_ID") or ""
-  ).strip()
+  )
+  migration_id = str(raw_migration_id).strip()
   dlq_directories = _parse_dlq_directories(
       req_json.get("dlq_directories") or os.environ.get("DLQ_DIRECTORIES", "")
   )
@@ -359,7 +403,8 @@ def poll_gcs_dlq(request):
   # Fail-closed validation: validate max_dlq_count_limit and all GCS URIs
   # upfront before querying GCS or publishing any metrics. If any URI is
   # malformed (e.g., "gs://"), return HTTP 400 rather than silently skipping it
-  # and publishing a false 0 count.
+  # and publishing a false 0 count. Deduplicate normalized URIs so equivalent
+  # entries (e.g., "gs://b/dlq" and "gs://b/dlq/") are not double-counted.
   try:
     raw_limit = (
         req_json.get("max_dlq_count_limit")
@@ -368,12 +413,15 @@ def poll_gcs_dlq(request):
     )
     max_count_limit = _parse_max_count_limit(raw_limit)
     parsed_directories: List[Tuple[str, str, str]] = []
+    seen_uris = set()
     for dlq_uri in dlq_directories:
       bucket_name, prefix = _parse_gcs_uri(dlq_uri)
       normalized_uri = (
           f"gs://{bucket_name}/{prefix}" if prefix else f"gs://{bucket_name}"
       )
-      parsed_directories.append((normalized_uri, bucket_name, prefix))
+      if normalized_uri not in seen_uris:
+        seen_uris.add(normalized_uri)
+        parsed_directories.append((normalized_uri, bucket_name, prefix))
   except ValueError as exc:
     error_body = {
         "status": "error",
