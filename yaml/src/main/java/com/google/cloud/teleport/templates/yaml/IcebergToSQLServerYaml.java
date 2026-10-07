@@ -142,26 +142,6 @@ public interface IcebergToSQLServerYaml {
 
   @TemplateParameter.Text(
       order = 11,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 12,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 13,
       name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
@@ -170,27 +150,16 @@ public interface IcebergToSQLServerYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 12,
       name = "connectionInitSql",
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
       helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
+      example = "[\"SET ANSI_NULLS ON\"]")
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
-      order = 15,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: mssql.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mssql")
-  @Default.String("mssql")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 16,
+      order = 13,
       name = "location",
       optional = false,
       description = "The name of the table to write to.",
@@ -200,7 +169,7 @@ public interface IcebergToSQLServerYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 14,
       name = "query",
       optional = true,
       description = "The SQL statement to use for inserting records.",
@@ -209,7 +178,7 @@ public interface IcebergToSQLServerYaml {
   String getQuery();
 
   @TemplateParameter.Integer(
-      order = 18,
+      order = 15,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -219,7 +188,7 @@ public interface IcebergToSQLServerYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 19,
+      order = 16,
       name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",

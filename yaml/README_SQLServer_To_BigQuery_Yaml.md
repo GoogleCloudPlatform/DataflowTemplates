@@ -1,8 +1,9 @@
 
-Iceberg to SqlServer (YAML) template
+SQL Server to BigQuery (YAML) template
 ---
-The Iceberg to SqlServer template is a batch pipeline that reads data from an
-Iceberg table and outputs the records to a SqlServer database table.
+The SQL Server to BigQuery template is a batch pipeline that copies data from a
+Microsoft SQL Server table into an existing BigQuery table. This pipeline uses
+JDBC to connect to SQL Server.
 
 
 
@@ -14,25 +15,25 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
-* **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
-* **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **jdbcUrl**: The JDBC connection URL. For example, `jdbc:sqlserver://localhost:12345;databaseName=your-db`.
-* **location**: The name of the database table to write data to. For example, `public.my_destination_table`.
+* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects. For example, `my-project:my_dataset.my_table`.
 
 ### Optional parameters
 
-* **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET ANSI_NULLS ON"]`.
-* **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
-* **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
-* **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
+* **location**: The name of the database table to read data from. For example, `public.my_table`.
+* **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
+* **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
+* **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For SQL Server, this only takes effect if selectMethod=cursor is specified in connectionProperties. For example, `50000`.
+* **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Postgres. For example, `True`.
+* **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
+* **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.
+* **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
+* **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1. For example, `1`.
 
 
 
@@ -49,7 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/IcebergToSQLServerYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/SQLServerToBigQueryYaml.java)
 
 ### Templates Plugin
 
@@ -91,7 +92,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="Iceberg_To_SqlServer_Yaml" \
+-DtemplateName="SQLServer_To_BigQuery_Yaml" \
 -f yaml
 ```
 
@@ -102,7 +103,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Iceberg_To_SqlServer_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/SQLServer_To_BigQuery_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -122,48 +123,48 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Iceberg_To_SqlServer_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/SQLServer_To_BigQuery_Yaml"
 
 ### Required
-export TABLE=<table>
-export CATALOG_NAME=<catalogName>
-export CATALOG_PROPERTIES=<catalogProperties>
 export JDBC_URL=<jdbcUrl>
-export LOCATION=<location>
+export TABLE=<table>
 
 ### Optional
-export CONFIG_PROPERTIES=<configProperties>
-export DROP=<drop>
-export KEEP=<keep>
-export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export QUERY=<query>
-export BATCH_SIZE=1000
-export AUTO_SHARDING=<autoSharding>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
+export PARTITION_COLUMN=<partitionColumn>
+export NUM_PARTITIONS=<numPartitions>
+export FETCH_SIZE=<fetchSize>
+export DISABLE_AUTO_COMMIT=<disableAutoCommit>
+export OUTPUT_PARALLELIZATION=<outputParallelization>
+export CREATE_DISPOSITION=CREATE_NEVER
+export WRITE_DISPOSITION=WRITE_APPEND
+export NUM_STREAMS=1
 
-gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
+gcloud dataflow flex-template run "sqlserver-to-bigquery-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "table=$TABLE" \
-  --parameters "catalogName=$CATALOG_NAME" \
-  --parameters "catalogProperties=$CATALOG_PROPERTIES" \
-  --parameters "configProperties=$CONFIG_PROPERTIES" \
-  --parameters "drop=$DROP" \
-  --parameters "keep=$KEEP" \
-  --parameters "filter=$FILTER" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
   --parameters "location=$LOCATION" \
-  --parameters "query=$QUERY" \
-  --parameters "batchSize=$BATCH_SIZE" \
-  --parameters "autoSharding=$AUTO_SHARDING"
+  --parameters "readQuery=$READ_QUERY" \
+  --parameters "partitionColumn=$PARTITION_COLUMN" \
+  --parameters "numPartitions=$NUM_PARTITIONS" \
+  --parameters "fetchSize=$FETCH_SIZE" \
+  --parameters "disableAutoCommit=$DISABLE_AUTO_COMMIT" \
+  --parameters "outputParallelization=$OUTPUT_PARALLELIZATION" \
+  --parameters "table=$TABLE" \
+  --parameters "createDisposition=$CREATE_DISPOSITION" \
+  --parameters "writeDisposition=$WRITE_DISPOSITION" \
+  --parameters "numStreams=$NUM_STREAMS"
 ```
 
 For more information about the command, please check:
@@ -182,33 +183,33 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TABLE=<table>
-export CATALOG_NAME=<catalogName>
-export CATALOG_PROPERTIES=<catalogProperties>
 export JDBC_URL=<jdbcUrl>
-export LOCATION=<location>
+export TABLE=<table>
 
 ### Optional
-export CONFIG_PROPERTIES=<configProperties>
-export DROP=<drop>
-export KEEP=<keep>
-export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export QUERY=<query>
-export BATCH_SIZE=1000
-export AUTO_SHARDING=<autoSharding>
+export LOCATION=<location>
+export READ_QUERY=<readQuery>
+export PARTITION_COLUMN=<partitionColumn>
+export NUM_PARTITIONS=<numPartitions>
+export FETCH_SIZE=<fetchSize>
+export DISABLE_AUTO_COMMIT=<disableAutoCommit>
+export OUTPUT_PARALLELIZATION=<outputParallelization>
+export CREATE_DISPOSITION=CREATE_NEVER
+export WRITE_DISPOSITION=WRITE_APPEND
+export NUM_STREAMS=1
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="iceberg-to-sqlserver-yaml-job" \
--DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING" \
+-DjobName="sqlserver-to-bigquery-yaml-job" \
+-DtemplateName="SQLServer_To_BigQuery_Yaml" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -226,7 +227,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd yaml/terraform/Iceberg_To_SqlServer_Yaml
+cd yaml/terraform/SQLServer_To_BigQuery_Yaml
 terraform init
 terraform apply
 ```
@@ -246,29 +247,29 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "iceberg_to_sqlserver_yaml" {
+resource "google_dataflow_flex_template_job" "sqlserver_to_bigquery_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Iceberg_To_SqlServer_Yaml"
-  name              = "iceberg-to-sqlserver-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/SQLServer_To_BigQuery_Yaml"
+  name              = "sqlserver-to-bigquery-yaml"
   region            = var.region
   parameters        = {
-    table = "<table>"
-    catalogName = "<catalogName>"
-    catalogProperties = "<catalogProperties>"
     jdbcUrl = "<jdbcUrl>"
-    location = "<location>"
-    # configProperties = "<configProperties>"
-    # drop = "<drop>"
-    # keep = "<keep>"
-    # filter = "<filter>"
+    table = "<table>"
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
-    # query = "<query>"
-    # batchSize = "1000"
-    # autoSharding = "<autoSharding>"
+    # location = "<location>"
+    # readQuery = "<readQuery>"
+    # partitionColumn = "<partitionColumn>"
+    # numPartitions = "<numPartitions>"
+    # fetchSize = "<fetchSize>"
+    # disableAutoCommit = "<disableAutoCommit>"
+    # outputParallelization = "<outputParallelization>"
+    # createDisposition = "CREATE_NEVER"
+    # writeDisposition = "WRITE_APPEND"
+    # numStreams = "1"
   }
 }
 ```
