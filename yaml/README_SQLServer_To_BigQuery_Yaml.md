@@ -23,12 +23,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
+* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET ANSI_NULLS ON"]`.
 * **location**: The name of the database table to read data from. For example, `public.my_table`.
 * **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
 * **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
-* **fetchSize**: The number of rows to fetch per database call. It should ONLY be used  if the default value throws memory errors.  For SQL Server, this only takes effect if selectMethod=cursor is specified  in connectionProperties. For example, `50000`.
+* **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For SQL Server, this only takes effect if selectMethod=cursor is specified in connectionProperties. For example, `50000`.
 * **disableAutoCommit**: Whether to disable auto-commit on read. Required for some databases like Postgres. For example, `True`.
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.

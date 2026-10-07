@@ -29,7 +29,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
+* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET ANSI_NULLS ON"]`.
 * **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.

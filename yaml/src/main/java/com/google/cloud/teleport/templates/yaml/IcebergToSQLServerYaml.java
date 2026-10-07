@@ -155,7 +155,7 @@ public interface IcebergToSQLServerYaml {
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
       helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
+      example = "[\"SET ANSI_NULLS ON\"]")
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
