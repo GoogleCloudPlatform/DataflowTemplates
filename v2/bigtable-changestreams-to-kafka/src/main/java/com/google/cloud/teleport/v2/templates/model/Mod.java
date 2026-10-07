@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
@@ -41,6 +42,8 @@ import org.threeten.bp.Instant;
  * com.google.cloud.bigtable.data.v2.models.Entry}) and metadata ({@link ChangeStreamMutation}) of a
  * Bigtable changelog row.
  */
+// The DLQ reconsumer adds _metadata_* fields to the payload of retried records.
+@JsonIgnoreProperties(ignoreUnknown = true)
 @DefaultCoder(AvroCoder.class)
 public final class Mod implements Serializable {
 
