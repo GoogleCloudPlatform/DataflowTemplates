@@ -68,6 +68,12 @@ pipeline:
         {% if lakehouseTableProperties %}
         table_properties: {{ lakehouseTableProperties }}
         {% endif %}
+        {% if lakehouseDistributionMode %}
+        distribution_mode: "{{ lakehouseDistributionMode }}"
+        {% endif %}
+        {% if lakehouseAutosharding %}
+        autosharding: {{ lakehouseAutosharding }}
+        {% endif %}
 
 providers:
   - type: pythonPackage

@@ -153,15 +153,6 @@ public interface DeltaLakeToLakehouseYaml {
 
   @TemplateParameter.Text(
       order = 12,
-      name = "lakehouseFilter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Lakehouse table.",
-      example = "age > 18")
-  String getLakehouseFilter();
-
-  @TemplateParameter.Text(
-      order = 13,
       name = "lakehouseKeep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -170,11 +161,32 @@ public interface DeltaLakeToLakehouseYaml {
   String getLakehouseKeep();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       name = "lakehouseOnly",
       optional = true,
       description = "The name of a single record field that should be written.",
       helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
       example = "my_record_field")
   String getLakehouseOnly();
+
+  @TemplateParameter.Text(
+      order = 14,
+      name = "lakehouseDistributionMode",
+      optional = true,
+      description = "Defines distribution of write data.",
+      helpText =
+          "Defines distribution of write data. Supported distributions are 'none' (don't shuffle rows, default) and 'hash' (shuffle rows by partition key before writing data).",
+      example = "none")
+  String getLakehouseDistributionMode();
+
+  @TemplateParameter.Boolean(
+      order = 15,
+      name = "lakehouseAutosharding",
+      optional = true,
+      description =
+          "Enables dynamic sharding to automatically adjust the number of parallel writers based on data volume.",
+      helpText =
+          "If true, enables dynamic sharding to automatically adjust the number of parallel writers based on data volume. Only available with 'hash' distribution mode.",
+      example = "False")
+  Boolean getLakehouseAutosharding();
 }

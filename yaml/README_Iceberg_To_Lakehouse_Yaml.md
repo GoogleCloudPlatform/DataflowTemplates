@@ -31,9 +31,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
 * **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **lakehouseFilter**: A filter expression to apply to records from the Lakehouse table. For example, `age > 18`.
 * **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
+* **lakehouseDistributionMode**: Defines distribution of write data. Supported distributions are 'none' (don't shuffle rows, default) and 'hash' (shuffle rows by partition key before writing data). For example, `none`.
+* **lakehouseAutosharding**: If true, enables dynamic sharding to automatically adjust the number of parallel writers based on data volume. Only available with 'hash' distribution mode. For example, `False`.
 
 
 
@@ -142,9 +143,10 @@ export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
 export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
 export LAKEHOUSE_KEEP=<lakehouseKeep>
 export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_DISTRIBUTION_MODE=<lakehouseDistributionMode>
+export LAKEHOUSE_AUTOSHARDING=<lakehouseAutosharding>
 
 gcloud dataflow flex-template run "iceberg-to-lakehouse-yaml-job" \
   --project "$PROJECT" \
@@ -164,9 +166,10 @@ gcloud dataflow flex-template run "iceberg-to-lakehouse-yaml-job" \
   --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
   --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
   --parameters "lakehouseDrop=$LAKEHOUSE_DROP" \
-  --parameters "lakehouseFilter=$LAKEHOUSE_FILTER" \
   --parameters "lakehouseKeep=$LAKEHOUSE_KEEP" \
-  --parameters "lakehouseOnly=$LAKEHOUSE_ONLY"
+  --parameters "lakehouseOnly=$LAKEHOUSE_ONLY" \
+  --parameters "lakehouseDistributionMode=$LAKEHOUSE_DISTRIBUTION_MODE" \
+  --parameters "lakehouseAutosharding=$LAKEHOUSE_AUTOSHARDING"
 ```
 
 For more information about the command, please check:
@@ -201,9 +204,10 @@ export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
 export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
 export LAKEHOUSE_KEEP=<lakehouseKeep>
 export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_DISTRIBUTION_MODE=<lakehouseDistributionMode>
+export LAKEHOUSE_AUTOSHARDING=<lakehouseAutosharding>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -212,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-lakehouse-yaml-job" \
 -DtemplateName="Iceberg_To_Lakehouse_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehouseDistributionMode=$LAKEHOUSE_DISTRIBUTION_MODE,lakehouseAutosharding=$LAKEHOUSE_AUTOSHARDING" \
 -f yaml
 ```
 
@@ -271,9 +275,10 @@ resource "google_dataflow_flex_template_job" "iceberg_to_lakehouse_yaml" {
     # lakehousePartitionFields = "<lakehousePartitionFields>"
     # lakehouseTableProperties = "<lakehouseTableProperties>"
     # lakehouseDrop = "<lakehouseDrop>"
-    # lakehouseFilter = "<lakehouseFilter>"
     # lakehouseKeep = "<lakehouseKeep>"
     # lakehouseOnly = "<lakehouseOnly>"
+    # lakehouseDistributionMode = "<lakehouseDistributionMode>"
+    # lakehouseAutosharding = "<lakehouseAutosharding>"
   }
 }
 ```
