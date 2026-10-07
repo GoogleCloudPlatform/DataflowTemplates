@@ -49,22 +49,13 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.COLUMN_FAMILY, (k, chg) -> chg.getString(KafkaFields.COLUMN_FAMILY.name()));
     FORMATTERS.put(
-        KafkaFields.COLUMN_BYTES,
+        KafkaFields.COLUMN,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.COLUMN_BYTES.name())) {
+          if (!chg.has(KafkaFields.COLUMN.name())) {
             return null;
           }
-          String qualifierEncoded = chg.getString(KafkaFields.COLUMN_BYTES.name());
+          String qualifierEncoded = chg.getString(KafkaFields.COLUMN.name());
           return convertBase64ToBytes(qualifierEncoded);
-        });
-    FORMATTERS.put(
-        KafkaFields.COLUMN_STRING,
-        (k, chg) -> {
-          if (!chg.has(KafkaFields.COLUMN_BYTES.name())) {
-            return null;
-          }
-          String qualifierEncoded = chg.getString(KafkaFields.COLUMN_BYTES.name());
-          return k.convertBase64ToString(qualifierEncoded);
         });
     FORMATTERS.put(
         KafkaFields.TIMESTAMP,
@@ -75,24 +66,14 @@ public class KafkaUtils implements Serializable {
           return chg.getLong(KafkaFields.TIMESTAMP.name());
         });
     FORMATTERS.put(
-        KafkaFields.VALUE_BYTES,
+        KafkaFields.VALUE,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.VALUE_BYTES.name())) {
+          if (!chg.has(KafkaFields.VALUE.name())) {
             return null;
           }
 
-          String valueEncoded = chg.getString(KafkaFields.VALUE_BYTES.name());
+          String valueEncoded = chg.getString(KafkaFields.VALUE.name());
           return convertBase64ToBytes(valueEncoded);
-        });
-    FORMATTERS.put(
-        KafkaFields.VALUE_STRING,
-        (k, chg) -> {
-          if (!chg.has(KafkaFields.VALUE_BYTES.name())) {
-            return null;
-          }
-
-          String valueEncoded = chg.getString(KafkaFields.VALUE_BYTES.name());
-          return k.convertBase64ToString(valueEncoded);
         });
     FORMATTERS.put(
         KafkaFields.TIMESTAMP_FROM,

@@ -118,9 +118,9 @@ public final class Mod implements Serializable {
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
     propertiesMap.put(KafkaFields.MOD_TYPE.name(), ModType.SET_CELL.name());
     propertiesMap.put(KafkaFields.COLUMN_FAMILY.name(), setCell.getFamilyName());
-    propertiesMap.put(KafkaFields.COLUMN_BYTES.name(), encodeBytes(setCell.getQualifier()));
+    propertiesMap.put(KafkaFields.COLUMN.name(), encodeBytes(setCell.getQualifier()));
     propertiesMap.put(KafkaFields.TIMESTAMP.name(), setCell.getTimestamp());
-    propertiesMap.put(KafkaFields.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
+    propertiesMap.put(KafkaFields.VALUE.name(), encodeBytes(setCell.getValue()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteCells deleteCells) {
@@ -135,7 +135,7 @@ public final class Mod implements Serializable {
 
     propertiesMap.put(KafkaFields.MOD_TYPE.name(), ModType.DELETE_CELLS.name());
     propertiesMap.put(KafkaFields.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
-    propertiesMap.put(KafkaFields.COLUMN_BYTES.name(), encodeBytes(deleteCells.getQualifier()));
+    propertiesMap.put(KafkaFields.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
     propertiesMap.put(KafkaFields.TIMESTAMP_FROM.name(), startTimestamp);
     propertiesMap.put(KafkaFields.TIMESTAMP_TO.name(), endTimestamp);
   }
