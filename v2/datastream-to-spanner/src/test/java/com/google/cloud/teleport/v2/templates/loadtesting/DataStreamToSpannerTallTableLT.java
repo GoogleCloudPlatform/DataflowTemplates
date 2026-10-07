@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
