@@ -109,7 +109,9 @@ public class DatadogResourceManager extends TestContainerResourceManager<MockSer
     this(
         new DatadogClientFactory(),
         new MockServerContainer(
-            DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
+                DockerImageName.parse(builder.containerImageName)
+                    .withTag(builder.containerImageTag))
+            .withEnv("MOCKSERVER_ATTEMPT_TO_PROXY_IF_NO_MATCHING_EXPECTATION", "false"),
         builder);
   }
 
