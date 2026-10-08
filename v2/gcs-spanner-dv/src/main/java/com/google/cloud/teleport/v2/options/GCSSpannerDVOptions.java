@@ -234,6 +234,7 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
           "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`."
               + " Optionally, `optionalConfigurations.<sourceTable>.spannerQuery` sets the Spanner"
               + " query used to read that table, e.g. to restrict it to the selected `shardIds`."
+              + " Key a Spanner-only table by its Spanner name."
               + " See the 'Validating a subset of shards' section of the module README.md for the"
               + " query rules.")
   @Default.String("")
