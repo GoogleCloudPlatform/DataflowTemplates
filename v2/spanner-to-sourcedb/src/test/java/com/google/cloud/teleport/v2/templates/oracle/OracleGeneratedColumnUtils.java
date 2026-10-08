@@ -55,9 +55,7 @@ public class OracleGeneratedColumnUtils {
             @Override
             protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
               return new CheckResult(
-                  com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase
-                          .runIsolatedGetRowCount(
-                              jdbcResourceManager, testUsername, "\"" + tableName + "\"")
+                  SharedOracleReverseITContainer.getRowCount(testUsername, "\"" + tableName + "\"")
                       == numRows,
                   getDescription());
             }
@@ -89,9 +87,7 @@ public class OracleGeneratedColumnUtils {
             jdbcResourceManager.runSQLQuery(
                 "SELECT \"id\", CAST(\"time_col\" as char) as \"time_col\" FROM \"time_table\"");
       } else {
-        rawRows =
-            com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase.runIsolatedReadTable(
-                jdbcResourceManager, testUsername, "\"" + tableName + "\"");
+        rawRows = SharedOracleReverseITContainer.readTable(testUsername, "\"" + tableName + "\"");
       }
 
       List<Map<String, Object>> rows = cleanValues(rawRows);

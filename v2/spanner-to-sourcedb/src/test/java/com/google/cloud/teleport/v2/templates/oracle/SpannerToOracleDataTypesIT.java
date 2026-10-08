@@ -43,7 +43,7 @@ import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -65,6 +65,7 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
       "oracle/SpannerToOracleDataTypesIT/oracle-schema.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static String oracleUsername;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager spannerMetadataResourceManager;
   public static SpannerOracleResourceManager jdbcResourceManager;
@@ -76,9 +77,10 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
     jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
-    testUsername = setupOracleIsolatedUser(jdbcResourceManager);
+    oracleUsername = SharedOracleReverseITContainer.createIsolatedUser();
+    testUsername = oracleUsername;
 
-    createOracleSchema(jdbcResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, testUsername);
+    SharedOracleReverseITContainer.createSchema(testUsername, ORACLE_SCHEMA_FILE_RESOURCE);
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -122,13 +124,18 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
             jobParameters);
   }
 
-  @After
-  public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+  @AfterClass
+  public static void cleanUp() {
+    try {
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      SharedOracleReverseITContainer.dropIsolatedUser(oracleUsername);
+      oracleUsername = null;
+    }
   }
 
   @Test
@@ -227,7 +234,7 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
             @Override
             public CheckResult check() {
               return new CheckResult(
-                  runIsolatedGetRowCount(jdbcResourceManager, testUsername, tableName)
+                  SharedOracleReverseITContainer.getRowCount(testUsername, tableName)
                       >= finalNumRows);
             }
           };
@@ -245,7 +252,7 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String tableName = expectedTableData.getKey();
       List<Map<String, Object>> rawRows =
-          runIsolatedReadTable(jdbcResourceManager, testUsername, tableName);
+          SharedOracleReverseITContainer.readTable(testUsername, tableName);
       List<Map<String, Object>> rows = cleanValues(rawRows);
 
       for (Map<String, Object> row : rows) {
