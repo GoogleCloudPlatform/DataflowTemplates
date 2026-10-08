@@ -35,8 +35,11 @@ public class TemplateLoadTestBase extends LoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TemplateLoadTestBase.class);
 
   public PipelineLauncher launcher() {
-    // Return the appropriate dataflow template client for the template under test
-    String flexContainerName = getTemplateAnnotation().flexContainerName();
+    // Only the client type (Flex vs Classic) is needed here, so the first annotation is used;
+    // classes with multiple @Template annotations currently all share the same type. This
+    // intentionally does not require @TemplateLoadTest#template() for such classes (unlike
+    // getTemplateSpecPath(), which must stage the exact template).
+    String flexContainerName = getTemplateAnnotations()[0].flexContainerName();
     if (flexContainerName != null && !flexContainerName.isEmpty()) {
       return FlexTemplateClient.builder(CREDENTIALS).build();
     }
@@ -65,14 +68,20 @@ public class TemplateLoadTestBase extends LoadTestBase {
     }
   }
 
-  private Template getTemplateAnnotation() {
+  /** Returns the {@link TemplateLoadTest} annotation of this test class. */
+  private TemplateLoadTest getLoadTestAnnotation() {
     TemplateLoadTest annotation = getClass().getAnnotation(TemplateLoadTest.class);
     if (annotation == null) {
       throw new RuntimeException(
           String.format(
               "%s did not specify which template is tested using @TemplateLoadTest.", getClass()));
     }
-    Class<?> templateClass = annotation.value();
+    return annotation;
+  }
+
+  /** Returns all {@link Template} annotations of the template class under test (at least one). */
+  private Template[] getTemplateAnnotations() {
+    Class<?> templateClass = getLoadTestAnnotation().value();
     Template[] templateAnnotations = templateClass.getAnnotationsByType(Template.class);
     if (templateAnnotations.length == 0) {
       throw new RuntimeException(
@@ -81,8 +90,26 @@ public class TemplateLoadTestBase extends LoadTestBase {
                   + " annotation.",
               getClass()));
     }
-    if (templateAnnotations.length == 1 || annotation.template().isEmpty()) {
+    return templateAnnotations;
+  }
+
+  /**
+   * Returns the exact {@link Template} under test. If the template class has multiple {@link
+   * Template} annotations, {@link TemplateLoadTest#template()} must name one of them, so that the
+   * wrong template is never staged silently (consistent with {@link TemplateTestBase}).
+   */
+  private Template getTemplateAnnotation() {
+    TemplateLoadTest annotation = getLoadTestAnnotation();
+    Template[] templateAnnotations = getTemplateAnnotations();
+    if (templateAnnotations.length == 1) {
       return templateAnnotations[0];
+    }
+    if (annotation.template().isEmpty()) {
+      throw new RuntimeException(
+          String.format(
+              "Template mentioned in @TemplateLoadTest for %s contains multiple @Template"
+                  + " annotations. Please provide template field in @TemplateLoadTest.",
+              getClass()));
     }
     for (Template template : templateAnnotations) {
       if (template.name().equals(annotation.template())) {
