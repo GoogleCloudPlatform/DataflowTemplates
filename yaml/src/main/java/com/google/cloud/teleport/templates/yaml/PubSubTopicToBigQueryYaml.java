@@ -22,25 +22,22 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PubSub_To_BigQuery_Yaml",
+    name = "PubSub_Topic_To_BigQuery_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Pub/Sub to BigQuery (YAML)",
+    displayName = "Pub/Sub topic to BigQuery (YAML)",
     description =
-        "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic or subscription and writes the resulting records to BigQuery.",
+        "The Pub/Sub topic to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubSubToBigQuery.yaml",
+    yamlTemplateFile = "PubSubTopicToBigQuery.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
-    requirements = {
-      "The input Pub/Sub topic or subscription must exist.",
-      "The output BigQuery table must exist."
-    },
+    requirements = {"The input Pub/Sub topic must exist.", "The output BigQuery table must exist."},
     streaming = true,
     hidden = false)
-public interface PubSubToBigQueryYaml {
+public interface PubSubTopicToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -125,15 +122,6 @@ public interface PubSubToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 9,
-      name = "subscription",
-      optional = true,
-      description = "Pub/Sub subscription",
-      helpText = "Pub/Sub subscription to read the input from.",
-      example = "projects/your-project-id/subscriptions/your-subscription-name")
-  String getSubscription();
-
-  @TemplateParameter.Text(
-      order = 10,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -144,7 +132,7 @@ public interface PubSubToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 10,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -155,7 +143,7 @@ public interface PubSubToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 11,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -166,7 +154,7 @@ public interface PubSubToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 12,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
