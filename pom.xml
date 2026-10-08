@@ -847,6 +847,10 @@
               <includes>
                 <include>**/*LT.java</include>
               </includes>
+              <!-- Manual-only load tests; still runnable via -Dtest, which overrides excludes. -->
+              <excludes>
+                <exclude>**/*ManualLT.java</exclude>
+              </excludes>
               <excludedGroups></excludedGroups>
               <groups>
                 ${load.tests}
