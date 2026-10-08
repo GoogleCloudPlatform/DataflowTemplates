@@ -736,7 +736,9 @@ public final class DatastreamResourceManager implements ResourceManager {
                     || ExceptionUtils.containsMessage(exception, "CONNECTION_TIMEOUT")
                     || ExceptionUtils.containsMessage(exception, "CONNECTIVITY")
                     || ExceptionUtils.containsMessage(exception, "INTERNAL")
-                    || ExceptionUtils.containsMessage(exception, "Unknown Error"))
+                    || ExceptionUtils.containsMessage(exception, "Unknown Error")
+                    || ExceptionUtils.containsMessage(
+                        exception, "We failed to execute the command"))
         .withMaxRetries(FAILSAFE_MAX_RETRIES)
         .withBackoff(FAILSAFE_RETRY_DELAY, FAILSAFE_RETRY_MAX_DELAY)
         .withJitter(FAILSAFE_RETRY_JITTER)
