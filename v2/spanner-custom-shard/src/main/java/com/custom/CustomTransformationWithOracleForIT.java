@@ -79,13 +79,13 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
       }
       // In case of INSERT update the values for all the columns in all the rows except the
       // filtered row.
-      Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
-      Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
+      Long tinyIntColumn = Long.parseLong(requestRow.get("tinyint_column").toString()) + 1;
+      Long intColumn = Long.parseLong(requestRow.get("int_column").toString()) + 1;
       Long sourceOnlyPk = intColumn - tinyIntColumn;
-      Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
-      Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
-      BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
-      BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
+      Long bigIntColumn = Long.parseLong(requestRow.get("bigint_column").toString()) + 1;
+      Long yearColumn = Long.parseLong(requestRow.get("year_column").toString()) + 1;
+      BigDecimal floatColumn = new BigDecimal(requestRow.get("float_column").toString());
+      BigDecimal doubleColumn = new BigDecimal(requestRow.get("double_column").toString());
       responseRow.put("source_only_pk", sourceOnlyPk.toString());
       responseRow.put("tinyint_column", tinyIntColumn.toString());
       responseRow.put("text_column", "\'" + requestRow.get("text_column") + " append\'");
@@ -93,7 +93,7 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
       responseRow.put("bigint_column", bigIntColumn.toString());
       responseRow.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
       responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
-      Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
+      Double value = Double.parseDouble(requestRow.get("decimal_column").toString());
       responseRow.put("decimal_column", String.valueOf(value - 1));
       responseRow.put("bool_column", "0"); // Oracle uses 1/0 usually, mapped from false
       responseRow.put("enum_column", "\'3\'");
@@ -119,7 +119,7 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
         dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC")); // Ensure it handles UTC correctly
-        Date date = dateFormat.parse((String) requestRow.get("date_column"));
+        Date date = dateFormat.parse(requestRow.get("date_column").toString());
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
@@ -127,7 +127,7 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
             "date_column",
             "TO_DATE('" + dateFormat.format(calendar.getTime()) + "', 'YYYY-MM-DD')");
 
-        Date dateTime = dateTimeFormat.parse((String) requestRow.get("datetime_column"));
+        Date dateTime = dateTimeFormat.parse(requestRow.get("datetime_column").toString());
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
         String dateTimeColumn = dateTimeFormat.format(calendar.getTime());
@@ -138,7 +138,7 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
                 + dateTimeColumn.substring(0, dateTimeColumn.length() - 1)
                 + "', 'YYYY-MM-DD\"T\"HH24:MI:SS') AS TIMESTAMP), 'UTC') AT TIME ZONE '+00:00' AS TIMESTAMP)");
 
-        dateTime = dateTimeFormat.parse((String) requestRow.get("timestamp_column"));
+        dateTime = dateTimeFormat.parse(requestRow.get("timestamp_column").toString());
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
         String timestampColumn = dateTimeFormat.format(calendar.getTime());
@@ -149,7 +149,7 @@ public class CustomTransformationWithOracleForIT implements ISpannerMigrationTra
                 + "', 'YYYY-MM-DD\"T\"HH24:MI:SS') AS TIMESTAMP), 'UTC') AT TIME ZONE '+00:00' AS TIMESTAMP)");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
+        LocalTime time = LocalTime.parse(requestRow.get("time_column").toString(), formatter);
 
         LocalTime newTime = time.plusMinutes(10);
         responseRow.put("time_column", "\'" + newTime.format(formatter) + "\'");

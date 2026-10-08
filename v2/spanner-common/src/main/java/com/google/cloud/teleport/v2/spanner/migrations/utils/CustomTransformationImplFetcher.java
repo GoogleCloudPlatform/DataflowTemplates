@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -27,15 +29,17 @@ import org.slf4j.LoggerFactory;
 
 public class CustomTransformationImplFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationImplFetcher.class);
-  private static ISpannerMigrationTransformer spannerMigrationTransformer = null;
+  private static final Map<CustomTransformation, ISpannerMigrationTransformer> transformers =
+      new ConcurrentHashMap<>();
 
-  public static synchronized ISpannerMigrationTransformer getCustomTransformationLogicImpl(
+  public static ISpannerMigrationTransformer getCustomTransformationLogicImpl(
       CustomTransformation customTransformation) {
 
-    if (spannerMigrationTransformer == null) {
-      spannerMigrationTransformer = getApplyTransformationImpl(customTransformation);
+    if (customTransformation == null) {
+      return null;
     }
-    return spannerMigrationTransformer;
+    return transformers.computeIfAbsent(
+        customTransformation, CustomTransformationImplFetcher::getApplyTransformationImpl);
   }
 
   public static ISpannerMigrationTransformer getApplyTransformationImpl(
