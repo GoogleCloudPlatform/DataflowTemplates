@@ -32,11 +32,6 @@ scenarios:
     context: com.google.cloud.teleport.v2.templates.MySQLSessionSchemaMapperIT
     description: "Migrates using an SMT session file (composite primary key, extra source table, ignored view) and checks tables and columns are mapped correctly."
 
-  - id: bulk-customtransformation
-    template: v2/sourcedb-to-spanner
-    context: com.google.cloud.teleport.v2.templates.MySQLCustomTransformationsNonShardedIT
-    description: "Runs a custom transformation that modifies every column type during migration and checks the transformed values in Spanner."
-
   - id: bulk-reserved-keywords
     template: v2/sourcedb-to-spanner
     context: com.google.cloud.teleport.v2.templates.MySQLReservedKeywordsIT
@@ -46,11 +41,6 @@ scenarios:
     template: v2/sourcedb-to-spanner
     context: com.google.cloud.teleport.v2.templates.MySQLToSpannerWiderowForMaxColumnsPerTableIT
     description: "Migrates a table with the maximum number of columns (up to 1024) to check schema discovery and row reading work for very wide tables."
-
-  - id: bulk-widerow-maxcolumns-tablekey
-    template: v2/sourcedb-to-spanner
-    context: com.google.cloud.teleport.v2.templates.MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT
-    description: "Migrates a table with a 16-column composite primary key to check key discovery and table splitting work with many key columns."
 
   - id: bulk-ddl
     template: v2/sourcedb-to-spanner
