@@ -71,11 +71,13 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
 
   private List<ReadOperation> readAllRows(Ddl ddl, ISchemaMapper schemaMapper) {
     List<ReadOperation> readOperations = new ArrayList<>();
-    for (String tableName : ddl.getTablesOrderedByReference()) {
-      if (tableConfig != null && !tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
+    for (String spannerTableName : ddl.getTablesOrderedByReference()) {
+      if (tableConfig != null
+          && !tableConfig.isSourceTableAllowed(sourceTableName(schemaMapper, spannerTableName))) {
         continue;
       }
-      readOperations.add(ReadOperation.create().withQuery(baselineQuery(ddl.dialect(), tableName)));
+      readOperations.add(
+          ReadOperation.create().withQuery(baselineQuery(ddl.dialect(), spannerTableName)));
     }
     return readOperations;
   }
@@ -94,16 +96,13 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     Map<String, String> queryBySpannerTable =
         resolveSpannerQueries(ddl, schemaMapper, spannerQueries, errors);
 
-    for (String tableName : ddl.getTablesOrderedByReference()) {
-      // With --shardIds, skip a Spanner-only table silently: it has no source rows for any shard.
-      if (hasShardFilter && !hasSourceTable(schemaMapper, tableName)) {
-        continue;
-      }
+    for (String spannerTableName : ddl.getTablesOrderedByReference()) {
+      String sourceTableName = sourceTableName(schemaMapper, spannerTableName);
       // Skip a table excluded by tableNames.
-      if (!tableConfig.isSpannerTableAllowed(tableName, schemaMapper)) {
+      if (!tableConfig.isSourceTableAllowed(sourceTableName)) {
         continue;
       }
-      String spannerQuery = queryBySpannerTable.get(tableName);
+      String spannerQuery = queryBySpannerTable.get(spannerTableName);
       Statement statement;
       if (spannerQuery != null) {
         if (!hasShardFilter) {
@@ -111,29 +110,36 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
           LOG.warn(
               "Table '{}' is read from Spanner with its spannerQuery, but --shardIds isn't set, so"
                   + " the GCS side reads every shard",
-              tableName);
+              spannerTableName);
         }
         // With --shardIds, the query wins over any ShardIdColumn in the session file.
-        statement = Statement.of(wrapSpannerQuery(tableName, normalizeSpannerQuery(spannerQuery)));
+        statement =
+            Statement.of(wrapSpannerQuery(spannerTableName, normalizeSpannerQuery(spannerQuery)));
       } else if (!hasShardFilter) {
         // No spannerQuery and no --shardIds: read the whole table.
-        statement = Statement.of(baselineQuery(ddl.dialect(), tableName));
+        statement = Statement.of(baselineQuery(ddl.dialect(), spannerTableName));
       } else {
         // --shardIds without a spannerQuery: filter on the ShardIdColumn, or report the table.
-        String shardIdColumn = schemaMapper.getShardIdColumnName("", tableName);
+        String shardIdColumn;
+        try {
+          shardIdColumn = schemaMapper.getShardIdColumnName("", spannerTableName);
+        } catch (NoSuchElementException e) {
+          // A Spanner-only table isn't in the session file, so it has no ShardIdColumn.
+          shardIdColumn = null;
+        }
         if (shardIdColumn == null) {
           errors.add(
               String.format(
                   "table '%s': --shardIds is set, but the table has no ShardIdColumn in the session"
-                      + " file and no spannerQuery for source table '%s'",
-                  tableName, schemaMapper.getSourceTableName("", tableName)));
+                      + " file and no spannerQuery for '%s'",
+                  spannerTableName, sourceTableName));
           continue;
         }
         statement =
             shardFilterStatement(
-                ddl.dialect(), tableName, shardIdColumn, tableConfig.getShardIds());
+                ddl.dialect(), spannerTableName, shardIdColumn, tableConfig.getShardIds());
       }
-      LOG.info("Spanner query for table '{}': {}", tableName, statement.getSql());
+      LOG.info("Spanner query for table '{}': {}", spannerTableName, statement.getSql());
       readOperations.add(ReadOperation.create().withQuery(statement));
     }
 
@@ -165,8 +171,16 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
       try {
         spannerTableName = schemaMapper.getSpannerTableName("", key);
       } catch (NoSuchElementException e) {
-        errors.add(String.format("spannerQuery for '%s': no Spanner table is mapped to it", key));
-        continue;
+        // Not a source table: it may be a Spanner-only table, which is keyed by its Spanner name.
+        // A table with a source table must be keyed by that source name instead.
+        Table spannerOnlyTable = ddl.table(key);
+        if (spannerOnlyTable == null
+            || !sourceTableName(schemaMapper, spannerOnlyTable.name())
+                .equals(spannerOnlyTable.name())) {
+          errors.add(String.format("spannerQuery for '%s': no Spanner table is mapped to it", key));
+          continue;
+        }
+        spannerTableName = spannerOnlyTable.name();
       }
       Table table = ddl.table(spannerTableName);
       if (table == null) {
@@ -226,13 +240,16 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
         spannerTableName, normalizedQuery);
   }
 
-  /** Returns true iff {@code spannerTableName} maps back to a source table. */
-  private static boolean hasSourceTable(ISchemaMapper schemaMapper, String spannerTableName) {
+  /**
+   * Returns the source table name {@code spannerTableName} maps to, which is the name tableNames
+   * and spannerQuery keys use. A Spanner-only table has no source table, so its Spanner name is
+   * used.
+   */
+  private static String sourceTableName(ISchemaMapper schemaMapper, String spannerTableName) {
     try {
-      schemaMapper.getSourceTableName("", spannerTableName);
-      return true;
+      return schemaMapper.getSourceTableName("", spannerTableName);
     } catch (NoSuchElementException e) {
-      return false;
+      return spannerTableName;
     }
   }
 

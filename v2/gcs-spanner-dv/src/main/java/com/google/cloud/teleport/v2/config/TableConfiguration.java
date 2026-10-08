@@ -16,24 +16,21 @@
 package com.google.cloud.teleport.v2.config;
 
 import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.gson.Gson;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Configuration class for the Data Validation pipeline: table-based filtering, the selected shard
@@ -42,11 +39,9 @@ import org.slf4j.LoggerFactory;
  */
 public class TableConfiguration implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TableConfiguration.class);
-
   private final Set<String> configuredSourceTables;
 
-  /** Logical shard IDs from {@code --shardIds}: trimmed, de-duplicated, in input order. */
+  /** Logical shard IDs from {@code --shardIds}: trimmed and de-duplicated. */
   private final Set<String> shardIds;
 
   /**
@@ -60,7 +55,7 @@ public class TableConfiguration implements Serializable {
       Set<String> shardIds,
       Map<String, TableLevelConfig> tableLevelConfigs) {
     this.configuredSourceTables = Collections.unmodifiableSet(configuredSourceTables);
-    this.shardIds = Collections.unmodifiableSet(new LinkedHashSet<>(shardIds));
+    this.shardIds = Collections.unmodifiableSet(new HashSet<>(shardIds));
     this.tableLevelConfigs = Collections.unmodifiableMap(new LinkedHashMap<>(tableLevelConfigs));
   }
 
@@ -92,13 +87,9 @@ public class TableConfiguration implements Serializable {
     Map<String, TableLevelConfig> tableLevelConfigs = new LinkedHashMap<>();
 
     if (hasTablesConfig) {
-      for (String table : tablesConfig.split(",")) {
-        String trimmed = table.trim();
-        if (!trimmed.isEmpty()) {
-          configuredTables.add(trimmed);
-        }
-      }
+      configuredTables = parseCommaSeparatedNames(tablesConfig);
     } else if (hasTableConfigFile) {
+      List<String> fileTableNames = Collections.emptyList();
       try {
         ResourceId resourceId = FileSystems.matchNewResource(tableConfigurationFilePath, false);
         try (InputStream stream = Channels.newInputStream(FileSystems.open(resourceId))) {
@@ -107,12 +98,7 @@ public class TableConfiguration implements Serializable {
           TableConfigurationFile fileConfig = gson.fromJson(result, TableConfigurationFile.class);
 
           if (fileConfig != null && fileConfig.getTableNames() != null) {
-            for (String table : fileConfig.getTableNames()) {
-              String trimmed = table.trim();
-              if (!trimmed.isEmpty()) {
-                configuredTables.add(trimmed);
-              }
-            }
+            fileTableNames = fileConfig.getTableNames();
           }
 
           if (fileConfig != null && fileConfig.getOptionalConfigurations() != null) {
@@ -132,27 +118,30 @@ public class TableConfiguration implements Serializable {
         throw new RuntimeException(
             "Failed to read JSON tableConfigurationFilePath: " + tableConfigurationFilePath, e);
       }
+      configuredTables = parseNames(fileTableNames);
     }
 
-    return new TableConfiguration(
-        configuredTables, parseShardIds(options.getShardIds()), tableLevelConfigs);
+    Set<String> shardIds = parseCommaSeparatedNames(options.getShardIds());
+    return new TableConfiguration(configuredTables, shardIds, tableLevelConfigs);
   }
 
-  /**
-   * Parses {@code --shardIds} the same way as {@code --tables}: split on {@code ,}, trim, skip
-   * empty entries and de-duplicate, keeping first-occurrence order.
-   */
-  private static Set<String> parseShardIds(String shardIdsConfig) {
-    Set<String> shardIds = new LinkedHashSet<>();
-    if (shardIdsConfig != null) {
-      for (String shardId : shardIdsConfig.split(",")) {
-        String trimmed = shardId.trim();
-        if (!trimmed.isEmpty()) {
-          shardIds.add(trimmed);
-        }
+  /** Splits a comma-separated option (e.g. {@code --tables}, {@code --shardIds}) into values. */
+  private static Set<String> parseCommaSeparatedNames(String commaSeparated) {
+    return commaSeparated == null
+        ? new HashSet<>()
+        : parseNames(Arrays.asList(commaSeparated.split(",")));
+  }
+
+  /** Trims each value, skips empty ones and de-duplicates. */
+  private static Set<String> parseNames(Iterable<String> values) {
+    Set<String> result = new HashSet<>();
+    for (String value : values) {
+      String trimmed = value.trim();
+      if (!trimmed.isEmpty()) {
+        result.add(trimmed);
       }
     }
-    return shardIds;
+    return result;
   }
 
   public boolean hasTableFilters() {
@@ -169,8 +158,8 @@ public class TableConfiguration implements Serializable {
   }
 
   /**
-   * Returns the selected logical shard IDs: unmodifiable, trimmed, de-duplicated, in input order.
-   * Empty when shard subsetting is off.
+   * Returns the selected logical shard IDs: unmodifiable, trimmed and de-duplicated. Empty when
+   * shard subsetting is off.
    */
   public Set<String> getShardIds() {
     return shardIds;
@@ -204,28 +193,5 @@ public class TableConfiguration implements Serializable {
       return true;
     }
     return configuredSourceTables.contains(sourceTableName);
-  }
-
-  /**
-   * Checks if a Spanner table is allowed by the configuration. Translates the Spanner table name to
-   * its source table counterpart using the schema mapper.
-   *
-   * @param spannerTableName The Spanner table name.
-   * @param schemaMapper The schema mapper to translate the table name.
-   * @return true if allowed or no filters are configured, false otherwise.
-   */
-  public boolean isSpannerTableAllowed(String spannerTableName, ISchemaMapper schemaMapper) {
-    if (!hasTableFilters()) {
-      return true;
-    }
-    try {
-      String sourceTable = schemaMapper.getSourceTableName("", spannerTableName);
-      return configuredSourceTables.contains(sourceTable);
-    } catch (NoSuchElementException e) {
-      LOG.warn(
-          "Could not map Spanner table '{}' back to a source table. Skipping validation.",
-          spannerTableName);
-      return false;
-    }
   }
 }

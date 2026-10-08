@@ -23,13 +23,16 @@ import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.common.base.CharMatcher;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
+import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -38,6 +41,23 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * Reads the source Avro files under {@code gcsInputDirectory} and hashes their records.
+ *
+ * <p>Bulk migration output is laid out as root/table/shardId/file.avro. Which files get listed
+ * depends on the configured filters:
+ *
+ * <ul>
+ *   <li>No filters: one pattern, root/**.avro. Every file is read.
+ *   <li>Tables only: one pattern per table, root/table/**.avro.
+ *   <li>Tables and shards: one pattern per table and shard, root/table/shardId/**.avro.
+ *   <li>Shards only: one pattern, root/**.avro, then {@link #isConfiguredFile} keeps the selected
+ *       shards. A per-shard pattern with a wildcard table folder would list all of root once per
+ *       shard.
+ *   <li>A table name or shard ID containing * ? [ or \: same as shards only. Beam globs can't
+ *       escape these characters, so such a name can't be written in a pattern.
+ * </ul>
+ */
 public class SourceReaderTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
 
@@ -62,11 +82,21 @@ public class SourceReaderTransform
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin input) {
-    return input
-        .apply("CreateFilePatterns", Create.of(getFilePatterns(gcsInputDirectory, tableConfig)))
-        .apply(
-            "MatchFilePatterns",
-            FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
+    PCollection<MatchResult.Metadata> files =
+        input
+            .apply("CreateFilePatterns", Create.of(getFilePatterns(gcsInputDirectory, tableConfig)))
+            .apply(
+                "MatchFilePatterns",
+                FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW));
+    if (needsFileFilter(tableConfig)) {
+      String root = stripTrailingSlash(gcsInputDirectory);
+      TableConfiguration config = tableConfig;
+      files =
+          files.apply(
+              "KeepConfiguredFiles",
+              Filter.by(file -> isConfiguredFile(root, config, file.resourceId().toString())));
+    }
+    return files
         .apply(
             "ReadMatchedFiles",
             FileIO.readMatches()
@@ -82,34 +112,58 @@ public class SourceReaderTransform
   }
 
   static List<String> getFilePatterns(String gcsInputDirectory, TableConfiguration tableConfig) {
-    List<String> filePatterns = new ArrayList<>();
-    String cleanPath =
-        gcsInputDirectory.endsWith("/")
-            ? gcsInputDirectory.substring(0, gcsInputDirectory.length() - 1)
-            : gcsInputDirectory;
-
-    boolean filterByTables = tableConfig != null && tableConfig.hasTableFilters();
-    boolean filterByShards = tableConfig != null && tableConfig.hasShardFilter();
-    if (!filterByTables && !filterByShards) {
-      filePatterns.add(cleanPath + "/**.avro");
-    } else if (!filterByShards) {
-      for (String table : tableConfig.getSourceTables()) {
-        filePatterns.add(cleanPath + "/" + table + "/**.avro");
-      }
-    } else {
-      // Bulk layout is <root>/<table>/<shardId>/*.avro. The '/' after the shard ID keeps shard_1
-      // from matching shard_10; '*' matches exactly one segment (the table directory).
-      Collection<String> tableSegments =
-          filterByTables ? tableConfig.getSourceTables() : List.of("*");
-      for (String table : tableSegments) {
+    String root = stripTrailingSlash(gcsInputDirectory);
+    // Without a table filter, or with a name Beam globs can't express, list root once.
+    // A shard-only filter root/*/shard pattern would re-list all of root for every shard, so this
+    // is handled by the filtering flow as well.
+    if (tableConfig == null || !tableConfig.hasTableFilters() || hasGlobChar(tableConfig)) {
+      return List.of(root + "/**.avro");
+    }
+    List<String> patterns = new ArrayList<>();
+    for (String table : tableConfig.getSourceTables()) {
+      if (!tableConfig.hasShardFilter()) {
+        patterns.add(root + "/" + table + "/**.avro");
+      } else {
         for (String shardId : tableConfig.getShardIds()) {
-          filePatterns.add(cleanPath + "/" + table + "/" + shardId + "/**.avro");
+          // The '/' after the shard ID keeps shard_1 from matching shard_10.
+          patterns.add(root + "/" + table + "/" + shardId + "/**.avro");
         }
       }
-      // Future Extensibility: GCS lists everything under the prefix before the first wildcard, so
-      // without a table filter each shard re-lists all of <root>. For many shards, match
-      // <root>/**.avro once and filter on the shard path segment instead.
     }
-    return filePatterns;
+    return patterns;
+  }
+
+  /**
+   * True iff {@link #getFilePatterns} lists all of root while tables or shards are selected, so the
+   * matched files must be filtered with {@link #isConfiguredFile}: shards-only runs, and names
+   * containing glob characters.
+   */
+  private static boolean needsFileFilter(TableConfiguration tableConfig) {
+    return tableConfig != null
+        && ((tableConfig.hasShardFilter() && !tableConfig.hasTableFilters())
+            || hasGlobChar(tableConfig));
+  }
+
+  /** True iff a table name or shard ID contains a character Beam globs can't escape. */
+  private static boolean hasGlobChar(TableConfiguration tableConfig) {
+    return Stream.concat(tableConfig.getSourceTables().stream(), tableConfig.getShardIds().stream())
+        .anyMatch(CharMatcher.anyOf("*?[\\")::matchesAnyOf);
+  }
+
+  /**
+   * True iff {@code path} (root/table/shard/file.avro) is under a configured table and, when shards
+   * are selected, a configured shard.
+   */
+  static boolean isConfiguredFile(String root, TableConfiguration tableConfig, String path) {
+    String[] segments = path.substring(root.length() + 1).split("/", 3);
+    if (tableConfig.hasTableFilters() && !tableConfig.getSourceTables().contains(segments[0])) {
+      return false;
+    }
+    return !tableConfig.hasShardFilter()
+        || (segments.length == 3 && tableConfig.getShardIds().contains(segments[1]));
+  }
+
+  private static String stripTrailingSlash(String path) {
+    return path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
   }
 }

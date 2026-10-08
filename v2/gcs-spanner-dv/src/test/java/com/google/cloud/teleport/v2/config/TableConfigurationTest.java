@@ -19,20 +19,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.NoSuchElementException;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,12 +38,10 @@ public class TableConfigurationTest {
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   private GCSSpannerDVOptions options;
-  private ISchemaMapper mockSchemaMapper;
 
   @Before
   public void setUp() {
     options = PipelineOptionsFactory.create().as(GCSSpannerDVOptions.class);
-    mockSchemaMapper = mock(ISchemaMapper.class);
   }
 
   @Test
@@ -58,7 +50,6 @@ public class TableConfigurationTest {
     assertFalse(config.hasTableFilters());
     assertTrue(config.getSourceTables().isEmpty());
     assertTrue(config.isSourceTableAllowed("any_table"));
-    assertTrue(config.isSpannerTableAllowed("any_table", mockSchemaMapper));
   }
 
   @Test
@@ -144,33 +135,6 @@ public class TableConfigurationTest {
   }
 
   @Test
-  public void testIsSpannerTableAllowed() {
-    options.setTables("source_table1,source_table2");
-    options.setGcsInputDirectory(null);
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    when(mockSchemaMapper.getSourceTableName("", "spanner_table1")).thenReturn("source_table1");
-    when(mockSchemaMapper.getSourceTableName("", "spanner_table2")).thenReturn("source_table2");
-    when(mockSchemaMapper.getSourceTableName("", "spanner_table3")).thenReturn("source_table3");
-
-    assertTrue(config.isSpannerTableAllowed("spanner_table1", mockSchemaMapper));
-    assertTrue(config.isSpannerTableAllowed("spanner_table2", mockSchemaMapper));
-    assertFalse(config.isSpannerTableAllowed("spanner_table3", mockSchemaMapper));
-  }
-
-  @Test
-  public void testIsSpannerTableAllowedThrowsNoSuchElementException() {
-    options.setTables("source_table1");
-    options.setGcsInputDirectory(null);
-    TableConfiguration config = TableConfiguration.parseFromOptions(options);
-
-    when(mockSchemaMapper.getSourceTableName(anyString(), anyString()))
-        .thenThrow(new NoSuchElementException("Table not found"));
-
-    assertFalse(config.isSpannerTableAllowed("unknown_table", mockSchemaMapper));
-  }
-
-  @Test
   public void testParseFromOptionsThrowsWhenTableConfigFileFailsToRead() {
     options.setTableConfigurationFilePath(
         tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
@@ -199,8 +163,19 @@ public class TableConfigurationTest {
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     assertTrue(config.hasShardFilter());
-    assertEquals(Arrays.asList("b", "a", "c"), new ArrayList<>(config.getShardIds()));
+    assertEquals(new HashSet<>(Arrays.asList("a", "b", "c")), config.getShardIds());
     assertThrows(UnsupportedOperationException.class, () -> config.getShardIds().add("d"));
+  }
+
+  @Test
+  public void testGlobCharactersInTablesAndShardIdsAreKept() {
+    options.setTables("Users,Orders[1]");
+    options.setShardIds("shard_1,shard_*");
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertEquals(new HashSet<>(Arrays.asList("Users", "Orders[1]")), config.getSourceTables());
+    assertEquals(new HashSet<>(Arrays.asList("shard_1", "shard_*")), config.getShardIds());
   }
 
   @Test

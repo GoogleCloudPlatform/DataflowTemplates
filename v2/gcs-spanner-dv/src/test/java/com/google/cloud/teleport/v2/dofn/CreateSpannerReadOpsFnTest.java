@@ -323,17 +323,22 @@ public class CreateSpannerReadOpsFnTest {
   }
 
   @Test
-  public void testShardIdsSkipsUnmappableSpannerTable() {
-    // SpannerOnly has no source table and no shard ID column; with --shardIds it's skipped
-    // silently.
+  public void testSpannerOnlyTableUsesItsSpannerNameInTableConfig() throws IOException {
+    // SpannerOnly has no source table, so tableNames and spannerQuery refer to it by its Spanner
+    // name, and it's validated like any other table.
     Ddl ddl = ddl(Dialect.GOOGLE_STANDARD_SQL, "Users", "SpannerOnly");
     ISchemaMapper mapper = mock(ISchemaMapper.class);
     when(mapper.getSourceTableName(anyString(), eq("Users"))).thenReturn("Users");
     when(mapper.getSourceTableName(anyString(), eq("SpannerOnly")))
         .thenThrow(new NoSuchElementException("no source table for SpannerOnly"));
-    when(mapper.getShardIdColumnName(anyString(), eq("Users"))).thenReturn("migration_shard_id");
+    when(mapper.getSpannerTableName(anyString(), eq("SpannerOnly")))
+        .thenThrow(new NoSuchElementException("no source table named SpannerOnly"));
     GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
-    options.setShardIds("s1,s2");
+    options.setTableConfigurationFilePath(
+        writeTableConfigFile(
+            "{\"tableNames\":[\"SpannerOnly\"],\"optionalConfigurations\":{\"SpannerOnly\":"
+                + "{\"spannerQuery\":\"SELECT * FROM SpannerOnly WHERE id < 10\"}}}"));
+    options.setShardIds("s1");
     TableConfiguration config = TableConfiguration.parseFromOptions(options);
 
     List<ReadOperation> result =
@@ -344,12 +349,9 @@ public class CreateSpannerReadOpsFnTest {
         Collections.singletonList(
             ReadOperation.create()
                 .withQuery(
-                    Statement.newBuilder(
-                            "SELECT *, 'Users' as __tableName__ FROM `Users`"
-                                + " WHERE `migration_shard_id` IN UNNEST(@p1)")
-                        .bind("p1")
-                        .toStringArray(Arrays.asList("s1", "s2"))
-                        .build())),
+                    "SELECT *, 'SpannerOnly' AS __tableName__ FROM (\n"
+                        + "SELECT * FROM SpannerOnly WHERE id < 10\n"
+                        + ") AS __dv_src__")),
         result);
   }
 

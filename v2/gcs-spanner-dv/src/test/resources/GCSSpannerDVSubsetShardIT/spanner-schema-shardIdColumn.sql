@@ -12,3 +12,8 @@ CREATE TABLE Users (
     age INT64,
     created_at TIMESTAMP
 ) PRIMARY KEY (migration_shard_id, user_id, event_id);
+
+CREATE TABLE AuditLog (
+    log_id INT64 NOT NULL,
+    message STRING(255)
+) PRIMARY KEY (log_id);

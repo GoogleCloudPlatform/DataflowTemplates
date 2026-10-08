@@ -43,7 +43,8 @@ import org.junit.runners.JUnit4;
  * shards, selects some of them, and checks that the row counts cover only the selected shards on
  * both sides: 1. Spanner rows filtered on the session's ShardIdColumn. 2. Spanner rows filtered by
  * a {@code spannerQuery} from the table configuration file, with one renamed table. 3. {@code
- * --shardIds} combined with {@code --tables}.
+ * --shardIds} combined with {@code --tables}. Tests 1 and 2 also validate AuditLog, a table that
+ * exists only in Spanner, with the session mapper and the schema overrides mapper respectively.
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @RunWith(JUnit4.class)
@@ -59,6 +60,8 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
       "GCSSpannerDVSubsetShardIT/schema-overrides-renamed-table.json";
   private static final String TABLE_CONFIG_SPANNER_QUERY_RESOURCE =
       "GCSSpannerDVSubsetShardIT/table-config-spanner-query.json";
+  private static final String TABLE_CONFIG_SPANNER_ONLY_TABLE_RESOURCE =
+      "GCSSpannerDVSubsetShardIT/table-config-spanner-only-table.json";
 
   @Before
   public void setUp() throws IOException {
@@ -67,9 +70,15 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
     bigQueryResourceManager.createDataset(REGION);
   }
 
-  /** Spanner rows are filtered on the session's ShardIdColumn; shard3 is excluded on both sides. */
+  /**
+   * Users rows are filtered on the session's ShardIdColumn; shard3 is excluded on both sides.
+   * AuditLog exists only in Spanner (not in the session file), so it's validated too, read with its
+   * spannerQuery: its one selected row has no source row and is reported as a mismatch. This test
+   * also validates a scenario where both ShardIdColumn and spannerQuery flows are used
+   * simultaneously depending on the table.
+   */
   @Test
-  public void testShardIdsWithShardIdColumnMatches() throws Exception {
+  public void testShardIdsWithShardIdColumnAndSpannerOnlyTable() throws Exception {
     createSpannerDDL(spannerResourceManager, SPANNER_SHARDED_DDL_RESOURCE);
 
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
@@ -153,9 +162,26 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
                 .to(32L)
                 .set("created_at")
                 .to(Timestamp.parseTimestamp(t1.toString()))
+                .build(),
+            // Spanner-only table: the spannerQuery selects log_id 1 only.
+            Mutation.newInsertOrUpdateBuilder("AuditLog")
+                .set("log_id")
+                .to(1L)
+                .set("message")
+                .to("selected")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("AuditLog")
+                .set("log_id")
+                .to(2L)
+                .set("message")
+                .to("not selected")
                 .build()));
 
     Thread.sleep(20000);
+
+    gcsClient.uploadArtifact(
+        "table-config.json",
+        Resources.getResource(TABLE_CONFIG_SPANNER_ONLY_TABLE_RESOURCE).getPath());
 
     LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath);
     LaunchInfo jobInfo =
@@ -171,18 +197,22 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
             null,
             null,
             null,
-            Map.of("shardIds", "shard1,shard2"));
+            Map.of(
+                "shardIds",
+                "shard1,shard2",
+                "tableConfigurationFilePath",
+                getGcsPath("table-config.json")));
     pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     GCSSpannerDVTestAsserts.assertValidationSummary(
         bigQueryResourceManager,
         Arrays.asList(
             new ValidationSummaryDto(
-                /* status= */ "MATCH",
-                /* totalTablesValidated= */ 1L,
+                /* status= */ "MISMATCH",
+                /* totalTablesValidated= */ 2L,
                 /* totalRowsMatched= */ 2L,
-                /* totalRowsMismatched= */ 0L,
-                /* tablesWithMismatches= */ "")));
+                /* totalRowsMismatched= */ 1L,
+                /* tablesWithMismatches= */ "AuditLog")));
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         Arrays.asList(
@@ -193,17 +223,27 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
                 /* sourceRowCount= */ 2L,
                 /* destinationRowCount= */ 2L,
                 /* matchedRowCount= */ 2L,
-                /* mismatchRowCount= */ 0L)));
+                /* mismatchRowCount= */ 0L),
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "AuditLog",
+                /* status= */ "MISMATCH",
+                /* sourceRowCount= */ 0L,
+                /* destinationRowCount= */ 1L,
+                /* matchedRowCount= */ 0L,
+                /* mismatchRowCount= */ 1L)));
   }
 
   /**
    * No ShardIdColumn: each table's spannerQuery reads only shard1's leading-PK range (user_id 2 or
    * less, role_id 1 or less). Source table AccountRolesSrc is renamed to Spanner AccountRoles; its
    * config key is the source name and its query reads the Spanner table. shard2's rows are in GCS
-   * and Spanner but must not be compared.
+   * and Spanner but must not be compared. AuditLog exists only in Spanner and is listed in
+   * tableNames, so it's validated with its spannerQuery: its one selected row has no source row and
+   * is reported as a mismatch.
    */
   @Test
-  public void testShardIdsWithSpannerQueryAndRenamedTableMatches() throws Exception {
+  public void testShardIdsWithSpannerQueryRenamedTableAndSpannerOnlyTable() throws Exception {
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     Instant t1 = Instant.parse("2024-01-01T10:00:00Z");
@@ -307,6 +347,19 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
                 .to(2L)
                 .set("role_name")
                 .to("USER")
+                .build(),
+            // Spanner-only table: the spannerQuery selects log_id 1 only.
+            Mutation.newInsertOrUpdateBuilder("AuditLog")
+                .set("log_id")
+                .to(1L)
+                .set("message")
+                .to("selected")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("AuditLog")
+                .set("log_id")
+                .to(2L)
+                .set("message")
+                .to("not selected")
                 .build()));
 
     Thread.sleep(20000);
@@ -339,11 +392,11 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
         bigQueryResourceManager,
         Arrays.asList(
             new ValidationSummaryDto(
-                /* status= */ "MATCH",
-                /* totalTablesValidated= */ 2L,
+                /* status= */ "MISMATCH",
+                /* totalTablesValidated= */ 3L,
                 /* totalRowsMatched= */ 3L,
-                /* totalRowsMismatched= */ 0L,
-                /* tablesWithMismatches= */ "")));
+                /* totalRowsMismatched= */ 1L,
+                /* tablesWithMismatches= */ "AuditLog")));
     GCSSpannerDVTestAsserts.assertTableValidationStats(
         bigQueryResourceManager,
         Arrays.asList(
@@ -362,7 +415,15 @@ public class GCSSpannerDVSubsetShardIT extends GCSSpannerDVITBase {
                 /* sourceRowCount= */ 1L,
                 /* destinationRowCount= */ 1L,
                 /* matchedRowCount= */ 1L,
-                /* mismatchRowCount= */ 0L)));
+                /* mismatchRowCount= */ 0L),
+            new TableValidationStatsDto(
+                /* schemaName= */ null,
+                /* tableName= */ "AuditLog",
+                /* status= */ "MISMATCH",
+                /* sourceRowCount= */ 0L,
+                /* destinationRowCount= */ 1L,
+                /* matchedRowCount= */ 0L,
+                /* mismatchRowCount= */ 1L)));
   }
 
   /** --shardIds with --tables validates only the selected table's rows of the selected shards. */

@@ -1,11 +1,14 @@
 {
-  "tableNames": ["Users", "AccountRolesSrc"],
+  "tableNames": ["Users", "AccountRolesSrc", "AuditLog"],
   "optionalConfigurations": {
     "Users": {
       "spannerQuery": "SELECT * FROM Users WHERE user_id <= 2"
     },
     "AccountRolesSrc": {
       "spannerQuery": "SELECT * FROM AccountRoles WHERE role_id <= 1"
+    },
+    "AuditLog": {
+      "spannerQuery": "SELECT * FROM AuditLog WHERE log_id <= 1"
     }
   }
 }
