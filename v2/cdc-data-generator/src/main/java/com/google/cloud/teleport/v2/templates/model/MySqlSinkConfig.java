@@ -17,46 +17,20 @@ package com.google.cloud.teleport.v2.templates.model;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.List;
-import java.util.Objects;
 
-/** Configuration for a MySQL sink, containing ordered shard details. */
-public class MySqlSinkConfig implements SinkConfig {
+/**
+ * Configuration for a MySQL sink, containing ordered shard details.
+ *
+ * @deprecated Use {@link com.google.cloud.teleport.v2.source.mysql.MySqlSinkConfig} instead.
+ */
+@Deprecated
+public class MySqlSinkConfig extends com.google.cloud.teleport.v2.source.mysql.MySqlSinkConfig {
 
-  private List<Shard> shards;
-
-  public MySqlSinkConfig() {}
+  public MySqlSinkConfig() {
+    super();
+  }
 
   public MySqlSinkConfig(List<Shard> shards) {
-    this.shards = shards;
-  }
-
-  public List<Shard> getShards() {
-    return shards;
-  }
-
-  public void setShards(List<Shard> shards) {
-    this.shards = shards;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof MySqlSinkConfig)) {
-      return false;
-    }
-    MySqlSinkConfig that = (MySqlSinkConfig) o;
-    return Objects.equals(shards, that.shards);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(shards);
-  }
-
-  @Override
-  public String toString() {
-    return "MySqlSinkConfig{" + "shards=" + shards + '}';
+    super(shards);
   }
 }

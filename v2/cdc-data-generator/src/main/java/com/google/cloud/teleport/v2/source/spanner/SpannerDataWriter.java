@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
@@ -25,7 +25,6 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;

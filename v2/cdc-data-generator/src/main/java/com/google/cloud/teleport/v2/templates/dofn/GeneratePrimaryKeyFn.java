@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.dofn;
 
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
+import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.cloud.teleport.v2.templates.utils.CustomDataGeneratorFetcher;
@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,13 +87,21 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     faker = new Faker();
     schemaCache = new HashMap<>();
 
-    if (sinkConfig instanceof MySqlSinkConfig) {
-      MySqlSinkConfig mySqlSinkConfig = (MySqlSinkConfig) sinkConfig;
-      if (mySqlSinkConfig.getShards() != null) {
+    if (sinkType != null) {
+      try {
         this.logicalShardIds =
-            mySqlSinkConfig.getShards().stream()
-                .map(Shard::getLogicalShardId)
-                .collect(Collectors.toList());
+            SourceConnectorFactory.getSourceConnectorBySourceType(sinkType)
+                .getLogicalShardIds(sinkConfig);
+      } catch (IllegalArgumentException e) {
+        this.logicalShardIds = Collections.emptyList();
+      }
+    } else if (sinkConfig != null) {
+      try {
+        this.logicalShardIds =
+            SourceConnectorFactory.getSourceConnector(SinkType.MYSQL)
+                .getLogicalShardIds(sinkConfig);
+      } catch (Exception e) {
+        this.logicalShardIds = Collections.emptyList();
       }
     }
   }

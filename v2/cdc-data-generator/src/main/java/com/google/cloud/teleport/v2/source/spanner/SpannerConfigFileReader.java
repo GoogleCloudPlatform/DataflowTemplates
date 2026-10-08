@@ -13,9 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
@@ -65,18 +64,10 @@ public class SpannerConfigFileReader {
             "Missing databaseId in Spanner configuration file: " + spannerConfigFilePath);
       }
 
-      LOG.info("Read Spanner configuration: {}", config);
       return config;
-
     } catch (IOException e) {
-      LOG.error(
-          "Failed to read Spanner configuration file. Make sure it is ASCII or UTF-8 encoded and"
-              + " contains a well-formed JSON string.",
-          e);
-      throw new RuntimeException(
-          "Failed to read Spanner configuration file. Make sure it is ASCII or UTF-8 encoded and"
-              + " contains a well-formed JSON string.",
-          e);
+      LOG.error("Failed to read Spanner configuration file: {}", spannerConfigFilePath, e);
+      throw new RuntimeException("Failed to read Spanner configuration file: " + spannerConfigFilePath, e);
     }
   }
 }

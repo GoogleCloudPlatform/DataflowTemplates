@@ -16,95 +16,23 @@
 package com.google.cloud.teleport.v2.templates.model;
 
 import com.google.cloud.spanner.Dialect;
-import java.util.Objects;
 
 /**
  * Configuration for a Cloud Spanner sink, representing both the parsed JSON config file and the
  * pre-fetched dialect.
+ *
+ * @deprecated Use {@link com.google.cloud.teleport.v2.source.spanner.SpannerSinkConfig} instead.
  */
-public class SpannerSinkConfig implements SinkConfig {
+@Deprecated
+public class SpannerSinkConfig
+    extends com.google.cloud.teleport.v2.source.spanner.SpannerSinkConfig {
 
-  private String projectId;
-  private String instanceId;
-  private String databaseId;
-  private Dialect dialect;
-
-  public SpannerSinkConfig() {}
+  public SpannerSinkConfig() {
+    super();
+  }
 
   public SpannerSinkConfig(
       String projectId, String instanceId, String databaseId, Dialect dialect) {
-    this.projectId = projectId;
-    this.instanceId = instanceId;
-    this.databaseId = databaseId;
-    this.dialect = dialect;
-  }
-
-  public String getProjectId() {
-    return projectId;
-  }
-
-  public void setProjectId(String projectId) {
-    this.projectId = projectId;
-  }
-
-  public String getInstanceId() {
-    return instanceId;
-  }
-
-  public void setInstanceId(String instanceId) {
-    this.instanceId = instanceId;
-  }
-
-  public String getDatabaseId() {
-    return databaseId;
-  }
-
-  public void setDatabaseId(String databaseId) {
-    this.databaseId = databaseId;
-  }
-
-  public Dialect getDialect() {
-    return dialect;
-  }
-
-  public void setDialect(Dialect dialect) {
-    this.dialect = dialect;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof SpannerSinkConfig)) {
-      return false;
-    }
-    SpannerSinkConfig that = (SpannerSinkConfig) o;
-    return Objects.equals(projectId, that.projectId)
-        && Objects.equals(instanceId, that.instanceId)
-        && Objects.equals(databaseId, that.databaseId)
-        && dialect == that.dialect;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(projectId, instanceId, databaseId, dialect);
-  }
-
-  @Override
-  public String toString() {
-    return "SpannerSinkConfig{"
-        + "projectId='"
-        + projectId
-        + '\''
-        + ", instanceId='"
-        + instanceId
-        + '\''
-        + ", databaseId='"
-        + databaseId
-        + '\''
-        + ", dialect="
-        + dialect
-        + '}';
+    super(projectId, instanceId, databaseId, dialect);
   }
 }
