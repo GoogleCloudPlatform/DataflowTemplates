@@ -26,16 +26,27 @@ public class SharedOracleReverseITContainer {
 
   private static SpannerOracleResourceManager instance;
 
+  /**
+   * Returns the admin password of the static Oracle DB, passed via {@code -DcloudOraclePassword}.
+   */
+  private static String getAdminPassword() {
+    String password = System.getProperty("cloudOracleSysPassword");
+    if (password == null || password.isEmpty()) {
+      throw new IllegalStateException("Missing -DcloudOraclePassword");
+    }
+    return password;
+  }
+
   public static SpannerOracleResourceManager getInstance() {
     if (instance == null) {
       synchronized (lock) {
         if (instance == null) {
           LOG.info("Initializing global Singleton PDB Admin Oracle pool (XEPDB1).");
           String host = System.getProperty("cloudOracleHost", "localhost");
-          String password = System.getProperty("cloudOraclePassword", "TestPassword123");
+          String password = getAdminPassword();
           CloudOracleResourceManager.Builder builder =
               CloudOracleResourceManager.builder("oracle_static");
-          builder.setUsername("system");
+          builder.setUsername("sys as sysdba");
           builder.setPassword(password);
           builder.setDatabaseName("XEPDB1");
           builder.setHost(host);

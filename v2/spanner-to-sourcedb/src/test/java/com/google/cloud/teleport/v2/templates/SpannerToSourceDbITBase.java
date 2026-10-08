@@ -384,13 +384,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                                 com.google.cloud.teleport.v2.templates.constants.Constants
                                     .SOURCE_POSTGRESQL)
                             && !Objects.equals(sourceType, SOURCE_SQLSERVER)
-			    && !Objects.equals(sourceType, "oracle"))
+                            && !Objects.equals(sourceType, "oracle"))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "oracle".equalsIgnoreCase(sourceType) ? "2" : "5");
+            put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("workerMachineType", "n2-standard-4");
