@@ -6,13 +6,14 @@ variable "dataflow_template_bucket_location" {
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
   type = object({
-    project                         = string
-    host_project                    = optional(string)
-    region                          = string
-    migration_id                    = optional(string)
-    replication_bucket              = optional(string, "rr-bucket")
-    add_policies_to_service_account = optional(bool, true)
-    target_tags                     = optional(list(string))
+    project                             = string
+    host_project                        = optional(string)
+    region                              = string
+    migration_id                        = optional(string)
+    replication_bucket                  = optional(string, "rr-bucket")
+    add_policies_to_service_account     = optional(bool, true)
+    create_cutback_monitoring_dashboard = optional(bool, false)
+    target_tags                         = optional(list(string))
   })
 }
 
