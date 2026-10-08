@@ -28,7 +28,7 @@
               }
             ],
             "timeSeriesQuery": {
-              "prometheusQuery": "(((max(max_over_time(custom_googleapis_com:migration_gcs_dlq_file_count{monitored_resource=\"global\",migration_id=\"${migration_id}\",dlq_category=~\"severe|retry\"}[5m])) == bool 0) or vector(0)) * ((max(avg_over_time(datastream_googleapis_com:stream_freshness{monitored_resource=\"datastream.googleapis.com/Stream\",stream_id=~\"${datastream_ids}\"}[5m])) <= bool $${sla_seconds}) or vector(0)) * ((max(histogram_quantile(0.99, sum by (le, stream_id) (rate(datastream_googleapis_com:stream_system_latencies_bucket{monitored_resource=\"datastream.googleapis.com/Stream\",stream_id=~\"${datastream_ids}\"}[5m]))) >= 0) or vector(0)) <= bool $${sla_seconds}) * ((max(avg_over_time(dataflow_googleapis_com:job_data_watermark_age{monitored_resource=\"dataflow_job\",job_id=~\"${dataflow_job_ids}\"}[10m])) <= bool $${sla_seconds}) or vector(0)) * ((max(avg_over_time(dataflow_googleapis_com:job_system_lag{monitored_resource=\"dataflow_job\",job_id=~\"${dataflow_job_ids}\"}[10m])) <= bool $${sla_seconds}) or vector(0)) * ((max(sum by (subscription_id) (avg_over_time(pubsub_googleapis_com:subscription_num_unacked_messages_by_region{monitored_resource=\"pubsub_subscription\",subscription_id=~\"${pubsub_subscription_ids}\"}[5m]))) <= bool 50) or vector(0)) * ((max(deriv((sum by (subscription_id) (avg_over_time(pubsub_googleapis_com:subscription_num_unacked_messages_by_region{monitored_resource=\"pubsub_subscription\",subscription_id=~\"${pubsub_subscription_ids}\"}[2m])))[5m:1m]) * 60) <= bool 5) or vector(0)))",
+              "prometheusQuery": "(((max(max_over_time(custom_googleapis_com:migration_gcs_dlq_file_count{monitored_resource=\"global\",migration_id=\"${migration_id}\",dlq_category=~\"severe|retry\"}[5m])) == bool 0) or vector(0)) * ((max(avg_over_time(datastream_googleapis_com:stream_freshness{monitored_resource=\"datastream.googleapis.com/Stream\",stream_id=~\"${datastream_ids}\"}[5m])) <= bool $${sla_seconds}) or vector(0)) * ((max(histogram_quantile(0.99, sum by (le, stream_id) (rate(datastream_googleapis_com:stream_system_latencies_bucket{monitored_resource=\"datastream.googleapis.com/Stream\",stream_id=~\"${datastream_ids}\"}[5m]))) >= 0) or vector(0)) <= bool $${sla_seconds}) * ((max(avg_over_time(dataflow_googleapis_com:job_data_watermark_age{monitored_resource=\"dataflow_job\",job_id=~\"${dataflow_job_ids}\"}[10m])) <= bool $${sla_seconds}) or vector(0)) * ((max(avg_over_time(dataflow_googleapis_com:job_system_lag{monitored_resource=\"dataflow_job\",job_id=~\"${dataflow_job_ids}\"}[10m])) <= bool $${sla_seconds}) or vector(0)) * ((max(sum by (subscription_id) (avg_over_time(pubsub_googleapis_com:subscription_num_undelivered_messages{monitored_resource=\"pubsub_subscription\",subscription_id=~\"${pubsub_subscription_ids}\"}[5m]))) <= bool 50) or vector(0)) * ((max(deriv((sum by (subscription_id) (avg_over_time(pubsub_googleapis_com:subscription_num_undelivered_messages{monitored_resource=\"pubsub_subscription\",subscription_id=~\"${pubsub_subscription_ids}\"}[2m])))[5m:1m]) * 60) <= bool 5) or vector(0)))",
               "unitOverride": ""
             }
           }
@@ -251,7 +251,7 @@
               {
                 "timeSeriesQuery": {
                   "timeSeriesFilter": {
-                    "filter": "metric.type=\"dataflow.googleapis.com/job/elements_produced_count\" resource.type=\"dataflow_job\" metric.label.\"job_id\"=monitoring.regex.full_match(\"${dataflow_job_ids}\") metric.label.\"ptransform\"=\"Write events to Cloud Spanner/Write Mutations\" metric.label.\"pcollection\"=\"Write events to Cloud Spanner/Write Mutations.out0\"",
+                    "filter": "metric.type=\"dataflow.googleapis.com/job/elements_produced_count\" resource.type=\"dataflow_job\" metric.label.\"job_id\"=monitoring.regex.full_match(\"${dataflow_job_ids}\") metric.label.\"ptransform\"=\"Write events to Cloud Spanner/Write Mutations\"",
                     "aggregation": {
                       "alignmentPeriod": "60s",
                       "perSeriesAligner": "ALIGN_RATE",
@@ -291,7 +291,7 @@
               {
                 "timeSeriesQuery": {
                   "timeSeriesFilter": {
-                    "filter": "metric.type=\"pubsub.googleapis.com/subscription/num_unacked_messages_by_region\" resource.type=\"pubsub_subscription\" resource.label.\"subscription_id\"=monitoring.regex.full_match(\"${pubsub_subscription_ids}\")",
+                    "filter": "metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\" resource.type=\"pubsub_subscription\" resource.label.\"subscription_id\"=monitoring.regex.full_match(\"${pubsub_subscription_ids}\")",
                     "aggregation": {
                       "alignmentPeriod": "60s",
                       "perSeriesAligner": "ALIGN_MEAN",
