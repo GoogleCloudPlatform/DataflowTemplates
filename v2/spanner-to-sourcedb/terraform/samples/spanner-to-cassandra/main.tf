@@ -324,7 +324,7 @@ resource "google_monitoring_dashboard" "cutback_dashboard" {
   dashboard_json = templatefile("${path.module}/../../monitoring-dashboard/monitoring_dashboard.json.tpl", {
     dashboard_display_name  = "Cutback Readiness - ${local.migration_id}"
     migration_id            = local.migration_id
-    dataflow_job_ids        = google_dataflow_flex_template_job.reverse_replication_job.id
+    dataflow_job_ids        = google_dataflow_flex_template_job.reverse_replication_job.job_id
     pubsub_subscription_ids = google_pubsub_subscription.dlq_pubsub_subscription.name
   })
 }
