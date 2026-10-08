@@ -20,11 +20,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **bootstrapServers**: A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2 For example, `host1:port1,host2:port2,localhost:9092,127.0.0.1:9093`.
 * **topic**: Kafka topic to read from. For example: my_topic For example, `my_topic`.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
-* **projectId**: The Google Cloud project ID of the Bigtable instance.
-* **instanceId**: The Bigtable instance ID.
-* **tableId**: Bigtable table ID to write the output to.
+* **projectId**: The Google Cloud project ID of the Bigtable instance. For example, `my-gcp-project`.
+* **instanceId**: The Bigtable instance ID. For example, `my-bigtable-instance`.
+* **tableId**: Bigtable table ID to write the output to. For example, `my-bigtable-table`.
+* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing For example, `{"type": "fixed", "size": "10s"}`.
 
 ### Optional parameters
 
@@ -35,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **format**: The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON For example, `JSON`. Defaults to: JSON.
 * **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
-* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
 
 
 
@@ -130,11 +130,11 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_To_Bigtable
 ### Required
 export BOOTSTRAP_SERVERS=<bootstrapServers>
 export TOPIC=<topic>
-export LANGUAGE=<language>
 export FIELDS=<fields>
 export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export TABLE_ID=<tableId>
+export WINDOWING=<windowing>
 
 ### Optional
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
@@ -144,7 +144,7 @@ export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
-export WINDOWING=<windowing>
+export LANGUAGE=generic
 
 gcloud dataflow flex-template run "kafka-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -185,11 +185,11 @@ export REGION=us-central1
 ### Required
 export BOOTSTRAP_SERVERS=<bootstrapServers>
 export TOPIC=<topic>
-export LANGUAGE=<language>
 export FIELDS=<fields>
 export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export TABLE_ID=<tableId>
+export WINDOWING=<windowing>
 
 ### Optional
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
@@ -199,7 +199,7 @@ export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
-export WINDOWING=<windowing>
+export LANGUAGE=generic
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -255,11 +255,11 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigtable_yaml" {
   parameters        = {
     bootstrapServers = "<bootstrapServers>"
     topic = "<topic>"
-    language = "<language>"
     fields = "<fields>"
     projectId = "<projectId>"
     instanceId = "<instanceId>"
     tableId = "<tableId>"
+    windowing = "<windowing>"
     # confluentSchemaRegistrySubject = "<confluentSchemaRegistrySubject>"
     # confluentSchemaRegistryUrl = "<confluentSchemaRegistryUrl>"
     # consumerConfigUpdates = "<consumerConfigUpdates>"
@@ -267,7 +267,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigtable_yaml" {
     # format = "JSON"
     # messageName = "<messageName>"
     # schema = "<schema>"
-    # windowing = "<windowing>"
+    # language = "generic"
   }
 }
 ```

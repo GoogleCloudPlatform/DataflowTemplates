@@ -8,7 +8,8 @@ options:
           The language used to define (and execute) the expressions and/or 
           callables in fields. Defaults to generic.
         example: "python"
-        required: true
+        default: "generic"
+        required: false
         type: text
       - order: 2
         name: "fields"

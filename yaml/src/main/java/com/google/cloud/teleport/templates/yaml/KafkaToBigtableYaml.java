@@ -141,12 +141,12 @@ public interface KafkaToBigtableYaml {
   @TemplateParameter.Text(
       order = 10,
       name = "language",
-      optional = false,
+      optional = true,
       description = "Language used to define the expressions.",
       helpText =
           "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
       example = "python")
-  @Validation.Required
+  @Default.String("generic")
   String getLanguage();
 
   @TemplateParameter.Text(
@@ -166,7 +166,7 @@ public interface KafkaToBigtableYaml {
       optional = false,
       description = "Bigtable project ID",
       helpText = "The Google Cloud project ID of the Bigtable instance.",
-      example = "")
+      example = "my-gcp-project")
   @Validation.Required
   String getProjectId();
 
@@ -176,7 +176,7 @@ public interface KafkaToBigtableYaml {
       optional = false,
       description = "Bigtable instance ID",
       helpText = "The Bigtable instance ID.",
-      example = "")
+      example = "my-bigtable-instance")
   @Validation.Required
   String getInstanceId();
 
@@ -186,17 +186,18 @@ public interface KafkaToBigtableYaml {
       optional = false,
       description = "Bigtable output table",
       helpText = "Bigtable table ID to write the output to.",
-      example = "")
+      example = "my-bigtable-table")
   @Validation.Required
   String getTableId();
 
   @TemplateParameter.Text(
       order = 15,
       name = "windowing",
-      optional = true,
+      optional = false,
       description = "Windowing options",
       helpText =
           "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
-      example = "")
+      example = "{\"type\": \"fixed\", \"size\": \"10s\"}")
+  @Validation.Required
   String getWindowing();
 }
