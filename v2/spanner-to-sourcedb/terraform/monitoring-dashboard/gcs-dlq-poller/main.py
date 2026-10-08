@@ -38,6 +38,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 import functions_framework
+from google.api import metric_pb2
 from google.cloud import monitoring_v3
 from google.cloud import storage
 
@@ -81,9 +82,10 @@ TEMP_FILE_MARKERS = (
 # Cloud Monitoring API allows at most 200 time series per create_time_series call.
 MAX_TIME_SERIES_PER_BATCH = 200
 
-# Per-RPC timeout (in seconds) for GCS list_blobs and Cloud Monitoring
-# create_time_series calls so a slow call cannot exceed the 60-second Cloud
-# Scheduler cycle and cause overlapping invocations.
+# Per-request HTTP/RPC timeout (in seconds) passed to GCS list_blobs and Cloud
+# Monitoring create_time_series calls so individual requests do not hang
+# indefinitely. Total listing pagination is separately bounded by
+# DEFAULT_MAX_DLQ_COUNT_LIMIT.
 RPC_TIMEOUT_SECONDS = 30
 
 # Global client instances cached across warm Cloud Function invocations to avoid
@@ -226,19 +228,38 @@ def _parse_dlq_directories(raw_dirs) -> List[str]:
   """Normalizes DLQ directories from a comma-separated string or JSON list.
 
   Supports both single-pipeline setups (a single URI) and sharded migrations
-  where multiple DLQ directories may be passed as a comma-separated string or
-  JSON array.
+  where multiple DLQ directories may be passed as a comma-separated string, a
+  JSON-encoded array string, or a parsed JSON array.
 
   Args:
-    raw_dirs: A comma-separated string or list of GCS URIs.
+    raw_dirs: A comma-separated string, JSON-encoded array string, or list of
+      GCS URIs.
 
   Returns:
     A list of non-empty, whitespace-trimmed GCS URI strings.
+
+  Raises:
+    ValueError: If `raw_dirs` is a string starting with '[' that is not a valid
+      JSON array.
   """
+  if isinstance(raw_dirs, str):
+    cleaned = raw_dirs.strip()
+    if cleaned.startswith("["):
+      try:
+        parsed = json.loads(cleaned)
+      except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Invalid JSON array for dlq_directories '{raw_dirs}': {exc}"
+        ) from exc
+      if not isinstance(parsed, list):
+        raise ValueError(
+            f"Invalid dlq_directories '{raw_dirs}': expected a JSON array."
+        )
+      raw_dirs = parsed
+    else:
+      return [d.strip() for d in cleaned.split(",") if d.strip()]
   if isinstance(raw_dirs, list):
     return [str(d).strip() for d in raw_dirs if str(d).strip()]
-  if isinstance(raw_dirs, str):
-    return [d.strip() for d in raw_dirs.split(",") if d.strip()]
   return []
 
 
@@ -317,8 +338,8 @@ def _publish_dlq_metrics(
       series.resource.type = "global"
       series.resource.labels["project_id"] = project_id
 
-      series.metric_kind = monitoring_v3.MetricDescriptor.MetricKind.GAUGE
-      series.value_type = monitoring_v3.MetricDescriptor.ValueType.INT64
+      series.metric_kind = metric_pb2.MetricDescriptor.MetricKind.GAUGE
+      series.value_type = metric_pb2.MetricDescriptor.ValueType.INT64
 
       point = monitoring_v3.Point(
           {"interval": interval, "value": {"int64_value": count}}
@@ -344,7 +365,7 @@ def poll_gcs_dlq(request):
   time) or overridden per request via a JSON body:
     - PROJECT_ID / project_id: GCP project ID.
     - MIGRATION_ID / migration_id: Unique migration identifier.
-    - DLQ_DIRECTORIES / dlq_directories: Comma-separated string (or JSON list)
+    - DLQ_DIRECTORIES / dlq_directories: Comma-separated string or JSON array
       of GCS DLQ root URIs (e.g., "gs://my-bucket/dlq").
     - MAX_DLQ_COUNT_LIMIT / max_dlq_count_limit: Optional positive integer cap
       on the number of files counted per directory/category (default: 10000).
@@ -381,9 +402,20 @@ def poll_gcs_dlq(request):
       req_json.get("migration_id") or os.environ.get("MIGRATION_ID") or ""
   )
   migration_id = str(raw_migration_id).strip()
-  dlq_directories = _parse_dlq_directories(
-      req_json.get("dlq_directories") or os.environ.get("DLQ_DIRECTORIES", "")
-  )
+  try:
+    dlq_directories = _parse_dlq_directories(
+        req_json.get("dlq_directories") or os.environ.get("DLQ_DIRECTORIES", "")
+    )
+  except ValueError as exc:
+    error_body = {
+        "status": "error",
+        "message": str(exc),
+    }
+    return (
+        json.dumps(error_body),
+        400,
+        {"Content-Type": "application/json"},
+    )
 
   # Validate that all required inputs are present before querying GCS.
   if not project_id or not migration_id or not dlq_directories:

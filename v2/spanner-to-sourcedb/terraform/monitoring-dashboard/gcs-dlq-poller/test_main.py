@@ -30,11 +30,14 @@ if "functions_framework" not in sys.modules:
   sys.modules["functions_framework"] = ff_stub
 
 try:
+  from google.api import metric_pb2  # pylint: disable=unused-import
   from google.cloud import monitoring_v3  # pylint: disable=unused-import
   from google.cloud import storage  # pylint: disable=unused-import
 except ImportError:
   google_mod = sys.modules.setdefault("google", SimpleNamespace())
+  api_mod = getattr(google_mod, "api", SimpleNamespace())
   cloud_mod = getattr(google_mod, "cloud", SimpleNamespace())
+  sys.modules["google.api"] = api_mod
   sys.modules["google.cloud"] = cloud_mod
 
   class _FakeTimeSeries:
@@ -46,19 +49,23 @@ except ImportError:
       self.value_type = None
       self.points = []
 
+  metric_pb2_stub = SimpleNamespace(
+      MetricDescriptor=SimpleNamespace(
+          MetricKind=SimpleNamespace(GAUGE=1),
+          ValueType=SimpleNamespace(INT64=2),
+      ),
+  )
   monitoring_stub = SimpleNamespace(
       MetricServiceClient=mock.MagicMock,
       TimeInterval=lambda d: d,
       TimeSeries=_FakeTimeSeries,
       Point=lambda d: d,
-      MetricDescriptor=SimpleNamespace(
-          MetricKind=SimpleNamespace(GAUGE="GAUGE"),
-          ValueType=SimpleNamespace(INT64="INT64"),
-      ),
   )
   storage_stub = SimpleNamespace(Client=mock.MagicMock)
+  api_mod.metric_pb2 = metric_pb2_stub
   cloud_mod.monitoring_v3 = monitoring_stub
   cloud_mod.storage = storage_stub
+  sys.modules["google.api.metric_pb2"] = metric_pb2_stub
   sys.modules["google.cloud.monitoring_v3"] = monitoring_stub
   sys.modules["google.cloud.storage"] = storage_stub
 
@@ -87,6 +94,22 @@ class GcsDlqPollerTest(unittest.TestCase):
       with self.subTest(invalid_uri=invalid_uri):
         with self.assertRaises(ValueError):
           main._parse_gcs_uri(invalid_uri)
+
+  def test_parse_dlq_directories_supports_csv_json_array_and_list(self):
+    self.assertEqual(
+        main._parse_dlq_directories("gs://b1/dlq, gs://b2/dlq"),
+        ["gs://b1/dlq", "gs://b2/dlq"],
+    )
+    self.assertEqual(
+        main._parse_dlq_directories('["gs://b1/dlq", "gs://b2/dlq"]'),
+        ["gs://b1/dlq", "gs://b2/dlq"],
+    )
+    self.assertEqual(
+        main._parse_dlq_directories(["gs://b1/dlq", "gs://b2/dlq"]),
+        ["gs://b1/dlq", "gs://b2/dlq"],
+    )
+    with self.assertRaises(ValueError):
+      main._parse_dlq_directories('["gs://b1/dlq"')
 
   def test_count_blobs_filters_directories_and_temp_files(self):
     mock_storage = mock.MagicMock()
@@ -219,6 +242,13 @@ class GcsDlqPollerTest(unittest.TestCase):
     self.assertEqual(call_kwargs["name"], "projects/test-project")
     self.assertEqual(call_kwargs["timeout"], main.RPC_TIMEOUT_SECONDS)
     self.assertEqual(len(call_kwargs["time_series"]), 4)
+    for ts in call_kwargs["time_series"]:
+      self.assertEqual(
+          ts.metric_kind, main.metric_pb2.MetricDescriptor.MetricKind.GAUGE
+      )
+      self.assertEqual(
+          ts.value_type, main.metric_pb2.MetricDescriptor.ValueType.INT64
+      )
     labels_set = {
         (
             ts.metric.labels["migration_id"],
@@ -254,6 +284,25 @@ class GcsDlqPollerTest(unittest.TestCase):
     body = json.loads(body_str)
     self.assertEqual(body["status"], "error")
     # Ensure neither GCS nor Cloud Monitoring was called when a URI is invalid.
+    mock_get_storage.assert_not_called()
+    mock_get_metric.assert_not_called()
+
+  @mock.patch.object(main, "_get_metric_client")
+  @mock.patch.object(main, "_get_storage_client")
+  def test_poll_gcs_dlq_invalid_json_array_string_returns_400(
+      self, mock_get_storage, mock_get_metric
+  ):
+    request = mock.MagicMock()
+    request.get_json.return_value = {
+        "project_id": "test-project",
+        "migration_id": "smt-test",
+        "dlq_directories": '["gs://b1/dlq"',
+    }
+
+    body_str, status_code, _ = main.poll_gcs_dlq(request)
+    self.assertEqual(status_code, 400)
+    body = json.loads(body_str)
+    self.assertEqual(body["status"], "error")
     mock_get_storage.assert_not_called()
     mock_get_metric.assert_not_called()
 
