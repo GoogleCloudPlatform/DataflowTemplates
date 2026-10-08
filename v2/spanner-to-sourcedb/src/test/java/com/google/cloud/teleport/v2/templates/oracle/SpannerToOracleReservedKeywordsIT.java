@@ -64,6 +64,7 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
       "oracle/SpannerToOracleReservedKeywordsIT/session.json";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static String oracleUsername;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static SpannerOracleResourceManager oracleResourceManager;
@@ -76,8 +77,9 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
     oracleResourceManager = SharedOracleReverseITContainer.getInstance();
-    testUsername = setupOracleIsolatedUser(oracleResourceManager);
-    createOracleSchema(oracleResourceManager, ORACLE_DDL_RESOURCE, testUsername);
+    oracleUsername = SharedOracleReverseITContainer.createIsolatedUser();
+    testUsername = oracleUsername;
+    SharedOracleReverseITContainer.createSchema(testUsername, ORACLE_DDL_RESOURCE);
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createAndUploadShardConfigToGcs(gcsResourceManager, oracleResourceManager);
     gcsResourceManager.uploadArtifact(
@@ -113,11 +115,16 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      SharedOracleReverseITContainer.dropIsolatedUser(oracleUsername);
+      oracleUsername = null;
+    }
   }
 
   @Test
@@ -128,11 +135,11 @@ public class SpannerToOracleReservedKeywordsIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> runIsolatedGetRowCount(oracleResourceManager, testUsername, "\"true\"") == 2);
+                () -> SharedOracleReverseITContainer.getRowCount(testUsername, "\"true\"") == 2);
     assertThatResult(result).meetsConditions();
 
     List<Map<String, Object>> actualData =
-        runIsolatedReadTable(oracleResourceManager, testUsername, "\"true\"");
+        SharedOracleReverseITContainer.readTable(testUsername, "\"true\"");
     for (Map<String, Object> row : actualData) {
       if (row.get("COLUMN") instanceof Number) {
         row.put("COLUMN", ((Number) row.get("COLUMN")).longValue());

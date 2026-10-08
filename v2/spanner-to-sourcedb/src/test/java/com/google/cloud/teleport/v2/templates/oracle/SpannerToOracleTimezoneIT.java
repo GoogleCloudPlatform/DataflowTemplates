@@ -68,6 +68,7 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
   private static final String TABLE = "Users";
   private static final HashSet<SpannerToOracleTimezoneIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static String oracleUsername;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static SpannerOracleResourceManager jdbcResourceManager;
@@ -91,12 +92,11 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = SharedOracleReverseITContainer.getInstance();
-        testUsername = setupOracleIsolatedUser(jdbcResourceManager);
+        oracleUsername = SharedOracleReverseITContainer.createIsolatedUser();
+        testUsername = oracleUsername;
 
-        createOracleSchema(
-            jdbcResourceManager,
-            SpannerToOracleTimezoneIT.ORACLE_SCHEMA_FILE_RESOURCE,
-            testUsername);
+        SharedOracleReverseITContainer.createSchema(
+            testUsername, SpannerToOracleTimezoneIT.ORACLE_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -141,14 +141,19 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToOracleTimezoneIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToOracleTimezoneIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      SharedOracleReverseITContainer.dropIsolatedUser(oracleUsername);
+      oracleUsername = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test
@@ -192,13 +197,11 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> runIsolatedGetRowCount(jdbcResourceManager, testUsername, "\"Users\"") == 3);
+                () -> SharedOracleReverseITContainer.getRowCount(testUsername, "\"Users\"") == 3);
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows =
-        runIsolatedSQLQuery(
-            jdbcResourceManager,
-            testUsername,
-            "SELECT \"id\",\"time_colm\" FROM \"Users\" ORDER BY \"id\"");
+        SharedOracleReverseITContainer.runQuery(
+            testUsername, "SELECT \"id\",\"time_colm\" FROM \"Users\" ORDER BY \"id\"");
     assertThat(rows).hasSize(3);
     assertThat(rows.get(0).get("id")).isEqualTo(java.math.BigDecimal.valueOf(1));
     assertThat(rows.get(0).get("time_colm").toString()).isEqualTo("2024-02-02 10:00:00.0");
