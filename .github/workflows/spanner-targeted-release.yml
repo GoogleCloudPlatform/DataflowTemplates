@@ -145,6 +145,7 @@ jobs:
             --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
             --it-private-connectivity="datastream-connect-2" \
             --it-cloud-proxy-host="10.128.0.16" \
+            --it-integration-test-parallelism=48 \
             --test="$SPECIFIC_TEST"
 
       - name: Upload Integration Tests Report
