@@ -22,26 +22,26 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Kafka_to_BigQuery_Yaml",
+    name = "Kafka_To_Bigtable_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Kafka to BigQuery (YAML)",
+    displayName = "Kafka to Bigtable (YAML)",
     description =
-        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests  text data from Apache Kafka, executes a user-defined function (UDF), and  outputs the resulting records to BigQuery. Any errors which occur in the  transformation of the data, execution of the UDF, or inserting into the  output table are inserted into a separate errors table in BigQuery.  If the errors table does not exist prior to execution, then it is created.",
+        "The Kafka to Bigtable template is a streaming pipeline which ingests data from an Apache Kafka topic, executes a user-defined mapping, and writes the resulting records to Bigtable.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "KafkaToBigQuery.yaml",
+    yamlTemplateFile = "KafkaToBigtable.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/kafka-to-bigtable",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The output BigQuery table must exist.",
+      "The input Apache Kafka topic must exist.",
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
-      "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
+      "The output Bigtable table must exist."
     },
     streaming = true,
     hidden = false)
-public interface KafkaToBigQueryYaml {
+public interface KafkaToBigtableYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -140,56 +140,64 @@ public interface KafkaToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 10,
-      name = "table",
-      optional = false,
-      description = "BigQuery table",
+      name = "language",
+      optional = true,
+      description = "Language used to define the expressions.",
       helpText =
-          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
-      example = "my-project:my_dataset.my_table")
-  @Validation.Required
-  String getTable();
+          "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
+      example = "python")
+  @Default.String("generic")
+  String getLanguage();
 
   @TemplateParameter.Text(
       order = 11,
-      name = "createDisposition",
-      optional = true,
-      description = "How to create",
+      name = "fields",
+      optional = false,
+      description = "Field mapping configuration",
       helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
-      example = "CREATE_NEVER")
-  @Default.String("CREATE_NEVER")
-  String getCreateDisposition();
+          "The output fields to compute, each mapping to the expression or callable that creates them.",
+      example = "{\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"}}")
+  @Validation.Required
+  String getFields();
 
   @TemplateParameter.Text(
       order = 12,
-      name = "writeDisposition",
-      optional = true,
-      description = "How to write",
-      helpText =
-          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
-      example = "WRITE_APPEND")
-  @Default.String("WRITE_APPEND")
-  String getWriteDisposition();
+      name = "projectId",
+      optional = false,
+      description = "Bigtable project ID",
+      helpText = "The Google Cloud project ID of the Bigtable instance.",
+      example = "my-gcp-project")
+  @Validation.Required
+  String getProjectId();
 
-  @TemplateParameter.Integer(
+  @TemplateParameter.Text(
       order = 13,
-      name = "numStreams",
-      optional = true,
-      description = "Number of streams for BigQuery Storage Write API",
-      helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = "1")
-  @Default.Integer(1)
-  Integer getNumStreams();
+      name = "instanceId",
+      optional = false,
+      description = "Bigtable instance ID",
+      helpText = "The Bigtable instance ID.",
+      example = "my-bigtable-instance")
+  @Validation.Required
+  String getInstanceId();
 
   @TemplateParameter.Text(
       order = 14,
-      name = "outputDeadletterTable",
+      name = "tableId",
       optional = false,
-      description = "The dead-letter table name to output failed messages to BigQuery",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output  table for different reasons (e.g., mismatched schema, malformed json)  are written to this table. If it doesn't exist, it will be created  during pipeline execution. If not specified,  'outputTableSpec_error_records' is used instead. The dead-letter table name to output failed messages to BigQuery.",
-      example = "your-project-id:your-dataset.your-table-name")
+      description = "Bigtable output table",
+      helpText = "Bigtable table ID to write the output to.",
+      example = "my-bigtable-table")
   @Validation.Required
-  String getOutputDeadletterTable();
+  String getTableId();
+
+  @TemplateParameter.Text(
+      order = 15,
+      name = "windowing",
+      optional = false,
+      description = "Windowing options",
+      helpText =
+          "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
+      example = "{\"type\": \"fixed\", \"size\": \"10s\"}")
+  @Validation.Required
+  String getWindowing();
 }
