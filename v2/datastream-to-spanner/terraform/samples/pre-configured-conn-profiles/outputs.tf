@@ -11,7 +11,7 @@ output "resource_ids" {
     dataflow_job                         = google_dataflow_flex_template_job.live_migration_job.job_id
     dlq_poller_function                  = var.common_params.create_cutover_monitoring_dashboard ? google_cloudfunctions2_function.dlq_poller[0].name : ""
     dlq_poller_scheduler                 = var.common_params.create_cutover_monitoring_dashboard ? google_cloud_scheduler_job.dlq_poller_scheduler[0].name : ""
-    cutover_monitoring_dashboard         = var.common_params.create_cutover_monitoring_dashboard ? google_monitoring_dashboard.cutover_dashboard[0].id : ""
+    cutover_monitoring_dashboard         = var.common_params.create_cutover_monitoring_dashboard ? basename(google_monitoring_dashboard.cutover_dashboard[0].id) : ""
   }
 }
 

@@ -29,7 +29,7 @@ output "dlq_poller_scheduler_url" {
 }
 
 output "cutback_monitoring_dashboard_id" {
-  value       = var.common_params.create_cutback_monitoring_dashboard ? google_monitoring_dashboard.cutback_dashboard[0].id : ""
+  value       = var.common_params.create_cutback_monitoring_dashboard ? basename(google_monitoring_dashboard.cutback_dashboard[0].id) : ""
   description = "ID of the created Cloud Monitoring dashboard for cutback verification."
 }
 

@@ -303,10 +303,13 @@ resource "google_monitoring_dashboard" "cutover_dashboard" {
   ]
   project = var.common_params.project
   dashboard_json = templatefile("${path.module}/../../monitoring-dashboard/monitoring_dashboard.json.tpl", {
-    dashboard_display_name  = "Cutover Readiness - ${local.migration_id}"
-    migration_id            = local.migration_id
-    datastream_ids          = google_datastream_stream.mysql_to_gcs.stream_id
-    dataflow_job_ids        = google_dataflow_flex_template_job.live_migration_job.job_id
-    pubsub_subscription_ids = google_pubsub_subscription.datastream_subscription.name
+    dashboard_display_name = "Cutover Readiness - ${local.migration_id}"
+    migration_id           = local.migration_id
+    datastream_ids         = google_datastream_stream.mysql_to_gcs.stream_id
+    dataflow_job_ids       = google_dataflow_flex_template_job.live_migration_job.job_id
+    pubsub_subscription_ids = join("|", compact([
+      google_pubsub_subscription.datastream_subscription.name,
+      var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != null && var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != "" ? element(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription), length(split("/", var.dataflow_params.template_params.dlq_gcs_pub_sub_subscription)) - 1) : null
+    ]))
   })
 }
