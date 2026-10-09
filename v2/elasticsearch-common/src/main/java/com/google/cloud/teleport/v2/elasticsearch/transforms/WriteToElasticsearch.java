@@ -158,6 +158,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     if (options().getSocketTimeout() != null) {
       config = config.withSocketTimeout(options().getSocketTimeout());
     }
+    if (options().getCompressionEnabled() != null) {
+      config = config.withCompressionEnabled(options().getCompressionEnabled());
+    }
 
     ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
