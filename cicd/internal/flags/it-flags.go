@@ -39,7 +39,6 @@ var (
 	dCloudProxyPassword                 string
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
-	dCloudOraclePassword                string
 	dUnifiedWorkerHarnessContainerImage string
 	dBaseContainerImage                 string
 	dBasePythonContainerImage           string
@@ -65,7 +64,6 @@ func RegisterItFlags() {
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
-	flag.StringVar(&dCloudOraclePassword, "it-oracle-password", "", "(optional) app password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dBaseContainerImage, "it-base-container-image", "", "(optional) Base container image to use for Java Flex templates")
 	flag.StringVar(&dBasePythonContainerImage, "it-base-python-container-image", "", "(optional) Base container image to use for Python/YAML Flex templates")
@@ -169,13 +167,6 @@ func StaticOracleHost() string {
 
 func StaticOracleSysPassword() string {
 	return "-DcloudOracleSysPassword=" + dCloudOracleSysPassword
-}
-
-func StaticOraclePassword() string {
-	if dCloudOraclePassword != "" {
-		return "-DcloudOraclePassword=" + dCloudOraclePassword
-	}
-	return ""
 }
 
 func UnifiedWorkerHarnessContainerImage() string {
