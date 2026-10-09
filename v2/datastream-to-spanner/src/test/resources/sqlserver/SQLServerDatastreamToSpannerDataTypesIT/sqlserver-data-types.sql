@@ -381,7 +381,7 @@ CREATE TABLE sql_variant_table (
 CREATE TABLE generated_pk_column (
     first_name_col VARCHAR(255) NOT NULL,
     last_name_col VARCHAR(255) NOT NULL,
-    generated_column_col AS (CONCAT(first_name_col, ' ', last_name_col)) PERSISTED,
+    generated_column_col AS (CONCAT(first_name_col, ' ')) PERSISTED,
     PRIMARY KEY (generated_column_col)
 );
 
@@ -466,9 +466,14 @@ INSERT INTO datetime2_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567'),
 -- TODO: Non-null datetime2 values fail conversion to Timestamp and route to DLQ. Since PK columns cannot be NULL in SQL Server, all rows fail.
 -- INSERT INTO datetime2_pk_table VALUES ('2022-08-05 08:23:11.1234567', '2022-08-05 08:23:11.1234567'), ('0001-01-01 00:00:00.0000000', '0001-01-01 00:00:00.0000000'), ('9999-12-31 23:59:59.9999999', '9999-12-31 23:59:59.9999999');
 
-INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
-INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
-INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('0001-01-01 00:00:00.0000000 +00:00', '0001-01-01 00:00:00.0000000 +00:00');
+-- TODO: FormatDatastreamRecordToJson converts timestampTz values via micros * 1000 into a long of
+-- nanoseconds, which silently overflows for values outside ~1677-09-21..2262-04-11 (e.g. the SQL Server
+-- DATETIMEOFFSET range boundaries 0001-01-01 and 9999-12-31 are wrapped to 1754-08-30 and 1816-03-30).
+-- Until that is fixed, only in-range boundary values are used here.
+-- INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
+INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +14:00'), (4, NULL);
+INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +14:00'), (4, NULL);
+INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('1900-01-01 00:00:00.0000000 +00:00', '1900-01-01 00:00:00.0000000 +00:00');
 
 -- TODO: Datastream maps SQL Server datetime to DatetimeUnifiedType (Avro RECORD "datetime" with fields {date, time}).
 -- FormatDatastreamRecordToJson currently lacks handling for "datetime" and defaults to a nested JSON object {"date":..., "time":...}.

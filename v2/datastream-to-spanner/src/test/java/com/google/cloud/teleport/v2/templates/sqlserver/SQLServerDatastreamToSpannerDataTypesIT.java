@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.sqlserver;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -33,7 +32,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import kotlin.Pair;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -59,6 +57,24 @@ import org.slf4j.LoggerFactory;
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template which tests migration of all
  * SQL Server data types and expressions.
+ *
+ * <p>Known limitations that shape the expectations below (see the TODOs inline and in the SQL
+ * resources):
+ *
+ * <ul>
+ *   <li>Datastream maps SQL Server {@code datetime}, {@code datetime2} and {@code smalldatetime} to
+ *       a {@code DatetimeUnifiedType}, serialised as an Avro RECORD named {@code datetime} with
+ *       fields {@code {date, time}}. {@code FormatDatastreamRecordToJson} does not handle this
+ *       record yet and emits a nested JSON object, so {@code ChangeEventTypeConvertor} fails to
+ *       parse it: non-null values are routed to the DLQ for TIMESTAMP targets and become {@code ""}
+ *       for STRING targets. Only the NULL rows are asserted for those tables.
+ *   <li>{@code FormatDatastreamRecordToJson} converts {@code datetimeoffset} via {@code micros *
+ *       1000} into a nanosecond {@code long}, which overflows outside ~1677..2262. Only in-range
+ *       boundary values are used for {@code datetimeoffset*} tables.
+ *   <li>SQL Server CDC records computed columns as NULL. When the computed column is the source
+ *       primary key, CDC DELETE/INSERT events cannot be applied, so phase-2 (DML) expectations for
+ *       {@code generated_pk_column} and {@code generated_to_non_generated_column} are skipped.
+ * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
@@ -77,7 +93,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
   private static final String PG_DIALECT_SPANNER_DDL_RESOURCE =
       "sqlserver/SQLServerDatastreamToSpannerDataTypesIT/pg-dialect-spanner-schema.sql";
 
-  private static final List<String> UNSUPPORTED_TYPE_TABLES = List.of();
+  private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
 
   private static boolean initialized = false;
   private static CloudSqlServerResourceManager msSqlResourceManager;
@@ -132,13 +148,16 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     for (SQLServerDatastreamToSpannerDataTypesIT instance : testInstances) {
       instance.tearDownBase();
     }
+
+    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
+    ResourceManagerUtils.cleanResources(datastreamResourceManager);
+
     ResourceManagerUtils.cleanResources(
         msSqlResourceManager,
         spannerResourceManager,
         pgDialectSpannerResourceManager,
         gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
+        pubsubResourceManager);
   }
 
   @Test
@@ -149,7 +168,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     addInitialExpectedDataGeneratedColumns(expectedData);
 
     Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("datastreamSourceType", "sqlserver");
+    jobParameters.put("workerMachineType", WORKER_MACHINE_TYPE);
 
     SqlServerSource sqlServerSource =
         SqlServerSource.builder(
@@ -202,9 +221,12 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), condition);
     assertThatResult(result).meetsConditions();
 
+    // Sleep for cutover time to wait till all CDCs propagate.
+    // A real world customer also has a small cut over time to reach consistency.
     try {
       Thread.sleep(CUTOVER_MILLIS);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
 
     validateResult(spannerResourceManager, expectedData);
@@ -217,7 +239,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
 
     Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("datastreamSourceType", "sqlserver");
+    jobParameters.put("workerMachineType", WORKER_MACHINE_TYPE);
 
     SqlServerSource sqlServerSource =
         SqlServerSource.builder(
@@ -276,14 +298,9 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
 
   private void validateResult(
       SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-    Set<String> ignoredTypeMappings = Set.of();
     List<AssertionError> errors = new ArrayList<>();
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
-      if (ignoredTypeMappings.contains(type)) {
-        LOG.warn("Mapping for {} is ignored...", type);
-        continue;
-      }
       String tableName = getTableName(type);
       LOG.info("Asserting type: {}", type);
 
@@ -306,13 +323,6 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     }
     if (!errors.isEmpty()) {
       throw errors.get(0);
-    }
-
-    for (String table : UNSUPPORTED_TYPE_TABLES) {
-      if (ignoredTypeMappings.contains(table)) {
-        continue;
-      }
-      assertThat(resourceManager.getRowCount(table)).isEqualTo(1L);
     }
   }
 
@@ -359,41 +369,15 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
 
   private ConditionCheck buildConditionCheck(
       SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-    Set<String> ignoredTables = Set.of();
-
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
-      if (ignoredTables.contains(entry.getKey())) {
-        continue;
-      }
       String tableName = getTableName(entry.getKey());
       int numRows = entry.getValue().size();
       ConditionCheck c =
           SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
-      if (combinedCondition == null) {
-        combinedCondition = c;
-      } else {
-        combinedCondition = combinedCondition.and(c);
-      }
+      combinedCondition = combinedCondition == null ? c : combinedCondition.and(c);
     }
-
-    ConditionCheck unsupportedTableCondition = null;
-    for (String unsupportedTypeTable : UNSUPPORTED_TYPE_TABLES) {
-      if (ignoredTables.contains(unsupportedTypeTable)) {
-        continue;
-      }
-      ConditionCheck c =
-          SpannerRowsCheck.builder(resourceManager, unsupportedTypeTable).setMinRows(1).build();
-      if (unsupportedTableCondition == null) {
-        unsupportedTableCondition = c;
-      } else {
-        unsupportedTableCondition = unsupportedTableCondition.and(c);
-      }
-    }
-
-    return combinedCondition != null && unsupportedTableCondition != null
-        ? combinedCondition.and(unsupportedTableCondition)
-        : combinedCondition != null ? combinedCondition : unsupportedTableCondition;
+    return combinedCondition;
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -509,15 +493,9 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     expectedData.put("time", createRows("time", "PT15H50M", "PT0S", "PT23H59M59.999999S", "NULL"));
     expectedData.put("time_pk", createRows("time_pk", "PT15H50M", "PT0S", "PT23H59M59.999999S"));
 
-    // TODO: Datastream maps SQL Server datetime2 to DatetimeUnifiedType, which serializes into an
-    // Avro
-    // RECORD named "datetime" with fields {date (days since epoch), time (microseconds of day)}.
-    // FormatDatastreamRecordToJson currently lacks handling for the "datetime" RECORD type and
-    // defaults
-    // to an ObjectNode {"date":..., "time":...} instead of an ISO-8601 string.
-    // ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on an ObjectNode,
-    // causing DateTimeParseException and diverting non-null records to the DLQ.
-    // NULL values bypass timestamp parsing and succeed.
+    // TODO: datetime2 is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
+    // javadoc). Non-null values are routed to the DLQ, so only the NULL row can be asserted and the
+    // PK variant (which cannot be NULL) is skipped entirely.
     expectedData.put(
         "datetime2",
         createRows(
@@ -526,13 +504,8 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
             // "0001-01-01T00:00:00Z",
             // "9999-12-31T23:59:59.999999000Z",
             "NULL"));
-    expectedData.put("datetime2_to_string", createRows("datetime2_to_string", "", "", "", "NULL"));
-    // TODO: Datastream maps SQL Server datetime2 to DatetimeUnifiedType (Avro RECORD "datetime"
-    // with {date, time}).
-    // FormatDatastreamRecordToJson outputs nested JSON object {"date":..., "time":...},
-    // causing ChangeEventTypeConvertor.toTimestamp() to fail with DateTimeParseException.
-    // Since SQL Server primary key columns cannot be NULL, all rows fail conversion and are routed
-    // to DLQ.
+    expectedData.put(
+        "datetime2_to_string", createPkRows("datetime2_to_string", new Pair<>(4, "NULL")));
     // expectedData.put(
     //     "datetime2_pk",
     //     createRows(
@@ -541,38 +514,30 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     //         "0001-01-01T00:00:00Z",
     //         "9999-12-31T23:59:59.999999000Z"));
 
+    // TODO: Out-of-range datetimeoffset values (0001-01-01 / 9999-12-31) overflow in
+    // FormatDatastreamRecordToJson (see class javadoc); only in-range boundaries are asserted.
     expectedData.put(
         "datetimeoffset",
         createRows(
             "datetimeoffset",
             "2022-08-05T08:23:11.123456000Z",
-            "1754-08-30T22:43:41.128654848Z",
-            "1816-03-30T05:56:08.066276376Z",
+            "1900-01-01T00:00:00Z",
+            "2200-12-31T09:59:59.999999000Z",
             "NULL"));
     expectedData.put(
         "datetimeoffset_to_string",
         createRows(
             "datetimeoffset_to_string",
             "2022-08-05T08:23:11.123456Z",
-            "1754-08-30T22:43:41.128654848Z",
-            "1816-03-30T05:56:08.066276376Z",
+            "1900-01-01T00:00:00Z",
+            "2200-12-31T09:59:59.999999Z",
             "NULL"));
     expectedData.put(
         "datetimeoffset_pk",
-        createRows(
-            "datetimeoffset_pk",
-            "2022-08-05T08:23:11.123456000Z",
-            "1754-08-30T22:43:41.128654848Z"));
+        createRows("datetimeoffset_pk", "2022-08-05T08:23:11.123456000Z", "1900-01-01T00:00:00Z"));
 
-    // TODO: Datastream maps SQL Server datetime to DatetimeUnifiedType, which serializes into an
-    // Avro
-    // RECORD named "datetime" with fields {date (days since epoch), time (microseconds of day)}.
-    // FormatDatastreamRecordToJson currently lacks handling for the "datetime" RECORD type and
-    // defaults
-    // to an ObjectNode {"date":..., "time":...} instead of an ISO-8601 string.
-    // ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on an ObjectNode,
-    // causing DateTimeParseException and diverting non-null records to the DLQ.
-    // NULL values bypass timestamp parsing and succeed.
+    // TODO: datetime is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
+    // javadoc). Only the NULL row can be asserted; the PK variant is skipped entirely.
     expectedData.put(
         "datetime",
         createRows(
@@ -581,13 +546,8 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
             // "1753-01-01T00:00:00Z",
             // "9999-12-31T23:59:59.997000000Z",
             "NULL"));
-    expectedData.put("datetime_to_string", createRows("datetime_to_string", "", "", "", "NULL"));
-    // TODO: Datastream maps SQL Server datetime to DatetimeUnifiedType (Avro RECORD "datetime" with
-    // {date, time}).
-    // FormatDatastreamRecordToJson outputs nested JSON object {"date":..., "time":...},
-    // causing ChangeEventTypeConvertor.toTimestamp() to fail with DateTimeParseException.
-    // Since SQL Server primary key columns cannot be NULL, all rows fail conversion and are routed
-    // to DLQ.
+    expectedData.put(
+        "datetime_to_string", createPkRows("datetime_to_string", new Pair<>(4, "NULL")));
     // expectedData.put(
     //     "datetime_pk",
     //     createRows(
@@ -596,15 +556,8 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     //         "1753-01-01T00:00:00Z",
     //         "9999-12-31T23:59:59.997000000Z"));
 
-    // TODO: Datastream maps SQL Server smalldatetime to DatetimeUnifiedType, which serializes into
-    // an Avro
-    // RECORD named "datetime" with fields {date (days since epoch), time (microseconds of day)}.
-    // FormatDatastreamRecordToJson currently lacks handling for the "datetime" RECORD type and
-    // defaults
-    // to an ObjectNode {"date":..., "time":...} instead of an ISO-8601 string.
-    // ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on an ObjectNode,
-    // causing DateTimeParseException and diverting non-null records to the DLQ.
-    // NULL values bypass timestamp parsing and succeed.
+    // TODO: smalldatetime is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
+    // javadoc). Only the NULL row can be asserted; the PK variant is skipped entirely.
     expectedData.put(
         "smalldatetime",
         createRows(
@@ -614,13 +567,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
             // "2079-06-06T23:59:00Z",
             "NULL"));
     expectedData.put(
-        "smalldatetime_to_string", createRows("smalldatetime_to_string", "", "", "", "NULL"));
-    // TODO: Datastream maps SQL Server smalldatetime to DatetimeUnifiedType (Avro RECORD "datetime"
-    // with {date, time}).
-    // FormatDatastreamRecordToJson outputs nested JSON object {"date":..., "time":...},
-    // causing ChangeEventTypeConvertor.toTimestamp() to fail with DateTimeParseException.
-    // Since SQL Server primary key columns cannot be NULL, all rows fail conversion and are routed
-    // to DLQ.
+        "smalldatetime_to_string", createPkRows("smalldatetime_to_string", new Pair<>(4, "NULL")));
     // expectedData.put(
     //     "smalldatetime_pk",
     //     createRows(
@@ -759,7 +706,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
                 Arrays.asList(
                     new Pair<>("first_name_col", "AA"),
                     new Pair<>("last_name_col", "BB"),
-                    new Pair<>("generated_column_col", "AA BB")))));
+                    new Pair<>("generated_column_col", "AA ")))));
 
     expectedData.put(
         "generated_non_pk_column",
@@ -799,12 +746,9 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
 
   private void addUpdatedExpectedDataGeneratedColumns(
       Map<String, List<Map<String, Object>>> expectedData) {
-    // TODO: SQL Server Change Data Capture (CDC) does not capture values of computed columns (even
-    // if PERSISTED).
-    // In CDC change tables, computed columns are always recorded as NULL.
-    // When a computed column is the primary key (as in generated_pk_column), CDC DELETE and INSERT
-    // records contain NULL for the primary key, causing CDC replication to fail for tables with
-    // computed primary keys.
+    // TODO: SQL Server CDC records computed columns as NULL, so CDC DELETE/INSERT events for
+    // tables whose source primary key is a computed column (generated_pk_column and
+    // generated_to_non_generated_column) cannot be applied. See class javadoc.
     // expectedData.put(
     //     "generated_pk_column",
     //     createMultiColumnRows(
@@ -812,7 +756,10 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     //             Arrays.asList(
     //                 new Pair<>("first_name_col", "CC"),
     //                 new Pair<>("last_name_col", "CC"),
-    //                 new Pair<>("generated_column_col", "CC CC")))));
+    //                 new Pair<>("generated_column_col", "CC ")))));
+
+    // generated_column_col is a stored generated column in Spanner, so the pipeline drops it from
+    // the mutation and Spanner recomputes it from first_name_col / last_name_col.
     expectedData.put(
         "generated_non_pk_column",
         createMultiColumnRows(
@@ -821,17 +768,17 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
                     new Pair<>("id", 2),
                     new Pair<>("first_name_col", "CC"),
                     new Pair<>("last_name_col", "CC"),
-                    new Pair<>("generated_column_col", "NULL")),
+                    new Pair<>("generated_column_col", "CC CC")),
                 Arrays.asList(
                     new Pair<>("id", 3),
                     new Pair<>("first_name_col", "DD"),
                     new Pair<>("last_name_col", "EE"),
-                    new Pair<>("generated_column_col", "NULL")),
+                    new Pair<>("generated_column_col", "DD EE")),
                 Arrays.asList(
                     new Pair<>("id", 11),
                     new Pair<>("first_name_col", "AA"),
                     new Pair<>("last_name_col", "BB"),
-                    new Pair<>("generated_column_col", "NULL")))));
+                    new Pair<>("generated_column_col", "AA BB")))));
 
     expectedData.put(
         "non_generated_to_generated_column",
@@ -840,16 +787,9 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
                 Arrays.asList(
                     new Pair<>("first_name_col", "CC"),
                     new Pair<>("last_name_col", "CC"),
-                    new Pair<>("generated_column_col", "NULL"),
+                    new Pair<>("generated_column_col", "CC CC"),
                     new Pair<>("generated_column_pk_col", "CC ")))));
 
-    // TODO: SQL Server Change Data Capture (CDC) does not capture values of computed columns (even
-    // if PERSISTED).
-    // In CDC change tables, computed columns are always recorded as NULL.
-    // When a computed column is the primary key (as in generated_to_non_generated_column), CDC
-    // DELETE and INSERT
-    // records contain NULL for the primary key, causing CDC replication to fail for tables with
-    // computed primary keys.
     // expectedData.put(
     //     "generated_to_non_generated_column",
     //     createMultiColumnRows(
@@ -862,6 +802,8 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedDataPGDialect() {
+    // Expected data for PG dialect is the same as for the GoogleSQL dialect except for NUMERIC
+    // formatting, where PG renders the full declared scale.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
     expectedData.put(
@@ -899,8 +841,6 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     expectedData.put(
         "smallmoney",
         createRows("smallmoney", "214748.364700000", "-214748.364800000", "50.250000000", "NULL"));
-    expectedData.put("time", createRows("time", "PT15H50M", "PT0S", "PT23H59M59.999999S", "NULL"));
-    expectedData.put("time_pk", createRows("time_pk", "PT15H50M", "PT0S", "PT23H59M59.999999S"));
 
     return expectedData;
   }

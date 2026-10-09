@@ -361,21 +361,21 @@ CREATE TABLE uniqueidentifier_pk_table (
 CREATE TABLE generated_pk_column (
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440) PRIMARY KEY
+    generated_column_col character varying(100) GENERATED ALWAYS AS (first_name_col || ' ') STORED PRIMARY KEY
 );
 
 CREATE TABLE generated_non_pk_column (
     id bigint PRIMARY KEY,
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440)
+    generated_column_col character varying(2621440) GENERATED ALWAYS AS (first_name_col || ' ' || last_name_col) STORED
 );
 
 CREATE TABLE non_generated_to_generated_column (
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440),
-    generated_column_pk_col character varying(2621440) PRIMARY KEY
+    generated_column_col character varying(2621440) GENERATED ALWAYS AS (first_name_col || ' ' || last_name_col) STORED,
+    generated_column_pk_col character varying(100) GENERATED ALWAYS AS (first_name_col || ' ') STORED PRIMARY KEY
 );
 
 CREATE TABLE generated_to_non_generated_column (

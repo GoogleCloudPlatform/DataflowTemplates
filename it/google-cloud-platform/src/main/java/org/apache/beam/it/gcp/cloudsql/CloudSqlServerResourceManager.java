@@ -123,10 +123,11 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
     @Override
     protected void configureUsername() {
-      if (System.getProperty("cloudSqlServerUsername") != null) {
-        this.setUsername(System.getProperty("cloudSqlServerUsername"));
+      if (System.getProperty("cloudProxySqlServerUsername") != null) {
+        this.setUsername(System.getProperty("cloudProxySqlServerUsername"));
       } else {
-        LOG.info("-DcloudSqlServerUsername not specified, using default: " + getDefaultUsername());
+        LOG.info(
+            "-DcloudProxySqlServerUsername not specified, using default: " + getDefaultUsername());
         this.setUsername(getDefaultUsername());
       }
     }

@@ -361,21 +361,21 @@ CREATE TABLE `uniqueidentifier_pk_table` (
 CREATE TABLE `generated_pk_column` (
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX)
+    `generated_column_col` STRING(100) AS (CONCAT(`first_name_col`, ' ')) STORED
 ) PRIMARY KEY (`generated_column_col`);
 
 CREATE TABLE `generated_non_pk_column` (
     `id` INT64,
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX)
+    `generated_column_col` STRING(MAX) AS (CONCAT(`first_name_col`, ' ', `last_name_col`)) STORED
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `non_generated_to_generated_column` (
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX),
-    `generated_column_pk_col` STRING(MAX)
+    `generated_column_col` STRING(MAX) AS (CONCAT(`first_name_col`, ' ', `last_name_col`)) STORED,
+    `generated_column_pk_col` STRING(100) AS (CONCAT(`first_name_col`, ' ')) STORED
 ) PRIMARY KEY (`generated_column_pk_col`);
 
 CREATE TABLE `generated_to_non_generated_column` (
