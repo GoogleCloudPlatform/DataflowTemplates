@@ -130,7 +130,7 @@ CREATE TABLE image_table (
 
 CREATE TABLE uniqueidentifier_table (
     id bigint PRIMARY KEY,
-    uniqueidentifier_col character varying(2621440)
+    uniqueidentifier_col uuid
 );
 
 CREATE TABLE xml_table (
@@ -208,6 +208,46 @@ CREATE TABLE real_to_string_table (
     real_to_string_col character varying(2621440)
 );
 
+CREATE TABLE tinyint_to_float64_table (
+    id bigint PRIMARY KEY,
+    tinyint_to_float64_col double precision
+);
+
+CREATE TABLE smallint_to_float64_table (
+    id bigint PRIMARY KEY,
+    smallint_to_float64_col double precision
+);
+
+CREATE TABLE int_to_float64_table (
+    id bigint PRIMARY KEY,
+    int_to_float64_col double precision
+);
+
+CREATE TABLE bigint_to_float64_table (
+    id bigint PRIMARY KEY,
+    bigint_to_float64_col double precision
+);
+
+CREATE TABLE numeric_to_float64_table (
+    id bigint PRIMARY KEY,
+    numeric_to_float64_col double precision
+);
+
+CREATE TABLE money_to_float64_table (
+    id bigint PRIMARY KEY,
+    money_to_float64_col double precision
+);
+
+CREATE TABLE smallmoney_to_float64_table (
+    id bigint PRIMARY KEY,
+    smallmoney_to_float64_col double precision
+);
+
+CREATE TABLE float_to_numeric_table (
+    id bigint PRIMARY KEY,
+    float_to_numeric_col numeric
+);
+
 CREATE TABLE date_to_string_table (
     id bigint PRIMARY KEY,
     date_to_string_col character varying(2621440)
@@ -268,6 +308,31 @@ CREATE TABLE image_to_string_table (
     image_to_string_col character varying(2621440)
 );
 
+CREATE TABLE text_to_bytes_table (
+    id bigint PRIMARY KEY,
+    text_to_bytes_col bytea
+);
+
+CREATE TABLE ntext_to_bytes_table (
+    id bigint PRIMARY KEY,
+    ntext_to_bytes_col bytea
+);
+
+CREATE TABLE xml_to_bytes_table (
+    id bigint PRIMARY KEY,
+    xml_to_bytes_col bytea
+);
+
+CREATE TABLE uniqueidentifier_to_string_table (
+    id bigint PRIMARY KEY,
+    uniqueidentifier_to_string_col character varying(2621440)
+);
+
+CREATE TABLE uniqueidentifier_to_bytes_table (
+    id bigint PRIMARY KEY,
+    uniqueidentifier_to_bytes_col bytea
+);
+
 CREATE TABLE tinyint_pk_table (
     id bigint PRIMARY KEY,
     tinyint_pk_col bigint
@@ -291,6 +356,36 @@ CREATE TABLE bigint_pk_table (
 CREATE TABLE bit_pk_table (
     id boolean PRIMARY KEY,
     bit_pk_col boolean
+);
+
+CREATE TABLE decimal_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    decimal_pk_col numeric
+);
+
+CREATE TABLE numeric_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    numeric_pk_col numeric
+);
+
+CREATE TABLE money_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    money_pk_col numeric
+);
+
+CREATE TABLE smallmoney_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    smallmoney_pk_col numeric
+);
+
+CREATE TABLE float_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    float_pk_col double precision
+);
+
+CREATE TABLE real_pk_table (
+    id character varying(2621440) PRIMARY KEY,
+    real_pk_col real
 );
 
 CREATE TABLE date_pk_table (
@@ -355,27 +450,73 @@ CREATE TABLE varbinary_pk_table (
 
 CREATE TABLE uniqueidentifier_pk_table (
     id character varying(2621440) PRIMARY KEY,
-    uniqueidentifier_pk_col character varying(2621440)
+    uniqueidentifier_pk_col uuid
+);
+
+CREATE TABLE rowversion_table (
+    id bigint PRIMARY KEY,
+    rowversion_col bytea
+);
+
+CREATE TABLE rowversion_to_string_table (
+    id bigint PRIMARY KEY,
+    rowversion_to_string_col character varying(2621440)
+);
+
+CREATE TABLE rowversion_to_int64_table (
+    id bigint PRIMARY KEY,
+    rowversion_to_int64_col bigint
+);
+
+CREATE TABLE timestamp_table (
+    id bigint PRIMARY KEY,
+    timestamp_col bytea
+);
+
+CREATE TABLE json_table (
+    id bigint PRIMARY KEY,
+    json_col jsonb
+);
+
+CREATE TABLE json_to_string_table (
+    id bigint PRIMARY KEY,
+    json_to_string_col character varying(2621440)
+);
+
+CREATE TABLE geography_table (
+    id bigint PRIMARY KEY
+);
+
+CREATE TABLE geometry_table (
+    id bigint PRIMARY KEY
+);
+
+CREATE TABLE hierarchyid_table (
+    id bigint PRIMARY KEY
+);
+
+CREATE TABLE sql_variant_table (
+    id bigint PRIMARY KEY
 );
 
 CREATE TABLE generated_pk_column (
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440) PRIMARY KEY
+    generated_column_col character varying(100) GENERATED ALWAYS AS (first_name_col || ' ') STORED PRIMARY KEY
 );
 
 CREATE TABLE generated_non_pk_column (
     id bigint PRIMARY KEY,
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440)
+    generated_column_col character varying(2621440) GENERATED ALWAYS AS (first_name_col || ' ' || last_name_col) STORED
 );
 
 CREATE TABLE non_generated_to_generated_column (
     first_name_col character varying(2621440),
     last_name_col character varying(2621440),
-    generated_column_col character varying(2621440),
-    generated_column_pk_col character varying(2621440) PRIMARY KEY
+    generated_column_col character varying(2621440) GENERATED ALWAYS AS (first_name_col || ' ' || last_name_col) STORED,
+    generated_column_pk_col character varying(100) GENERATED ALWAYS AS (first_name_col || ' ') STORED PRIMARY KEY
 );
 
 CREATE TABLE generated_to_non_generated_column (
