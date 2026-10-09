@@ -32,14 +32,20 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.ArrayList;
 import java.util.List;
 import javax.net.ssl.SSLHandshakeException;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.Configurable;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockserver.configuration.ConfigurationProperties;
@@ -218,6 +224,86 @@ public class HttpEventPublisherTest {
     assertThat(
         publisherWithBackOff.getConfiguredBackOff().getMaxElapsedTimeMillis(),
         is(equalTo(timeoutInMillis)));
+  }
+
+  @Test
+  public void configureTimeoutsDefaultTest() throws Exception {
+    HttpEventPublisher publisher =
+        HttpEventPublisher.newBuilder()
+            .withUrl("http://example.com")
+            .withToken("test-token")
+            .withDisableCertificateValidation(false)
+            .withEnableGzipHttpCompression(true)
+            .build();
+
+    RequestConfig config = ((Configurable) publisher.transport().getHttpClient()).getConfig();
+    assertThat(config.getSocketTimeout(), is(equalTo(HttpEventPublisher.DEFAULT_SOCKET_TIMEOUT)));
+    assertThat(config.getConnectTimeout(), is(equalTo(HttpEventPublisher.DEFAULT_CONNECT_TIMEOUT)));
+
+    com.google.api.client.http.HttpRequest request =
+        publisher
+            .requestFactory()
+            .buildPostRequest(publisher.genericUrl(), publisher.getContent(SPLUNK_EVENTS));
+    assertThat(request.getReadTimeout(), is(equalTo(HttpEventPublisher.DEFAULT_SOCKET_TIMEOUT)));
+    assertThat(
+        request.getConnectTimeout(), is(equalTo(HttpEventPublisher.DEFAULT_CONNECT_TIMEOUT)));
+  }
+
+  /**
+   * Tests that when an HTTPS endpoint accepts the TCP handshake and then hangs (never completing
+   * the TLS handshake), {@link HttpEventPublisher#execute} times out with {@link
+   * ConnectTimeoutException} instead of hanging indefinitely.
+   */
+  @Test(expected = ConnectTimeoutException.class, timeout = 30000)
+  public void tcpAcceptThenHangTimeoutTest() throws Exception {
+    List<Socket> acceptedSockets = new ArrayList<>();
+    try (ServerSocket hangingServer = new ServerSocket(0, 50, InetAddress.getLoopbackAddress())) {
+      Thread acceptThread =
+          new Thread(
+              () -> {
+                while (!hangingServer.isClosed()) {
+                  try {
+                    Socket socket = hangingServer.accept();
+                    synchronized (acceptedSockets) {
+                      acceptedSockets.add(socket);
+                    }
+                  } catch (IOException ignored) {
+                    break;
+                  }
+                }
+              });
+      acceptThread.setDaemon(true);
+      acceptThread.start();
+
+      int timeoutInMillis = 100;
+      HttpEventPublisher publisher =
+          HttpEventPublisher.newBuilder()
+              .withUrl(
+                  "https://"
+                      + hangingServer.getInetAddress().getHostAddress()
+                      + ":"
+                      + hangingServer.getLocalPort())
+              .withToken("test-token")
+              .withDisableCertificateValidation(true)
+              .withMaxElapsedMillis(timeoutInMillis)
+              .withEnableGzipHttpCompression(true)
+              .build();
+
+      try {
+        publisher.execute(SPLUNK_EVENTS);
+      } finally {
+        publisher.close();
+      }
+    } finally {
+      synchronized (acceptedSockets) {
+        for (Socket socket : acceptedSockets) {
+          try {
+            socket.close();
+          } catch (IOException ignored) {
+          }
+        }
+      }
+    }
   }
 
   @Test(expected = CertificateException.class)
