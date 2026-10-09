@@ -41,7 +41,8 @@ mvn verify -PtemplatesLoadTests -pl v2/gcs-spanner-dv -Dtest=<lt_test_name> -Dpr
 *   **Supported Features & Configurations:**
     *   **Data Transformations:** Supported using custom transformations implementing `ISpannerMigrationTransformer` (`v2/spanner-migrations-sdk`), applied to source Avro records via `GenericRecordTypeConvertor.java` (`v2/spanner-common`; see sample implementations in `v2/spanner-custom-shard`, e.g., `CustomTransformationForDVIT.java`). Configured via `transformationJarPath`, `transformationClassName`, and `transformationCustomParameters`.
     *   **Schema Transformations:** Supported using overrides or session files (primarily for renaming tables/columns or dropping columns). Configured via `schemaOverridesFilePath`, `tableOverrides`, or `columnOverrides`, or `sessionFilePath` if using a session file. Only one mapper is used, with precedence `sessionFilePath` > `schemaOverridesFilePath` > `tableOverrides`/`columnOverrides` > identity (`SchemaMapperProviderFn.java`); lower-priority inputs are silently ignored.
-    *   **Table Filtering:** Users can restrict validation to a subset of tables via `--tables` (comma-separated source table names) or `--tableConfigurationFilePath` (GCS JSON file `{"tableNames": ["t1", "t2"]}`, parsed into `TableConfiguration.java`). Both flags are mutually exclusive and accept **source** table names.
+    *   **Table Filtering:** Users can restrict validation to a subset of tables via `--tables` (comma-separated source table names) or `--tableConfigurationFilePath` (GCS JSON file `{"tableNames": ["t1", "t2"]}`, parsed into `TableConfiguration.java`). Both flags are mutually exclusive and accept **source** table names; a Spanner-only table (no source table) is named by its Spanner name.
+    *   **Shard Subsetting:** Users can restrict validation to selected logical shards (the `<shardId>` directories in GCS) via `--shardIds`, combined with table filtering as an intersection. On the Spanner side, every in-scope table must be narrowed either by a session-file `shardIdColumn` or by a user-written `spannerQuery` in `tableConfigurationFilePath` (`optionalConfigurations.<table>.spannerQuery`, which wins if both exist).
     *   **Sharded Sources:** The pipeline accounts for sharded database topologies. Users generally use one of these configurations:
         *   They may choose to have a `shardIdColumn` (default name: `migration_shard_id`) in their Spanner schema that stores the logical shard ID of the row's origin. This is currently supported by passing a session file so the pipeline is aware of the `shardIdColumn`. *(Note: Supporting this via the overrides file is planned as a follow-up.)*
         *   They may combine schema overrides with a custom transformation that returns the `shardIdColumn` value. Hashing works, but this is **not recommended** because shard ID column support for overrides is incomplete: the overrides mappers return `null` from `getShardIdColumnName`, so the pipeline itself is unaware of the column.
@@ -61,7 +62,7 @@ flowchart TD
     end
 
     subgraph Config ["Configuration & Mapping"]
-        TableConfig["TableConfiguration<br/>(--tables / --tableConfigurationFilePath)"]
+        TableConfig["TableConfiguration<br/>(--tables / --tableConfigurationFilePath /<br/>--shardIds / spannerQuery)"]
         SchemaMapper["SchemaMapperProviderFn<br/>(Session / Overrides / Identity)"]
         CustomTransform["CustomTransformation<br/>(Optional JAR)"]
     end
@@ -73,11 +74,12 @@ flowchart TD
     end
 
     subgraph SourceReader ["SourceReaderTransform"]
-        FilePatterns["Create.of(getFilePatterns)<br/>(one glob per table, or /**.avro)"]
+        FilePatterns["Create.of(getFilePatterns)<br/>(one glob per table/shard, or /**.avro)"]
         MatchFiles["FileIO.matchAll<br/>(EmptyMatchTreatment.ALLOW)"]
+        KeepFiles["Filter<br/>(selected tables/shards, if needed)"]
         ReadFiles["FileIO.readMatches +<br/>AvroIO.parseFilesGenericRecords"]
         SourceHash["SourceHashFn<br/>(ComparisonRecordMapper)"]
-        FilePatterns --> MatchFiles --> ReadFiles --> SourceHash
+        FilePatterns --> MatchFiles --> KeepFiles --> ReadFiles --> SourceHash
     end
 
     subgraph SpannerReader ["SpannerReaderTransform"]
@@ -133,8 +135,8 @@ flowchart TD
 ```
 
 ### Detailed Data Flow Steps
-1. Source Avro files under `gcsInputDirectory` are matched using glob patterns from `SourceReaderTransform.getFilePatterns` (narrowed to the selected tables when a table filter is set), read, and mapped to their Spanner representations using `ComparisonRecordMapper.java` inside `SourceHashFn.java`. (If a `CustomTransformation` is configured, source records are transformed before hashing.)
-2. `CreateSpannerReadOpsFn.java` emits one query per allowed Spanner table, and a single `SpannerIO.readAll` stage (batching, 15s exact staleness) reads them all. Rows are converted in `SpannerHashFn.java`.
+1. Source Avro files under `gcsInputDirectory` are matched using glob patterns from `SourceReaderTransform.getFilePatterns` (narrowed to the selected tables and shards when a filter is set), read, and mapped to their Spanner representations using `ComparisonRecordMapper.java` inside `SourceHashFn.java`. (If a `CustomTransformation` is configured, source records are transformed before hashing.)
+2. `CreateSpannerReadOpsFn.java` emits one query per allowed Spanner table (narrowed to the selected shards when `--shardIds` is set), and a single `SpannerIO.readAll` stage (batching, 15s exact staleness) reads them all. Rows are converted in `SpannerHashFn.java`.
 3. Both sides are converted into a standard `ComparisonRecord.java` DTO and hashed in `ComparisonRecordMapper.buildRecord`: a Murmur3 128-bit hasher over alphabetically ordered column names and values (values are fed type-aware by `UnifiedHasherVisitor.java`), followed by the table name. `ComparisonRecord.java` carries only `(tableName, schemaName, primaryKeyColumns, hash, shardId)` — no row payload, so shuffle scales with row count rather than row width.
    * **Shard ID Asymmetry:** Source `ComparisonRecord`s populate `shardId` from the Avro envelope, whereas Spanner `ComparisonRecord`s always have `shardId = null` (so `MISSING_IN_SOURCE` rows in BigQuery always have `shard_id = NULL`).
 4. `MatchRecordsTransform.java` performs a `CoGroupByKey` on this hash.
@@ -155,7 +157,7 @@ The entire pipeline (reading, hashing, matching, and reporting) must be designed
 
 ## Code Layout (`src/main/java/com/google/cloud/teleport/v2/`)
 
-*   `templates`: pipeline entry point. `options`: pipeline options (`GCSSpannerDVOptions.java`). `config`: table filtering.
+*   `templates`: pipeline entry point. `options`: pipeline options (`GCSSpannerDVOptions.java`). `config`: table and shard filtering, and per-table options.
 *   `transforms`: top-level PTransforms (one per stage in the diagram). `dofn`: DoFns for reading, hashing, matching, and stats. `fn`: schema mapper provider, summary combiner, and helpers.
 *   `dto`: `ComparisonRecord`, BigQuery row DTOs, and `BigQuerySchemas.java`. `mapper`: `ComparisonRecordMapper` (Avro/Spanner → `ComparisonRecord`). `visitor`: type-aware hashing and PK string formatting.
 
@@ -165,7 +167,8 @@ Design doc: [go/gcs-spanner-dv-dd](http://go/gcs-spanner-dv-dd)
 
 ## AI Agent Tips
 
-*   **Feature Completeness:** When implementing new features or making significant code changes, you MUST refer to the **Supported Features & Configurations** section (Data Transformations, Schema Transformations, Table Filtering, Sharded Sources) to ensure your changes gracefully support all configurations.
+*   **Feature Completeness:** When implementing new features or making significant code changes, you MUST refer to the **Supported Features & Configurations** section (Data Transformations, Schema Transformations, Table Filtering, Shard Subsetting, Sharded Sources) to ensure your changes gracefully support all configurations.
+*   **Adding per-table options:** Add fields to `TableLevelConfig` (the `optionalConfigurations.<table>` value) and keep `TableConfiguration` holding the whole `Map<String, TableLevelConfig>` rather than one map per field.
 *   **Modifying BigQuery DTOs:**
     *   Evaluate if the new field is fundamental to verifying the correctness of the pipeline's core logic. If so, update the corresponding test-assertion DTOs in `GCSSpannerDVTestAsserts.java`. Transient or dynamic execution metadata (such as `run_id` or timestamps) should be excluded from test DTOs.
 *   **Data Type Mappings & Conversions:** `sourcedb-to-spanner` writes source records to Avro using Datastream unified types (see [Datastream Unified Types documentation](https://docs.cloud.google.com/datastream/docs/unified-types)). The DV pipeline casts these Avro values to Spanner `Value`s based on the target column datatype read directly from the Spanner DDL (there is no fixed Avro-to-Spanner mapping).
@@ -177,6 +180,7 @@ Design doc: [go/gcs-spanner-dv-dd](http://go/gcs-spanner-dv-dd)
     *   **Test Data & Avro Envelopes:** Generate records programmatically at runtime using `GCSSpannerDVAvroSetupHelper.java` (`RecordBuilder` for standard `Users`/`AccountRoles` schemas) or `GenericRecordBuilder` (never check in binary `.avro` files). Wherever possible, try to re-use the `Users`/`AccountRoles` schemas from `GCSSpannerDVAvroSetupHelper`. Place custom `.avsc`, session, and SQL files in an isolated `src/test/resources/<TestName>/` directory. Custom `.avsc` files must follow `src/test/resources/GCSSpannerDVAvroSetupHelper/users.avsc`: root record `SourceRowWithMetadata` with `tableName` (`string`), `shardId` (`["string", "null"]` with **no default**, so `.set("shardId", null)` is required when building), `primaryKeys` (`array` of `string`), and `payload` (where every column uses `["null", "<type>"]` with `"default": null`).
     *   **Spanner Staleness (`DirectRunner` only):** `SpannerReaderTransform.java` reads with a 15-second exact staleness bound. If a `DirectRunner` test creates tables or writes rows in Spanner during setup, call `Thread.sleep(20000);` after the last Spanner DDL or write, before launching the pipeline (not needed for `DataflowRunner`).
     *   **Sharded ITs:** Tests using a `shardIdColumn` must load a session file (`sessionFilePath`) and place `shardIdColumn` as the first primary key column in the Spanner DDL (see `GCSSpannerDVShardedIT.java`).
+    *   **Shard Subsetting ITs:** Upload Avro to `input/<Table>/<shardId>/` (not flat) so shard and table filtering apply (see `GCSSpannerDVSubsetShardIT.java`).
     *   **Spanner Limits (`GCSSpannerDVWideRowMax*IT.java`):** These ITs cover Spanner limits (max columns, cell size, key size, key columns, name lengths, string size). Changes to type handling, hashing, PK formatting, or read/shuffle paths must keep them passing.
     *   **New Source Dialects:** When adding support for a new source database that needs an all-datatypes E2E IT (like `BulkMigrationAndValidationMySQLAllDataTypesE2EIT.java`), use the `add-integ-tests-gcs-spanner-dv` skill (`v2/gcs-spanner-dv/.agents/skills/`). It delegates to `add-source-datatype-integ-test` (`v2/spanner-common/.agents/skills/`) and requires a datatype mapping matrix file.
     *   **Assertions & Style:** Write distinct scenarios as separate `@Test` methods with descriptive names (used to prefix GCP resource names). Assert exact BigQuery output rows via `GCSSpannerDVTestAsserts.java` (`assertValidationSummary`, `assertTableValidationStats`, `assertMismatchedRecords`) — never assert only row counts.
@@ -188,7 +192,7 @@ Design doc: [go/gcs-spanner-dv-dd](http://go/gcs-spanner-dv-dd)
 *   **Known Bugs, Issues & Quirks:**
     *   **Duplicate source Avro records cause false `MATCH` (`b/543222130`):** In `FunnelComparedRecordsFn.java`, when both `sourceGroup` and `spannerGroup` are non-empty for a hash, all records in `sourceGroup` are emitted as `MATCHED` (and `ComputeTableStatsFn.java` sets `destinationRowCount = matched + onlyInSpanner`). Duplicate source Avro records for an existing Spanner row are therefore counted as matched rather than flagged as mismatches.
     *   **Non-canonical JSON hashing (`b/546487364`):** `UnifiedHasherVisitor.visitJson` hashes raw JSON text without canonicalization, so key-ordering or formatting differences between source Avro and Spanner `JSON`/`PG_JSONB` produce false mismatches (MySQL/PostgreSQL all-datatypes E2E ITs currently skip non-trivial JSON for this reason).
-    *   **Unmatched table filters are silently ignored:** A table in `--tables` / `tableConfigurationFilePath` that matches nothing in GCS or Spanner is dropped without an error. It is completely absent from all BigQuery output (no `TableValidationStats` or `MismatchedRecords` rows, not counted in `ValidationSummary`), so the run can report `MATCH` without having validated it.
+    *   **Unmatched filters are silently ignored:** A table (`--tables` / `tableConfigurationFilePath`) or shard ID (`--shardIds`) that matches nothing in GCS or Spanner is dropped without an error. It is absent from all BigQuery output (no `TableValidationStats` or `MismatchedRecords` rows, not counted in `ValidationSummary`), so a typo can let the run report `MATCH` without validating anything for it.
     *   **No DLQ / Fail-Fast on Mapper Errors:** Any unchecked exception in `ComparisonRecordMapper.java` (e.g. `Table not found in DDL`, custom transformation throw) fails the entire batch job after work-item retries.
     *   **BigQuery sinks are independent:** `MismatchedRecords`, `TableValidationStats`, and `ValidationSummary` are separate writes, and the summary is computed from table stats rather than gated on the other loads. A `ValidationSummary` row does not prove `MismatchedRecords` loaded successfully.
     *   **Named schemas are untested:** `sourcedb-to-spanner` does not support custom namespaces, so DV has never been tested with named schemas; treat them as unsupported (e.g., `TableValidationStats` is keyed by table name alone and `schema_name` is always `NULL`).
