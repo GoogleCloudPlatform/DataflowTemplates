@@ -19,7 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
@@ -44,7 +44,7 @@ import org.junit.runners.JUnit4;
  * <p>Both dialects are tested because degraded_gencol.label is generated in the PostgreSQL dialect
  * but a plain column in GoogleSQL.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class PostgreSQLGeneratedColumnsAndDefaultsIT extends SourceDbToSpannerITBase {
