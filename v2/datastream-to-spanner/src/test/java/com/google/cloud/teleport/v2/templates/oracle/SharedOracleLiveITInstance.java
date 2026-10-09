@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.oracle;
 
 import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
+import java.util.UUID;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +26,26 @@ public class SharedOracleLiveITInstance {
   private static SpannerOracleResourceManager cdbAdmin;
   private static SpannerOracleResourceManager pdbAdmin;
 
-  public static final String ORACLE_PASSWORD = "TestPassword123";
+  /**
+   * Password for the isolated per-test Oracle users (see {@link #setupOracleIsolatedUser()}). These
+   * users are created and dropped by the tests, so a random password is generated once per JVM
+   * instead of hardcoding one. It starts with a letter as required for unquoted Oracle passwords.
+   */
+  public static final String ORACLE_PASSWORD =
+      "Tp" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+
   private static final Object lock = new Object();
+
+  /**
+   * Returns the admin password of the static Oracle DB, passed via {@code -DcloudOraclePassword}.
+   */
+  private static String getAdminPassword() {
+    String password = System.getProperty("cloudOraclePassword");
+    if (password == null || password.isEmpty()) {
+      throw new IllegalStateException("Missing -DcloudOraclePassword");
+    }
+    return password;
+  }
 
   private static SpannerOracleResourceManager getCdbAdmin() {
     if (cdbAdmin == null) {
@@ -34,7 +53,7 @@ public class SharedOracleLiveITInstance {
         if (cdbAdmin == null) {
           LOG.info("Initializing global Singleton CDB Admin Oracle pool (XE).");
           String host = System.getProperty("cloudOracleHost", "localhost");
-          String password = System.getProperty("cloudOraclePassword", "TestPassword123");
+          String password = getAdminPassword();
           CloudOracleResourceManager.Builder builder =
               CloudOracleResourceManager.builder("cdb_admin");
           builder.setUsername("sys as sysdba");
@@ -65,7 +84,7 @@ public class SharedOracleLiveITInstance {
         if (pdbAdmin == null) {
           LOG.info("Initializing global Singleton PDB Admin Oracle pool (XEPDB1).");
           String host = System.getProperty("cloudOracleHost", "localhost");
-          String password = System.getProperty("cloudOraclePassword", "TestPassword123");
+          String password = getAdminPassword();
           CloudOracleResourceManager.Builder builder =
               CloudOracleResourceManager.builder("pdb_admin");
           builder.setUsername("sys as sysdba");
@@ -96,7 +115,7 @@ public class SharedOracleLiveITInstance {
     String url =
         "jdbc:oracle:thin:@//" + System.getProperty("cloudOracleHost", "localhost") + ":1521/XE";
     String user = System.getProperty("cloudOracleUsername", "system");
-    String pass = System.getProperty("cloudOraclePassword", "TestPassword123");
+    String pass = getAdminPassword();
     try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
         java.sql.Statement stmt = conn.createStatement()) {
       stmt.execute("ALTER SYSTEM SWITCH LOGFILE");

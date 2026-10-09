@@ -32,7 +32,8 @@ public class TableConfigurationFile implements Serializable {
    * column filtering, sampling) for a subset of those tables. Tables cannot be implicitly included
    * for validation by solely appearing in this map; they MUST be explicitly listed in `tableNames`.
    *
-   * <p>This is currently a placeholder and is not yet processed by the pipeline logic.
+   * <p>Currently only {@code spannerQuery} (see {@link TableLevelConfig}) is processed by the
+   * pipeline logic.
    */
   private final Map<String, TableLevelConfig> optionalConfigurations;
 

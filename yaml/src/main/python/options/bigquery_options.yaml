@@ -8,6 +8,7 @@ options:
           BigQuery table location to write the output to or read from. The name 
           should be in the format <project>:<dataset>.<table_name>. For write, 
           the table's schema must match input objects.
+        example: "my-project:my_dataset.my_table"
         required: true
         type: text
 
@@ -21,8 +22,9 @@ options:
         description: "How to create"
         help: >
           Specifies whether a table should be created if it does not exist. 
-          Valid inputs are 'Never' and 'IfNeeded'.
-        default: CREATE_IF_NEEDED           
+          Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.
+        example: "CREATE_NEVER"
+        default: CREATE_NEVER           
         required: false
         type: text
       - order: 2
@@ -30,9 +32,10 @@ options:
         description: "How to write"
         help: >
           How to specify if a write should append to an existing table, replace
-          the table, or verify that the table is empty. Note that the my_dataset
+          the table, or verify that the table is empty. Note that the dataset
           being written to must already exist. Unbounded collections can only
           be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.
+        example: "WRITE_APPEND"
         default: WRITE_APPEND
         required: false
         type: text
@@ -45,6 +48,7 @@ options:
           streams which will be used by the pipeline. See
           https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
           for the recommended values. The default value is 1.
+        example: "1"
         required: false
         default: 1
         type: integer

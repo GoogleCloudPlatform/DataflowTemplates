@@ -27,6 +27,7 @@ template:
     - mysql_common_options
     - mysql_write_options
     - iceberg_common_options
+    - iceberg_read_options
 
 pipeline:
   type: chain

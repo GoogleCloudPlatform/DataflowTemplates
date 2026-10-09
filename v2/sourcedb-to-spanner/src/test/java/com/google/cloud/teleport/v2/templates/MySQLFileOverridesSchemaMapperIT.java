@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
@@ -44,7 +44,7 @@ import org.testcontainers.shaded.com.google.common.io.Resources;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests schema mapping using
  * a schema overrides file with a common schema.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {

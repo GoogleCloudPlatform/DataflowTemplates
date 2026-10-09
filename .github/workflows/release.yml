@@ -213,6 +213,7 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=3 \
+          --it-integration-test-parallelism=48 \
           --modules-to-build="SPANNER"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report

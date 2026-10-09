@@ -169,14 +169,12 @@ jobs:
       run: |
         ./cicd/run-it-smoke-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
+        --it-region="us-east1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
-        --it-oracle-host="10.128.0.108" \
-        --it-oracle-sys-password="TestPassword123" \
-        --it-oracle-password="TestPassword123"
+        --it-base-container-image=":dev-image-latest"
     - name: Upload Smoke Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
@@ -209,20 +207,32 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    # --it-integration-test-parallelism is the Surefire threadCount per template (Maven module).
+    # The live, bulk and reverse poms set perCoreThreadCount=false, so it is NOT multiplied by the
+    # runner's core count, and threadCountClasses=1/threadCountMethods=1, which splits it 1:1
+    # between class runners and test methods. So at most 48 / 2 = 24 ITs run concurrently per template.
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
+        # Fetch the static Oracle DB password from Secret Manager and mask it in the logs.
+        ORACLE_PASSWORD="$(gcloud secrets versions access latest \
+          --secret="oracle-password" \
+          --project="span-cloud-teleport-testing")"
+        echo "::add-mask::${ORACLE_PASSWORD}"
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
+        --it-region="us-east1" \
         --it-project="span-cloud-teleport-testing" \
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
-        --it-oracle-host="10.128.0.108" \
-        --it-oracle-sys-password="TestPassword123" \
-        --it-oracle-password="TestPassword123" \
+        --it-integration-test-parallelism=48 \
+        --redirect-log-to-file='true' \
+        --it-base-container-image=":dev-image-latest" \
+        --it-oracle-host="10.142.0.21" \
+        --it-oracle-sys-password="${ORACLE_PASSWORD}" \
+        --it-oracle-password="${ORACLE_PASSWORD}" \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -233,9 +243,10 @@ jobs:
           **/surefire-reports/TEST-*.xml
           **/surefire-reports/*.html
           **/surefire-reports/html/**
+          **/surefire-reports/*-output.txt
         retention-days: 10
     - name: Integration Test report on GitHub
-      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+      uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
       if: always()
       with:
         name: Integration Test report on GitHub

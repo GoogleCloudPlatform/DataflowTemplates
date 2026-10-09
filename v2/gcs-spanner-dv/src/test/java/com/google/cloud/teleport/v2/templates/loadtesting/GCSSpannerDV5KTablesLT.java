@@ -58,6 +58,7 @@ public class GCSSpannerDV5KTablesLT extends GCSSpannerDVLTBase {
 
   @Test
   public void validate5KTablesWithMatchingRecords() throws Exception {
+    setUpResourceManagers();
     // 1. Create 5,000 tables in Spanner
     List<String> statements = new ArrayList<>(NUM_TABLES);
     for (int table = 0; table < NUM_TABLES; table++) {

@@ -272,8 +272,10 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
-            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .setParameters(params);
+    if (!params.containsKey("workerMachineType")) {
+      options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+    }
     environmentOptions.forEach(options::addEnvironment);
 
     // Act

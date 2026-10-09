@@ -1283,7 +1283,188 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Verifies that {@link DatastreamToDML#getColumnsValuesSql} applies {@code columnCasing} when
+   * Verifies that under PostgreSQL REPLICA IDENTITY FULL (where _metadata_primary_keys contains all
+   * columns of the table), convertJsonToDmlInfo extracts primaryKeyValues using only the resolved
+   * destination primary keys so INSERT and UPDATE events for the same row share the same
+   * stateWindowKey.
+   */
+  @Test
+  public void testConvertJsonToDmlInfo_replicaIdentityFullProducesSameStateWindowKey() {
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("datasourceresponseid", "NUMERIC");
+    tableSchema.put("transactionid", "NUMERIC");
+    tableSchema.put("activityid", "NUMERIC");
+    tableSchema.put("name", "VARCHAR");
+
+    DatastreamToPostgresDML dml = org.mockito.Mockito.spy(DatastreamToPostgresDML.of(null));
+    org.mockito.Mockito.doReturn(tableSchema).when(dml).getTableSchema(any(), any(), any());
+    org.mockito.Mockito.doReturn(Arrays.asList("datasourceresponseid"))
+        .when(dml)
+        .getPrimaryKeys(any(), any(), any(), any());
+
+    // Record 1: INSERT with activityid = null, _metadata_primary_keys has all columns (REPLICA
+    // IDENTITY FULL)
+    String insertJson =
+        "{"
+            + "\"datasourceresponseid\":20374293074,"
+            + "\"transactionid\":4000020630284,"
+            + "\"activityid\":null,"
+            + "\"name\":\"foobar\","
+            + "\"_metadata_schema\":\"foo\","
+            + "\"_metadata_table\":\"datasourceresponse\","
+            + "\"_metadata_source_type\":\"postgresql\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1758835512,"
+            + "\"_metadata_lsn\":\"17/2902D0D0\","
+            + "\"_metadata_primary_keys\":[\"datasourceresponseid\",\"transactionid\",\"activityid\",\"name\"]"
+            + "}";
+
+    // Record 2: UPDATE with activityid = 16333514, _metadata_primary_keys has all columns
+    String updateJson =
+        "{"
+            + "\"datasourceresponseid\":20374293074,"
+            + "\"transactionid\":4000020630284,"
+            + "\"activityid\":16333514,"
+            + "\"name\":\"foobar\","
+            + "\"_metadata_schema\":\"foo\","
+            + "\"_metadata_table\":\"datasourceresponse\","
+            + "\"_metadata_source_type\":\"postgresql\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1758835512,"
+            + "\"_metadata_lsn\":\"17/2903CF48\","
+            + "\"_metadata_primary_keys\":[\"datasourceresponseid\",\"transactionid\",\"activityid\",\"name\"]"
+            + "}";
+
+    DmlInfo insertDmlInfo = dml.convertJsonToDmlInfo(getRowObj(insertJson), insertJson);
+    DmlInfo updateDmlInfo = dml.convertJsonToDmlInfo(getRowObj(updateJson), updateJson);
+
+    // Both records must extract only datasourceresponseid for primaryKeyValues and share the exact
+    // same stateWindowKey
+    assertThat(insertDmlInfo.getPrimaryKeyValues()).containsExactly("20374293074");
+    assertThat(updateDmlInfo.getPrimaryKeyValues()).containsExactly("20374293074");
+    assertEquals("foo.datasourceresponse:20374293074", insertDmlInfo.getStateWindowKey());
+    assertEquals(insertDmlInfo.getStateWindowKey(), updateDmlInfo.getStateWindowKey());
+    assertThat(updateDmlInfo.getOrderByValueString())
+        .isGreaterThan(insertDmlInfo.getOrderByValueString());
+  }
+
+  /**
+   * Verifies that getSourcePrimaryKeyFields resolves source field names when columnCasing
+   * transforms the destination primary key name (e.g., UPPERCASE or CAMEL) while ignoring non-PK
+   * columns from _metadata_primary_keys.
+   */
+  @Test
+  public void testConvertJsonToDmlInfo_withColumnCasingAndReplicaIdentityFull() {
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("TRANSACTION_ID", "NUMERIC");
+    tableSchema.put("DECISION_CODE", "VARCHAR");
+    tableSchema.put("BYPASS_SSN_VALIDATION", "BOOL");
+
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML)
+            org.mockito.Mockito.spy(DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE"));
+    org.mockito.Mockito.doReturn(tableSchema).when(dml).getTableSchema(any(), any(), any());
+    org.mockito.Mockito.doReturn(Arrays.asList("TRANSACTION_ID"))
+        .when(dml)
+        .getPrimaryKeys(any(), any(), any(), any());
+
+    String update1Json =
+        "{"
+            + "\"transaction_id\":4000020630385,"
+            + "\"decision_code\":\"\","
+            + "\"bypass_ssn_validation\":false,"
+            + "\"_metadata_schema\":\"foo\","
+            + "\"_metadata_table\":\"vzt_transaction_ext\","
+            + "\"_metadata_source_type\":\"postgresql\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1759087239,"
+            + "\"_metadata_lsn\":\"17/35745500\","
+            + "\"_metadata_primary_keys\":[\"transaction_id\",\"decision_code\",\"bypass_ssn_validation\"]"
+            + "}";
+
+    String update2Json =
+        "{"
+            + "\"transaction_id\":4000020630385,"
+            + "\"decision_code\":\"AAAA\","
+            + "\"bypass_ssn_validation\":true,"
+            + "\"_metadata_schema\":\"foo\","
+            + "\"_metadata_table\":\"vzt_transaction_ext\","
+            + "\"_metadata_source_type\":\"postgresql\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1759087239,"
+            + "\"_metadata_lsn\":\"17/35745600\","
+            + "\"_metadata_primary_keys\":[\"transaction_id\",\"decision_code\",\"bypass_ssn_validation\"]"
+            + "}";
+
+    DmlInfo dmlInfo1 = dml.convertJsonToDmlInfo(getRowObj(update1Json), update1Json);
+    DmlInfo dmlInfo2 = dml.convertJsonToDmlInfo(getRowObj(update2Json), update2Json);
+
+    assertThat(dmlInfo1.getPrimaryKeyValues()).containsExactly("4000020630385");
+    assertThat(dmlInfo2.getPrimaryKeyValues()).containsExactly("4000020630385");
+    assertEquals("foo.vzt_transaction_ext:4000020630385", dmlInfo1.getStateWindowKey());
+    assertEquals(dmlInfo1.getStateWindowKey(), dmlInfo2.getStateWindowKey());
+    assertThat(dmlInfo2.getDmlSql()).contains("\"BYPASS_SSN_VALIDATION\"=true");
+  }
+
+  /**
+   * Verifies that getSourcePrimaryKeyFields falls back to direct field match in rowObj when casing
+   * does not match, and skips primary keys not present in rowObj.
+   */
+  @Test
+  public void testGetSourcePrimaryKeyFields_fallbackAndMissingField() {
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    JsonNode rowObj = getRowObj("{\"rowid\":123,\"other_col\":\"val\"}");
+
+    // "rowid" is in lowercase in rowObj even though columnCasing is UPPERCASE (so cased map has
+    // "ROWID"), exercising the else-if (rowObj.has(destPk)) branch, and "missing_pk" exercises the
+    // missing branch.
+    List<String> resolved =
+        dml.getSourcePrimaryKeyFields(rowObj, Arrays.asList("rowid", "OTHER_COL", "missing_pk"));
+
+    assertThat(resolved).containsExactly("rowid", "other_col").inOrder();
+  }
+
+  /**
+   * Verifies that when the destination table has no primary keys, allPkFields is empty and a plain
+   * INSERT statement (without ON CONFLICT) is generated, while primaryKeyValues falls back to
+   * _metadata_primary_keys to avoid hot keys on stateWindowKey.
+   */
+  @Test
+  public void testConvertJsonToDmlInfo_noPrimaryKeys() {
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("col1", "NUMERIC");
+    tableSchema.put("col2", "VARCHAR");
+
+    DatastreamToPostgresDML dml = org.mockito.Mockito.spy(DatastreamToPostgresDML.of(null));
+    org.mockito.Mockito.doReturn(tableSchema).when(dml).getTableSchema(any(), any(), any());
+    org.mockito.Mockito.doReturn(java.util.Collections.emptyList())
+        .when(dml)
+        .getPrimaryKeys(any(), any(), any(), any());
+
+    String json =
+        "{"
+            + "\"col1\":100,"
+            + "\"col2\":\"val\","
+            + "\"_metadata_schema\":\"foo\","
+            + "\"_metadata_table\":\"audit_log\","
+            + "\"_metadata_source_type\":\"postgresql\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1758835512,"
+            + "\"_metadata_lsn\":\"17/2902D0D0\","
+            + "\"_metadata_primary_keys\":[\"col1\",\"col2\"]"
+            + "}";
+
+    DmlInfo dmlInfo = dml.convertJsonToDmlInfo(getRowObj(json), json);
+
+    assertThat(dmlInfo.getAllPkFields()).isEmpty();
+    assertThat(dmlInfo.getPrimaryKeyValues()).containsExactly("100", "'val'").inOrder();
+    assertEquals("foo.audit_log:100-'val'", dmlInfo.getStateWindowKey());
+    assertEquals(
+        "INSERT INTO \"foo\".\"audit_log\" (\"col1\",\"col2\") VALUES (100,'val');",
+        dmlInfo.getDmlSql());
+  }
+
+  /* Verifies that {@link DatastreamToDML#getColumnsValuesSql} applies {@code columnCasing} when
    * looking up destination column types in {@code tableSchema}.
    */
   @Test

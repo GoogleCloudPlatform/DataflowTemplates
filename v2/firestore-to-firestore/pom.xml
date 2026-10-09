@@ -49,8 +49,7 @@
   <!--    Override Firestore and proto version to enable setting the Firestore
   data access mode in tests.-->
   <properties>
-    <firestore.version>3.44.0</firestore.version>
-    <protobuf.version>4.34.0</protobuf.version>
+    <firestore.version>3.48.0</firestore.version>
   </properties>
 
   <dependencies>
@@ -79,7 +78,7 @@
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>${project.version}</version>
       <scope>compile</scope>
     </dependency>
     <!-- Test dependencies -->

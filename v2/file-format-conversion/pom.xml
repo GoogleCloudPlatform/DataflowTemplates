@@ -26,10 +26,6 @@
 
     <artifactId>file-format-conversion</artifactId>
 
-    <properties>
-        <google-storage-api.version>v1-rev20200611-1.30.10</google-storage-api.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>

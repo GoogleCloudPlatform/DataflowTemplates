@@ -41,13 +41,14 @@
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
     <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
-    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+    <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
     <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
     <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+    <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
@@ -56,7 +57,7 @@
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
-    <autovalue.version>1.10.4</autovalue.version>
+    <autovalue.version>1.11.1</autovalue.version>
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.12.1</avro.version>
     <caffeine.version>3.2.3</caffeine.version>
@@ -64,32 +65,46 @@
     <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.21.0</commons-codec.version>
     <commons-compress.version>1.28.0</commons-compress.version>
+    <commons-csv.version>1.14.1</commons-csv.version>
     <commons-io.version>2.21.0</commons-io.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-configuration2.version>2.15.1</commons-configuration2.version>
+    <commons-math3.version>3.6.1</commons-math3.version>
     <commons-text.version>1.10.0</commons-text.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <dlp.version>3.90.0</dlp.version>
     <failsafe.version>3.3.2</failsafe.version>
+    <google-cloud-spanner.version>6.113.0</google-cloud-spanner.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
-    <gson.version>2.13.2</gson.version>
+    <gson.version>2.14.0</gson.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <hbase.client.version>2.6.5-hadoop3</hbase.client.version>
-    <jackson.version>2.21.5</jackson.version>
+    <hbase.client.version>2.6.7-hadoop3</hbase.client.version>
+    <iceberg.version>1.10.1</iceberg.version>
+    <jackson.version>2.21.7</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
+    <junit.jupiter.version>6.1.3</junit.jupiter.version>
     <log4j-2.version>2.25.5</log4j-2.version>
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
+    <opencensus.version>0.31.1</opencensus.version>
+    <!-- Must match the version google-cloud-spanner (via libraries-bom) is built against;
+         libraries-bom does not manage io.opentelemetry itself, so without this the SDK
+         version is decided by nearest-wins and can be dragged backwards. -->
+    <opentelemetry.version>1.62.0</opentelemetry.version>
+    <parquet.version>1.17.0</parquet.version>
+    <protobuf.version>4.34.0</protobuf.version>
+    <protoc.version>4.29.4</protoc.version>
     <re2j.version>1.8</re2j.version>
-    <slf4j.version>2.0.17</slf4j.version>
-    <snakeyaml.version>2.4</snakeyaml.version>
-    <snappy.version>1.1.10.8</snappy.version>
+    <slf4j.version>2.0.20</slf4j.version>
+    <snakeyaml.version>2.7</snakeyaml.version>
+    <snappy.version>1.1.10.10</snappy.version>
+    <spotbugs-annotations.version>4.10.4</spotbugs-annotations.version>
     <spotless-maven-plugin.version>3.4.0</spotless-maven-plugin.version>
     <surefire.version>3.5.5</surefire.version>
     <testcontainers.version>1.21.4</testcontainers.version>
@@ -110,10 +125,10 @@
     <mssql-jdbc.version>13.4.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>5.28.12</neo4j-driver.version>
     <okio.version>3.18.1</okio.version>
-    <jetty.version>12.1.11</jetty.version>
+    <jetty.version>12.1.13</jetty.version>
     <httpclient5.version>5.6.4</httpclient5.version>
     <httpcore5.version>5.4.3</httpcore5.version>
-    <lz4-java.version>1.11.2</lz4-java.version>
+    <lz4-java.version>1.11.4</lz4-java.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>
@@ -134,6 +149,16 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
         <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Must stay ahead of the GCP BOM: the io.opentelemetry artifacts are one release
+           train and have to move together, so this BOM owns them even if the GCP BOM
+           starts managing them too. -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>${opentelemetry.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -620,6 +645,66 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven-enforcer-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <banDuplicatePomDependencyVersions/>
+                <enforceBytecodeVersion>
+                  <maxJdkVersion>17</maxJdkVersion>
+                  <excludes>
+                    <!--
+                      Supplied by the user JDK and compiled with matching
+                      version. Is not shaded, so safe to ignore.
+                    -->
+                    <exclude>jdk.tools:jdk.tools</exclude>
+                  </excludes>
+                </enforceBytecodeVersion>
+                <requireJavaVersion>
+                  <version>[1.7,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <!-- Keep aligned with prerequisite section below. -->
+                  <version>[3.2,)</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+          <execution>
+            <id>enforce-banned-dependencies</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <excludes>
+                    <exclude>com.google.guava:guava-jdk5</exclude>
+                    <exclude>com.google.protobuf:protobuf-lite</exclude>
+                    <exclude>org.apache.logging.log4j:*:[2.0,2.14.1]</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+              <fail>true</fail>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>extra-enforcer-rules</artifactId>
+            <version>${extra.enforcer.rules.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
     </plugins>
   </build>
 
@@ -762,6 +847,10 @@
               <includes>
                 <include>**/*LT.java</include>
               </includes>
+              <!-- Manual-only load tests; still runnable via -Dtest, which overrides excludes. -->
+              <excludes>
+                <exclude>**/*ManualLT.java</exclude>
+              </excludes>
               <excludedGroups></excludedGroups>
               <groups>
                 ${load.tests}

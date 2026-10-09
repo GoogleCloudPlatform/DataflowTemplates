@@ -143,6 +143,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> avroTempDirectory;
   private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
       checksumAlgorithm;
+  private final ValueProvider<Integer> maxDataBoostParallelism;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
@@ -158,7 +159,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
         outputDir,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
+        /* maxDataBoostParallelism= */ null);
   }
 
   public ExportTransform(
@@ -180,7 +182,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         shouldExportTimestampAsLogicalType,
         avroTempDirectory,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
+        /* maxDataBoostParallelism= */ null);
   }
 
   public ExportTransform(
@@ -192,7 +195,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
       ValueProvider<String> avroTempDirectory,
-      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
+      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm,
+      ValueProvider<Integer> maxDataBoostParallelism) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
@@ -202,6 +206,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
     this.avroTempDirectory = avroTempDirectory;
     this.checksumAlgorithm = checksumAlgorithm;
+    this.maxDataBoostParallelism = maxDataBoostParallelism;
   }
 
   /**
@@ -221,8 +226,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
      * ParDo class CreateTransactionFnWithTimestamp had to be created for this
      * purpose.
      */
+    PCollection<Integer> verified =
+        p.apply(
+            "Verify DataBoost Parallelism",
+            new VerifyDataBoostParallelism(spannerConfig, maxDataBoostParallelism));
+
     PCollectionView<Transaction> tx =
-        p.apply("CreateTransaction", Create.of(1))
+        verified
             .apply(
                 "Create transaction",
                 ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))

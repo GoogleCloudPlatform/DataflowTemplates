@@ -74,7 +74,7 @@ dataflow_params = {
     # If you're using customer-managed encryption key
     labels                = {}              # Add any labels you want
     launcher_machine_type = "n1-standard-1" # Adjust as needed
-    machine_type          = "n2-standard-2" # Adjust as needed
+    machine_type          = "n2-standard-4" # Adjust as needed
     max_workers           = 10
     # Adjust based on your requirements
     job_name = "live-migration-job"

@@ -80,6 +80,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>${ojdbc8.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>com.microsoft.sqlserver</groupId>
       <artifactId>mssql-jdbc</artifactId>
       <version>${mssql-jdbc.version}</version>
@@ -93,7 +99,7 @@
     <dependency>
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-gcp</artifactId>
-      <version>1.10.1</version>
+      <version>${iceberg.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -111,13 +117,13 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.17.0</version>
+      <version>${parquet.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-avro</artifactId>
-      <version>1.17.0</version>
+      <version>${parquet.version}</version>
       <scope>runtime</scope>
     </dependency>
     <!--
