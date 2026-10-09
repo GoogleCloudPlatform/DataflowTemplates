@@ -28,17 +28,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **allowDuplicates**: If the Kafka read allows duplicates. For example: true For example, `true`.
 * **confluentSchemaRegistrySubject**: The subject name for the Confluent Schema Registry. For example: my_subject For example, `my_subject`.
 * **confluentSchemaRegistryUrl**: The URL for the Confluent Schema Registry. For example: http://schema-registry:8081 For example, `http://schema-registry:8081`.
 * **consumerConfigUpdates**: A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'} For example, `{"group.id": "my_group"}`.
 * **fileDescriptorPath**: The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb For example, `gs://bucket/path/to/descriptor.pb`.
 * **format**: The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON For example, `JSON`. Defaults to: JSON.
+* **maxReadTimeSeconds**: Upper bound of how long to read from Kafka in seconds. For example: 60 For example, `60`.
 * **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
-* **offsetDeduplication**: If the redistribute is using offset deduplication mode. For example: true For example, `true`.
-* **redistributeByRecordKey**: If the redistribute keys by the Kafka record key. For example: true For example, `true`.
-* **redistributeNumKeys**: The number of keys for redistributing Kafka inputs. For example: 10 For example, `10`.
-* **redistributed**: If the Kafka read should be redistributed. For example: true For example, `true`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
@@ -141,17 +137,13 @@ export TABLE=<table>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 
 ### Optional
-export ALLOW_DUPLICATES=<allowDuplicates>
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
 export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
+export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
-export OFFSET_DEDUPLICATION=<offsetDeduplication>
-export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
-export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
-export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -163,17 +155,13 @@ gcloud dataflow flex-template run "kafka-to-bigquery-yaml-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
   --parameters "topic=$TOPIC" \
-  --parameters "allowDuplicates=$ALLOW_DUPLICATES" \
   --parameters "confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT" \
   --parameters "confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL" \
   --parameters "consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES" \
   --parameters "fileDescriptorPath=$FILE_DESCRIPTOR_PATH" \
   --parameters "format=$FORMAT" \
+  --parameters "maxReadTimeSeconds=$MAX_READ_TIME_SECONDS" \
   --parameters "messageName=$MESSAGE_NAME" \
-  --parameters "offsetDeduplication=$OFFSET_DEDUPLICATION" \
-  --parameters "redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY" \
-  --parameters "redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS" \
-  --parameters "redistributed=$REDISTRIBUTED" \
   --parameters "schema=$SCHEMA" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
@@ -204,17 +192,13 @@ export TABLE=<table>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 
 ### Optional
-export ALLOW_DUPLICATES=<allowDuplicates>
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
 export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
+export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
-export OFFSET_DEDUPLICATION=<offsetDeduplication>
-export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
-export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
-export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -227,7 +211,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigquery-yaml-job" \
 -DtemplateName="Kafka_to_BigQuery_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,allowDuplicates=$ALLOW_DUPLICATES,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,offsetDeduplication=$OFFSET_DEDUPLICATION,redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY,redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS,redistributed=$REDISTRIBUTED,schema=$SCHEMA,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
 -f yaml
 ```
 
@@ -276,17 +260,13 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_yaml" {
     topic = "<topic>"
     table = "<table>"
     outputDeadletterTable = "<outputDeadletterTable>"
-    # allowDuplicates = "<allowDuplicates>"
     # confluentSchemaRegistrySubject = "<confluentSchemaRegistrySubject>"
     # confluentSchemaRegistryUrl = "<confluentSchemaRegistryUrl>"
     # consumerConfigUpdates = "<consumerConfigUpdates>"
     # fileDescriptorPath = "<fileDescriptorPath>"
     # format = "JSON"
+    # maxReadTimeSeconds = "<maxReadTimeSeconds>"
     # messageName = "<messageName>"
-    # offsetDeduplication = "<offsetDeduplication>"
-    # redistributeByRecordKey = "<redistributeByRecordKey>"
-    # redistributeNumKeys = "<redistributeNumKeys>"
-    # redistributed = "<redistributed>"
     # schema = "<schema>"
     # createDisposition = "CREATE_NEVER"
     # writeDisposition = "WRITE_APPEND"

@@ -22,26 +22,26 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Kafka_to_BigQuery_Yaml",
+    name = "Kafka_To_Spanner_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "Kafka to BigQuery (YAML)",
+    displayName = "Kafka to Spanner (YAML)",
     description =
-        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests  text data from Apache Kafka, executes a user-defined function (UDF), and  outputs the resulting records to BigQuery. Any errors which occur in the  transformation of the data, execution of the UDF, or inserting into the  output table are inserted into a separate errors table in BigQuery.  If the errors table does not exist prior to execution, then it is created.",
+        "The Kafka to Spanner template is a streaming pipeline which ingests data from an Apache Kafka topic and writes the resulting records to Cloud Spanner.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "KafkaToBigQuery.yaml",
+    yamlTemplateFile = "KafkaToSpanner.yaml",
     filesToCopy = {"main.py", "requirements.txt"},
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/kafka-to-spanner",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The output BigQuery table must exist.",
+      "The input Apache Kafka topic must exist.",
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
-      "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
+      "The output Cloud Spanner instance, database, and table must exist."
     },
     streaming = true,
     hidden = false)
-public interface KafkaToBigQueryYaml {
+public interface KafkaToSpannerYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -149,56 +149,40 @@ public interface KafkaToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 11,
-      name = "table",
-      optional = false,
-      description = "BigQuery table",
-      helpText =
-          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
-      example = "my-project:my_dataset.my_table")
-  @Validation.Required
-  String getTable();
+      name = "projectId",
+      optional = true,
+      description = "Cloud Spanner Project ID.",
+      helpText = "The Google Cloud project ID of the Cloud Spanner instance.",
+      example = "your-project-id")
+  String getProjectId();
 
   @TemplateParameter.Text(
       order = 12,
-      name = "createDisposition",
-      optional = true,
-      description = "How to create",
-      helpText =
-          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
-      example = "CREATE_NEVER")
-  @Default.String("CREATE_NEVER")
-  String getCreateDisposition();
+      name = "instanceId",
+      optional = false,
+      description = "Cloud Spanner Instance ID.",
+      helpText = "The Cloud Spanner instance ID.",
+      example = "your-instance-id")
+  @Validation.Required
+  String getInstanceId();
 
   @TemplateParameter.Text(
       order = 13,
-      name = "writeDisposition",
-      optional = true,
-      description = "How to write",
-      helpText =
-          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
-      example = "WRITE_APPEND")
-  @Default.String("WRITE_APPEND")
-  String getWriteDisposition();
-
-  @TemplateParameter.Integer(
-      order = 14,
-      name = "numStreams",
-      optional = true,
-      description = "Number of streams for BigQuery Storage Write API",
-      helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = "1")
-  @Default.Integer(1)
-  Integer getNumStreams();
+      name = "databaseId",
+      optional = false,
+      description = "Cloud Spanner Database ID.",
+      helpText = "The Cloud Spanner database ID.",
+      example = "your-database-id")
+  @Validation.Required
+  String getDatabaseId();
 
   @TemplateParameter.Text(
-      order = 15,
-      name = "outputDeadletterTable",
+      order = 14,
+      name = "tableId",
       optional = false,
-      description = "The dead-letter table name to output failed messages to BigQuery",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output  table for different reasons (e.g., mismatched schema, malformed json)  are written to this table. If it doesn't exist, it will be created  during pipeline execution. If not specified,  'outputTableSpec_error_records' is used instead. The dead-letter table name to output failed messages to BigQuery.",
-      example = "your-project-id:your-dataset.your-table-name")
+      description = "Cloud Spanner Table ID.",
+      helpText = "The Cloud Spanner table ID to write the output to.",
+      example = "your-table-id")
   @Validation.Required
-  String getOutputDeadletterTable();
+  String getTableId();
 }

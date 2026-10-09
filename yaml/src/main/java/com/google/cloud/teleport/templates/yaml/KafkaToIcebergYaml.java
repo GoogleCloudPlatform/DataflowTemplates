@@ -68,17 +68,8 @@ public interface KafkaToIcebergYaml {
   @Validation.Required
   String getTopic();
 
-  @TemplateParameter.Boolean(
-      order = 3,
-      name = "allowDuplicates",
-      optional = true,
-      description = "If the Kafka read allows duplicates.",
-      helpText = "If the Kafka read allows duplicates. For example: true",
-      example = "true")
-  Boolean getAllowDuplicates();
-
   @TemplateParameter.Text(
-      order = 4,
+      order = 3,
       name = "confluentSchemaRegistrySubject",
       optional = true,
       description = "The subject name for the Confluent Schema Registry.",
@@ -87,7 +78,7 @@ public interface KafkaToIcebergYaml {
   String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 4,
       name = "confluentSchemaRegistryUrl",
       optional = true,
       description = "The URL for the Confluent Schema Registry.",
@@ -97,7 +88,7 @@ public interface KafkaToIcebergYaml {
   String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 5,
       name = "consumerConfigUpdates",
       optional = true,
       description =
@@ -108,7 +99,7 @@ public interface KafkaToIcebergYaml {
   String getConsumerConfigUpdates();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       name = "fileDescriptorPath",
       optional = true,
       description = "The path to the Protocol Buffer File Descriptor Set file.",
@@ -118,7 +109,7 @@ public interface KafkaToIcebergYaml {
   String getFileDescriptorPath();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       name = "format",
       optional = true,
       description = "The encoding format for the data stored in Kafka.",
@@ -127,6 +118,15 @@ public interface KafkaToIcebergYaml {
       example = "JSON")
   @Default.String("JSON")
   String getFormat();
+
+  @TemplateParameter.Integer(
+      order = 8,
+      name = "maxReadTimeSeconds",
+      optional = true,
+      description = "Upper bound of how long to read from Kafka.",
+      helpText = "Upper bound of how long to read from Kafka in seconds. For example: 60",
+      example = "60")
+  Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
       order = 9,
@@ -139,44 +139,8 @@ public interface KafkaToIcebergYaml {
       example = "MyMessage")
   String getMessageName();
 
-  @TemplateParameter.Boolean(
-      order = 10,
-      name = "offsetDeduplication",
-      optional = true,
-      description = "If the redistribute is using offset deduplication mode.",
-      helpText = "If the redistribute is using offset deduplication mode. For example: true",
-      example = "true")
-  Boolean getOffsetDeduplication();
-
-  @TemplateParameter.Boolean(
-      order = 11,
-      name = "redistributeByRecordKey",
-      optional = true,
-      description = "If the redistribute keys by the Kafka record key.",
-      helpText = "If the redistribute keys by the Kafka record key. For example: true",
-      example = "true")
-  Boolean getRedistributeByRecordKey();
-
-  @TemplateParameter.Integer(
-      order = 12,
-      name = "redistributeNumKeys",
-      optional = true,
-      description = "The number of keys for redistributing Kafka inputs.",
-      helpText = "The number of keys for redistributing Kafka inputs. For example: 10",
-      example = "10")
-  Integer getRedistributeNumKeys();
-
-  @TemplateParameter.Boolean(
-      order = 13,
-      name = "redistributed",
-      optional = true,
-      description = "If the Kafka read should be redistributed.",
-      helpText = "If the Kafka read should be redistributed. For example: true",
-      example = "true")
-  Boolean getRedistributed();
-
   @TemplateParameter.Text(
-      order = 14,
+      order = 10,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -187,7 +151,7 @@ public interface KafkaToIcebergYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 11,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -197,7 +161,7 @@ public interface KafkaToIcebergYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 12,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -207,7 +171,7 @@ public interface KafkaToIcebergYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 13,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -217,7 +181,7 @@ public interface KafkaToIcebergYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 14,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -226,7 +190,7 @@ public interface KafkaToIcebergYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 15,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -235,7 +199,7 @@ public interface KafkaToIcebergYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 16,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -244,7 +208,7 @@ public interface KafkaToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 17,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -253,7 +217,7 @@ public interface KafkaToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 18,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -262,7 +226,7 @@ public interface KafkaToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 19,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
@@ -271,7 +235,7 @@ public interface KafkaToIcebergYaml {
   String getTableProperties();
 
   @TemplateParameter.Integer(
-      order = 24,
+      order = 20,
       name = "triggeringFrequencySeconds",
       optional = false,
       description = "For a streaming pipeline, the frequency at which snapshots are produced.",
@@ -281,7 +245,7 @@ public interface KafkaToIcebergYaml {
   Integer getTriggeringFrequencySeconds();
 
   @TemplateParameter.Text(
-      order = 25,
+      order = 21,
       name = "sdfCheckpointAfterDuration",
       optional = true,
       description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
@@ -292,7 +256,7 @@ public interface KafkaToIcebergYaml {
   String getSdfCheckpointAfterDuration();
 
   @TemplateParameter.Integer(
-      order = 26,
+      order = 22,
       name = "sdfCheckpointAfterOutputBytes",
       optional = true,
       description =
