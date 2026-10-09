@@ -52,6 +52,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -65,6 +67,7 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -74,6 +77,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.joda.time.Instant;
@@ -370,6 +374,7 @@ public final class BigtableChangeStreamsToKafka {
     private final String destinationTopic;
     private final boolean base64EncodeByteFields;
     private transient Producer<byte[], GenericRecord> producer;
+    private transient List<InFlightRequest> inFlightRequests;
 
     WriteToKafkaFn(BigtableChangeStreamsToKafkaOptions options) {
       Class<?> serializerClass = getSerializerClass(options.getMessageFormat());
@@ -406,9 +411,16 @@ public final class BigtableChangeStreamsToKafka {
       }
     }
 
+    @StartBundle
+    public void startBundle() {
+      inFlightRequests = new ArrayList<>();
+    }
+
     @ProcessElement
     public void process(
         @Element FailsafeElement<String, String> input,
+        @Timestamp Instant timestamp,
+        BoundedWindow window,
         OutputReceiver<FailsafeElement<String, String>> receiver) {
       try {
         String modChangeJson = Mod.fromJson(input.getPayload()).getChangeJson();
@@ -417,14 +429,40 @@ public final class BigtableChangeStreamsToKafka {
                 ? kafkaUtils.getProducerRecordWithBase64EncodedFields(
                     modChangeJson, destinationTopic)
                 : kafkaUtils.getProducerRecord(modChangeJson, destinationTopic);
-        producer.send(record).get();
+        inFlightRequests.add(new InFlightRequest(input, producer.send(record), timestamp, window));
       } catch (Exception e) {
-        receiver.output(
-            FailsafeElement.of(input)
-                .setErrorMessage(e.getMessage())
-                .setStacktrace(Throwables.getStackTraceAsString(e)));
+        receiver.output(toFailedElement(input, e));
       }
     }
+
+    @FinishBundle
+    public void finishBundle(FinishBundleContext context) throws InterruptedException {
+      producer.flush();
+      for (InFlightRequest inFlightRequest : inFlightRequests) {
+        try {
+          inFlightRequest.future().get();
+        } catch (ExecutionException e) {
+          context.output(
+              toFailedElement(inFlightRequest.input(), e),
+              inFlightRequest.timestamp(),
+              inFlightRequest.window());
+        }
+      }
+      inFlightRequests.clear();
+    }
+
+    private static FailsafeElement<String, String> toFailedElement(
+        FailsafeElement<String, String> input, Throwable t) {
+      return FailsafeElement.of(input)
+          .setErrorMessage(t.getMessage())
+          .setStacktrace(Throwables.getStackTraceAsString(t));
+    }
+
+    private record InFlightRequest(
+        FailsafeElement<String, String> input,
+        Future<RecordMetadata> future,
+        Instant timestamp,
+        BoundedWindow window) {}
 
     private static Class<? extends Serializer<? super GenericRecord>> getSerializerClass(
         String messageFormat) {
