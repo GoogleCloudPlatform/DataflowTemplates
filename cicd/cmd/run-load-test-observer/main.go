@@ -73,6 +73,8 @@ func main() {
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
+		flags.CloudProxySqlServerPort(),
+		flags.CloudProxySqlServerUsername(),
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
 		mvnFlags.SpecificTest(flags.TestToRun()),
