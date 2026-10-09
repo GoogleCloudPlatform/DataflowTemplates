@@ -15,9 +15,9 @@ output "resource_ids" {
       }
     },
     {
-      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard ? google_cloudfunctions2_function.dlq_poller[0].name : ""
-      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard ? google_cloud_scheduler_job.dlq_poller_scheduler[0].name : ""
-      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard ? basename(google_monitoring_dashboard.cutover_dashboard[0].id) : ""
+      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? google_cloudfunctions2_function.dlq_poller[0].name : ""
+      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? google_cloud_scheduler_job.dlq_poller_scheduler[0].name : ""
+      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? basename(google_monitoring_dashboard.cutover_dashboard[0].id) : ""
     }
   )
 
@@ -53,9 +53,9 @@ output "resource_urls" {
       }
     },
     {
-      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/functions/details/${var.common_params.region}/${google_cloudfunctions2_function.dlq_poller[0].name}?project=${var.common_params.project}" : ""
-      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/cloudscheduler/jobs/edit/${var.common_params.region}/${google_cloud_scheduler_job.dlq_poller_scheduler[0].name}?project=${var.common_params.project}" : ""
-      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard ? "https://console.cloud.google.com/monitoring/dashboards/builder/${basename(google_monitoring_dashboard.cutover_dashboard[0].id)}?project=${var.common_params.project}" : ""
+      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/functions/details/${var.common_params.region}/${google_cloudfunctions2_function.dlq_poller[0].name}?project=${var.common_params.project}" : ""
+      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/cloudscheduler/jobs/edit/${var.common_params.region}/${google_cloud_scheduler_job.dlq_poller_scheduler[0].name}?project=${var.common_params.project}" : ""
+      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/monitoring/dashboards/builder/${basename(google_monitoring_dashboard.cutover_dashboard[0].id)}?project=${var.common_params.project}" : ""
     }
   )
 
