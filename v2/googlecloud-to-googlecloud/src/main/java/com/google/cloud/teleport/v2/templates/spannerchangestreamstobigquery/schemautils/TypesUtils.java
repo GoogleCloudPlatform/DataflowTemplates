@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils;
 
 import com.google.cloud.spanner.Type;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.json.JSONObject;
 
 /**
@@ -23,6 +25,9 @@ import org.json.JSONObject;
  * extracts data types from Mod, and converts the extracted data types to spanner types.
  */
 public class TypesUtils {
+
+  private static final Pattern POSTGRES_VECTOR_TYPE_PATTERN =
+      Pattern.compile("^(.+)\\[\\]\\s+VECTOR\\s+LENGTH\\s+[1-9][0-9]*$", Pattern.CASE_INSENSITIVE);
 
   public static Type informationSchemaGoogleSQLTypeToSpannerType(String type) {
     type = cleanInformationSchemaType(type);
@@ -62,6 +67,12 @@ public class TypesUtils {
   }
 
   public static Type informationSchemaPostgreSQLTypeToSpannerType(String type) {
+    Matcher vectorTypeMatcher = POSTGRES_VECTOR_TYPE_PATTERN.matcher(type);
+    if (vectorTypeMatcher.matches()) {
+      Type itemType = informationSchemaPostgreSQLTypeToSpannerType(vectorTypeMatcher.group(1));
+      return Type.array(itemType);
+    }
+
     boolean isPostgresArray = isPostgresArray(type);
     String cleanedType = "";
     if (isPostgresArray) {
