@@ -215,6 +215,11 @@ jobs:
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
+        # Fetch the static Oracle DB password from Secret Manager and mask it in the logs.
+        ORACLE_PASSWORD="$(gcloud secrets versions access latest \
+          --secret="oracle-password" \
+          --project="span-cloud-teleport-testing")"
+        echo "::add-mask::${ORACLE_PASSWORD}"
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
         --it-region="us-east1" \
@@ -224,7 +229,10 @@ jobs:
         --it-cloud-proxy-host="10.128.0.16" \
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
+        --it-oracle-host="10.142.0.21" \
+        --it-oracle-sys-password="${ORACLE_PASSWORD}" \
         --it-base-container-image=":dev-image-latest" \
+
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
