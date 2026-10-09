@@ -54,7 +54,6 @@ import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,16 +94,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
-  public MSSQLResourceManager setUpMSSQLResourceManager() {
-    return MSSQLResourceManager.builder(testName).build();
-  }
-
   public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
     return CloudSqlServerResourceManager.builder(testName).build();
-  }
-
-  public CloudSqlServerResourceManager setUpSqlServerResourceManager(String testId) {
-    return CloudSqlServerResourceManager.builder(testId).build();
   }
 
   public DatastreamResourceManager setUpDatastreamResourceManager() throws IOException {
@@ -381,7 +372,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
     }
     params.put("inputFileFormat", "avro");
-    params.put("workerMachineType", "n2-standard-4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {
@@ -636,18 +626,28 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     }
   }
 
+  /**
+   * Enables CDC on every user table in the current database that is not yet tracked by CDC.
+   *
+   * <p>Note: {@code @supports_net_changes = 1} requires the table to have a primary key or a unique
+   * index. Tables without one will make {@code sp_cdc_enable_table} fail and abort the remaining
+   * tables in the batch.
+   */
   protected void enableCdcForUntrackedSqlServerTables(
       CloudSqlServerResourceManager resourceManager) {
     String enableCdcQuery =
-        "DECLARE @table_name NVARCHAR(128); "
+        "DECLARE @schema_name SYSNAME; "
+            + "DECLARE @table_name SYSNAME; "
             + "DECLARE table_cursor CURSOR FOR "
-            + "SELECT name FROM sys.tables WHERE is_ms_shipped = 0 AND is_tracked_by_cdc = 0; "
+            + "SELECT SCHEMA_NAME(schema_id), name FROM sys.tables"
+            + " WHERE is_ms_shipped = 0 AND is_tracked_by_cdc = 0; "
             + "OPEN table_cursor; "
-            + "FETCH NEXT FROM table_cursor INTO @table_name; "
+            + "FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
             + "WHILE @@FETCH_STATUS = 0 "
             + "BEGIN "
-            + "    EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1; "
-            + "    FETCH NEXT FROM table_cursor INTO @table_name; "
+            + "    EXEC sys.sp_cdc_enable_table @source_schema = @schema_name,"
+            + " @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1; "
+            + "    FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
             + "END; "
             + "CLOSE table_cursor; "
             + "DEALLOCATE table_cursor;";

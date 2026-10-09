@@ -164,7 +164,7 @@ func CloudProxySqlServerPort() string {
 }
 
 func CloudProxySqlServerUsername() string {
-	return "-DcloudSqlServerUsername=" + dCloudProxySqlServerUsername
+	return "-DcloudProxySqlServerUsername=" + dCloudProxySqlServerUsername
 }
 
 func CloudProxyPostgresPort() string {

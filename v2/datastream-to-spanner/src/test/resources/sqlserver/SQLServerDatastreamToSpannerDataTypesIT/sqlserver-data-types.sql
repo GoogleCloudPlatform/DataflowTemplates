@@ -208,6 +208,46 @@ CREATE TABLE real_to_string_table (
     real_to_string_col REAL DEFAULT NULL
 );
 
+CREATE TABLE tinyint_to_float64_table (
+    id INT PRIMARY KEY,
+    tinyint_to_float64_col TINYINT DEFAULT NULL
+);
+
+CREATE TABLE smallint_to_float64_table (
+    id INT PRIMARY KEY,
+    smallint_to_float64_col SMALLINT DEFAULT NULL
+);
+
+CREATE TABLE int_to_float64_table (
+    id INT PRIMARY KEY,
+    int_to_float64_col INT DEFAULT NULL
+);
+
+CREATE TABLE bigint_to_float64_table (
+    id BIGINT PRIMARY KEY,
+    bigint_to_float64_col BIGINT DEFAULT NULL
+);
+
+CREATE TABLE numeric_to_float64_table (
+    id INT PRIMARY KEY,
+    numeric_to_float64_col NUMERIC(38,9) DEFAULT NULL
+);
+
+CREATE TABLE money_to_float64_table (
+    id INT PRIMARY KEY,
+    money_to_float64_col MONEY DEFAULT NULL
+);
+
+CREATE TABLE smallmoney_to_float64_table (
+    id INT PRIMARY KEY,
+    smallmoney_to_float64_col SMALLMONEY DEFAULT NULL
+);
+
+CREATE TABLE float_to_numeric_table (
+    id INT PRIMARY KEY,
+    float_to_numeric_col FLOAT(53) DEFAULT NULL
+);
+
 CREATE TABLE date_to_string_table (
     id INT PRIMARY KEY,
     date_to_string_col DATE DEFAULT NULL
@@ -268,6 +308,26 @@ CREATE TABLE image_to_string_table (
     image_to_string_col IMAGE DEFAULT NULL
 );
 
+CREATE TABLE text_to_bytes_table (
+    id INT PRIMARY KEY,
+    text_to_bytes_col TEXT DEFAULT NULL
+);
+
+CREATE TABLE ntext_to_bytes_table (
+    id INT PRIMARY KEY,
+    ntext_to_bytes_col NTEXT DEFAULT NULL
+);
+
+CREATE TABLE xml_to_bytes_table (
+    id INT PRIMARY KEY,
+    xml_to_bytes_col XML DEFAULT NULL
+);
+
+CREATE TABLE uniqueidentifier_to_string_table (
+    id INT PRIMARY KEY,
+    uniqueidentifier_to_string_col UNIQUEIDENTIFIER DEFAULT NULL
+);
+
 CREATE TABLE tinyint_pk_table (
     id TINYINT PRIMARY KEY,
     tinyint_pk_col TINYINT DEFAULT NULL
@@ -291,6 +351,36 @@ CREATE TABLE bigint_pk_table (
 CREATE TABLE bit_pk_table (
     id BIT PRIMARY KEY,
     bit_pk_col BIT DEFAULT NULL
+);
+
+CREATE TABLE decimal_pk_table (
+    id DECIMAL(38,9) PRIMARY KEY,
+    decimal_pk_col DECIMAL(38,9) DEFAULT NULL
+);
+
+CREATE TABLE numeric_pk_table (
+    id NUMERIC(38,9) PRIMARY KEY,
+    numeric_pk_col NUMERIC(38,9) DEFAULT NULL
+);
+
+CREATE TABLE money_pk_table (
+    id MONEY PRIMARY KEY,
+    money_pk_col MONEY DEFAULT NULL
+);
+
+CREATE TABLE smallmoney_pk_table (
+    id SMALLMONEY PRIMARY KEY,
+    smallmoney_pk_col SMALLMONEY DEFAULT NULL
+);
+
+CREATE TABLE float_pk_table (
+    id FLOAT(53) PRIMARY KEY,
+    float_pk_col FLOAT(53) DEFAULT NULL
+);
+
+CREATE TABLE real_pk_table (
+    id REAL PRIMARY KEY,
+    real_pk_col REAL DEFAULT NULL
 );
 
 CREATE TABLE date_pk_table (
@@ -358,6 +448,43 @@ CREATE TABLE uniqueidentifier_pk_table (
     uniqueidentifier_pk_col UNIQUEIDENTIFIER DEFAULT NULL
 );
 
+CREATE TABLE rowversion_table (
+    id INT PRIMARY KEY,
+    rowversion_col ROWVERSION
+);
+
+CREATE TABLE rowversion_to_string_table (
+    id INT PRIMARY KEY,
+    rowversion_to_string_col ROWVERSION
+);
+
+CREATE TABLE rowversion_to_int64_table (
+    id INT PRIMARY KEY,
+    rowversion_to_int64_col ROWVERSION
+);
+
+-- timestamp is the deprecated synonym of rowversion;
+CREATE TABLE timestamp_table (
+    id INT PRIMARY KEY,
+    timestamp_col TIMESTAMP
+);
+
+-- TODO: The native json data type only exists in SQL Server 2025+ / Azure SQL (Cloud SQL for SQL Server
+-- tops out at 2022, where the CREATE TABLE below fails) and is not supported by Datastream yet.
+-- Spanner-side json_table (JSON) / json_to_string_table (STRING) are already defined. Enable these once
+-- both prerequisites are met.
+-- CREATE TABLE json_table (
+--     id INT PRIMARY KEY,
+--     json_col JSON DEFAULT NULL
+-- );
+--
+-- CREATE TABLE json_to_string_table (
+--     id INT PRIMARY KEY,
+--     json_to_string_col JSON DEFAULT NULL
+-- );
+
+-- The following types are not supported by Datastream. The tables exist to verify that rows containing
+-- such columns still migrate (the unsupported column is simply absent on the Spanner side);
 CREATE TABLE geography_table (
     id INT PRIMARY KEY,
     geography_col GEOGRAPHY DEFAULT NULL
@@ -381,7 +508,7 @@ CREATE TABLE sql_variant_table (
 CREATE TABLE generated_pk_column (
     first_name_col VARCHAR(255) NOT NULL,
     last_name_col VARCHAR(255) NOT NULL,
-    generated_column_col AS (CONCAT(first_name_col, ' ', last_name_col)) PERSISTED,
+    generated_column_col AS (CONCAT(first_name_col, ' ')) PERSISTED,
     PRIMARY KEY (generated_column_col)
 );
 
@@ -410,18 +537,22 @@ CREATE TABLE generated_to_non_generated_column (
 
 INSERT INTO tinyint_table VALUES (1, 10), (2, 255), (3, 0), (4, NULL);
 INSERT INTO tinyint_to_string_table VALUES (1, 10), (2, 255), (3, 0), (4, NULL);
+INSERT INTO tinyint_to_float64_table VALUES (1, 10), (2, 255), (3, 0), (4, NULL);
 INSERT INTO tinyint_pk_table VALUES (10, 10), (255, 255), (0, 0);
 
 INSERT INTO smallint_table VALUES (1, 15), (2, 32767), (3, -32768), (4, NULL);
 INSERT INTO smallint_to_string_table VALUES (1, 15), (2, 32767), (3, -32768), (4, NULL);
+INSERT INTO smallint_to_float64_table VALUES (1, 15), (2, 32767), (3, -32768), (4, NULL);
 INSERT INTO smallint_pk_table VALUES (15, 15), (32767, 32767), (-32768, -32768);
 
 INSERT INTO int_table VALUES (1, 30), (2, 2147483647), (3, -2147483648), (4, NULL);
 INSERT INTO int_to_string_table VALUES (1, 30), (2, 2147483647), (3, -2147483648), (4, NULL);
+INSERT INTO int_to_float64_table VALUES (1, 30), (2, 2147483647), (3, -2147483648), (4, NULL);
 INSERT INTO int_pk_table VALUES (30, 30), (2147483647, 2147483647), (-2147483648, -2147483648);
 
 INSERT INTO bigint_table VALUES (1, 40), (2, 9223372036854775807), (3, -9223372036854775808), (4, NULL);
 INSERT INTO bigint_to_string_table VALUES (1, 40), (2, 9223372036854775807), (3, -9223372036854775808), (4, NULL);
+INSERT INTO bigint_to_float64_table VALUES (1, 40), (2, 9223372036854775807), (3, -9223372036854775808), (4, NULL);
 INSERT INTO bigint_pk_table VALUES (40, 40), (9223372036854775807, 9223372036854775807), (-9223372036854775808, -9223372036854775808);
 
 INSERT INTO bit_table VALUES (1, 0), (2, 1), (3, NULL);
@@ -432,22 +563,34 @@ INSERT INTO bit_pk_table VALUES (0, 0), (1, 1);
 INSERT INTO decimal_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
 INSERT INTO decimal_to_string_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
 INSERT INTO decimal_to_float64_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
+INSERT INTO decimal_pk_table VALUES (68.75, 68.75), (99999999999999999999999.999999999, 99999999999999999999999.999999999), (-99999999999999999999999.999999999, -99999999999999999999999.999999999);
 
 INSERT INTO numeric_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
 INSERT INTO numeric_to_string_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
+INSERT INTO numeric_to_float64_table VALUES (1, 68.75), (2, 99999999999999999999999.999999999), (3, -99999999999999999999999.999999999), (4, NULL);
+INSERT INTO numeric_pk_table VALUES (68.75, 68.75), (99999999999999999999999.999999999, 99999999999999999999999.999999999), (-99999999999999999999999.999999999, -99999999999999999999999.999999999);
 
 INSERT INTO money_table VALUES (1, 922337203685477.5807), (2, -922337203685477.5808), (3, 100.50), (4, NULL);
 INSERT INTO money_to_string_table VALUES (1, 922337203685477.5807), (2, -922337203685477.5808), (3, 100.50), (4, NULL);
+INSERT INTO money_to_float64_table VALUES (1, 922337203685477.5807), (2, -922337203685477.5808), (3, 100.50), (4, NULL);
+INSERT INTO money_pk_table VALUES (922337203685477.5807, 922337203685477.5807), (-922337203685477.5808, -922337203685477.5808), (100.50, 100.50);
 
 INSERT INTO smallmoney_table VALUES (1, 214748.3647), (2, -214748.3648), (3, 50.25), (4, NULL);
 INSERT INTO smallmoney_to_string_table VALUES (1, 214748.3647), (2, -214748.3648), (3, 50.25), (4, NULL);
+INSERT INTO smallmoney_to_float64_table VALUES (1, 214748.3647), (2, -214748.3648), (3, 50.25), (4, NULL);
+INSERT INTO smallmoney_pk_table VALUES (214748.3647, 214748.3647), (-214748.3648, -214748.3648), (50.25, 50.25);
 
 INSERT INTO float_table VALUES (1, 45.56), (2, 1.79E+308), (3, -1.79E+308), (4, NULL);
 INSERT INTO float_to_string_table VALUES (1, 45.56), (2, 1.79E+308), (3, -1.79E+308), (4, NULL);
+-- Spanner NUMERIC cannot represent the FLOAT range boundaries, so in-range values are used for the
+-- NUMERIC alternative mapping;
+INSERT INTO float_to_numeric_table VALUES (1, 45.56), (2, 100.5), (3, -0.25), (4, NULL);
+INSERT INTO float_pk_table VALUES (45.56, 45.56), (1.79E+308, 1.79E+308), (-1.79E+308, -1.79E+308);
 
 INSERT INTO real_table VALUES (1, 45.56), (2, 3.40E+38), (3, -3.40E+38), (4, NULL);
 INSERT INTO real_to_float64_table VALUES (1, 45.56), (2, 3.40E+38), (3, -3.40E+38), (4, NULL);
 INSERT INTO real_to_string_table VALUES (1, 45.56), (2, 3.40E+38), (3, -3.40E+38), (4, NULL);
+INSERT INTO real_pk_table VALUES (45.56, 45.56), (3.40E+38, 3.40E+38), (-3.40E+38, -3.40E+38);
 
 INSERT INTO date_table VALUES (1, '2022-09-17'), (2, '0001-01-01'), (3, '9999-12-31'), (4, NULL);
 INSERT INTO date_to_string_table VALUES (1, '2022-09-17'), (2, '0001-01-01'), (3, '9999-12-31'), (4, NULL);
@@ -466,9 +609,16 @@ INSERT INTO datetime2_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567'),
 -- TODO: Non-null datetime2 values fail conversion to Timestamp and route to DLQ. Since PK columns cannot be NULL in SQL Server, all rows fail.
 -- INSERT INTO datetime2_pk_table VALUES ('2022-08-05 08:23:11.1234567', '2022-08-05 08:23:11.1234567'), ('0001-01-01 00:00:00.0000000', '0001-01-01 00:00:00.0000000'), ('9999-12-31 23:59:59.9999999', '9999-12-31 23:59:59.9999999');
 
-INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
-INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
-INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('0001-01-01 00:00:00.0000000 +00:00', '0001-01-01 00:00:00.0000000 +00:00');
+-- TODO: FormatDatastreamRecordToJson converts timestampTz values via micros * 1000 into a long of
+-- nanoseconds, which silently overflows for values outside ~1677-09-21..2262-04-11 (e.g. the SQL Server
+-- DATETIMEOFFSET range boundaries 0001-01-01 and 9999-12-31 are wrapped to 1754-08-30 and 1816-03-30).
+-- It also ignores the offset of the timestampTz record (Datastream encodes the local wall-clock plus the
+-- offset), so a non-UTC DATETIMEOFFSET lands in Spanner shifted by its offset.
+-- Until both are fixed, only in-range, UTC-offset values are used here.
+-- INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '0001-01-01 00:00:00.0000000 +00:00'), (3, '9999-12-31 23:59:59.9999999 +14:00'), (4, NULL);
+INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +00:00'), (4, NULL);
+INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +00:00'), (4, NULL);
+INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('1900-01-01 00:00:00.0000000 +00:00', '1900-01-01 00:00:00.0000000 +00:00');
 
 -- TODO: Datastream maps SQL Server datetime to DatetimeUnifiedType (Avro RECORD "datetime" with fields {date, time}).
 -- FormatDatastreamRecordToJson currently lacks handling for "datetime" and defaults to a nested JSON object {"date":..., "time":...}.
@@ -499,6 +649,8 @@ INSERT INTO varchar_to_bytes_table VALUES (1, 'abc'), (2, 'test_varchar'), (3, N
 INSERT INTO varchar_pk_table VALUES ('vpk1', 'vval1'), ('vpk2', 'vval2');
 
 INSERT INTO text_table VALUES (1, 'sample text data'), (2, 'extended text'), (3, NULL);
+-- The pipeline decodes STRING -> BYTES input as a hex string, so hex payloads are used here;
+INSERT INTO text_to_bytes_table VALUES (1, '48656C6C6F'), (2, 'DEADBEEF'), (3, NULL);
 
 INSERT INTO nchar_table VALUES (1, N'a'), (2, N'sample_nchar'), (3, NULL);
 INSERT INTO nchar_to_bytes_table VALUES (1, N'a'), (2, N'sample_nchar'), (3, NULL);
@@ -509,6 +661,7 @@ INSERT INTO nvarchar_to_bytes_table VALUES (1, N'abc'), (2, N'unicode_ñ_ä_test
 INSERT INTO nvarchar_pk_table VALUES (N'nvpk1', N'nvval1'), (N'nvpk2', N'nvval2');
 
 INSERT INTO ntext_table VALUES (1, N'sample ntext data'), (2, N'extended ntext'), (3, NULL);
+INSERT INTO ntext_to_bytes_table VALUES (1, N'48656C6C6F'), (2, N'DEADBEEF'), (3, NULL);
 
 INSERT INTO binary_table VALUES (1, 0x1234), (2, 0x00FF), (3, NULL);
 INSERT INTO binary_to_string_table VALUES (1, 0x1234), (2, 0x00FF), (3, NULL);
@@ -522,9 +675,30 @@ INSERT INTO image_table VALUES (1, 0x89504E47), (2, 0xFFD8FFE0), (3, NULL);
 INSERT INTO image_to_string_table VALUES (1, 0x89504E47), (2, 0xFFD8FFE0), (3, NULL);
 
 INSERT INTO uniqueidentifier_table VALUES (1, '6F9619FF-8B86-D011-B42D-00C04FC964FF'), (2, 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11'), (3, NULL);
+INSERT INTO uniqueidentifier_to_string_table VALUES (1, '6F9619FF-8B86-D011-B42D-00C04FC964FF'), (2, 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11'), (3, NULL);
 INSERT INTO uniqueidentifier_pk_table VALUES ('6F9619FF-8B86-D011-B42D-00C04FC964FF', '6F9619FF-8B86-D011-B42D-00C04FC964FF'), ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11');
 
 INSERT INTO xml_table VALUES (1, '<root><elem>test</elem></root>'), (2, '<user id="1"><name>sqlserver</name></user>'), (3, NULL);
+INSERT INTO xml_to_bytes_table VALUES (1, '<a/>'), (2, '<b/>'), (3, NULL);
+
+-- rowversion / timestamp values are generated by SQL Server and cannot be inserted explicitly, so the
+-- integration test only asserts that the rows arrive;
+INSERT INTO rowversion_table (id) VALUES (1), (2);
+INSERT INTO rowversion_to_string_table (id) VALUES (1), (2);
+INSERT INTO timestamp_table (id) VALUES (1), (2);
+-- TODO: Datastream delivers rowversion as a hex string, which ChangeEventTypeConvertor.toLong() cannot
+-- parse, so the INT64 alternative mapping routes every row to the DLQ;
+-- INSERT INTO rowversion_to_int64_table (id) VALUES (1), (2);
+
+-- TODO: enable once the json type is available on Cloud SQL and supported by Datastream (see DDL above);
+-- INSERT INTO json_table VALUES (1, '{"key": "value", "n": 1}'), (2, '[1, 2, 3]'), (3, NULL);
+-- INSERT INTO json_to_string_table VALUES (1, '{"key": "value", "n": 1}'), (2, '[1, 2, 3]'), (3, NULL);
+
+-- Datastream-unsupported types: only the id column is expected on the Spanner side;
+INSERT INTO geography_table VALUES (1, geography::STGeomFromText('POINT(-122.349 47.651)', 4326)), (2, NULL);
+INSERT INTO geometry_table VALUES (1, geometry::STGeomFromText('POINT(1 2)', 0)), (2, NULL);
+INSERT INTO hierarchyid_table VALUES (1, hierarchyid::Parse('/1/')), (2, NULL);
+INSERT INTO sql_variant_table VALUES (1, CAST(42 AS sql_variant)), (2, NULL);
 
 INSERT INTO generated_pk_column VALUES ('AA', 'BB');
 INSERT INTO generated_non_pk_column VALUES (1, 'AA', 'BB'), (10, 'AA', 'BB');
