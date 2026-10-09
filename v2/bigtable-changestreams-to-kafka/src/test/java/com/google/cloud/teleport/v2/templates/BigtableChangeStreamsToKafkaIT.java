@@ -184,6 +184,10 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
 
   @Test
   public void testAvro() throws Exception {
+    LaunchInfo launchInfo = launchTemplate("AVRO_BINARY_ENCODING", "UTF-8");
+
+    assertThatPipeline(launchInfo).isRunning();
+
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
     String value = UUID.randomUUID().toString();
@@ -206,10 +210,6 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
             .setSourceTable(srcTable)
             .setValue(ByteBuffer.wrap(value.getBytes(StandardCharsets.UTF_8)))
             .build();
-
-    LaunchInfo launchInfo = launchTemplate("AVRO_BINARY_ENCODING", "UTF-8");
-
-    assertThatPipeline(launchInfo).isRunning();
 
     RowMutation rowMutation =
         RowMutation.create(TableId.of(srcTable), rowkey)
@@ -243,6 +243,18 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
             new KafkaAvroDeserializer(
                 null, Map.of(SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl), false))) {
 
+      LaunchInfo launchInfo =
+          launchTemplate(
+              "AVRO_CONFLUENT_WIRE_FORMAT",
+              "UTF-8",
+              Map.of(
+                  "schemaRegistryConnectionUrl",
+                  schemaRegistryResourceManager.getConnectionString(),
+                  "schemaFormat",
+                  KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY));
+
+      assertThatPipeline(launchInfo).isRunning();
+
       String rowkey = UUID.randomUUID().toString();
       String column = UUID.randomUUID().toString();
       String value = UUID.randomUUID().toString();
@@ -265,18 +277,6 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
               .setSourceTable(srcTable)
               .setValue(ByteBuffer.wrap(value.getBytes(StandardCharsets.UTF_8)))
               .build();
-
-      LaunchInfo launchInfo =
-          launchTemplate(
-              "AVRO_CONFLUENT_WIRE_FORMAT",
-              "UTF-8",
-              Map.of(
-                  "schemaRegistryConnectionUrl",
-                  schemaRegistryResourceManager.getConnectionString(),
-                  "schemaFormat",
-                  KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY));
-
-      assertThatPipeline(launchInfo).isRunning();
 
       RowMutation rowMutation =
           RowMutation.create(TableId.of(srcTable), rowkey)
