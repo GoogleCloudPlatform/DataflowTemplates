@@ -130,7 +130,7 @@ CREATE TABLE `image_table` (
 
 CREATE TABLE `uniqueidentifier_table` (
     `id` INT64,
-    `uniqueidentifier_col` STRING(MAX)
+    `uniqueidentifier_col` UUID
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `xml_table` (
@@ -208,6 +208,46 @@ CREATE TABLE `real_to_string_table` (
     `real_to_string_col` STRING(MAX)
 ) PRIMARY KEY (`id`);
 
+CREATE TABLE `tinyint_to_float64_table` (
+    `id` INT64,
+    `tinyint_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `smallint_to_float64_table` (
+    `id` INT64,
+    `smallint_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `int_to_float64_table` (
+    `id` INT64,
+    `int_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `bigint_to_float64_table` (
+    `id` INT64,
+    `bigint_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `numeric_to_float64_table` (
+    `id` INT64,
+    `numeric_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `money_to_float64_table` (
+    `id` INT64,
+    `money_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `smallmoney_to_float64_table` (
+    `id` INT64,
+    `smallmoney_to_float64_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `float_to_numeric_table` (
+    `id` INT64,
+    `float_to_numeric_col` NUMERIC
+) PRIMARY KEY (`id`);
+
 CREATE TABLE `date_to_string_table` (
     `id` INT64,
     `date_to_string_col` STRING(MAX)
@@ -268,6 +308,31 @@ CREATE TABLE `image_to_string_table` (
     `image_to_string_col` STRING(MAX)
 ) PRIMARY KEY (`id`);
 
+CREATE TABLE `text_to_bytes_table` (
+    `id` INT64,
+    `text_to_bytes_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `ntext_to_bytes_table` (
+    `id` INT64,
+    `ntext_to_bytes_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `xml_to_bytes_table` (
+    `id` INT64,
+    `xml_to_bytes_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `uniqueidentifier_to_string_table` (
+    `id` INT64,
+    `uniqueidentifier_to_string_col` STRING(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `uniqueidentifier_to_bytes_table` (
+    `id` INT64,
+    `uniqueidentifier_to_bytes_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
 CREATE TABLE `tinyint_pk_table` (
     `id` INT64,
     `tinyint_pk_col` INT64
@@ -291,6 +356,36 @@ CREATE TABLE `bigint_pk_table` (
 CREATE TABLE `bit_pk_table` (
     `id` BOOL,
     `bit_pk_col` BOOL
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `decimal_pk_table` (
+    `id` STRING(MAX),
+    `decimal_pk_col` NUMERIC
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `numeric_pk_table` (
+    `id` STRING(MAX),
+    `numeric_pk_col` NUMERIC
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `money_pk_table` (
+    `id` STRING(MAX),
+    `money_pk_col` NUMERIC
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `smallmoney_pk_table` (
+    `id` STRING(MAX),
+    `smallmoney_pk_col` NUMERIC
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `float_pk_table` (
+    `id` FLOAT64,
+    `float_pk_col` FLOAT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `real_pk_table` (
+    `id` FLOAT64,
+    `real_pk_col` FLOAT32
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `date_pk_table` (
@@ -354,28 +449,74 @@ CREATE TABLE `varbinary_pk_table` (
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `uniqueidentifier_pk_table` (
-    `id` STRING(MAX),
-    `uniqueidentifier_pk_col` STRING(MAX)
+    `id` UUID,
+    `uniqueidentifier_pk_col` UUID
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `rowversion_table` (
+    `id` INT64,
+    `rowversion_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `rowversion_to_string_table` (
+    `id` INT64,
+    `rowversion_to_string_col` STRING(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `rowversion_to_int64_table` (
+    `id` INT64,
+    `rowversion_to_int64_col` INT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `timestamp_table` (
+    `id` INT64,
+    `timestamp_col` BYTES(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `json_table` (
+    `id` INT64,
+    `json_col` JSON
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `json_to_string_table` (
+    `id` INT64,
+    `json_to_string_col` STRING(MAX)
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `geography_table` (
+    `id` INT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `geometry_table` (
+    `id` INT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `hierarchyid_table` (
+    `id` INT64
+) PRIMARY KEY (`id`);
+
+CREATE TABLE `sql_variant_table` (
+    `id` INT64
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `generated_pk_column` (
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX)
+    `generated_column_col` STRING(100) AS (CONCAT(`first_name_col`, ' ')) STORED
 ) PRIMARY KEY (`generated_column_col`);
 
 CREATE TABLE `generated_non_pk_column` (
     `id` INT64,
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX)
+    `generated_column_col` STRING(MAX) AS (CONCAT(`first_name_col`, ' ', `last_name_col`)) STORED
 ) PRIMARY KEY (`id`);
 
 CREATE TABLE `non_generated_to_generated_column` (
     `first_name_col` STRING(MAX),
     `last_name_col` STRING(MAX),
-    `generated_column_col` STRING(MAX),
-    `generated_column_pk_col` STRING(MAX)
+    `generated_column_col` STRING(MAX) AS (CONCAT(`first_name_col`, ' ', `last_name_col`)) STORED,
+    `generated_column_pk_col` STRING(100) AS (CONCAT(`first_name_col`, ' ')) STORED
 ) PRIMARY KEY (`generated_column_pk_col`);
 
 CREATE TABLE `generated_to_non_generated_column` (
