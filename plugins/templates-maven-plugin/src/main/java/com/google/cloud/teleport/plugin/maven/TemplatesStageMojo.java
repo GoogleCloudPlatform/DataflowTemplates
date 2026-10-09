@@ -612,7 +612,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (!containerStageTracker.isStaged(containerName, currentTemplateName)) {
         // generate SBOM
         File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-        performVulnerabilityScanAndGenerateUserSBOM(imagePathTag, buildProjectId, buildDir);
+        generateUserSBOM(imagePathTag, buildProjectId, buildDir);
         GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
         Failsafe.with(
                 GenerateSBOMRunnable.sbomRetryPolicy(),
@@ -1525,10 +1525,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private static void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir)
+  private static void generateUserSBOM(String imagePathTag, String buildProjectId, File buildDir)
       throws IOException, InterruptedException {
-    LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
+    LOG.info("Generating user SBOM for {}...", imagePathTag);
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1552,11 +1551,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - load\n"
               + "  - --source=/workspace/user-sbom.json\n"
               + "  - --uri="
-              + imagePathTag
-              + "\n"
-              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
               + imagePathTag
               + "\n"
               + "options:\n"
