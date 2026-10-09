@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0" # Or the latest compatible version
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
   required_version = "~>1.2"
 }
@@ -25,15 +29,22 @@ provider "google" {
 
 #Enable the APIs
 resource "google_project_service" "enabled_apis" {
-  for_each = toset([
+  for_each = toset(concat([
     "iam.googleapis.com",
     "dataflow.googleapis.com",
     "datastream.googleapis.com",
     "storage.googleapis.com",
     "pubsub.googleapis.com",
     "cloudprofiler.googleapis.com",
-    "spanner.googleapis.com"
-  ])
+    "spanner.googleapis.com",
+    ], var.common_params.create_cutover_monitoring_dashboard ? [
+    "monitoring.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "run.googleapis.com",
+    "cloudscheduler.googleapis.com",
+  ] : []))
   service            = each.key
   project            = var.common_params.project
   disable_on_destroy = false

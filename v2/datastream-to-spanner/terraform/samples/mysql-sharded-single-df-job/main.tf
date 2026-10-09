@@ -315,3 +315,120 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     "migration_id" = local.migration_id
   }
 }
+
+# Archive the GCS DLQ Poller Cloud Function source code
+data "archive_file" "dlq_poller_source" {
+  count       = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  type        = "zip"
+  source_dir  = "${path.module}/../../monitoring-dashboard/gcs-dlq-poller"
+  excludes    = ["test_main.py", "__pycache__"]
+  output_path = "${path.module}/.terraform/gcs-dlq-poller.zip"
+}
+
+# Upload the GCS DLQ Poller source archive to the Datastream GCS bucket
+resource "google_storage_bucket_object" "dlq_poller_source" {
+  count      = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  depends_on = [google_project_service.enabled_apis]
+  name       = "gcs-dlq-poller-${data.archive_file.dlq_poller_source[0].output_md5}.zip"
+  bucket     = google_storage_bucket.datastream_bucket.name
+  source     = data.archive_file.dlq_poller_source[0].output_path
+}
+
+# Cloud Function (2nd Gen) to poll GCS DLQ directories and emit custom metrics
+resource "google_cloudfunctions2_function" "dlq_poller" {
+  count = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_project_iam_member.live_migration_roles,
+    google_storage_bucket_object.dlq_poller_source
+  ]
+  name        = "${local.migration_id}-cutover-dlq-poller"
+  location    = var.common_params.region
+  project     = var.common_params.project
+  description = "Polls GCS DLQ directories and publishes file counts to Cloud Monitoring"
+
+  build_config {
+    runtime     = "python311"
+    entry_point = "poll_gcs_dlq"
+    source {
+      storage_source {
+        bucket = google_storage_bucket_object.dlq_poller_source[0].bucket
+        object = google_storage_bucket_object.dlq_poller_source[0].name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 1
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    ingress_settings      = "ALLOW_ALL"
+    service_account_email = var.common_params.dataflow_params.runner_params.service_account_email != null ? var.common_params.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+    environment_variables = {
+      PROJECT_ID      = var.common_params.project
+      MIGRATION_ID    = "${local.migration_id}-cutover"
+      DLQ_DIRECTORIES = var.common_params.dataflow_params.template_params.dead_letter_queue_directory != null ? var.common_params.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.datastream_bucket.url}/dlq"
+    }
+  }
+
+  labels = {
+    "migration_id" = local.migration_id
+  }
+}
+
+# Allow the Cloud Scheduler service account to invoke the DLQ Poller Cloud Run service
+resource "google_cloud_run_service_iam_member" "dlq_poller_invoker" {
+  count    = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  project  = google_cloudfunctions2_function.dlq_poller[0].project
+  location = google_cloudfunctions2_function.dlq_poller[0].location
+  service  = google_cloudfunctions2_function.dlq_poller[0].name
+  role     = "roles/run.invoker"
+  member   = var.common_params.dataflow_params.runner_params.service_account_email != null ? "serviceAccount:${var.common_params.dataflow_params.runner_params.service_account_email}" : "serviceAccount:${data.google_compute_default_service_account.gce_account.email}"
+}
+
+# Cloud Scheduler Job to trigger the GCS DLQ Poller every minute
+resource "google_cloud_scheduler_job" "dlq_poller_scheduler" {
+  count = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_cloudfunctions2_function.dlq_poller,
+    google_cloud_run_service_iam_member.dlq_poller_invoker
+  ]
+  name        = "${local.migration_id}-cutover-dlq-poller-cron"
+  description = "Triggers the GCS DLQ Poller every minute"
+  schedule    = "* * * * *"
+  time_zone   = "Etc/UTC"
+  region      = var.common_params.region
+  project     = var.common_params.project
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloudfunctions2_function.dlq_poller[0].url
+    oidc_token {
+      service_account_email = var.common_params.dataflow_params.runner_params.service_account_email != null ? var.common_params.dataflow_params.runner_params.service_account_email : data.google_compute_default_service_account.gce_account.email
+      audience              = google_cloudfunctions2_function.dlq_poller[0].url
+    }
+  }
+}
+
+# Cloud Monitoring Dashboard for Cutover Verification
+resource "google_monitoring_dashboard" "cutover_dashboard" {
+  count = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? 1 : 0
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_datastream_stream.mysql_to_gcs,
+    google_pubsub_subscription.datastream_subscription,
+    google_dataflow_flex_template_job.live_migration_job
+  ]
+  project = var.common_params.project
+  dashboard_json = templatefile("${path.module}/../../monitoring-dashboard/monitoring_dashboard.json.tpl", {
+    dashboard_display_name = "Cutover Readiness - ${local.migration_id}"
+    migration_id           = "${local.migration_id}-cutover"
+    datastream_ids         = join("|", google_datastream_stream.mysql_to_gcs[*].stream_id)
+    dataflow_job_ids       = google_dataflow_flex_template_job.live_migration_job[0].job_id
+    pubsub_subscription_ids = join("|", compact([
+      google_pubsub_subscription.datastream_subscription.name,
+      var.common_params.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != null && var.common_params.dataflow_params.template_params.dlq_gcs_pub_sub_subscription != "" ? element(split("/", var.common_params.dataflow_params.template_params.dlq_gcs_pub_sub_subscription), length(split("/", var.common_params.dataflow_params.template_params.dlq_gcs_pub_sub_subscription)) - 1) : null
+    ]))
+  })
+}
