@@ -31,6 +31,7 @@ import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.JobMessage;
 import com.google.api.services.dataflow.model.ListJobMessagesResponse;
 import com.google.api.services.dataflow.model.MetricUpdate;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import dev.failsafe.Failsafe;
@@ -70,6 +71,8 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   public static final int DEFAULT_BACKOFF_START_DELAY_SECONDS = 10;
   public static final int DEFAULT_BACKOFF_MAX_DELAY_SECONDS = 60;
   public static final int DEFAULT_MAX_RETRIES = 3;
+  public static final int CHECK_DELAY_SECONDS = 15;
+  public static final int MAX_UNKNOWN_STATE_RETRIES = 10;
 
   protected final List<String> launchedJobs = new ArrayList<>();
 
@@ -316,13 +319,27 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   public JobState waitUntilActive(String project, String region, String jobId) throws IOException {
     JobState state = getJobStatus(project, region, jobId);
     boolean logOnce = false;
-    while (PENDING_STATES.contains(state)) {
+    int unknownStateRetries = 0;
+    while (PENDING_STATES.contains(state) || state == JobState.UNKNOWN) {
+      if (state == JobState.UNKNOWN) {
+        unknownStateRetries++;
+        if (unknownStateRetries > MAX_UNKNOWN_STATE_RETRIES) {
+          throw new RuntimeException(
+              String.format(
+                  "Job state remained UNKNOWN for too long (exceeded %d seconds) for job %s! "
+                      + "Check job status at https://console.cloud.google.com/dataflow/jobs/%s/%s?project=%s.",
+                  MAX_UNKNOWN_STATE_RETRIES * CHECK_DELAY_SECONDS, jobId, region, jobId, project));
+        }
+      } else {
+        unknownStateRetries = 0;
+      }
       if (!logOnce) {
-        LOG.info("Job still pending. Will check again in 15 seconds");
+        LOG.info(
+            "Job still pending or unknown. Will check again in {} seconds", CHECK_DELAY_SECONDS);
         logOnce = true;
       }
       try {
-        TimeUnit.SECONDS.sleep(15);
+        sleep(CHECK_DELAY_SECONDS);
       } catch (InterruptedException e) {
         LOG.warn("Wait interrupted. Checking now.");
       }
@@ -337,6 +354,11 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
               region, jobId, project));
     }
     return state;
+  }
+
+  @VisibleForTesting
+  protected void sleep(long seconds) throws InterruptedException {
+    TimeUnit.SECONDS.sleep(seconds);
   }
 
   @Override
