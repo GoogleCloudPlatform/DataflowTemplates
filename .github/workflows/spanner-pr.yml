@@ -207,10 +207,6 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
-    # --it-integration-test-parallelism is the Surefire threadCount per template (Maven module).
-    # The live, bulk and reverse poms set perCoreThreadCount=false, so it is NOT multiplied by the
-    # runner's core count, and threadCountClasses=1/threadCountMethods=1, which splits it 1:1
-    # between class runners and test methods. So at most 48 / 2 = 24 ITs run concurrently per template.
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
@@ -222,7 +218,6 @@ jobs:
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
-        --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
         --test="$SPECIFIC_TEST"
