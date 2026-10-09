@@ -1,48 +1,46 @@
 template:
-  name: "DeltaLake_To_Lakehouse_Yaml"
+  name: "Iceberg_To_Lakehouse_Yaml"
   category: "BATCH"
   type: "YAML"
-  display_name: "Delta Lake to Lakehouse"
+  display_name: "Iceberg to Lakehouse"
   description: >
-    The Delta Lake to Lakehouse template is a batch pipeline that reads data from a Delta Lake table
+    The Iceberg to Lakehouse template is a batch pipeline that reads data from an Iceberg table
     and outputs the records to a Lakehouse table.
   flex_container_name: "pipeline-yaml"
-  yamlTemplateFile: "DeltaLakeToLakehouse.yaml"
+  yamlTemplateFile: "IcebergToLakehouse.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/deltalake_options.yaml", "options/lakehouse_options.yaml"}
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/lakehouse_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
-     "The Input Delta Lake table must exist and be accessible.",
+     "The Input Iceberg table must exist and be accessible through the provided catalog.",
      "The Output Lakehouse table must exist or be created, and the warehouse must be accessible."
    }
   streaming: false
   hidden: false
 
   options_file:
-    - "deltalake_options"
+    - "iceberg_options"
     - "lakehouse_options"
 
   parameters:
-    - deltalake_read_options
+    - iceberg_common_options
+    - iceberg_read_options
     - lakehouse_common_options
     - lakehouse_write_options
 
 pipeline:
   type: chain
   transforms:
-    - type: ReadFromDelta
-      name: ReadFromDelta
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
       config:
-        table: "{{ deltaLakeTable }}"
-        {% if deltaLakeVersion is defined and deltaLakeVersion != '' %}
-        version: {{ deltaLakeVersion }}
-        {% endif %}
-        {% if deltaLakeTimestamp is defined and deltaLakeTimestamp != '' %}
-        timestamp: "{{ deltaLakeTimestamp }}"
-        {% endif %}
-        {% if deltaLakeHadoopConfig %}
-        hadoop_config: {{ deltaLakeHadoopConfig }}
-        {% endif %}
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
 
     - type: WriteToLakehouse
       name: WriteToLakehouse
@@ -76,12 +74,7 @@ pipeline:
         {% endif %}
 
 providers:
-  - type: pythonPackage
-    config:
-      packages:
-        - https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-30/job_builder_util_transforms-0.3.1.tar.gz
-    transforms:
-      WriteToLakehouse: "write_to_lakehouse.WriteToLakehouse"
+  - include: gs://dataflow-templates/extra-python-packages/2026-08-30/yaml_provider_listing_0.3.1.yaml
 
 options:
   streaming: false
