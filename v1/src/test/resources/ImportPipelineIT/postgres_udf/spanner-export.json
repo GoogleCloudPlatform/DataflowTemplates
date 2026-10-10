@@ -1,0 +1,14 @@
+{
+  "tables": [{
+    "name": "UdfSchema",
+    "manifestFile": "UdfSchema-manifest.json"
+  }],
+  "udfs": [{
+    "name": "UdfSchema.pg_add",
+    "manifestFile": "pg_add-manifest.json"
+  }, {
+    "name": "UdfSchema.pg_multiply",
+    "manifestFile": "pg_multiply-manifest.json"
+  }],
+  "dialect": "POSTGRESQL"
+}
