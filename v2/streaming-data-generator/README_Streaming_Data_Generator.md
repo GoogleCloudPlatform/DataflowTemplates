@@ -51,6 +51,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **commitDeadlineSeconds**: Specifies the deadline in seconds for the Commit API call.
 * **bootstrapServer**: Kafka Bootstrap Server  For example, `localhost:9092`.
 * **kafkaTopic**: Kafka topic to write to. For example, `topic`.
+* **bigtableWriteInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableWriteTableId**: The ID of the Bigtable table to write to.
+* **bigtableWriteColumnFamily**: The name of the column family of the Bigtable table to write data into.
+* **bigtableWriteAppProfile**: The ID of the Bigtable application profile to use for the export. Defaults to: default.
+* **bigtableWriteProjectId**: The ID of the Google Cloud project that contains the Bigtable instance to write data to.
+* **bigtableWriteRowkeyField**: The name of the field in the JSON to use as the Bigtable row key.
 
 
 
@@ -176,6 +182,12 @@ export BATCH_SIZE_BYTES=<batchSizeBytes>
 export COMMIT_DEADLINE_SECONDS=<commitDeadlineSeconds>
 export BOOTSTRAP_SERVER=<bootstrapServer>
 export KAFKA_TOPIC=<kafkaTopic>
+export BIGTABLE_WRITE_INSTANCE_ID=<bigtableWriteInstanceId>
+export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
+export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
+export BIGTABLE_WRITE_APP_PROFILE=default
+export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
+export BIGTABLE_WRITE_ROWKEY_FIELD=<bigtableWriteRowkeyField>
 
 gcloud dataflow flex-template run "streaming-data-generator-job" \
   --project "$PROJECT" \
@@ -211,7 +223,13 @@ gcloud dataflow flex-template run "streaming-data-generator-job" \
   --parameters "batchSizeBytes=$BATCH_SIZE_BYTES" \
   --parameters "commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS" \
   --parameters "bootstrapServer=$BOOTSTRAP_SERVER" \
-  --parameters "kafkaTopic=$KAFKA_TOPIC"
+  --parameters "kafkaTopic=$KAFKA_TOPIC" \
+  --parameters "bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID" \
+  --parameters "bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID" \
+  --parameters "bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY" \
+  --parameters "bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE" \
+  --parameters "bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID" \
+  --parameters "bigtableWriteRowkeyField=$BIGTABLE_WRITE_ROWKEY_FIELD"
 ```
 
 For more information about the command, please check:
@@ -263,6 +281,12 @@ export BATCH_SIZE_BYTES=<batchSizeBytes>
 export COMMIT_DEADLINE_SECONDS=<commitDeadlineSeconds>
 export BOOTSTRAP_SERVER=<bootstrapServer>
 export KAFKA_TOPIC=<kafkaTopic>
+export BIGTABLE_WRITE_INSTANCE_ID=<bigtableWriteInstanceId>
+export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
+export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
+export BIGTABLE_WRITE_APP_PROFILE=default
+export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
+export BIGTABLE_WRITE_ROWKEY_FIELD=<bigtableWriteRowkeyField>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -271,7 +295,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="streaming-data-generator-job" \
 -DtemplateName="Streaming_Data_Generator" \
--Dparameters="qps=$QPS,schemaTemplate=$SCHEMA_TEMPLATE,schemaLocation=$SCHEMA_LOCATION,topic=$TOPIC,messagesLimit=$MESSAGES_LIMIT,outputType=$OUTPUT_TYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION,sinkType=$SINK_TYPE,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,projectId=$PROJECT_ID,spannerInstanceName=$SPANNER_INSTANCE_NAME,spannerDatabaseName=$SPANNER_DATABASE_NAME,spannerTableName=$SPANNER_TABLE_NAME,maxNumMutations=$MAX_NUM_MUTATIONS,maxNumRows=$MAX_NUM_ROWS,batchSizeBytes=$BATCH_SIZE_BYTES,commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS,bootstrapServer=$BOOTSTRAP_SERVER,kafkaTopic=$KAFKA_TOPIC" \
+-Dparameters="qps=$QPS,schemaTemplate=$SCHEMA_TEMPLATE,schemaLocation=$SCHEMA_LOCATION,topic=$TOPIC,messagesLimit=$MESSAGES_LIMIT,outputType=$OUTPUT_TYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION,sinkType=$SINK_TYPE,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,projectId=$PROJECT_ID,spannerInstanceName=$SPANNER_INSTANCE_NAME,spannerDatabaseName=$SPANNER_DATABASE_NAME,spannerTableName=$SPANNER_TABLE_NAME,maxNumMutations=$MAX_NUM_MUTATIONS,maxNumRows=$MAX_NUM_ROWS,batchSizeBytes=$BATCH_SIZE_BYTES,commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS,bootstrapServer=$BOOTSTRAP_SERVER,kafkaTopic=$KAFKA_TOPIC,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableWriteRowkeyField=$BIGTABLE_WRITE_ROWKEY_FIELD" \
 -f v2/streaming-data-generator
 ```
 
@@ -347,6 +371,12 @@ resource "google_dataflow_flex_template_job" "streaming_data_generator" {
     # commitDeadlineSeconds = "<commitDeadlineSeconds>"
     # bootstrapServer = "<bootstrapServer>"
     # kafkaTopic = "<kafkaTopic>"
+    # bigtableWriteInstanceId = "<bigtableWriteInstanceId>"
+    # bigtableWriteTableId = "<bigtableWriteTableId>"
+    # bigtableWriteColumnFamily = "<bigtableWriteColumnFamily>"
+    # bigtableWriteAppProfile = "default"
+    # bigtableWriteProjectId = "<bigtableWriteProjectId>"
+    # bigtableWriteRowkeyField = "<bigtableWriteRowkeyField>"
   }
 }
 ```

@@ -28,6 +28,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDataGeneratorOptions;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigtable;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToJdbc;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToKafka;
@@ -182,7 +183,8 @@ public class StreamingDataGenerator {
           @TemplateEnumOption("PUBSUB"),
           @TemplateEnumOption("JDBC"),
           @TemplateEnumOption("SPANNER"),
-          @TemplateEnumOption("KAFKA")
+          @TemplateEnumOption("KAFKA"),
+          @TemplateEnumOption("BIGTABLE")
         },
         optional = true,
         description = "Output Sink Type",
@@ -479,6 +481,78 @@ public class StreamingDataGenerator {
     String getKafkaTopic();
 
     void setKafkaTopic(String outputTopic);
+
+    @TemplateParameter.Text(
+        order = 32,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Bigtable Instance ID",
+        helpText = "The ID of the Bigtable instance that contains the table.")
+    String getBigtableWriteInstanceId();
+
+    void setBigtableWriteInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Bigtable Table ID",
+        helpText = "The ID of the Bigtable table to write to.")
+    String getBigtableWriteTableId();
+
+    void setBigtableWriteTableId(String value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        regexes = {"[-_.a-zA-Z0-9]+"},
+        description = "The Bigtable Column Family",
+        helpText = "The name of the column family of the Bigtable table to write data into.")
+    String getBigtableWriteColumnFamily();
+
+    void setBigtableWriteColumnFamily(String value);
+
+    @TemplateParameter.Text(
+        order = 35,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Bigtable App Profile",
+        helpText = "The ID of the Bigtable application profile to use for the export.")
+    @Default.String("default")
+    String getBigtableWriteAppProfile();
+
+    void setBigtableWriteAppProfile(String value);
+
+    @TemplateParameter.ProjectId(
+        order = 36,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        description = "Bigtable Project ID",
+        helpText =
+            "The ID of the Google Cloud project that contains the Bigtable instance to write data to.")
+    String getBigtableWriteProjectId();
+
+    void setBigtableWriteProjectId(String value);
+
+    @TemplateParameter.Text(
+        order = 37,
+        optional = true,
+        parentName = "sinkType",
+        parentTriggerValues = {"BIGTABLE"},
+        description = "Bigtable Rowkey Field",
+        helpText = "The name of the field in the JSON to use as the Bigtable row key.")
+    String getBigtableWriteRowkeyField();
+
+    void setBigtableWriteRowkeyField(String value);
   }
 
   /** Allowed list of existing schema templates. */
@@ -569,7 +643,8 @@ public class StreamingDataGenerator {
     GCS,
     JDBC,
     SPANNER,
-    KAFKA
+    KAFKA,
+    BIGTABLE
   }
 
   /**
@@ -790,6 +865,28 @@ public class StreamingDataGenerator {
                 "Missing required value --kafkaTopic for %s sink type",
                 options.getSinkType().name()));
         return StreamingDataGeneratorWriteToKafka.Writer.builder(options).build();
+      case BIGTABLE:
+        checkArgument(
+            options.getBigtableWriteInstanceId() != null,
+            String.format(
+                "Missing required value --bigtableWriteInstanceId for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getBigtableWriteTableId() != null,
+            String.format(
+                "Missing required value --bigtableWriteTableId for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getBigtableWriteColumnFamily() != null,
+            String.format(
+                "Missing required value --bigtableWriteColumnFamily for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getBigtableWriteRowkeyField() != null,
+            String.format(
+                "Missing required value --bigtableWriteRowkeyField for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToBigtable.builder(options, schema).build();
       default:
         throw new IllegalArgumentException("Unsupported Sink.");
     }
