@@ -490,6 +490,16 @@ public class ChangeEventTransformerDoFnTest {
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
     verify(processContextMock, times(0)).output(any());
+    ArgumentCaptor<FailsafeElement<String, String>> captor =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG), captor.capture());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), any());
+    assertEquals(changeEvent.toString(), captor.getValue().getOriginalPayload());
+    assertEquals("Cannot find entry for Users", captor.getValue().getErrorMessage());
   }
 
   @Test
