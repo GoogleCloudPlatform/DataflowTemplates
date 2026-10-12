@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.transforms.ProcessDml;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,11 +52,16 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.BackOff;
+import org.apache.beam.sdk.util.BackOffUtils;
+import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -581,10 +587,16 @@ public class DataStreamToSQL {
    * <p>This DoFn connects to a database and executes DML statements. On failure, it outputs a
    * FailsafeElement containing the original record and error information.
    */
-  private static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
+  public static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
     private static final Logger LOG = LoggerFactory.getLogger(ExecuteDmlFn.class);
+    private static final int MAX_RETRIES = 3;
+    private static final FluentBackoff EXECUTE_BACKOFF =
+        FluentBackoff.DEFAULT
+            .withMaxRetries(MAX_RETRIES)
+            .withInitialBackoff(Duration.standardSeconds(1));
 
     private final CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
+    private final FluentBackoff executeBackoff;
     private transient javax.sql.DataSource dataSource;
     private transient java.sql.Connection connection;
 
@@ -597,7 +609,13 @@ public class DataStreamToSQL {
                 FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
 
     public ExecuteDmlFn(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
+      this(dataSourceConfiguration, EXECUTE_BACKOFF);
+    }
+
+    public ExecuteDmlFn(
+        CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration, FluentBackoff executeBackoff) {
       this.dataSourceConfiguration = dataSourceConfiguration;
+      this.executeBackoff = executeBackoff;
     }
 
     @Setup
@@ -607,26 +625,61 @@ public class DataStreamToSQL {
     }
 
     @Teardown
-    public void teardown() throws SQLException {
+    public void teardown() {
+      closeConnectionQuietly();
+    }
+
+    private java.sql.Connection getConnection() throws SQLException {
+      if (dataSource == null) {
+        dataSource = dataSourceConfiguration.buildDatasource();
+      }
+      if (connection == null || connection.isClosed()) {
+        connection = dataSource.getConnection();
+      }
+      return connection;
+    }
+
+    private void closeConnectionQuietly() {
       if (connection != null) {
-        connection.close();
+        try {
+          connection.close();
+        } catch (SQLException e) {
+          LOG.warn("Failed to close SQL connection", e);
+        } finally {
+          connection = null;
+        }
       }
     }
 
     @ProcessElement
-    public void processElement(ProcessContext c) {
+    public void processElement(ProcessContext c) throws IOException, InterruptedException {
       KV<String, DmlInfo> dmlInfo = c.element();
-      try (java.sql.Statement statement = connection.createStatement()) {
-        LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
-        statement.execute(dmlInfo.getValue().getDmlSql());
-        c.output(SUCCESS_TAG, dmlInfo);
-      } catch (SQLException e) {
-        LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
-        c.output(
-            FAILURE_TAG,
-            FailsafeElement.of(dmlInfo, dmlInfo)
-                .setErrorMessage(e.getMessage())
-                .setStacktrace(getStackTraceAsString(e)));
+      Sleeper sleeper = Sleeper.DEFAULT;
+      BackOff backoff = executeBackoff.backoff();
+      while (true) {
+        try {
+          java.sql.Connection conn = getConnection();
+          try (java.sql.Statement statement = conn.createStatement()) {
+            LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
+            statement.execute(dmlInfo.getValue().getDmlSql());
+            c.output(SUCCESS_TAG, dmlInfo);
+            return;
+          }
+        } catch (SQLException e) {
+          closeConnectionQuietly();
+          if (!BackOffUtils.next(sleeper, backoff)) {
+            LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
+            c.output(
+                FAILURE_TAG,
+                FailsafeElement.of(dmlInfo, dmlInfo)
+                    .setErrorMessage(e.getMessage())
+                    .setStacktrace(getStackTraceAsString(e)));
+            return;
+          }
+          LOG.warn(
+              "SQLException occurred while executing DML, reconnecting and retrying: {}",
+              e.toString());
+        }
       }
     }
 

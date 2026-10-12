@@ -641,8 +641,9 @@ public class CdcJdbcIO {
       }
     }
 
-    private static class WriteFn<T> extends DoFn<T, Void> {
+    static class WriteFn<T> extends DoFn<T, Void> {
       private final WriteVoid<T> spec;
+      private final FluentBackoff bundleWriteBackoff;
 
       private static final int MAX_RETRIES = 5;
       private static final FluentBackoff BUNDLE_WRITE_BACKOFF =
@@ -656,7 +657,12 @@ public class CdcJdbcIO {
       private final List<BufferedRecord<T>> records = new ArrayList<>();
 
       public WriteFn(WriteVoid<T> spec) {
+        this(spec, BUNDLE_WRITE_BACKOFF);
+      }
+
+      WriteFn(WriteVoid<T> spec, FluentBackoff bundleWriteBackoff) {
         this.spec = spec;
+        this.bundleWriteBackoff = bundleWriteBackoff;
       }
 
       @Setup
@@ -666,9 +672,47 @@ public class CdcJdbcIO {
 
       @StartBundle
       public void startBundle() throws Exception {
-        connection = dataSource.getConnection();
-        connection.setAutoCommit(false);
+        connection = getConnection();
         statement = connection.createStatement();
+      }
+
+      private Connection getConnection() throws SQLException {
+        if (dataSource == null) {
+          dataSource = spec.getDataSourceProviderFn().apply(null);
+        }
+        if (connection == null || connection.isClosed()) {
+          connection = dataSource.getConnection();
+          connection.setAutoCommit(false);
+        }
+        return connection;
+      }
+
+      private void rollbackAndCloseConnectionQuietly() {
+        if (statement != null) {
+          try {
+            statement.close();
+          } catch (SQLException e) {
+            LOG.warn("Failed to close SQL statement", e);
+          } finally {
+            statement = null;
+          }
+        }
+        if (connection != null) {
+          try {
+            if (!connection.isClosed()) {
+              connection.rollback();
+            }
+          } catch (SQLException e) {
+            LOG.warn("Failed to rollback SQL connection", e);
+          }
+          try {
+            connection.close();
+          } catch (SQLException e) {
+            LOG.warn("Failed to close SQL connection", e);
+          } finally {
+            connection = null;
+          }
+        }
       }
 
       @ProcessElement
@@ -714,9 +758,18 @@ public class CdcJdbcIO {
           if (statement != null) {
             statement.close();
           }
+        } catch (SQLException e) {
+          LOG.warn("Failed to close SQL statement in finishBundle", e);
         } finally {
+          statement = null;
           if (connection != null) {
-            connection.close();
+            try {
+              connection.close();
+            } catch (SQLException e) {
+              LOG.warn("Failed to close SQL connection in finishBundle", e);
+            } finally {
+              connection = null;
+            }
           }
         }
       }
@@ -728,40 +781,45 @@ public class CdcJdbcIO {
         }
 
         Sleeper sleeper = Sleeper.DEFAULT;
-        BackOff backoff = BUNDLE_WRITE_BACKOFF.backoff();
+        BackOff backoff = bundleWriteBackoff.backoff();
         boolean singleStatementMode = false;
         List<BufferedRecord<T>> failedRecords = new ArrayList<>();
         while (true) {
           try {
             if (singleStatementMode) {
-              statement = connection.createStatement();
               Iterator<BufferedRecord<T>> iterator = records.iterator();
               while (iterator.hasNext()) {
                 BufferedRecord<T> bufferedRecord = iterator.next();
                 String formattedStatement =
                     spec.getStatementFormatter().formatStatement(bufferedRecord.record);
                 try {
+                  Connection conn = getConnection();
+                  statement = conn.createStatement();
                   statement.executeUpdate(formattedStatement);
-                  connection.commit();
+                  conn.commit();
+                  statement.close();
+                  statement = null;
                   iterator.remove();
                 } catch (SQLException exception) {
                   LOG.error(
                       "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
                       exception.toString(),
                       formattedStatement);
-                  connection.rollback();
+                  rollbackAndCloseConnectionQuietly();
                   failedRecords.add(bufferedRecord);
+                  iterator.remove();
                 }
               }
             } else {
-              statement = connection.createStatement();
+              Connection conn = getConnection();
+              statement = conn.createStatement();
               for (BufferedRecord<T> bufferedRecord : records) {
                 String formattedStatement =
                     spec.getStatementFormatter().formatStatement(bufferedRecord.record);
                 statement.addBatch(formattedStatement);
               }
               statement.executeBatch();
-              connection.commit();
+              conn.commit();
               records.clear();
             }
             break;
@@ -774,7 +832,7 @@ public class CdcJdbcIO {
               break; // Exit retry loop
             }
 
-            connection.rollback();
+            rollbackAndCloseConnectionQuietly();
             if (!BackOffUtils.next(sleeper, backoff)) {
               LOG.warn(
                   "Batch write failed: {}. Retrying in single-statement mode.",

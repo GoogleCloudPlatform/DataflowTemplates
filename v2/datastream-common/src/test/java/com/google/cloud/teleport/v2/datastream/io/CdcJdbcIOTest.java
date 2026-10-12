@@ -20,18 +20,35 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -241,5 +258,129 @@ public final class CdcJdbcIOTest {
 
     assertTrue("Should retry on 40001", strategy.apply(deadlockException));
     assertTrue("Should not retry on other states", !strategy.apply(otherException));
+  }
+
+  @Test
+  public void testWriteFn_reconnectsWhenConnectionClosedDuringBatch() throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection closedConnection = mock(Connection.class);
+    Connection freshConnection = mock(Connection.class);
+    Statement brokenStatement = mock(Statement.class);
+    Statement freshStatement = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(closedConnection, freshConnection);
+    when(closedConnection.isClosed()).thenReturn(false, true);
+    when(closedConnection.createStatement()).thenReturn(brokenStatement);
+    doThrow(new SQLException("This connection has been closed.", "08006"))
+        .when(brokenStatement)
+        .executeBatch();
+    doThrow(new SQLException("This connection has been closed.", "08006"))
+        .when(closedConnection)
+        .rollback();
+
+    when(freshConnection.isClosed()).thenReturn(false);
+    when(freshConnection.createStatement()).thenReturn(freshStatement);
+    when(freshStatement.executeBatch()).thenReturn(new int[] {1});
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    FluentBackoff fastBackoff =
+        FluentBackoff.DEFAULT.withMaxRetries(2).withInitialBackoff(Duration.millis(1));
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, fastBackoff);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    verify(mockDataSource, times(2)).getConnection();
+    verify(closedConnection).close();
+    verify(freshStatement).addBatch("INSERT INTO t VALUES ('{\"id\": 1}')");
+    verify(freshStatement).executeBatch();
+    verify(freshConnection).commit();
+    verify(finishBundleContext, never()).output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), any());
+  }
+
+  @Test
+  public void testWriteFn_singleStatementMode_reconnectsAndRoutesFailedRecordsToDlq()
+      throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection connection1 = mock(Connection.class);
+    Connection connection2 = mock(Connection.class);
+    Connection connection3 = mock(Connection.class);
+    Statement batchStatement = mock(Statement.class);
+    Statement singleStatementFail = mock(Statement.class);
+    Statement singleStatementSuccess = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(connection1, connection2, connection3);
+
+    when(connection1.isClosed()).thenReturn(false);
+    when(connection1.createStatement()).thenReturn(batchStatement);
+    doThrow(new SQLException("Batch execution failed")).when(batchStatement).executeBatch();
+
+    when(connection2.isClosed()).thenReturn(false);
+    when(connection2.createStatement()).thenReturn(singleStatementFail);
+    doThrow(new SQLException("Bad record syntax"))
+        .when(singleStatementFail)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
+
+    when(connection3.isClosed()).thenReturn(false);
+    when(connection3.createStatement()).thenReturn(singleStatementSuccess);
+    when(singleStatementSuccess.executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')"))
+        .thenReturn(1);
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    FluentBackoff noRetryBackoff =
+        FluentBackoff.DEFAULT.withMaxRetries(0).withInitialBackoff(Duration.millis(1));
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, noRetryBackoff);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}", "{\"id\": 2}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    verify(mockDataSource, times(3)).getConnection();
+    verify(connection2).rollback();
+    verify(connection2).close();
+    verify(singleStatementSuccess).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
+    verify(connection3).commit();
+    verify(finishBundleContext, times(1))
+        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
   }
 }
