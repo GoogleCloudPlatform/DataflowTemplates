@@ -1496,17 +1496,17 @@ public class DatastreamToDMLTest {
 
   @Test
   public void testExecuteDmlFn_reconnectsWhenConnectionIsClosed() throws Exception {
-    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
     DataSource mockDataSource = mock(DataSource.class);
     java.sql.Connection closedConnection = mock(java.sql.Connection.class);
     java.sql.Connection freshConnection = mock(java.sql.Connection.class);
     java.sql.Statement freshStatement = mock(java.sql.Statement.class);
 
-    when(mockConfig.buildDatasource()).thenReturn(mockDataSource);
     when(mockDataSource.getConnection()).thenReturn(closedConnection, freshConnection);
     when(closedConnection.isClosed()).thenReturn(false);
     when(closedConnection.createStatement())
-        .thenThrow(new java.sql.SQLException("This connection has been closed.", "08003"));
+        .thenThrow(
+            new java.sql.SQLException(
+                "FATAL: terminating connection due to administrator command", "57P01"));
     when(freshConnection.isClosed()).thenReturn(false);
     when(freshConnection.createStatement()).thenReturn(freshStatement);
 
@@ -1514,7 +1514,8 @@ public class DatastreamToDMLTest {
         org.apache.beam.sdk.util.FluentBackoff.DEFAULT
             .withMaxRetries(2)
             .withInitialBackoff(org.joda.time.Duration.millis(1));
-    DataStreamToSQL.ExecuteDmlFn fn = new DataStreamToSQL.ExecuteDmlFn(mockConfig, fastBackoff);
+    DataStreamToSQL.ExecuteDmlFn fn =
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, fastBackoff);
 
     DmlInfo dmlInfo =
         DmlInfo.of(
@@ -1527,7 +1528,7 @@ public class DatastreamToDMLTest {
             Arrays.asList("1"),
             Arrays.asList("100"),
             "{\"id\":1}");
-     org.apache.beam.sdk.values.KV<String, DmlInfo> element =
+    org.apache.beam.sdk.values.KV<String, DmlInfo> element =
         org.apache.beam.sdk.values.KV.of("public.users:1", dmlInfo);
 
     @SuppressWarnings("unchecked")
@@ -1536,12 +1537,18 @@ public class DatastreamToDMLTest {
     when(mockContext.element()).thenReturn(element);
 
     fn.setup();
+    // Connection is acquired lazily on processElement, not eagerly in setup()
+    verify(mockDataSource, org.mockito.Mockito.never()).getConnection();
+
     fn.processElement(mockContext);
+    fn.finishBundle();
     fn.teardown();
 
     verify(mockDataSource, org.mockito.Mockito.times(2)).getConnection();
     verify(closedConnection).close();
     verify(freshStatement).execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (1);");
+    verify(freshStatement).close();
+    verify(freshConnection).close();
     verify(mockContext).output(DataStreamToSQL.ExecuteDmlFn.SUCCESS_TAG, element);
     verify(mockContext, org.mockito.Mockito.never())
         .output(eq(DataStreamToSQL.ExecuteDmlFn.FAILURE_TAG), any());
@@ -1550,14 +1557,12 @@ public class DatastreamToDMLTest {
   @Test
   public void testExecuteDmlFn_routesToFailureTagWhenRetriesExhaustedAndRecoversOnNextElement()
       throws Exception {
-    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
     DataSource mockDataSource = mock(DataSource.class);
     java.sql.Connection brokenConnection1 = mock(java.sql.Connection.class);
     java.sql.Connection brokenConnection2 = mock(java.sql.Connection.class);
     java.sql.Connection recoveredConnection = mock(java.sql.Connection.class);
     java.sql.Statement recoveredStatement = mock(java.sql.Statement.class);
 
-    when(mockConfig.buildDatasource()).thenReturn(mockDataSource);
     when(mockDataSource.getConnection())
         .thenReturn(brokenConnection1, brokenConnection2, recoveredConnection);
     when(brokenConnection1.isClosed()).thenReturn(false);
@@ -1574,7 +1579,7 @@ public class DatastreamToDMLTest {
             .withMaxRetries(1)
             .withInitialBackoff(org.joda.time.Duration.millis(1));
     DataStreamToSQL.ExecuteDmlFn fn =
-        new DataStreamToSQL.ExecuteDmlFn(mockConfig, singleRetryBackoff);
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, singleRetryBackoff);
 
     DmlInfo dmlInfo =
         DmlInfo.of(
@@ -1600,14 +1605,157 @@ public class DatastreamToDMLTest {
     fn.processElement(mockContext);
     // Second element arrives after DB is back up and reconnects cleanly
     fn.processElement(mockContext);
+    fn.finishBundle();
     fn.teardown();
 
     verify(mockDataSource, org.mockito.Mockito.times(3)).getConnection();
     verify(brokenConnection1).close();
     verify(brokenConnection2).close();
+    verify(recoveredConnection).close();
     verify(mockContext, org.mockito.Mockito.times(1))
         .output(eq(DataStreamToSQL.ExecuteDmlFn.FAILURE_TAG), any());
     verify(mockContext, org.mockito.Mockito.times(1))
         .output(DataStreamToSQL.ExecuteDmlFn.SUCCESS_TAG, element);
+  }
+
+  @Test
+  public void testExecuteDmlFn_deterministicSqlErrorDoesNotRetryOrCloseHealthyConnection()
+      throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    java.sql.Connection healthyConnection = mock(java.sql.Connection.class);
+    java.sql.Statement failingStatement = mock(java.sql.Statement.class);
+    java.sql.Statement succeedingStatement = mock(java.sql.Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(healthyConnection);
+    when(healthyConnection.isClosed()).thenReturn(false);
+    when(healthyConnection.createStatement()).thenReturn(failingStatement, succeedingStatement);
+    when(failingStatement.execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (1);"))
+        .thenThrow(
+            new java.sql.SQLException(
+                "ERROR: duplicate key value violates unique constraint", "23505"));
+    when(succeedingStatement.execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (2);"))
+        .thenReturn(true);
+
+    org.apache.beam.sdk.util.FluentBackoff backoffWithRetries =
+        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
+            .withMaxRetries(3)
+            .withInitialBackoff(org.joda.time.Duration.millis(1));
+    DataStreamToSQL.ExecuteDmlFn fn =
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, backoffWithRetries);
+
+    DmlInfo badDmlInfo =
+        DmlInfo.of(
+            "{\"id\":1}",
+            "INSERT INTO \"public\".\"users\" (\"id\") VALUES (1);",
+            "public",
+            "users",
+            Arrays.asList("id"),
+            Arrays.asList("_metadata_timestamp"),
+            Arrays.asList("1"),
+            Arrays.asList("100"),
+            "{\"id\":1}");
+    DmlInfo goodDmlInfo =
+        DmlInfo.of(
+            "{\"id\":2}",
+            "INSERT INTO \"public\".\"users\" (\"id\") VALUES (2);",
+            "public",
+            "users",
+            Arrays.asList("id"),
+            Arrays.asList("_metadata_timestamp"),
+            Arrays.asList("2"),
+            Arrays.asList("101"),
+            "{\"id\":2}");
+    org.apache.beam.sdk.values.KV<String, DmlInfo> badElement =
+        org.apache.beam.sdk.values.KV.of("public.users:1", badDmlInfo);
+    org.apache.beam.sdk.values.KV<String, DmlInfo> goodElement =
+        org.apache.beam.sdk.values.KV.of("public.users:2", goodDmlInfo);
+
+    @SuppressWarnings("unchecked")
+    DataStreamToSQL.ExecuteDmlFn.ProcessContext mockContext =
+        mock(DataStreamToSQL.ExecuteDmlFn.ProcessContext.class);
+    when(mockContext.element()).thenReturn(badElement, goodElement);
+
+    fn.setup();
+    fn.processElement(mockContext);
+    // Healthy connection must NOT be closed after a deterministic SQL error (23505)
+    verify(healthyConnection, org.mockito.Mockito.never()).close();
+
+    // Next element in the same bundle reuses the same connection and succeeds
+    fn.processElement(mockContext);
+    fn.finishBundle();
+    fn.teardown();
+
+    verify(mockDataSource, org.mockito.Mockito.times(1)).getConnection();
+    verify(failingStatement, org.mockito.Mockito.times(1))
+        .execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (1);");
+    verify(succeedingStatement, org.mockito.Mockito.times(1))
+        .execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (2);");
+    verify(healthyConnection, org.mockito.Mockito.times(1)).close();
+    verify(mockContext, org.mockito.Mockito.times(1))
+        .output(eq(DataStreamToSQL.ExecuteDmlFn.FAILURE_TAG), any());
+    verify(mockContext, org.mockito.Mockito.times(1))
+        .output(DataStreamToSQL.ExecuteDmlFn.SUCCESS_TAG, goodElement);
+  }
+
+  @Test
+  public void testExecuteDmlFn_invalidatesBrokenConnectionInBasicDataSourceAndSharesPool()
+      throws Exception {
+    org.apache.commons.dbcp2.BasicDataSource mockBasicDataSource =
+        mock(org.apache.commons.dbcp2.BasicDataSource.class);
+    java.sql.Connection brokenConnection = mock(java.sql.Connection.class);
+    java.sql.Connection freshConnection = mock(java.sql.Connection.class);
+    java.sql.Statement freshStatement = mock(java.sql.Statement.class);
+
+    when(mockBasicDataSource.getConnection()).thenReturn(brokenConnection, freshConnection);
+    when(brokenConnection.isClosed()).thenReturn(false);
+    when(brokenConnection.createStatement())
+        .thenThrow(
+            new java.sql.SQLException(
+                "FATAL: terminating connection due to administrator command", "57P01"));
+    when(freshConnection.isClosed()).thenReturn(false);
+    when(freshConnection.createStatement()).thenReturn(freshStatement);
+
+    DataSourceConfiguration config =
+        DataSourceConfiguration.create("org.postgresql.Driver", "jdbc:postgresql://localhost/test")
+            .withUsername("postgres")
+            .withPassword("pass");
+    DataStreamToSQL.ExecuteDmlFn fn1 = new DataStreamToSQL.ExecuteDmlFn(config);
+    DataStreamToSQL.ExecuteDmlFn fn2 = new DataStreamToSQL.ExecuteDmlFn(config);
+    fn1.setup();
+    fn2.setup();
+
+    org.apache.beam.sdk.util.FluentBackoff fastBackoff =
+        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
+            .withMaxRetries(1)
+            .withInitialBackoff(org.joda.time.Duration.millis(1));
+    DataStreamToSQL.ExecuteDmlFn fnWithPool =
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockBasicDataSource, fastBackoff);
+
+    DmlInfo dmlInfo =
+        DmlInfo.of(
+            "{\"id\":1}",
+            "INSERT INTO \"public\".\"users\" (\"id\") VALUES (1);",
+            "public",
+            "users",
+            Arrays.asList("id"),
+            Arrays.asList("_metadata_timestamp"),
+            Arrays.asList("1"),
+            Arrays.asList("100"),
+            "{\"id\":1}");
+    org.apache.beam.sdk.values.KV<String, DmlInfo> element =
+        org.apache.beam.sdk.values.KV.of("public.users:1", dmlInfo);
+
+    @SuppressWarnings("unchecked")
+    DataStreamToSQL.ExecuteDmlFn.ProcessContext mockContext =
+        mock(DataStreamToSQL.ExecuteDmlFn.ProcessContext.class);
+    when(mockContext.element()).thenReturn(element);
+
+    fnWithPool.setup();
+    fnWithPool.processElement(mockContext);
+    fnWithPool.finishBundle();
+
+    verify(mockBasicDataSource).invalidateConnection(brokenConnection);
+    verify(freshConnection).close();
+    verify(mockContext).output(DataStreamToSQL.ExecuteDmlFn.SUCCESS_TAG, element);
   }
 }

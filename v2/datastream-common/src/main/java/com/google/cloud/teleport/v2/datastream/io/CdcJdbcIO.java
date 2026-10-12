@@ -386,6 +386,7 @@ public class CdcJdbcIO {
         if (getMaxIdleConnections() != null && getMaxIdleConnections().get() != null) {
           basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
         }
+        basicDataSource.setTestOnBorrow(true);
 
         return basicDataSource;
       }
@@ -653,7 +654,6 @@ public class CdcJdbcIO {
 
       private DataSource dataSource;
       private Connection connection;
-      private Statement statement;
       private final List<BufferedRecord<T>> records = new ArrayList<>();
 
       public WriteFn(WriteVoid<T> spec) {
@@ -671,9 +671,8 @@ public class CdcJdbcIO {
       }
 
       @StartBundle
-      public void startBundle() throws Exception {
-        connection = getConnection();
-        statement = connection.createStatement();
+      public void startBundle() {
+        records.clear();
       }
 
       private Connection getConnection() throws SQLException {
@@ -687,16 +686,19 @@ public class CdcJdbcIO {
         return connection;
       }
 
-      private void rollbackAndCloseConnectionQuietly() {
-        if (statement != null) {
+      private void closeConnectionQuietly() {
+        if (connection != null) {
           try {
-            statement.close();
+            connection.close();
           } catch (SQLException e) {
-            LOG.warn("Failed to close SQL statement", e);
+            LOG.warn("Failed to close SQL connection", e);
           } finally {
-            statement = null;
+            connection = null;
           }
         }
+      }
+
+      private void rollbackAndInvalidateConnectionQuietly() {
         if (connection != null) {
           try {
             if (!connection.isClosed()) {
@@ -706,13 +708,61 @@ public class CdcJdbcIO {
             LOG.warn("Failed to rollback SQL connection", e);
           }
           try {
-            connection.close();
-          } catch (SQLException e) {
-            LOG.warn("Failed to close SQL connection", e);
+            if (dataSource instanceof BasicDataSource) {
+              ((BasicDataSource) dataSource).invalidateConnection(connection);
+            } else {
+              connection.close();
+            }
+          } catch (Exception e) {
+            LOG.warn("Failed to invalidate or close SQL connection", e);
+            try {
+              connection.close();
+            } catch (SQLException ex) {
+              LOG.warn("Failed to close SQL connection after invalidate failure", ex);
+            }
           } finally {
             connection = null;
           }
         }
+      }
+
+      private void handleSingleStatementFailure(SQLException exception) {
+        if (connection == null) {
+          return;
+        }
+        if (isConnectionError(exception)) {
+          rollbackAndInvalidateConnectionQuietly();
+          return;
+        }
+        try {
+          if (connection.isClosed()) {
+            rollbackAndInvalidateConnectionQuietly();
+          } else {
+            connection.rollback();
+          }
+        } catch (SQLException rollbackException) {
+          LOG.warn("Rollback failed during single-statement recovery, invalidating connection", rollbackException);
+          rollbackAndInvalidateConnectionQuietly();
+        }
+      }
+
+      private static boolean isConnectionError(SQLException e) {
+        SQLException current = e;
+        while (current != null) {
+          if (current instanceof java.sql.SQLRecoverableException
+              || current instanceof java.sql.SQLTransientConnectionException) {
+            return true;
+          }
+          String sqlState = current.getSQLState();
+          if (sqlState != null
+              && (sqlState.startsWith("08")
+                  || sqlState.startsWith("53")
+                  || sqlState.startsWith("57"))) {
+            return true;
+          }
+          current = current.getNextException();
+        }
+        return false;
       }
 
       @ProcessElement
@@ -738,40 +788,33 @@ public class CdcJdbcIO {
 
       @FinishBundle
       public void finishBundle(FinishBundleContext context) throws Exception {
-        if (!records.isEmpty()) {
-          List<BufferedRecord<T>> failedRecords = executeBatch();
-          for (BufferedRecord<T> failedRecord : failedRecords) {
-            try {
-              // Use explicit type witness <String> for output
-              context.<String>output(
-                  DLQ_TAG,
-                  spec.getDlqJsonFormatter().apply(failedRecord.record),
-                  failedRecord.timestamp,
-                  failedRecord.window);
-            } catch (Exception e) {
-              LOG.error(
-                  "Failed to format or output DLQ message in finishBundle: {}", e.getMessage());
-            }
-          }
-        }
         try {
-          if (statement != null) {
-            statement.close();
-          }
-        } catch (SQLException e) {
-          LOG.warn("Failed to close SQL statement in finishBundle", e);
-        } finally {
-          statement = null;
-          if (connection != null) {
-            try {
-              connection.close();
-            } catch (SQLException e) {
-              LOG.warn("Failed to close SQL connection in finishBundle", e);
-            } finally {
-              connection = null;
+          if (!records.isEmpty()) {
+            List<BufferedRecord<T>> failedRecords = executeBatch();
+            for (BufferedRecord<T> failedRecord : failedRecords) {
+              try {
+                // Use explicit type witness <String> for output
+                context.<String>output(
+                    DLQ_TAG,
+                    spec.getDlqJsonFormatter().apply(failedRecord.record),
+                    failedRecord.timestamp,
+                    failedRecord.window);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to format or output DLQ message in finishBundle: {}", e.getMessage());
+              }
             }
           }
+        } finally {
+          records.clear();
+          closeConnectionQuietly();
         }
+      }
+
+      @Teardown
+      public void teardown() {
+        records.clear();
+        closeConnectionQuietly();
       }
 
       private List<BufferedRecord<T>> executeBatch()
@@ -794,31 +837,31 @@ public class CdcJdbcIO {
                     spec.getStatementFormatter().formatStatement(bufferedRecord.record);
                 try {
                   Connection conn = getConnection();
-                  statement = conn.createStatement();
-                  statement.executeUpdate(formattedStatement);
+                  try (Statement statement = conn.createStatement()) {
+                    statement.executeUpdate(formattedStatement);
+                  }
                   conn.commit();
-                  statement.close();
-                  statement = null;
                   iterator.remove();
                 } catch (SQLException exception) {
                   LOG.error(
                       "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
                       exception.toString(),
                       formattedStatement);
-                  rollbackAndCloseConnectionQuietly();
+                  handleSingleStatementFailure(exception);
                   failedRecords.add(bufferedRecord);
                   iterator.remove();
                 }
               }
             } else {
               Connection conn = getConnection();
-              statement = conn.createStatement();
-              for (BufferedRecord<T> bufferedRecord : records) {
-                String formattedStatement =
-                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-                statement.addBatch(formattedStatement);
+              try (Statement statement = conn.createStatement()) {
+                for (BufferedRecord<T> bufferedRecord : records) {
+                  String formattedStatement =
+                      spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+                  statement.addBatch(formattedStatement);
+                }
+                statement.executeBatch();
               }
-              statement.executeBatch();
               conn.commit();
               records.clear();
             }
@@ -832,7 +875,7 @@ public class CdcJdbcIO {
               break; // Exit retry loop
             }
 
-            rollbackAndCloseConnectionQuietly();
+            rollbackAndInvalidateConnectionQuietly();
             if (!BackOffUtils.next(sleeper, backoff)) {
               LOG.warn(
                   "Batch write failed: {}. Retrying in single-statement mode.",

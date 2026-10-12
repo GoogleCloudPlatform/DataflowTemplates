@@ -593,9 +593,10 @@ public class DataStreamToSQL {
     private static final FluentBackoff EXECUTE_BACKOFF =
         FluentBackoff.DEFAULT
             .withMaxRetries(MAX_RETRIES)
-            .withInitialBackoff(Duration.standardSeconds(1));
+            .withInitialBackoff(Duration.millis(500));
 
-    private final CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
+    private final org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
+        dataSourceProviderFn;
     private final FluentBackoff executeBackoff;
     private transient javax.sql.DataSource dataSource;
     private transient java.sql.Connection connection;
@@ -614,14 +615,27 @@ public class DataStreamToSQL {
 
     public ExecuteDmlFn(
         CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration, FluentBackoff executeBackoff) {
-      this.dataSourceConfiguration = dataSourceConfiguration;
+      this(
+          CdcJdbcIO.DataSourceProviderFromDataSourceConfiguration.of(dataSourceConfiguration),
+          executeBackoff);
+    }
+
+    public ExecuteDmlFn(
+        org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
+            dataSourceProviderFn,
+        FluentBackoff executeBackoff) {
+      this.dataSourceProviderFn = dataSourceProviderFn;
       this.executeBackoff = executeBackoff;
     }
 
     @Setup
-    public void setup() throws SQLException {
-      dataSource = dataSourceConfiguration.buildDatasource();
-      connection = dataSource.getConnection();
+    public void setup() {
+      dataSource = dataSourceProviderFn.apply(null);
+    }
+
+    @FinishBundle
+    public void finishBundle() {
+      closeConnectionQuietly();
     }
 
     @Teardown
@@ -631,7 +645,7 @@ public class DataStreamToSQL {
 
     private java.sql.Connection getConnection() throws SQLException {
       if (dataSource == null) {
-        dataSource = dataSourceConfiguration.buildDatasource();
+        dataSource = dataSourceProviderFn.apply(null);
       }
       if (connection == null || connection.isClosed()) {
         connection = dataSource.getConnection();
@@ -651,6 +665,61 @@ public class DataStreamToSQL {
       }
     }
 
+    private void invalidateAndCloseConnectionQuietly() {
+      if (connection != null) {
+        try {
+          if (dataSource instanceof org.apache.commons.dbcp2.BasicDataSource) {
+            ((org.apache.commons.dbcp2.BasicDataSource) dataSource)
+                .invalidateConnection(connection);
+          } else {
+            connection.close();
+          }
+        } catch (Exception e) {
+          LOG.warn("Failed to invalidate or close SQL connection", e);
+          try {
+            connection.close();
+          } catch (SQLException ex) {
+            LOG.warn("Failed to close SQL connection after invalidate failure", ex);
+          }
+        } finally {
+          connection = null;
+        }
+      }
+    }
+
+    static boolean isRetryableSqlException(SQLException e, java.sql.Connection currentConnection) {
+      SQLException current = e;
+      while (current != null) {
+        if (current instanceof java.sql.SQLTransientException
+            || current instanceof java.sql.SQLRecoverableException) {
+          return true;
+        }
+        String sqlState = current.getSQLState();
+        if (sqlState != null) {
+          if (sqlState.startsWith("08")
+              || sqlState.startsWith("40")
+              || sqlState.startsWith("53")
+              || sqlState.startsWith("57")) {
+            return true;
+          }
+          if (sqlState.startsWith("22")
+              || sqlState.startsWith("23")
+              || sqlState.startsWith("42")) {
+            return false;
+          }
+        }
+        current = current.getNextException();
+      }
+      if (currentConnection == null) {
+        return true;
+      }
+      try {
+        return currentConnection.isClosed();
+      } catch (SQLException ex) {
+        return true;
+      }
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException, InterruptedException {
       KV<String, DmlInfo> dmlInfo = c.element();
@@ -666,8 +735,11 @@ public class DataStreamToSQL {
             return;
           }
         } catch (SQLException e) {
-          closeConnectionQuietly();
-          if (!BackOffUtils.next(sleeper, backoff)) {
+          boolean retryable = isRetryableSqlException(e, connection);
+          if (retryable) {
+            invalidateAndCloseConnectionQuietly();
+          }
+          if (!retryable || !BackOffUtils.next(sleeper, backoff)) {
             LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
             c.output(
                 FAILURE_TAG,
