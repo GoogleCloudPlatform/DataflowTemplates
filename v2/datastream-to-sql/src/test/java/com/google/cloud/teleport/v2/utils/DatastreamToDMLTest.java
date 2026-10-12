@@ -38,6 +38,9 @@ import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.truth.Truth;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -1229,6 +1232,9 @@ public class DatastreamToDMLTest {
 
     String valueSql = dml.getValueSql(rowObj, "ROWID", tableSchema);
     assertEquals("'AAAEARAAEAAAAC9AAS'", valueSql);
+
+    JsonNode lowercaseRowIdObj = getRowObj("{\"rowid\": \"AAAEARAAEAAAAC9AAS\"}");
+    assertEquals("'AAAEARAAEAAAAC9AAS'", dml.getValueSql(lowercaseRowIdObj, "ROWID", tableSchema));
   }
 
   /**
@@ -1281,6 +1287,103 @@ public class DatastreamToDMLTest {
 
     String filterSql = dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema);
     assertEquals("\"ID\"=1 AND \"ORG_ID\"=2", filterSql);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getDmlTemplate} returns a DELETE statement when primaryKeys
+   * is empty and the record contains a cased ROWID column matching columnCasing.
+   */
+  @Test
+  public void testDmlTemplate_supportsDeleteWithCasedRowIdFallbackWhenNoPK() {
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML) DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String json = "{\"_metadata_deleted\": true, \"ROWID\": \"AAAEARAAEAAAAC9AAS\"}";
+    JsonNode rowObj = getRowObj(json);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+
+    String template = dml.getDmlTemplate(rowObj, primaryKeys);
+    assertEquals(dml.getDeleteDmlStatement(), template);
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} returns an empty filter when
+   * primaryKeys is empty and the record is not a DELETE event.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_returnsEmptyForNonDeleteWhenNoPK() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    List<String> primaryKeys = java.util.Collections.emptyList();
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("id", "INTEGER");
+
+    JsonNode rowWithoutDeletedFlag = getRowObj("{\"id\": 1}");
+    assertEquals(
+        "", dml.getPrimaryKeyToValueFilterSql(rowWithoutDeletedFlag, primaryKeys, tableSchema));
+
+    JsonNode rowWithDeletedFalse = getRowObj("{\"_metadata_deleted\": false, \"id\": 1}");
+    assertEquals(
+        "", dml.getPrimaryKeyToValueFilterSql(rowWithDeletedFalse, primaryKeys, tableSchema));
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeyToValueFilterSql} skips primary key columns that
+   * are absent from the source record.
+   */
+  @Test
+  public void testGetPrimaryKeyToValueFilterSql_skipsMissingPrimaryKey() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    JsonNode rowObj = getRowObj("{\"id\": 1}");
+    List<String> primaryKeys = Arrays.asList("id", "missing_pk");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("id", "INTEGER");
+    tableSchema.put("missing_pk", "INTEGER");
+
+    assertEquals("\"id\"=1", dml.getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#getPrimaryKeys} retains a destination ROWID primary key when
+   * the record provides {@code _metadata_row_id}, and falls back to default primary keys otherwise.
+   */
+  @Test
+  public void testGetPrimaryKeys_resolvesMetadataRowIdAndFallbacks() throws Exception {
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection mockConnection = mock(Connection.class);
+    DatabaseMetaData mockMetaData = mock(DatabaseMetaData.class);
+    ResultSet mockRowIdPkResultSet = mock(ResultSet.class);
+    ResultSet mockIdPkResultSet = mock(ResultSet.class);
+
+    when(mockConfig.buildDatasource()).thenReturn(mockDataSource);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.getMetaData()).thenReturn(mockMetaData);
+
+    when(mockMetaData.getPrimaryKeys("cat", "sch", "tbl_rowid")).thenReturn(mockRowIdPkResultSet);
+    when(mockRowIdPkResultSet.next()).thenReturn(true, false);
+    when(mockRowIdPkResultSet.getString("COLUMN_NAME")).thenReturn("ROWID");
+
+    when(mockMetaData.getPrimaryKeys("cat", "sch", "tbl_id")).thenReturn(mockIdPkResultSet);
+    when(mockIdPkResultSet.next()).thenReturn(true, false);
+    when(mockIdPkResultSet.getString("COLUMN_NAME")).thenReturn("ID");
+
+    DatastreamToPostgresDML dml =
+        (DatastreamToPostgresDML)
+            DatastreamToPostgresDML.of(mockConfig).withColumnCasing("UPPERCASE");
+
+    // 1. Destination PK is ROWID and record has _metadata_row_id -> retains ["ROWID"]
+    JsonNode rowWithMetadataRowId = getRowObj("{\"_metadata_row_id\": \"AAAEARAAEAAAAC9AAS\"}");
+    assertEquals(
+        Arrays.asList("ROWID"),
+        dml.getPrimaryKeys("cat", "sch", "tbl_rowid", rowWithMetadataRowId));
+
+    // 2. Destination PK is ROWID and record lacks both ROWID and _metadata_row_id -> default PKs
+    JsonNode rowWithoutRowId = getRowObj("{\"OTHER_COL\": 1}");
+    assertEquals(
+        Arrays.asList("rowid"), dml.getPrimaryKeys("cat", "sch", "tbl_rowid", rowWithoutRowId));
+
+    // 3. Destination PK is ID and record lacks ID (even with _metadata_row_id) -> default PKs
+    assertEquals(
+        Arrays.asList("rowid"), dml.getPrimaryKeys("cat", "sch", "tbl_id", rowWithMetadataRowId));
   }
 
   /**

@@ -189,7 +189,6 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToBigQueryJson() throws IOException {
     // Run a simple IT
     simpleJdbcToBigQueryTest(

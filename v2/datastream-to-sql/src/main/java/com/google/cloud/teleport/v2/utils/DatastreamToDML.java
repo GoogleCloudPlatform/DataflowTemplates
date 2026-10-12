@@ -380,13 +380,8 @@ public abstract class DatastreamToDML
     if (columnObj != null) {
       return columnObj;
     }
-    if (columnName.equalsIgnoreCase(this.rowIdColumnName)) {
-      if (rowObj.has("_metadata_row_id")) {
-        return rowObj.get("_metadata_row_id");
-      }
-      if (rowObj.has(this.rowIdColumnName)) {
-        return rowObj.get(this.rowIdColumnName);
-      }
+    if (columnName.equalsIgnoreCase(this.rowIdColumnName) && rowObj.has("_metadata_row_id")) {
+      return rowObj.get("_metadata_row_id");
     }
     for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
       String fieldName = it.next();
@@ -525,10 +520,7 @@ public abstract class DatastreamToDML
         return "";
       }
       String casedRowId = applyCasingLogic(this.rowIdColumnName, this.columnCasing);
-      boolean schemaHasRowId =
-          tableSchema.containsKey(casedRowId)
-              || tableSchema.keySet().stream().anyMatch(k -> k.equalsIgnoreCase(casedRowId));
-      if (!schemaHasRowId) {
+      if (!tableSchema.containsKey(casedRowId)) {
         throw new DeletedWithoutPrimaryKey(
             String.format(
                 "Cannot replicate DELETE for table without primary keys: target schema lacks '%s' column.",
