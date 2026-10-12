@@ -726,12 +726,8 @@ public class CdcJdbcIO {
         }
       }
 
-      private void handleSingleStatementFailure(SQLException exception) {
+      private void rollbackQuietly() {
         if (connection == null) {
-          return;
-        }
-        if (isConnectionError(exception)) {
-          rollbackAndInvalidateConnectionQuietly();
           return;
         }
         try {
@@ -741,12 +737,31 @@ public class CdcJdbcIO {
             connection.rollback();
           }
         } catch (SQLException rollbackException) {
-          LOG.warn("Rollback failed during single-statement recovery, invalidating connection", rollbackException);
+          LOG.warn(
+              "Rollback failed on SQL connection, invalidating connection", rollbackException);
           rollbackAndInvalidateConnectionQuietly();
         }
       }
 
-      private static boolean isConnectionError(SQLException e) {
+      private boolean isTransientSqlException(SQLException e) {
+        if (spec.getRetryStrategy() != null && spec.getRetryStrategy().apply(e)) {
+          return true;
+        }
+        SQLException current = e;
+        while (current != null) {
+          if (current instanceof java.sql.SQLTransientException) {
+            return true;
+          }
+          String sqlState = current.getSQLState();
+          if (sqlState != null && sqlState.startsWith("40")) {
+            return true;
+          }
+          current = current.getNextException();
+        }
+        return false;
+      }
+
+      private static boolean isConnectionError(SQLException e, Connection currentConnection) {
         SQLException current = e;
         while (current != null) {
           if (current instanceof java.sql.SQLRecoverableException
@@ -762,7 +777,14 @@ public class CdcJdbcIO {
           }
           current = current.getNextException();
         }
-        return false;
+        if (currentConnection == null) {
+          return true;
+        }
+        try {
+          return currentConnection.isClosed();
+        } catch (SQLException ex) {
+          return true;
+        }
       }
 
       @ProcessElement
@@ -817,6 +839,60 @@ public class CdcJdbcIO {
         closeConnectionQuietly();
       }
 
+      private void executeSingleStatements(
+          Sleeper sleeper, List<BufferedRecord<T>> failedRecords)
+          throws SQLException, IOException, InterruptedException {
+        Iterator<BufferedRecord<T>> iterator = records.iterator();
+        while (iterator.hasNext()) {
+          BufferedRecord<T> bufferedRecord = iterator.next();
+          String formattedStatement =
+              spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+          BackOff recordBackoff = bundleWriteBackoff.backoff();
+          while (true) {
+            try {
+              Connection conn = getConnection();
+              try (Statement statement = conn.createStatement()) {
+                statement.executeUpdate(formattedStatement);
+              }
+              conn.commit();
+              iterator.remove();
+              break;
+            } catch (SQLException exception) {
+              boolean connectionError = isConnectionError(exception, connection);
+              boolean retryable = connectionError || isTransientSqlException(exception);
+              if (connectionError) {
+                rollbackAndInvalidateConnectionQuietly();
+              } else {
+                rollbackQuietly();
+              }
+              if (retryable) {
+                if (!BackOffUtils.next(sleeper, recordBackoff)) {
+                  LOG.error(
+                      "Exhausted retries for transient/connection SQLException in"
+                          + " single-statement mode while executing statement: {}",
+                      formattedStatement,
+                      exception);
+                  throw exception;
+                }
+                LOG.warn(
+                    "Retryable SQLException occurred in single-statement mode,"
+                        + " retrying statement: {}",
+                    exception.toString());
+              } else {
+                LOG.error(
+                    "SQLException Occurred: {} while executing statement: {}. Adding to failed"
+                        + " records.",
+                    exception.toString(),
+                    formattedStatement);
+                failedRecords.add(bufferedRecord);
+                iterator.remove();
+                break;
+              }
+            }
+          }
+        }
+      }
+
       private List<BufferedRecord<T>> executeBatch()
           throws SQLException, IOException, InterruptedException {
         if (records.isEmpty()) {
@@ -830,28 +906,7 @@ public class CdcJdbcIO {
         while (true) {
           try {
             if (singleStatementMode) {
-              Iterator<BufferedRecord<T>> iterator = records.iterator();
-              while (iterator.hasNext()) {
-                BufferedRecord<T> bufferedRecord = iterator.next();
-                String formattedStatement =
-                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-                try {
-                  Connection conn = getConnection();
-                  try (Statement statement = conn.createStatement()) {
-                    statement.executeUpdate(formattedStatement);
-                  }
-                  conn.commit();
-                  iterator.remove();
-                } catch (SQLException exception) {
-                  LOG.error(
-                      "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
-                      exception.toString(),
-                      formattedStatement);
-                  handleSingleStatementFailure(exception);
-                  failedRecords.add(bufferedRecord);
-                  iterator.remove();
-                }
-              }
+              executeSingleStatements(sleeper, failedRecords);
             } else {
               Connection conn = getConnection();
               try (Statement statement = conn.createStatement()) {
@@ -868,21 +923,25 @@ public class CdcJdbcIO {
             break;
           } catch (SQLException exception) {
             if (singleStatementMode) {
-              LOG.error(
-                  "Errors occurred during single-statement mode. "
-                      + "Records in this batch that failed have been sent to DLQ.",
-                  exception);
-              break; // Exit retry loop
+              throw exception;
             }
 
-            rollbackAndInvalidateConnectionQuietly();
-            if (!BackOffUtils.next(sleeper, backoff)) {
+            boolean connectionError = isConnectionError(exception, connection);
+            boolean retryable = connectionError || isTransientSqlException(exception);
+            if (connectionError) {
+              rollbackAndInvalidateConnectionQuietly();
+            } else {
+              rollbackQuietly();
+            }
+
+            if (!retryable || !BackOffUtils.next(sleeper, backoff)) {
               LOG.warn(
                   "Batch write failed: {}. Retrying in single-statement mode.",
                   exception.getMessage());
               singleStatementMode = true;
+            } else {
+              LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
             }
-            LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
           }
         }
         return failedRecords;

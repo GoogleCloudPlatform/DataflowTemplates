@@ -550,21 +550,17 @@ public final class CdcJdbcIOTest {
       throws Exception {
     DataSource mockDataSource = mock(DataSource.class);
     Connection connection1 = mock(Connection.class);
-    Connection connection2 = mock(Connection.class);
     Statement batchStatement = mock(Statement.class);
     Statement singleStatementFail = mock(Statement.class);
     Statement singleStatementSuccess = mock(Statement.class);
 
-    when(mockDataSource.getConnection()).thenReturn(connection1, connection2);
-
+    when(mockDataSource.getConnection()).thenReturn(connection1);
     when(connection1.isClosed()).thenReturn(false);
-    when(connection1.createStatement()).thenReturn(batchStatement);
-    doThrow(new SQLException("Batch execution failed", "23505"))
+    when(connection1.createStatement())
+        .thenReturn(batchStatement, singleStatementFail, singleStatementSuccess);
+    doThrow(new SQLException("Batch execution failed: duplicate key", "23505"))
         .when(batchStatement)
         .executeBatch();
-
-    when(connection2.isClosed()).thenReturn(false);
-    when(connection2.createStatement()).thenReturn(singleStatementFail, singleStatementSuccess);
     doThrow(new SQLException("duplicate key value violates unique constraint", "23505"))
         .when(singleStatementFail)
         .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
@@ -578,10 +574,12 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    FluentBackoff noRetryBackoff =
-        FluentBackoff.DEFAULT.withMaxRetries(0).withInitialBackoff(Duration.millis(1));
+    // Even when maxRetries > 0, a deterministic data error (23505) on a healthy connection
+    // transitions immediately to single-statement mode without tearing down connection1.
+    FluentBackoff backoffWithRetries =
+        FluentBackoff.DEFAULT.withMaxRetries(3).withInitialBackoff(Duration.millis(1));
     CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, noRetryBackoff);
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, backoffWithRetries);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -600,48 +598,107 @@ public final class CdcJdbcIOTest {
     writeFn.processElement(processContext, window);
     writeFn.finishBundle(finishBundleContext);
 
-    // Connection 2 is rolled back on data error (23505) and reused for record 2 without
-    // acquiring a 3rd connection, then closed once at the end of finishBundle.
-    verify(mockDataSource, times(2)).getConnection();
-    verify(connection2).rollback();
+    // Only 1 connection is borrowed for the entire bundle: rolled back after batch failure and
+    // after record 1's data error, reused for record 2, and closed once in finishBundle.
+    verify(mockDataSource, times(1)).getConnection();
+    verify(connection1, times(2)).rollback();
+    verify(batchStatement).close();
     verify(singleStatementFail).close();
     verify(singleStatementSuccess).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
     verify(singleStatementSuccess).close();
-    verify(connection2).commit();
-    verify(connection2, times(1)).close();
+    verify(connection1).commit();
+    verify(connection1, times(1)).close();
     verify(finishBundleContext, times(1))
         .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
   }
 
   @Test
-  public void testWriteFn_singleStatementMode_reconnectsOnConnectionErrorAndRoutesFailedRecordToDlq()
+  public void testWriteFn_singleStatementMode_reconnectsAndRetriesRecordOnConnectionError()
       throws Exception {
     DataSource mockDataSource = mock(DataSource.class);
     Connection connection1 = mock(Connection.class);
     Connection connection2 = mock(Connection.class);
-    Connection connection3 = mock(Connection.class);
     Statement batchStatement = mock(Statement.class);
-    Statement singleStatementFail = mock(Statement.class);
-    Statement singleStatementSuccess = mock(Statement.class);
+    Statement record1BadDataStmt = mock(Statement.class);
+    Statement record2ConnDropStmt = mock(Statement.class);
+    Statement record2RetrySuccessStmt = mock(Statement.class);
 
-    when(mockDataSource.getConnection()).thenReturn(connection1, connection2, connection3);
+    when(mockDataSource.getConnection()).thenReturn(connection1, connection2);
 
     when(connection1.isClosed()).thenReturn(false);
-    when(connection1.createStatement()).thenReturn(batchStatement);
-    doThrow(new SQLException("Batch execution failed", "08006"))
+    when(connection1.createStatement())
+        .thenReturn(batchStatement, record1BadDataStmt, record2ConnDropStmt);
+    doThrow(new SQLException("Batch execution failed: duplicate key", "23505"))
         .when(batchStatement)
         .executeBatch();
+    doThrow(new SQLException("duplicate key value violates unique constraint", "23505"))
+        .when(record1BadDataStmt)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(record2ConnDropStmt)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
 
     when(connection2.isClosed()).thenReturn(false);
-    when(connection2.createStatement()).thenReturn(singleStatementFail);
-    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
-        .when(singleStatementFail)
-        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
-
-    when(connection3.isClosed()).thenReturn(false);
-    when(connection3.createStatement()).thenReturn(singleStatementSuccess);
-    when(singleStatementSuccess.executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')"))
+    when(connection2.createStatement()).thenReturn(record2RetrySuccessStmt);
+    when(record2RetrySuccessStmt.executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')"))
         .thenReturn(1);
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    FluentBackoff singleRetryBackoff =
+        FluentBackoff.DEFAULT.withMaxRetries(1).withInitialBackoff(Duration.millis(1));
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, singleRetryBackoff);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}", "{\"id\": 2}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    // Record 1 (23505) goes to DLQ; Record 2 hits 57P01 on connection1, invalidates connection1,
+    // reconnects on connection2, retries Record 2, and commits without losing Record 2 to DLQ.
+    verify(mockDataSource, times(2)).getConnection();
+    verify(connection1).close();
+    verify(record2RetrySuccessStmt).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
+    verify(connection2).commit();
+    verify(connection2).close();
+    verify(finishBundleContext, times(1))
+        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testWriteFn_singleStatementMode_throwsWhenConnectionErrorRetriesExhausted()
+      throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection brokenConnection = mock(Connection.class);
+    Statement brokenStatement = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(brokenConnection);
+    when(brokenConnection.isClosed()).thenReturn(false);
+    when(brokenConnection.createStatement()).thenReturn(brokenStatement);
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(brokenStatement)
+        .executeBatch();
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(brokenStatement)
+        .executeUpdate(any());
 
     SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
     CdcJdbcIO.WriteVoid<String> spec =
@@ -662,24 +719,14 @@ public final class CdcJdbcIOTest {
         mock(DoFn.FinishBundleContext.class);
     BoundedWindow window = mock(BoundedWindow.class);
 
-    when(processContext.element()).thenReturn("{\"id\": 1}", "{\"id\": 2}");
+    when(processContext.element()).thenReturn("{\"id\": 1}");
     when(processContext.timestamp()).thenReturn(Instant.now());
     when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
 
     writeFn.setup();
     writeFn.startBundle();
     writeFn.processElement(processContext, window);
-    writeFn.processElement(processContext, window);
     writeFn.finishBundle(finishBundleContext);
-
-    verify(mockDataSource, times(3)).getConnection();
-    verify(connection2).rollback();
-    verify(connection2).close();
-    verify(singleStatementSuccess).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
-    verify(connection3).commit();
-    verify(connection3).close();
-    verify(finishBundleContext, times(1))
-        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
   }
 
   @Test
