@@ -98,16 +98,16 @@ public class OracleToIcebergYamlIT extends TemplateTestBase {
   @Test
   public void testOracleToIceberg() throws IOException {
     // Oracle setup
-    String tableName = "source_table";
+    String tableName = "SOURCE_TABLE";
     HashMap<String, String> columns = new HashMap<>();
-    columns.put("id", "NUMERIC");
-    columns.put("active", "NUMERIC");
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
+    columns.put("ID", "INTEGER");
+    columns.put("ACTIVE", "INTEGER");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "ID");
 
     oracleResourceManager.createTable(tableName, schema);
 
     List<Map<String, Object>> records =
-        List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
+        List.of(Map.of("ID", 1, "ACTIVE", 1), Map.of("ID", 2, "ACTIVE", 0));
     oracleResourceManager.write(tableName, records);
 
     LaunchConfig.Builder options =
@@ -134,14 +134,14 @@ public class OracleToIcebergYamlIT extends TemplateTestBase {
     LOG.info("Iceberg records: {}", icebergRecords);
     assertNotNull(icebergRecords);
     assertEquals(2, icebergRecords.size());
-    icebergRecords.sort(Comparator.comparingInt(r -> ((Number) r.getField("id")).intValue()));
+    icebergRecords.sort(Comparator.comparingInt(r -> ((Number) r.getField("ID")).intValue()));
     // Verify records
     Record actualRecord1 = icebergRecords.get(0);
     Record actualRecord2 = icebergRecords.get(1);
-    assertEquals(1, ((Number) actualRecord1.getField("id")).intValue());
-    assertEquals(1, ((Number) actualRecord1.getField("active")).intValue());
-    assertEquals(2, ((Number) actualRecord2.getField("id")).intValue());
-    assertEquals(0, ((Number) actualRecord2.getField("active")).intValue());
+    assertEquals(1, ((Number) actualRecord1.getField("ID")).intValue());
+    assertEquals(1, ((Number) actualRecord1.getField("ACTIVE")).intValue());
+    assertEquals(2, ((Number) actualRecord2.getField("ID")).intValue());
+    assertEquals(0, ((Number) actualRecord2.getField("ACTIVE")).intValue());
   }
 
   @Override
