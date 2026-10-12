@@ -393,6 +393,76 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   }
 
   @Test
+  public void testMixedSuccessesAndFailures() throws Exception {
+    String dlqPrefix = "dlq";
+    LaunchInfo launchInfo =
+        launchTemplate(
+            "JSON",
+            "UTF-8",
+            Map.of(
+                "dlqDirectory", getGcsPath(dlqPrefix),
+                "dlqMaxRetries", "1",
+                "dlqRetryMinutes", "1"));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    int recordPairs = 25;
+    String column = "test_column";
+
+    String goodValue = UUID.randomUUID().toString();
+    // Making some 2MB value (the default max.request.size is 1048576 (1 MB)).
+    String tooBigValue =
+        StringUtils.repeat(UUID.randomUUID().toString(), 2 * 1024 * 1024 / goodValue.length());
+
+    long timestamp = 12000L;
+
+    // Interleave good and failing records with each other, so that bundles contain both.
+    List<RowMutation> mutations = new ArrayList<>();
+    for (int i = 0; i < recordPairs; i++) {
+      mutations.add(
+          RowMutation.create(TableId.of(srcTable), UUID.randomUUID().toString())
+              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, goodValue));
+      mutations.add(
+          RowMutation.create(TableId.of(srcTable), UUID.randomUUID().toString())
+              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, tooBigValue));
+    }
+    bigtableResourceManager.write(mutations);
+
+    kafkaConsumer.subscribe(Collections.singletonList(topicName));
+    List<ConsumerRecord<byte[], byte[]>> receivedMessages =
+        getAtLeastNMessages(launchInfo, kafkaConsumer, topicName, recordPairs);
+    assertEquals(recordPairs, receivedMessages.size());
+
+    LOG.info("Looking for records in severe DLQ");
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(launchInfo),
+                () -> {
+                  long records = 0;
+                  for (Artifact artifact :
+                      gcsClient.listArtifacts(dlqPrefix + "/severe/", Pattern.compile(".*"))) {
+                    // We exclude /tmp to avoid double counting records - the runner stores
+                    // the records there before moving them to their DLQ final destination.
+                    if (artifact.name().contains("/severe/tmp/")) {
+                      continue;
+                    }
+                    records +=
+                        new String(artifact.contents(), StandardCharsets.UTF_8)
+                            .lines()
+                            .filter(StringUtils::isNotBlank)
+                            .count();
+                  }
+                  // Each error gets exactly one entry in the severe DLQ regardless whether
+                  // the retries were enabled.
+                  return records == recordPairs;
+                });
+
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
   public void testBigtableIgnoreColumnFamiliesAndQualifiers() throws IOException {
     String column1 = "q1";
     String column2 = "q2";
@@ -620,6 +690,14 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
 
   private <KeyT, ValueT> List<ConsumerRecord<KeyT, ValueT>> getAtLeastOneMessage(
       LaunchInfo launchInfo, KafkaConsumer<KeyT, ValueT> consumer, String topicName) {
+    return getAtLeastNMessages(launchInfo, consumer, topicName, 1);
+  }
+
+  private <KeyT, ValueT> List<ConsumerRecord<KeyT, ValueT>> getAtLeastNMessages(
+      LaunchInfo launchInfo,
+      KafkaConsumer<KeyT, ValueT> consumer,
+      String topicName,
+      int expectedMessages) {
     AtomicReference<List<ConsumerRecord<KeyT, ValueT>>> output =
         new AtomicReference<>(new ArrayList<>());
     Result result =
@@ -639,7 +717,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
                           return o;
                         });
                   }
-                  return !output.get().isEmpty();
+                  return output.get().size() >= expectedMessages;
                 });
     assertThatResult(result).meetsConditions();
 
