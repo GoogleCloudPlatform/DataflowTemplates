@@ -32,7 +32,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -257,7 +256,7 @@ public class HttpEventPublisherTest {
   @Test(expected = ConnectTimeoutException.class, timeout = 30000)
   public void tcpAcceptThenHangTimeoutTest() throws Exception {
     List<Socket> acceptedSockets = new ArrayList<>();
-    try (ServerSocket hangingServer = new ServerSocket(0, 50, InetAddress.getLoopbackAddress())) {
+    try (ServerSocket hangingServer = new ServerSocket(0)) {
       Thread acceptThread =
           new Thread(
               () -> {
@@ -278,11 +277,7 @@ public class HttpEventPublisherTest {
       int timeoutInMillis = 100;
       HttpEventPublisher publisher =
           HttpEventPublisher.newBuilder()
-              .withUrl(
-                  "https://"
-                      + hangingServer.getInetAddress().getHostAddress()
-                      + ":"
-                      + hangingServer.getLocalPort())
+              .withUrl("https://localhost:" + hangingServer.getLocalPort())
               .withToken("test-token")
               .withDisableCertificateValidation(true)
               .withMaxElapsedMillis(timeoutInMillis)
