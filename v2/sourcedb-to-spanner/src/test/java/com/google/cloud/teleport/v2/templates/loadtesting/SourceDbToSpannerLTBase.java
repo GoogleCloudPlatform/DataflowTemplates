@@ -65,9 +65,6 @@ import org.junit.After;
  */
 public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
-  protected static final String SPEC_PATH =
-      System.getProperty(
-          "specPath", "gs://dataflow-templates/latest/flex/Sourcedb_to_Spanner_Flex");
   private static final int SPANNER_NODE_COUNT = 10;
 
   private static final int MAX_WORKERS = 100;
@@ -269,11 +266,13 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     params.putAll(templateParameters);
     // Configure job
     LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
+        LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath())
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
-            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .setParameters(params);
+    if (!params.containsKey("workerMachineType")) {
+      options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+    }
     environmentOptions.forEach(options::addEnvironment);
 
     // Act

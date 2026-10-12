@@ -49,6 +49,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
+import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
@@ -66,6 +67,8 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+  // For direct runner pipeline execution it will spin up 15 threads per pipeline.
+  private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
@@ -155,13 +158,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   private static MSSQLResourceManager sharedMssqlResourceManager;
 
+  // mcr.microsoft.com/mssql/server:2025-latest intermittently dies a few seconds after boot with a
+  // SQLPAL assertion ("ASSERT: Expression=(!currentWorker->IsPreemptiveOnEntry())
+  private static final int MSSQL_STARTUP_ATTEMPTS = 3;
+
   public MSSQLResourceManager setUpMSSQLResourceManager() {
     synchronized (SourceDbToSpannerITBase.class) {
       if (sharedMssqlResourceManager == null) {
-        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
-        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
-        builder.setContainerImageTag("2025-latest");
-        sharedMssqlResourceManager = builder.build();
+        sharedMssqlResourceManager = startSharedMssqlResourceManager();
       }
       MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testName);
       builder.setUsername(sharedMssqlResourceManager.getUsername());
@@ -171,6 +175,32 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       builder.useStaticContainer();
       return builder.build();
     }
+  }
+
+  private static MSSQLResourceManager startSharedMssqlResourceManager() {
+    RuntimeException lastFailure = null;
+    for (int attempt = 1; attempt <= MSSQL_STARTUP_ATTEMPTS; attempt++) {
+      try {
+        // SQL Server 2025 is required for the native JSON data type exercised by the ITs.
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        return builder.build();
+      } catch (RuntimeException e) {
+        // Beam surfaces a container that never came up as ContainerLaunchException, and one that
+        // died between start and CREATE DATABASE as JDBCResourceManagerException; both are
+        // recoverable by starting a new container.
+        lastFailure = e;
+        LOG.warn(
+            "Shared SQL Server container failed to start (attempt {}/{})",
+            attempt,
+            MSSQL_STARTUP_ATTEMPTS,
+            e);
+      }
+    }
+    throw new IllegalStateException(
+        "Shared SQL Server container failed to start after " + MSSQL_STARTUP_ATTEMPTS + " attempts",
+        lastFailure);
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
@@ -412,6 +442,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
 
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
+      params.put("targetParallelism", TARGET_PARALLALISM_FOR_DIRECTRUNNER);
+      // DirectRunner-only safety checks (Dataflow never runs them). They encode/clone every
+      // element per transform, which is very costly for large elements such as CollationMapper
+      // and causes heavy GC when many pipelines share one test JVM.
+      params.putIfAbsent("enforceImmutability", "false");
+      params.putIfAbsent("enforceEncodability", "false");
+    }
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
@@ -645,7 +684,8 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   @Override
   protected PipelineOperator.Config.Builder wrapConfiguration(
       PipelineOperator.Config.Builder builder) {
-    if (System.getProperty("directRunnerTest") != null) {
+    if (System.getProperty("directRunnerTest") != null
+        || pipelineLauncher instanceof DirectRunnerClient) {
       return builder.setTimeoutAfter(Duration.ofMinutes(15));
     }
     return builder;

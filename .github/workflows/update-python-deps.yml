@@ -38,6 +38,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'deps: update Python dependencies'
+          committer: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           title: 'chore(deps): update Python dependencies'
           body: |
             This PR updates the Python dependencies for all templates that use Python.

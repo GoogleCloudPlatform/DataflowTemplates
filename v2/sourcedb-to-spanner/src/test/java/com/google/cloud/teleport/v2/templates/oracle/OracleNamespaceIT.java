@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.oracle;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
@@ -34,14 +35,13 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@org.junit.experimental.categories.Category({
-  com.google.cloud.teleport.metadata.TemplateIntegrationTest.class
-})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleNamespaceIT extends SourceDbToSpannerITBase {

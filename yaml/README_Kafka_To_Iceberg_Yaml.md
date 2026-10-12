@@ -37,7 +37,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
@@ -158,7 +157,6 @@ export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -189,7 +187,6 @@ gcloud dataflow flex-template run "kafka-to-iceberg-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
@@ -237,7 +234,6 @@ export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -252,7 +248,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-iceberg-yaml-job" \
 -DtemplateName="Kafka_To_Iceberg_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,allowDuplicates=$ALLOW_DUPLICATES,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,offsetDeduplication=$OFFSET_DEDUPLICATION,redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY,redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS,redistributed=$REDISTRIBUTED,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,allowDuplicates=$ALLOW_DUPLICATES,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,offsetDeduplication=$OFFSET_DEDUPLICATION,redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY,redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS,redistributed=$REDISTRIBUTED,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
 -f yaml
 ```
 
@@ -317,7 +313,6 @@ resource "google_dataflow_flex_template_job" "kafka_to_iceberg_yaml" {
     # schema = "<schema>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
-    # filter = "<filter>"
     # keep = "<keep>"
     # only = "<only>"
     # partitionFields = "<partitionFields>"

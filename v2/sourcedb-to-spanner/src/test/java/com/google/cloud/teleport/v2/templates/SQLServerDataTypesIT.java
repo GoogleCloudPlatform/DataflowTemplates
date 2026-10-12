@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -34,7 +34,6 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,12 +45,9 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all SQL Server data
  * types migration to Google Standard SQL dialect Spanner.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore(
-    "Flaky on main: MSSQL Testcontainer startup failures + data-replication race in allTypesTest."
-        + " Disabled during Sep 2026 flaky-test triage; re-enable once stabilized.")
 public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SQLServerDataTypesIT.class);
   protected LaunchInfo jobInfo;

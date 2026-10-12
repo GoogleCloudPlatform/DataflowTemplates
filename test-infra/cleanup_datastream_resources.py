@@ -8,7 +8,7 @@ import argparse
 # Structure - {projectId: [locations]}
 resources = {
     "cloud-teleport-testing": ["us-central1"],
-    "span-cloud-teleport-testing": ["us-central1"]
+    "span-cloud-teleport-testing": ["us-central1", "us-east1"]
 }
 
 # Retry policy configuration

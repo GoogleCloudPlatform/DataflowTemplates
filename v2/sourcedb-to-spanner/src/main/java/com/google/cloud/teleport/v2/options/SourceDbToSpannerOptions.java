@@ -116,10 +116,10 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       optional = true,
       description = "The number of rows to fetch per page read for JDBC source.",
       helpText =
-          "The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below."
+          "The number of rows to fetch per page read for JDBC source. If not set, it is auto-inferred from the worker machine type and the estimated row size, falling back to 50_000 rows if it cannot be inferred (for example, when the worker machine type is not specified). If source dialect is Mysql, please see the note below."
               + " This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors."
               + "Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties."
-              + "In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default.")
+              + " For MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default, unless the fetchSize parameter is explicitly set to 0.")
   Integer getFetchSize();
 
   void setFetchSize(Integer value);

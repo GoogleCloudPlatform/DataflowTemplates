@@ -151,6 +151,46 @@ public interface {java_path.stem} {{
     # # Clean up the temporary files
     os.remove(java_path)
 
+  def test_generate_java_interface_missing_option_file(self):
+    yaml_content = """
+template:
+  name: "Test_Yaml"
+  options_file:
+    - non_existent_options
+  parameters: []
+"""
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml') as yaml_file, \
+         tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.java') as java_file:
+      yaml_file.write(yaml_content)
+      yaml_path = Path(yaml_file.name)
+      java_path = Path(java_file.name)
+
+    try:
+      with self.assertRaises(FileNotFoundError):
+        generate_yaml_java_templates.generate_java_interface(yaml_path, java_path)
+    finally:
+      os.remove(yaml_path)
+      os.remove(java_path)
+
+  def test_generate_java_interface_missing_parameter_group(self):
+    yaml_content = """
+template:
+  name: "Test_Yaml"
+  parameters:
+    - non_existent_param_group
+"""
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml') as yaml_file, \
+         tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.java') as java_file:
+      yaml_file.write(yaml_content)
+      yaml_path = Path(yaml_file.name)
+      java_path = Path(java_file.name)
+
+    try:
+      with self.assertRaises(ValueError):
+        generate_yaml_java_templates.generate_java_interface(yaml_path, java_path)
+    finally:
+      os.remove(yaml_path)
+      os.remove(java_path)
 
 
 if __name__ == '__main__':

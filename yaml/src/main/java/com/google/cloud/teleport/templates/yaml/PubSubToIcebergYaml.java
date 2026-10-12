@@ -186,15 +186,6 @@ public interface PubSubToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 15,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 16,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -203,7 +194,7 @@ public interface PubSubToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 16,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -212,7 +203,7 @@ public interface PubSubToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 17,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -221,7 +212,7 @@ public interface PubSubToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 18,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
@@ -230,7 +221,7 @@ public interface PubSubToIcebergYaml {
   String getTableProperties();
 
   @TemplateParameter.Integer(
-      order = 20,
+      order = 19,
       name = "triggeringFrequencySeconds",
       optional = false,
       description = "For a streaming pipeline, the frequency at which snapshots are produced.",
@@ -240,7 +231,7 @@ public interface PubSubToIcebergYaml {
   Integer getTriggeringFrequencySeconds();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 20,
       name = "sdfCheckpointAfterDuration",
       optional = true,
       description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
@@ -251,7 +242,7 @@ public interface PubSubToIcebergYaml {
   String getSdfCheckpointAfterDuration();
 
   @TemplateParameter.Integer(
-      order = 22,
+      order = 21,
       name = "sdfCheckpointAfterOutputBytes",
       optional = true,
       description =

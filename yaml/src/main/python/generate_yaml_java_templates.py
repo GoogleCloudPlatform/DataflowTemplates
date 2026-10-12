@@ -120,7 +120,7 @@ def generate_java_interface(yaml_path, java_path):
                     for option in option_data.get('options', []):
                         options_map[option['name']] = option['parameters']
             else:
-                print(f"Warning: Option file {option_file_path} not found.")
+                raise FileNotFoundError(f"Option file {option_file_path} not found.")
 
     # Flatten parameters
     flat_parameters = []
@@ -129,7 +129,7 @@ def generate_java_interface(yaml_path, java_path):
             if param in options_map:
                 flat_parameters.extend(options_map[param])
             else:
-                print(f"Warning: Parameter group {param} not found in options.")
+                raise ValueError(f"Parameter group {param} not found in options.")
         else:
             flat_parameters.append(param)
 

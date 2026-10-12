@@ -20,6 +20,7 @@ dataflow_params = {
     column_overrides                 = "<YOUR_COLUMN_OVERRIDES>"         # Optional: Column name overrides (e.g., "[{TableName.OldColumnName,TableName.NewColumnName}]")
     tables                           = "<YOUR_TABLES>"                   # Optional: Comma-separated list of source tables to validate
     table_configuration_file_path             = "<YOUR_TABLE_CONFIGURATION_FILE_PATH>"     # Optional: GCS path to a JSON file containing tables to validate
+    shard_ids                        = "<YOUR_SHARD_IDS>"                # Optional: Comma-separated list of logical shard IDs to validate
     transformation_jar_path          = "<YOUR_TRANSFORMATION_JAR_PATH>"  # Optional: GCS path to the transformation JAR file
     transformation_class_name        = "<YOUR_TRANSFORMATION_CLASS_NAME>" # Optional: Fully qualified transformation class name
     transformation_custom_parameters = "<YOUR_TRANSFORMATION_CUSTOM_PARAMS>" # Optional: Custom parameters for the transformation
