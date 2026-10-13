@@ -151,6 +151,13 @@ public class OracleDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
+      if ("NULL".equals(sqlValue) || "?".equals(sqlValue)) {
+        if (sourceTable != null
+            && sourceTable.column(colName) != null
+            && isCastableWithoutLength(sourceTable.column(colName).type())) {
+          sqlValue = "CAST(" + sqlValue + " AS " + sourceTable.column(colName).type() + ")";
+        }
+      }
       usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
       if (index + 1 < queryColumns.size()) {
         usingSelect.append(", ");
@@ -198,6 +205,37 @@ public class OracleDMLGenerator implements IDMLGenerator {
         .append(")");
 
     return new DMLGeneratorResponse(mergeQuery.toString());
+  }
+
+  /**
+   * Returns whether {@code CAST(NULL|? AS <type>)} is valid for the given Oracle column type as
+   * reported by the JDBC metadata. Character and RAW types are reported without their length (e.g.
+   * {@code VARCHAR2}), which makes the CAST invalid (ORA-00906), and Oracle does not support CAST
+   * to LOB types at all (ORA-00932). For those types a bare {@code NULL} / {@code ?} is used, which
+   * Oracle accepts for every column type in the MERGE source query.
+   */
+  @VisibleForTesting
+  static boolean isCastableWithoutLength(String oracleType) {
+    if (oracleType == null) {
+      return false;
+    }
+    String base = baseType(oracleType);
+    return base.equals("number")
+        || base.equals("float")
+        || base.equals("binary_float")
+        || base.equals("binary_double")
+        || base.equals("date")
+        || base.startsWith("timestamp")
+        || base.startsWith("interval");
+  }
+
+  /** Lower-cased Oracle type name without precision/length, e.g. "TIMESTAMP(6)" -> "timestamp". */
+  private static String baseType(String oracleType) {
+    String base = oracleType.toLowerCase();
+    if (base.contains("(")) {
+      base = base.substring(0, base.indexOf("(")).trim();
+    }
+    return base;
   }
 
   private static DMLGeneratorResponse getDeleteStatement(
@@ -321,9 +359,28 @@ public class OracleDMLGenerator implements IDMLGenerator {
         byte[] decodedBytes = Base64.getDecoder().decode(valuesJson.getString(colName));
         preparedStatementParameters.add(decodedBytes);
       } else {
+        String sourceBaseType = baseType(sourceColDef.type());
+        if (sourceBaseType.equals("clob") || sourceBaseType.equals("nclob")) {
+          // A single bind of a large string is sent as LONG and rejected outside LONG columns
+          // (ORA-01461), so bind it in chunks and concatenate them as a LOB.
+          return bindAsLobChunks(
+              valuesJson.getString(colName),
+              sourceBaseType.equals("nclob") ? "TO_NCLOB" : "TO_CLOB",
+              preparedStatementParameters);
+        }
         preparedStatementParameters.add(valuesJson.getString(colName));
       }
       return "?";
+    }
+
+    String sourceBaseType = baseType(sourceColDef.type());
+    if (sourceBaseType.equals("binary_float") || sourceBaseType.equals("binary_double")) {
+      // Plain numeric literals are parsed by Oracle as NUMBER, which cannot hold NaN, +/-Infinity
+      // or values outside roughly 1E-130..1E126 (ORA-00904 / ORA-01426 / silent underflow to 0),
+      // so convert the textual value explicitly.
+      return (sourceBaseType.equals("binary_float") ? "TO_BINARY_FLOAT('" : "TO_BINARY_DOUBLE('")
+          + escapeString(rawJsonStr)
+          + "')";
     }
 
     if (colType.getCode().equals(Type.Code.FLOAT64)
@@ -358,6 +415,30 @@ public class OracleDMLGenerator implements IDMLGenerator {
             sourceDbTimezoneOffset,
             colType.toString());
     return response;
+  }
+
+  /** Maximum characters per bind for chunked LOB values (at most 4000 bytes in UTF-8). */
+  private static final int LOB_BIND_CHUNK_CHARS = 1000;
+
+  /**
+   * Adds {@code value} to the prepared statement parameters in chunks and returns an expression
+   * concatenating them as a LOB, e.g. {@code TO_CLOB(?) || TO_CLOB(?)}. Chunks never split a
+   * surrogate pair.
+   */
+  @VisibleForTesting
+  static String bindAsLobChunks(String value, String lobFunction, List<Object> parameters) {
+    List<String> placeholders = new ArrayList<>();
+    int start = 0;
+    while (start < value.length()) {
+      int end = Math.min(value.length(), start + LOB_BIND_CHUNK_CHARS);
+      if (end < value.length() && Character.isHighSurrogate(value.charAt(end - 1))) {
+        end--;
+      }
+      parameters.add(value.substring(start, end));
+      placeholders.add(lobFunction + "(?)");
+      start = end;
+    }
+    return String.join(" || ", placeholders);
   }
 
   @VisibleForTesting

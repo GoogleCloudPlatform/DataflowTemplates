@@ -1,0 +1,1407 @@
+{
+ "tables": [
+  {
+   "table": "all_types_table",
+   "columns": [
+    {
+     "name": "id",
+     "sourceType": "VARCHAR2",
+     "sourceDdlType": "VARCHAR2(20)",
+     "spannerType": "STRING(20)",
+     "readExpr": "\"id\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "varchar2_col",
+     "sourceType": "VARCHAR2",
+     "sourceDdlType": "VARCHAR2(4000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"varchar2_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "varchar_col",
+     "sourceType": "VARCHAR",
+     "sourceDdlType": "VARCHAR(4000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"varchar_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "char_col",
+     "sourceType": "CHAR",
+     "sourceDdlType": "CHAR(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"char_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "character_col",
+     "sourceType": "CHARACTER",
+     "sourceDdlType": "CHARACTER(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"character_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nvarchar2_col",
+     "sourceType": "NVARCHAR2",
+     "sourceDdlType": "NVARCHAR2(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nvarchar2_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nchar_col",
+     "sourceType": "NCHAR",
+     "sourceDdlType": "NCHAR(1000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nchar_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nchar_varying_col",
+     "sourceType": "NCHAR VARYING",
+     "sourceDdlType": "NCHAR VARYING(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nchar_varying_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nat_character_col",
+     "sourceType": "NATIONAL CHARACTER",
+     "sourceDdlType": "NATIONAL CHARACTER(1000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_character_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nat_char_col",
+     "sourceType": "NATIONAL CHAR",
+     "sourceDdlType": "NATIONAL CHAR(1000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_char_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nat_characvar_col",
+     "sourceType": "NATIONAL CHARACTER VARYING",
+     "sourceDdlType": "NATIONAL CHARACTER VARYING(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_characvar_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nat_charvar_col",
+     "sourceType": "NATIONAL CHAR VARYING",
+     "sourceDdlType": "NATIONAL CHAR VARYING(2000)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_charvar_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "number_col",
+     "sourceType": "NUMBER",
+     "sourceDdlType": "NUMBER",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"number_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "numeric_col",
+     "sourceType": "NUMERIC",
+     "sourceDdlType": "NUMERIC",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"numeric_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "decimal_col",
+     "sourceType": "DECIMAL",
+     "sourceDdlType": "DECIMAL",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"decimal_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "dec_col",
+     "sourceType": "DEC",
+     "sourceDdlType": "DEC",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"dec_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "float_col",
+     "sourceType": "FLOAT",
+     "sourceDdlType": "FLOAT",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"float_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "double_prec_col",
+     "sourceType": "DOUBLE PRECISION",
+     "sourceDdlType": "DOUBLE PRECISION",
+     "spannerType": "FLOAT64",
+     "readExpr": "\"double_prec_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "real_col",
+     "sourceType": "REAL",
+     "sourceDdlType": "REAL",
+     "spannerType": "FLOAT64",
+     "readExpr": "\"real_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "integer_col",
+     "sourceType": "INTEGER",
+     "sourceDdlType": "INTEGER",
+     "spannerType": "INT64",
+     "readExpr": "\"integer_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "int_col",
+     "sourceType": "INT",
+     "sourceDdlType": "INT",
+     "spannerType": "INT64",
+     "readExpr": "\"int_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "smallint_col",
+     "sourceType": "SMALLINT",
+     "sourceDdlType": "SMALLINT",
+     "spannerType": "INT64",
+     "readExpr": "\"smallint_col\"",
+     "compare": "number",
+     "pk": false
+    },
+    {
+     "name": "binary_float_col",
+     "sourceType": "BINARY_FLOAT",
+     "sourceDdlType": "BINARY_FLOAT",
+     "spannerType": "FLOAT32",
+     "readExpr": "\"binary_float_col\"",
+     "compare": "float",
+     "pk": false
+    },
+    {
+     "name": "binary_double_col",
+     "sourceType": "BINARY_DOUBLE",
+     "sourceDdlType": "BINARY_DOUBLE",
+     "spannerType": "FLOAT64",
+     "readExpr": "\"binary_double_col\"",
+     "compare": "double",
+     "pk": false
+    },
+    {
+     "name": "date_col",
+     "sourceType": "DATE",
+     "sourceDdlType": "DATE",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(\"date_col\", 'YYYY-MM-DD HH24:MI:SS')",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "timestamp_col",
+     "sourceType": "TIMESTAMP",
+     "sourceDdlType": "TIMESTAMP(6)",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(\"timestamp_col\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "timestamp_tz_col",
+     "sourceType": "TIMESTAMP WITH TIME ZONE",
+     "sourceDdlType": "TIMESTAMP(6) WITH TIME ZONE",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_tz_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "timestamp_ltz_col",
+     "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+     "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "raw_col",
+     "sourceType": "RAW",
+     "sourceDdlType": "RAW(2000)",
+     "spannerType": "BYTES(MAX)",
+     "readExpr": "\"raw_col\"",
+     "compare": "bytes",
+     "pk": false
+    },
+    {
+     "name": "blob_col",
+     "sourceType": "BLOB",
+     "sourceDdlType": "BLOB",
+     "spannerType": "BYTES(MAX)",
+     "readExpr": "\"blob_col\"",
+     "compare": "bytes",
+     "pk": false
+    },
+    {
+     "name": "clob_col",
+     "sourceType": "CLOB",
+     "sourceDdlType": "CLOB",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"clob_col\"",
+     "compare": "string",
+     "pk": false
+    },
+    {
+     "name": "nclob_col",
+     "sourceType": "NCLOB",
+     "sourceDdlType": "NCLOB",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nclob_col\"",
+     "compare": "string",
+     "pk": false
+    }
+   ],
+   "rows": [
+    {
+     "id": {
+      "spanner": "typical",
+      "expected": "typical"
+     },
+     "varchar2_col": {
+      "spanner": "Hello World",
+      "expected": "Hello World"
+     },
+     "varchar_col": {
+      "spanner": "Hello World",
+      "expected": "Hello World"
+     },
+     "char_col": {
+      "spanner": "Hello World",
+      "expected": {
+       "prefix": "Hello World",
+       "repeat": " ",
+       "times": 1989,
+       "base64": false
+      }
+     },
+     "character_col": {
+      "spanner": "Hello World",
+      "expected": {
+       "prefix": "Hello World",
+       "repeat": " ",
+       "times": 1989,
+       "base64": false
+      }
+     },
+     "nvarchar2_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": "こんにちは世界 😀"
+     },
+     "nchar_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": {
+       "prefix": "こんにちは世界 😀",
+       "repeat": " ",
+       "times": 990,
+       "base64": false
+      }
+     },
+     "nchar_varying_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": "こんにちは世界 😀"
+     },
+     "nat_character_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": {
+       "prefix": "こんにちは世界 😀",
+       "repeat": " ",
+       "times": 990,
+       "base64": false
+      }
+     },
+     "nat_char_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": {
+       "prefix": "こんにちは世界 😀",
+       "repeat": " ",
+       "times": 990,
+       "base64": false
+      }
+     },
+     "nat_characvar_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": "こんにちは世界 😀"
+     },
+     "nat_charvar_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": "こんにちは世界 😀"
+     },
+     "number_col": {
+      "spanner": "123.456",
+      "expected": "123.456"
+     },
+     "numeric_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "decimal_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "dec_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "float_col": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "double_prec_col": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "real_col": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "integer_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "int_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "smallint_col": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "binary_float_col": {
+      "spanner": "3.14",
+      "expected": "3.14"
+     },
+     "binary_double_col": {
+      "spanner": "3.141592653589793",
+      "expected": "3.141592653589793"
+     },
+     "date_col": {
+      "spanner": "2024-01-15T10:30:45Z",
+      "expected": "2024-01-15 10:30:45"
+     },
+     "timestamp_col": {
+      "spanner": "2024-01-15T10:30:45.123456Z",
+      "expected": "2024-01-15 10:30:45.123456"
+     },
+     "timestamp_tz_col": {
+      "spanner": "2024-02-29T23:59:59.999999Z",
+      "expected": "2024-02-29 23:59:59.999999"
+     },
+     "timestamp_ltz_col": {
+      "spanner": "2024-01-15T10:30:45.123456Z",
+      "expected": "2024-01-15 10:30:45.123456"
+     },
+     "raw_col": {
+      "spanner": "3q2+7w==",
+      "expected": "3q2+7w=="
+     },
+     "blob_col": {
+      "spanner": "3q2+7w==",
+      "expected": "3q2+7w=="
+     },
+     "clob_col": {
+      "spanner": "Hello CLOB",
+      "expected": "Hello CLOB"
+     },
+     "nclob_col": {
+      "spanner": "こんにちは世界 😀",
+      "expected": "こんにちは世界 😀"
+     }
+    },
+    {
+     "id": {
+      "spanner": "boundary",
+      "expected": "boundary"
+     },
+     "varchar2_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 4000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 4000,
+       "base64": false
+      }
+     },
+     "varchar_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 4000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 4000,
+       "base64": false
+      }
+     },
+     "char_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "character_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "nvarchar2_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "nchar_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      }
+     },
+     "nchar_varying_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "nat_character_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      }
+     },
+     "nat_char_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 1000,
+       "base64": false
+      }
+     },
+     "nat_characvar_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "nat_charvar_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 2000,
+       "base64": false
+      }
+     },
+     "number_col": {
+      "spanner": "99999999999999999999999999999.999999999",
+      "expected": "99999999999999999999999999999.999999999"
+     },
+     "numeric_col": {
+      "spanner": "99999999999999999999999999999",
+      "expected": "99999999999999999999999999999"
+     },
+     "decimal_col": {
+      "spanner": "-99999999999999999999999999999",
+      "expected": "-99999999999999999999999999999"
+     },
+     "dec_col": {
+      "spanner": "0",
+      "expected": "0"
+     },
+     "float_col": {
+      "spanner": "-123.456",
+      "expected": "-123.456"
+     },
+     "double_prec_col": {
+      "spanner": "1.0E125",
+      "expected": "1E125"
+     },
+     "real_col": {
+      "spanner": "1.0E-130",
+      "expected": "1E-130"
+     },
+     "integer_col": {
+      "spanner": "9223372036854775807",
+      "expected": "9223372036854775807"
+     },
+     "int_col": {
+      "spanner": "-9223372036854775808",
+      "expected": "-9223372036854775808"
+     },
+     "smallint_col": {
+      "spanner": "0",
+      "expected": "0"
+     },
+     "binary_float_col": {
+      "spanner": "NaN",
+      "expected": "NaN"
+     },
+     "binary_double_col": {
+      "spanner": "1.79769313486231E308",
+      "expected": "1.79769313486231E308"
+     },
+     "date_col": {
+      "spanner": "9999-12-31T23:59:59Z",
+      "expected": "9999-12-31 23:59:59"
+     },
+     "timestamp_col": {
+      "spanner": "0001-01-01T00:00:00Z",
+      "expected": "0001-01-01 00:00:00.000000"
+     },
+     "timestamp_tz_col": {
+      "spanner": "9999-12-31T23:59:59.999999Z",
+      "expected": "9999-12-31 23:59:59.999999"
+     },
+     "timestamp_ltz_col": {
+      "spanner": "0001-01-01T00:00:00Z",
+      "expected": "0001-01-01 00:00:00.000000"
+     },
+     "raw_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "",
+       "times": 2000,
+       "base64": false,
+       "hexRepeat": "FF"
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "",
+       "times": 2000,
+       "base64": false,
+       "hexRepeat": "FF"
+      }
+     },
+     "blob_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": true
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": true
+      }
+     },
+     "clob_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": false
+      }
+     },
+     "nclob_col": {
+      "spanner": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": false
+      },
+      "expected": {
+       "prefix": "",
+       "repeat": "A",
+       "times": 100000,
+       "base64": false
+      }
+     }
+    },
+    {
+     "id": {
+      "spanner": "nulls",
+      "expected": "nulls"
+     },
+     "varchar2_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "varchar_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "char_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "character_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nvarchar2_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nchar_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nchar_varying_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nat_character_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nat_char_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nat_characvar_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nat_charvar_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "number_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "numeric_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "decimal_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "dec_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "float_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "double_prec_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "real_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "integer_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "int_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "smallint_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "binary_float_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "binary_double_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "date_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "timestamp_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "timestamp_tz_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "timestamp_ltz_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "raw_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "blob_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "clob_col": {
+      "spanner": null,
+      "expected": null
+     },
+     "nclob_col": {
+      "spanner": null,
+      "expected": null
+     }
+    }
+   ]
+  },
+  {
+   "table": "pk_strings_table",
+   "columns": [
+    {
+     "name": "varchar2_pk",
+     "sourceType": "VARCHAR2",
+     "sourceDdlType": "VARCHAR2(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"varchar2_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "varchar_pk",
+     "sourceType": "VARCHAR",
+     "sourceDdlType": "VARCHAR(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"varchar_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "char_pk",
+     "sourceType": "CHAR",
+     "sourceDdlType": "CHAR(10)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"char_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "character_pk",
+     "sourceType": "CHARACTER",
+     "sourceDdlType": "CHARACTER(10)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"character_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nvarchar2_pk",
+     "sourceType": "NVARCHAR2",
+     "sourceDdlType": "NVARCHAR2(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nvarchar2_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nchar_pk",
+     "sourceType": "NCHAR",
+     "sourceDdlType": "NCHAR(10)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nchar_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nchar_varying_pk",
+     "sourceType": "NCHAR VARYING",
+     "sourceDdlType": "NCHAR VARYING(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nchar_varying_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nat_character_pk",
+     "sourceType": "NATIONAL CHARACTER",
+     "sourceDdlType": "NATIONAL CHARACTER(10)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_character_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nat_char_pk",
+     "sourceType": "NATIONAL CHAR",
+     "sourceDdlType": "NATIONAL CHAR(10)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_char_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nat_characvar_pk",
+     "sourceType": "NATIONAL CHARACTER VARYING",
+     "sourceDdlType": "NATIONAL CHARACTER VARYING(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_characvar_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "nat_charvar_pk",
+     "sourceType": "NATIONAL CHAR VARYING",
+     "sourceDdlType": "NATIONAL CHAR VARYING(100)",
+     "spannerType": "STRING(MAX)",
+     "readExpr": "\"nat_charvar_pk\"",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "raw_pk",
+     "sourceType": "RAW",
+     "sourceDdlType": "RAW(16)",
+     "spannerType": "BYTES(MAX)",
+     "readExpr": "\"raw_pk\"",
+     "compare": "bytes",
+     "pk": true
+    },
+    {
+     "name": "val_col",
+     "sourceType": "VARCHAR2",
+     "sourceDdlType": "VARCHAR2(20)",
+     "spannerType": "STRING(20)",
+     "readExpr": "\"val_col\"",
+     "compare": "string",
+     "pk": false
+    }
+   ],
+   "rows": [
+    {
+     "varchar2_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "varchar_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "char_pk": {
+      "spanner": "abc",
+      "expected": "abc       "
+     },
+     "character_pk": {
+      "spanner": "abc",
+      "expected": "abc       "
+     },
+     "nvarchar2_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "nchar_pk": {
+      "spanner": "abc",
+      "expected": "abc       "
+     },
+     "nchar_varying_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "nat_character_pk": {
+      "spanner": "abc",
+      "expected": "abc       "
+     },
+     "nat_char_pk": {
+      "spanner": "abc",
+      "expected": "abc       "
+     },
+     "nat_characvar_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "nat_charvar_pk": {
+      "spanner": "abc",
+      "expected": "abc"
+     },
+     "raw_pk": {
+      "spanner": "3q2+7w==",
+      "expected": "3q2+7w=="
+     },
+     "val_col": {
+      "spanner": "row1",
+      "expected": "row1"
+     }
+    },
+    {
+     "varchar2_pk": {
+      "spanner": "O'Brien",
+      "expected": "O'Brien"
+     },
+     "varchar_pk": {
+      "spanner": "O'Brien",
+      "expected": "O'Brien"
+     },
+     "char_pk": {
+      "spanner": "O'Brien",
+      "expected": "O'Brien   "
+     },
+     "character_pk": {
+      "spanner": "O'Brien",
+      "expected": "O'Brien   "
+     },
+     "nvarchar2_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nchar_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nchar_varying_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nat_character_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nat_char_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nat_characvar_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "nat_charvar_pk": {
+      "spanner": "O'Brien 😀",
+      "expected": "O'Brien 😀"
+     },
+     "raw_pk": {
+      "spanner": "AA==",
+      "expected": "AA=="
+     },
+     "val_col": {
+      "spanner": "row2",
+      "expected": "row2"
+     }
+    }
+   ]
+  },
+  {
+   "table": "pk_numbers_table",
+   "columns": [
+    {
+     "name": "number_pk",
+     "sourceType": "NUMBER",
+     "sourceDdlType": "NUMBER",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"number_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "numeric_pk",
+     "sourceType": "NUMERIC",
+     "sourceDdlType": "NUMERIC",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"numeric_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "decimal_pk",
+     "sourceType": "DECIMAL",
+     "sourceDdlType": "DECIMAL",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"decimal_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "dec_pk",
+     "sourceType": "DEC",
+     "sourceDdlType": "DEC",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"dec_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "float_pk",
+     "sourceType": "FLOAT",
+     "sourceDdlType": "FLOAT",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"float_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "double_prec_pk",
+     "sourceType": "DOUBLE PRECISION",
+     "sourceDdlType": "DOUBLE PRECISION",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"double_prec_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "real_pk",
+     "sourceType": "REAL",
+     "sourceDdlType": "REAL",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"real_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "binary_float_pk",
+     "sourceType": "BINARY_FLOAT",
+     "sourceDdlType": "BINARY_FLOAT",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"binary_float_pk\"",
+     "compare": "float",
+     "pk": true
+    },
+    {
+     "name": "binary_double_pk",
+     "sourceType": "BINARY_DOUBLE",
+     "sourceDdlType": "BINARY_DOUBLE",
+     "spannerType": "NUMERIC",
+     "readExpr": "\"binary_double_pk\"",
+     "compare": "double",
+     "pk": true
+    },
+    {
+     "name": "integer_pk",
+     "sourceType": "INTEGER",
+     "sourceDdlType": "INTEGER",
+     "spannerType": "INT64",
+     "readExpr": "\"integer_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "int_pk",
+     "sourceType": "INT",
+     "sourceDdlType": "INT",
+     "spannerType": "INT64",
+     "readExpr": "\"int_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "smallint_pk",
+     "sourceType": "SMALLINT",
+     "sourceDdlType": "SMALLINT",
+     "spannerType": "INT64",
+     "readExpr": "\"smallint_pk\"",
+     "compare": "number",
+     "pk": true
+    },
+    {
+     "name": "date_pk",
+     "sourceType": "DATE",
+     "sourceDdlType": "DATE",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(\"date_pk\", 'YYYY-MM-DD HH24:MI:SS')",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "timestamp_pk",
+     "sourceType": "TIMESTAMP",
+     "sourceDdlType": "TIMESTAMP(6)",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(\"timestamp_pk\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "timestamp_ltz_pk",
+     "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+     "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+     "spannerType": "TIMESTAMP",
+     "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_pk\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+     "compare": "string",
+     "pk": true
+    },
+    {
+     "name": "val_col",
+     "sourceType": "VARCHAR2",
+     "sourceDdlType": "VARCHAR2(20)",
+     "spannerType": "STRING(20)",
+     "readExpr": "\"val_col\"",
+     "compare": "string",
+     "pk": false
+    }
+   ],
+   "rows": [
+    {
+     "number_pk": {
+      "spanner": "123.456",
+      "expected": "123.456"
+     },
+     "numeric_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "decimal_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "dec_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "float_pk": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "double_prec_pk": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "real_pk": {
+      "spanner": "3.14159",
+      "expected": "3.14159"
+     },
+     "binary_float_pk": {
+      "spanner": "3.14",
+      "expected": "3.14"
+     },
+     "binary_double_pk": {
+      "spanner": "3.141592654",
+      "expected": "3.141592654"
+     },
+     "integer_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "int_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "smallint_pk": {
+      "spanner": "12345",
+      "expected": "12345"
+     },
+     "date_pk": {
+      "spanner": "2024-01-15T10:30:45Z",
+      "expected": "2024-01-15 10:30:45"
+     },
+     "timestamp_pk": {
+      "spanner": "2024-01-15T10:30:45.123456Z",
+      "expected": "2024-01-15 10:30:45.123456"
+     },
+     "timestamp_ltz_pk": {
+      "spanner": "2024-02-29T12:00:00Z",
+      "expected": "2024-02-29 12:00:00.000000"
+     },
+     "val_col": {
+      "spanner": "row1",
+      "expected": "row1"
+     }
+    },
+    {
+     "number_pk": {
+      "spanner": "-99999999999999999999999999999.999999999",
+      "expected": "-99999999999999999999999999999.999999999"
+     },
+     "numeric_pk": {
+      "spanner": "99999999999999999999999999999",
+      "expected": "99999999999999999999999999999"
+     },
+     "decimal_pk": {
+      "spanner": "-99999999999999999999999999999",
+      "expected": "-99999999999999999999999999999"
+     },
+     "dec_pk": {
+      "spanner": "0",
+      "expected": "0"
+     },
+     "float_pk": {
+      "spanner": "0.1",
+      "expected": "0.1"
+     },
+     "double_prec_pk": {
+      "spanner": "-0.5",
+      "expected": "-0.5"
+     },
+     "real_pk": {
+      "spanner": "12345678.5",
+      "expected": "12345678.5"
+     },
+     "binary_float_pk": {
+      "spanner": "-12.5",
+      "expected": "-12.5"
+     },
+     "binary_double_pk": {
+      "spanner": "12345.5",
+      "expected": "12345.5"
+     },
+     "integer_pk": {
+      "spanner": "9223372036854775807",
+      "expected": "9223372036854775807"
+     },
+     "int_pk": {
+      "spanner": "-9223372036854775808",
+      "expected": "-9223372036854775808"
+     },
+     "smallint_pk": {
+      "spanner": "0",
+      "expected": "0"
+     },
+     "date_pk": {
+      "spanner": "0001-01-01T00:00:00Z",
+      "expected": "0001-01-01 00:00:00"
+     },
+     "timestamp_pk": {
+      "spanner": "9999-12-31T23:59:59.999999Z",
+      "expected": "9999-12-31 23:59:59.999999"
+     },
+     "timestamp_ltz_pk": {
+      "spanner": "1970-01-01T00:00:00Z",
+      "expected": "1970-01-01 00:00:00.000000"
+     },
+     "val_col": {
+      "spanner": "row2",
+      "expected": "row2"
+     }
+    }
+   ]
+  }
+ ],
+ "skippedTypes": [
+  {
+   "type": "BOOLEAN",
+   "reason": "Requires Oracle 23ai (ORA-00902 on the 21c XE container)."
+  },
+  {
+   "type": "TIMESTAMP WITH TIME ZONE as PK",
+   "reason": "Oracle ORA-02329; covered as a non-key column in all_types_table."
+  },
+  {
+   "type": "BLOB / CLOB / NCLOB / JSON as PK",
+   "reason": "Not PK-capable per the matrix (and Oracle)."
+  },
+  {
+   "type": "UUID (reference uuid_pk_table)",
+   "reason": "Oracle has no UUID data type and the matrix has no UUID row."
+  },
+  {
+   "type": "Types Datastream marks unsupported (INTERVAL, XMLTYPE, LONG, ROWID, ...)",
+   "reason": "The reverse generator cannot write them (see reverse-datatypes report); excluded from this generic insert/delete scenario."
+  },
+  {
+   "type": "JSON",
+   "reason": "Native JSON column type requires Oracle 21c+; the shared test database is Oracle 19c (ORA-00902)."
+  }
+ ]
+}

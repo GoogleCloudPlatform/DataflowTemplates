@@ -64,6 +64,7 @@ public class SharedOracleReverseITContainer {
   private static final long DROP_USER_RETRY_DELAY_MILLIS = 5_000;
 
   private static SpannerOracleResourceManager instance;
+  private static SpannerOracleResourceManager cdbAdmin;
 
   /**
    * Returns the admin password of the static Oracle DB, passed via {@code -DcloudOraclePassword}.
@@ -130,11 +131,18 @@ public class SharedOracleReverseITContainer {
             + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     LOG.info("Creating isolated Oracle user: {}", username);
     SpannerOracleResourceManager rm = getCdbAdmin();
+    // The user is created from CDB$ROOT, but the tests and the pipeline connect to XEPDB1. Grants
+    // without CONTAINER=ALL only apply to the current container (the root), so the user would
+    // lack even CREATE SESSION in XEPDB1 (ORA-01045).
     rm.runSQLUpdate(
-        "CREATE USER " + username + " IDENTIFIED BY \"" + ISOLATED_USER_PASSWORD + "\"");
-    rm.runSQLUpdate("GRANT ALL PRIVILEGES TO " + username);
-    rm.runSQLUpdate("GRANT UNLIMITED TABLESPACE TO " + username);
-    rm.runSQLUpdate("GRANT DBA TO " + username);
+        "CREATE USER "
+            + username
+            + " IDENTIFIED BY \""
+            + ISOLATED_USER_PASSWORD
+            + "\" CONTAINER=ALL");
+    rm.runSQLUpdate("GRANT ALL PRIVILEGES TO " + username + " CONTAINER=ALL");
+    rm.runSQLUpdate("GRANT UNLIMITED TABLESPACE TO " + username + " CONTAINER=ALL");
+    rm.runSQLUpdate("GRANT DBA TO " + username + " CONTAINER=ALL");
     return username;
   }
 
@@ -155,7 +163,7 @@ public class SharedOracleReverseITContainer {
       LOG.error("Refusing to drop Oracle user {} as it is not an isolated test user.", username);
       return;
     }
-    SpannerOracleResourceManager rm = getInstance();
+    SpannerOracleResourceManager rm = getCdbAdmin();
     for (int attempt = 1; attempt <= DROP_USER_MAX_ATTEMPTS; attempt++) {
       try {
         killSessions(rm, username);
