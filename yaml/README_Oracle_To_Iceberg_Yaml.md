@@ -1,9 +1,8 @@
 
 Oracle to Iceberg (YAML) template
 ---
-The Oracle to Iceberg template is a batch pipeline executes the user provided
-SQL query to read data from Oracle table and outputs the records to Iceberg
-table.
+The Oracle to Iceberg template is a batch pipeline executes the user provided SQL
+query to read data from Oracle table and outputs the records to Iceberg table.
 
 
 
@@ -15,7 +14,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:oracle:thin:@your-host:1521:your-sid`.
+* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:oracle://your-host:1521/serviceName`.
 * **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
 * **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
 * **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
