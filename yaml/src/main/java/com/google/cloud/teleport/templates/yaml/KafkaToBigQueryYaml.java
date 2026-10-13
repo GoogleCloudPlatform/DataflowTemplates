@@ -126,7 +126,7 @@ public interface KafkaToBigQueryYaml {
   Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       name = "messageName",
       optional = true,
       description =
@@ -137,7 +137,7 @@ public interface KafkaToBigQueryYaml {
   String getMessageName();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -148,7 +148,7 @@ public interface KafkaToBigQueryYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -159,7 +159,7 @@ public interface KafkaToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -170,7 +170,7 @@ public interface KafkaToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -181,7 +181,7 @@ public interface KafkaToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 14,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
@@ -192,7 +192,7 @@ public interface KafkaToBigQueryYaml {
   Integer getNumStreams();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "outputDeadletterTable",
       optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",

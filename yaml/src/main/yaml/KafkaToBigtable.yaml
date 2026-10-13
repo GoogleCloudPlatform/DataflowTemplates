@@ -49,6 +49,7 @@ pipeline:
         consumer_config: {{ consumerConfigUpdates }}
         file_descriptor_path: {{ fileDescriptorPath }}
         format: {{ format | default('JSON') }}
+        max_read_time_seconds: {{ maxReadTimeSeconds }}
         message_name: {{ messageName }}
         {% if schema %}
         schema: |

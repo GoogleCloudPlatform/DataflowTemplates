@@ -62,6 +62,7 @@ pipeline:
         format: {{ format  | default('JSON') }}
         topic: {{ topic }}
         bootstrap_servers: {{ bootstrapServers }}
+        max_read_time_seconds: {{ maxReadTimeSeconds }}
         auto_offset_reset_config: 'earliest'
         error_handling:
           output: errors
