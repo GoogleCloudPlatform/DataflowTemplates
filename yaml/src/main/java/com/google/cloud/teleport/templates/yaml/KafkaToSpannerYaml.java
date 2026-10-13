@@ -193,8 +193,29 @@ public interface KafkaToSpannerYaml {
       name = "tableId",
       optional = false,
       description = "Cloud Spanner Table ID.",
-      helpText = "The Cloud Spanner table ID to write the output to.",
+      helpText = "The Cloud Spanner table ID.",
       example = "your-table-id")
   @Validation.Required
   String getTableId();
+
+  @TemplateParameter.Text(
+      order = 16,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 17,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }

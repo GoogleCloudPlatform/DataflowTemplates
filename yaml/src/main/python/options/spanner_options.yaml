@@ -25,7 +25,7 @@ options:
       - order: 4
         name: "tableId"
         description: "Cloud Spanner Table ID."
-        help: "The Cloud Spanner table ID to write the output to."
+        help: "The Cloud Spanner table ID."
         example: "your-table-id"
         required: true
         type: text

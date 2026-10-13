@@ -21,7 +21,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Kafka topic to read from. For example: my_topic For example, `my_topic`.
 * **instanceId**: The Cloud Spanner instance ID. For example, `your-instance-id`.
 * **databaseId**: The Cloud Spanner database ID. For example, `your-database-id`.
-* **tableId**: The Cloud Spanner table ID to write the output to. For example, `your-table-id`.
+* **tableId**: The Cloud Spanner table ID. For example, `your-table-id`.
 
 ### Optional parameters
 
@@ -35,6 +35,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
 * **projectId**: The Google Cloud project ID of the Cloud Spanner instance. For example, `your-project-id`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
 
 
 
@@ -144,6 +146,8 @@ export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
 export PROJECT_ID=<projectId>
+export TYPE=fixed
+export SIZE=60
 
 gcloud dataflow flex-template run "kafka-to-spanner-yaml-job" \
   --project "$PROJECT" \
@@ -163,7 +167,9 @@ gcloud dataflow flex-template run "kafka-to-spanner-yaml-job" \
   --parameters "projectId=$PROJECT_ID" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
-  --parameters "tableId=$TABLE_ID"
+  --parameters "tableId=$TABLE_ID" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
 ```
 
 For more information about the command, please check:
@@ -199,6 +205,8 @@ export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
 export PROJECT_ID=<projectId>
+export TYPE=fixed
+export SIZE=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -207,7 +215,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-spanner-yaml-job" \
 -DtemplateName="Kafka_To_Spanner_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID,type=$TYPE,size=$SIZE" \
 -f yaml
 ```
 
@@ -267,6 +275,8 @@ resource "google_dataflow_flex_template_job" "kafka_to_spanner_yaml" {
     # messageName = "<messageName>"
     # schema = "<schema>"
     # projectId = "<projectId>"
+    # type = "fixed"
+    # size = "60"
   }
 }
 ```
