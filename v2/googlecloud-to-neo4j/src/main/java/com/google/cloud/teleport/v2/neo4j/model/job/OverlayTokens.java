@@ -20,10 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Runtime options object that coalesces arbitrary options. */
-public record OverlayTokens(Map<String, String> tokens) implements Serializable {
+public record OverlayTokens(Map<String, Object> tokens) implements Serializable {
 
   @Override
-  public Map<String, String> tokens() {
+  public Map<String, Object> tokens() {
     return copyOf(tokens);
   }
 
