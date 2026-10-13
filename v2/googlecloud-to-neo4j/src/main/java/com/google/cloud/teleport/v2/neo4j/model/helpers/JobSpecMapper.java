@@ -51,19 +51,19 @@ public class JobSpecMapper {
       return parseLegacyJobSpec(options, spec);
     }
 
-    // TODO: rename overlay tokens (so that old overlay tokens referencing old specs keep working with import-spec)
+    // TODO: rename overlay tokens (so that old overlay tokens referencing old specs keep working
+    // with import-spec)
     try {
       return ImportSpecificationDeserializer.deserialize(
-              new StringReader(content),
-              Options.builder()
-                      .enableInterpolation()
-                      .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
-                      .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
-                      .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
-                      .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
-                      .interpolationVariables(options.tokens())
-                      .build()
-      );
+          new StringReader(content),
+          Options.builder()
+              .enableInterpolation()
+              .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
+              .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
+              .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
+              .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
+              .interpolationVariables(options.tokens())
+              .build());
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }
