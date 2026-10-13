@@ -126,7 +126,7 @@ public interface KafkaToBigQueryYaml {
   Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 8,
       name = "messageName",
       optional = true,
       description =
@@ -137,7 +137,7 @@ public interface KafkaToBigQueryYaml {
   String getMessageName();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 9,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -148,51 +148,51 @@ public interface KafkaToBigQueryYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 10,
       name = "table",
       optional = false,
       description = "BigQuery table",
       helpText =
           "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects.",
-      example = "")
+      example = "my-project:my_dataset.my_table")
   @Validation.Required
   String getTable();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 11,
       name = "createDisposition",
       optional = true,
       description = "How to create",
       helpText =
           "Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.",
-      example = "")
+      example = "CREATE_NEVER")
   @Default.String("CREATE_NEVER")
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 12,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
       helpText =
-          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
-      example = "")
+          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
+      example = "WRITE_APPEND")
   @Default.String("WRITE_APPEND")
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 13,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
           "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = "")
+      example = "1")
   @Default.Integer(1)
   Integer getNumStreams();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 14,
       name = "outputDeadletterTable",
       optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",

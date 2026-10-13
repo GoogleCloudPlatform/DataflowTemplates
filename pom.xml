@@ -77,18 +77,18 @@
     <failsafe.version>3.3.2</failsafe.version>
     <google-cloud-spanner.version>6.113.0</google-cloud-spanner.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
-    <gson.version>2.13.2</gson.version>
+    <gson.version>2.14.0</gson.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <hbase.client.version>2.6.5-hadoop3</hbase.client.version>
+    <hbase.client.version>2.6.7-hadoop3</hbase.client.version>
     <iceberg.version>1.10.1</iceberg.version>
     <jackson.version>2.21.7</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
     <junit.jupiter.version>6.1.3</junit.jupiter.version>
-    <log4j-2.version>2.25.5</log4j-2.version>
+    <log4j-2.version>2.26.1</log4j-2.version>
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
@@ -101,9 +101,9 @@
     <protobuf.version>4.34.0</protobuf.version>
     <protoc.version>4.29.4</protoc.version>
     <re2j.version>1.8</re2j.version>
-    <slf4j.version>2.0.17</slf4j.version>
+    <slf4j.version>2.0.20</slf4j.version>
     <snakeyaml.version>2.7</snakeyaml.version>
-    <snappy.version>1.1.10.8</snappy.version>
+    <snappy.version>1.1.10.10</snappy.version>
     <spotbugs-annotations.version>4.10.4</spotbugs-annotations.version>
     <spotless-maven-plugin.version>3.4.0</spotless-maven-plugin.version>
     <surefire.version>3.5.5</surefire.version>
@@ -128,7 +128,7 @@
     <jetty.version>12.1.13</jetty.version>
     <httpclient5.version>5.6.4</httpclient5.version>
     <httpcore5.version>5.4.3</httpcore5.version>
-    <lz4-java.version>1.11.2</lz4-java.version>
+    <lz4-java.version>1.11.4</lz4-java.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>
@@ -847,6 +847,10 @@
               <includes>
                 <include>**/*LT.java</include>
               </includes>
+              <!-- Manual-only load tests; still runnable via -Dtest, which overrides excludes. -->
+              <excludes>
+                <exclude>**/*ManualLT.java</exclude>
+              </excludes>
               <excludedGroups></excludedGroups>
               <groups>
                 ${load.tests}

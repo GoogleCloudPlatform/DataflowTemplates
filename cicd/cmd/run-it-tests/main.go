@@ -68,6 +68,8 @@ func main() {
 		flags.PrivateConnectivity(),
 		flags.SpannerHost(),
 		flags.FailureMode(),
+		flags.BaseContainerImage(),
+		flags.BasePythonContainerImage(),
 		flags.RetryFailures(),
 		flags.StaticOracleHost(),
 		flags.StaticOracleSysPassword(),

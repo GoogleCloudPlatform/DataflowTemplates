@@ -18,7 +18,6 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -76,26 +75,6 @@ public interface MySQLToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 4,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.mysql.jdbc.Driver")
-  @Default.String("com.mysql.jdbc.Driver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 5,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mysql-42.2.23.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 6,
       name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
@@ -104,7 +83,7 @@ public interface MySQLToIcebergYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 5,
       name = "connectionInitSql",
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
@@ -113,18 +92,7 @@ public interface MySQLToIcebergYaml {
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
-      order = 8,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: mysql.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mysql")
-  @Default.String("mysql")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 9,
+      order = 6,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -133,7 +101,7 @@ public interface MySQLToIcebergYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 7,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -142,7 +110,7 @@ public interface MySQLToIcebergYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 8,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -151,7 +119,7 @@ public interface MySQLToIcebergYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 12,
+      order = 9,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -160,7 +128,7 @@ public interface MySQLToIcebergYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 10,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -170,16 +138,17 @@ public interface MySQLToIcebergYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 14,
+      order = 11,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
       example = "True")
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 12,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -188,7 +157,7 @@ public interface MySQLToIcebergYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 13,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -198,7 +167,7 @@ public interface MySQLToIcebergYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 14,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -208,7 +177,7 @@ public interface MySQLToIcebergYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 15,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -218,7 +187,7 @@ public interface MySQLToIcebergYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 16,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -227,7 +196,7 @@ public interface MySQLToIcebergYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 17,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -236,7 +205,7 @@ public interface MySQLToIcebergYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 18,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -245,7 +214,7 @@ public interface MySQLToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 19,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -254,7 +223,7 @@ public interface MySQLToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 20,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -263,7 +232,7 @@ public interface MySQLToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 21,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",

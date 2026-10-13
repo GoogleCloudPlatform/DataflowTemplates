@@ -31,7 +31,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
-import com.google.common.base.MoreObjects;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
@@ -73,10 +72,6 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLargeBacklogLT.class);
-
-  private static final String TEMPLATE_SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerToSourceDbLargeBacklogLT/spanner-schema.sql";
@@ -529,7 +524,7 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     params.put("workerMachineType", machineType);
 
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+        PipelineLauncher.LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath());
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)

@@ -52,17 +52,12 @@ pipeline:
       config:
         bootstrap_servers: {{ bootstrapServers }}
         topic: {{ topic }}
-        allow_duplicates: {{ allowDuplicates }}
         confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
         confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
-        consumer_config_updates: {{ consumerConfigUpdates }}
+        consumer_config: {{ consumerConfigUpdates }}
         file_descriptor_path: {{ fileDescriptorPath }}
         format: {{ format | default('JSON') }}
         message_name: {{ messageName }}
-        offset_deduplication: {{ offsetDeduplication }}
-        redistribute_by_record_key: {{ redistributeByRecordKey }}
-        redistribute_num_keys: {{ redistributeNumKeys }}
-        redistributed: {{ redistributed }}
         {% if schema %}
         schema: |
             {{ schema }}

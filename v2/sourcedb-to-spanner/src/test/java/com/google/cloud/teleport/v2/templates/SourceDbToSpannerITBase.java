@@ -158,13 +158,14 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   private static MSSQLResourceManager sharedMssqlResourceManager;
 
+  // mcr.microsoft.com/mssql/server:2025-latest intermittently dies a few seconds after boot with a
+  // SQLPAL assertion ("ASSERT: Expression=(!currentWorker->IsPreemptiveOnEntry())
+  private static final int MSSQL_STARTUP_ATTEMPTS = 3;
+
   public MSSQLResourceManager setUpMSSQLResourceManager() {
     synchronized (SourceDbToSpannerITBase.class) {
       if (sharedMssqlResourceManager == null) {
-        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
-        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
-        builder.setContainerImageTag("2025-latest");
-        sharedMssqlResourceManager = builder.build();
+        sharedMssqlResourceManager = startSharedMssqlResourceManager();
       }
       MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testName);
       builder.setUsername(sharedMssqlResourceManager.getUsername());
@@ -174,6 +175,32 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       builder.useStaticContainer();
       return builder.build();
     }
+  }
+
+  private static MSSQLResourceManager startSharedMssqlResourceManager() {
+    RuntimeException lastFailure = null;
+    for (int attempt = 1; attempt <= MSSQL_STARTUP_ATTEMPTS; attempt++) {
+      try {
+        // SQL Server 2025 is required for the native JSON data type exercised by the ITs.
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        return builder.build();
+      } catch (RuntimeException e) {
+        // Beam surfaces a container that never came up as ContainerLaunchException, and one that
+        // died between start and CREATE DATABASE as JDBCResourceManagerException; both are
+        // recoverable by starting a new container.
+        lastFailure = e;
+        LOG.warn(
+            "Shared SQL Server container failed to start (attempt {}/{})",
+            attempt,
+            MSSQL_STARTUP_ATTEMPTS,
+            e);
+      }
+    }
+    throw new IllegalStateException(
+        "Shared SQL Server container failed to start after " + MSSQL_STARTUP_ATTEMPTS + " attempts",
+        lastFailure);
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
