@@ -232,7 +232,7 @@ public class ModelUtils {
     }
     builder.append(text.substring(i));
     String replacedText = builder.toString();
-    LOG.debug("Before: " + text + ", after: " + replacedText);
+    LOG.debug("Before: {}, after: {}", text, replacedText);
     return replacedText;
   }
 
