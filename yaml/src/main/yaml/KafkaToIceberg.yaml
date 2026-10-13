@@ -57,12 +57,13 @@ pipeline:
         consumer_config: {{ consumerConfigUpdates }}
         file_descriptor_path: {{ fileDescriptorPath }}
         format: {{ format | default('JSON') }}
+        max_read_time_seconds: {{ maxReadTimeSeconds }}
         message_name: {{ messageName }}
         {% if schema %}
         schema: |
             {{ schema }}
         {% endif %}
-        auto_offset_reset_config: 'earliest'
+        auto_offset_reset_config: {{ autoOffsetResetConfig | default('earliest') }}
 
     - type: WriteToIceberg
       name: WriteToIceberg

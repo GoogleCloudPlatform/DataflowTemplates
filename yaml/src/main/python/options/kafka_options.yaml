@@ -16,34 +16,42 @@ options:
         required: true
         type: text
       - order: 3
+        name: "autoOffsetResetConfig"
+        description: "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server."
+        help: "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest"
+        example: "earliest"
+        required: false
+        default: "earliest"
+        type: text
+      - order: 4
         name: "confluentSchemaRegistrySubject"
         description: "The subject name for the Confluent Schema Registry."
         help: "The subject name for the Confluent Schema Registry. For example: my_subject"
         example: "my_subject"
         required: false
         type: text
-      - order: 4
+      - order: 5
         name: "confluentSchemaRegistryUrl"
         description: "The URL for the Confluent Schema Registry."
         help: "The URL for the Confluent Schema Registry. For example: http://schema-registry:8081"
         example: "http://schema-registry:8081"
         required: false
         type: text
-      - order: 5
+      - order: 6
         name: "consumerConfigUpdates"
         description: "A list of key-value pairs that act as configuration parameters for Kafka consumers."
         help: "A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'}"
         example: '{"group.id": "my_group"}'
         required: false
         type: map
-      - order: 6
+      - order: 7
         name: "fileDescriptorPath"
         description: "The path to the Protocol Buffer File Descriptor Set file."
         help: "The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb"
         example: "gs://bucket/path/to/descriptor.pb"
         required: false
         type: text
-      - order: 7
+      - order: 8
         name: "format"
         description: "The encoding format for the data stored in Kafka."
         help: "The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON"
@@ -51,14 +59,21 @@ options:
         required: false
         default: "JSON"
         type: text
-      - order: 8
+      - order: 9
+        name: "maxReadTimeSeconds"
+        description: "Upper bound of how long to read from Kafka."
+        help: "Upper bound of how long to read from Kafka in seconds. For example: 60"
+        example: "60"
+        required: false
+        type: integer
+      - order: 10
         name: "messageName"
         description: "The name of the Protocol Buffer message to be used for schema extraction and data conversion."
         help: "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage"
         example: "MyMessage"
         required: false
         type: text
-      - order: 9
+      - order: 11
         name: "schema"
         description: "The schema in which the data is encoded in the Kafka topic."
         help: >
