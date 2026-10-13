@@ -67,6 +67,18 @@ public interface KafkaToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 3,
+      name = "autoOffsetResetConfig",
+      optional = true,
+      description =
+          "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server.",
+      helpText =
+          "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest",
+      example = "earliest")
+  @Default.String("earliest")
+  String getAutoOffsetResetConfig();
+
+  @TemplateParameter.Text(
+      order = 4,
       name = "confluentSchemaRegistrySubject",
       optional = true,
       description = "The subject name for the Confluent Schema Registry.",
@@ -75,7 +87,7 @@ public interface KafkaToBigQueryYaml {
   String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 5,
       name = "confluentSchemaRegistryUrl",
       optional = true,
       description = "The URL for the Confluent Schema Registry.",
@@ -85,7 +97,7 @@ public interface KafkaToBigQueryYaml {
   String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       name = "consumerConfigUpdates",
       optional = true,
       description =
@@ -96,7 +108,7 @@ public interface KafkaToBigQueryYaml {
   String getConsumerConfigUpdates();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       name = "fileDescriptorPath",
       optional = true,
       description = "The path to the Protocol Buffer File Descriptor Set file.",
@@ -106,7 +118,7 @@ public interface KafkaToBigQueryYaml {
   String getFileDescriptorPath();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "format",
       optional = true,
       description = "The encoding format for the data stored in Kafka.",
@@ -117,7 +129,7 @@ public interface KafkaToBigQueryYaml {
   String getFormat();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "maxReadTimeSeconds",
       optional = true,
       description = "Upper bound of how long to read from Kafka.",
@@ -126,7 +138,7 @@ public interface KafkaToBigQueryYaml {
   Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "messageName",
       optional = true,
       description =
@@ -137,7 +149,7 @@ public interface KafkaToBigQueryYaml {
   String getMessageName();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -148,7 +160,7 @@ public interface KafkaToBigQueryYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -159,7 +171,7 @@ public interface KafkaToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -170,7 +182,7 @@ public interface KafkaToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -181,7 +193,7 @@ public interface KafkaToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 15,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
@@ -192,7 +204,7 @@ public interface KafkaToBigQueryYaml {
   Integer getNumStreams();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "outputDeadletterTable",
       optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",

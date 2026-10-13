@@ -67,6 +67,18 @@ public interface KafkaToBigtableYaml {
 
   @TemplateParameter.Text(
       order = 3,
+      name = "autoOffsetResetConfig",
+      optional = true,
+      description =
+          "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server.",
+      helpText =
+          "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest",
+      example = "earliest")
+  @Default.String("earliest")
+  String getAutoOffsetResetConfig();
+
+  @TemplateParameter.Text(
+      order = 4,
       name = "confluentSchemaRegistrySubject",
       optional = true,
       description = "The subject name for the Confluent Schema Registry.",
@@ -75,7 +87,7 @@ public interface KafkaToBigtableYaml {
   String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 5,
       name = "confluentSchemaRegistryUrl",
       optional = true,
       description = "The URL for the Confluent Schema Registry.",
@@ -85,7 +97,7 @@ public interface KafkaToBigtableYaml {
   String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       name = "consumerConfigUpdates",
       optional = true,
       description =
@@ -96,7 +108,7 @@ public interface KafkaToBigtableYaml {
   String getConsumerConfigUpdates();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       name = "fileDescriptorPath",
       optional = true,
       description = "The path to the Protocol Buffer File Descriptor Set file.",
@@ -106,7 +118,7 @@ public interface KafkaToBigtableYaml {
   String getFileDescriptorPath();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "format",
       optional = true,
       description = "The encoding format for the data stored in Kafka.",
@@ -117,7 +129,7 @@ public interface KafkaToBigtableYaml {
   String getFormat();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "maxReadTimeSeconds",
       optional = true,
       description = "Upper bound of how long to read from Kafka.",
@@ -126,7 +138,7 @@ public interface KafkaToBigtableYaml {
   Integer getMaxReadTimeSeconds();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "messageName",
       optional = true,
       description =
@@ -137,7 +149,7 @@ public interface KafkaToBigtableYaml {
   String getMessageName();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "schema",
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
@@ -148,7 +160,7 @@ public interface KafkaToBigtableYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "language",
       optional = true,
       description = "Language used to define the expressions.",
@@ -159,7 +171,7 @@ public interface KafkaToBigtableYaml {
   String getLanguage();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "fields",
       optional = false,
       description = "Field mapping configuration",
@@ -170,7 +182,7 @@ public interface KafkaToBigtableYaml {
   String getFields();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "projectId",
       optional = false,
       description = "Bigtable project ID",
@@ -180,7 +192,7 @@ public interface KafkaToBigtableYaml {
   String getProjectId();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "instanceId",
       optional = false,
       description = "Bigtable instance ID",
@@ -190,7 +202,7 @@ public interface KafkaToBigtableYaml {
   String getInstanceId();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "tableId",
       optional = false,
       description = "Bigtable output table",
@@ -200,7 +212,7 @@ public interface KafkaToBigtableYaml {
   String getTableId();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 17,
       name = "windowing",
       optional = false,
       description = "Windowing options",

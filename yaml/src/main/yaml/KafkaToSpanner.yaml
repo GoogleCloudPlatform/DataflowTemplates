@@ -50,7 +50,7 @@ pipeline:
         schema: |
           {{ schema }}
         {% endif %}
-        auto_offset_reset_config: 'earliest'
+        auto_offset_reset_config: {{ autoOffsetResetConfig | default('earliest') }}
     - type: WriteToSpanner
       name: WriteToSpanner
       config:

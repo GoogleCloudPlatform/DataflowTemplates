@@ -63,7 +63,7 @@ pipeline:
         topic: {{ topic }}
         bootstrap_servers: {{ bootstrapServers }}
         max_read_time_seconds: {{ maxReadTimeSeconds }}
-        auto_offset_reset_config: 'earliest'
+        auto_offset_reset_config: {{ autoOffsetResetConfig | default('earliest') }}
         error_handling:
           output: errors
     - type: WriteToBigQuery

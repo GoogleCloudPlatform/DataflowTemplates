@@ -28,6 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **autoOffsetResetConfig**: What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest For example, `earliest`. Defaults to: earliest.
 * **confluentSchemaRegistrySubject**: The subject name for the Confluent Schema Registry. For example: my_subject For example, `my_subject`.
 * **confluentSchemaRegistryUrl**: The URL for the Confluent Schema Registry. For example: http://schema-registry:8081 For example, `http://schema-registry:8081`.
 * **consumerConfigUpdates**: A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'} For example, `{"group.id": "my_group"}`.
@@ -138,6 +139,7 @@ export TABLE_ID=<tableId>
 export WINDOWING=<windowing>
 
 ### Optional
+export AUTO_OFFSET_RESET_CONFIG=earliest
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
@@ -154,6 +156,7 @@ gcloud dataflow flex-template run "kafka-to-bigtable-yaml-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
   --parameters "topic=$TOPIC" \
+  --parameters "autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG" \
   --parameters "confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT" \
   --parameters "confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL" \
   --parameters "consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES" \
@@ -195,6 +198,7 @@ export TABLE_ID=<tableId>
 export WINDOWING=<windowing>
 
 ### Optional
+export AUTO_OFFSET_RESET_CONFIG=earliest
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
@@ -212,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigtable-yaml-job" \
 -DtemplateName="Kafka_To_Bigtable_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,language=$LANGUAGE,fields=$FIELDS,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,tableId=$TABLE_ID,windowing=$WINDOWING" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,language=$LANGUAGE,fields=$FIELDS,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,tableId=$TABLE_ID,windowing=$WINDOWING" \
 -f yaml
 ```
 
@@ -264,6 +268,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigtable_yaml" {
     instanceId = "<instanceId>"
     tableId = "<tableId>"
     windowing = "<windowing>"
+    # autoOffsetResetConfig = "earliest"
     # confluentSchemaRegistrySubject = "<confluentSchemaRegistrySubject>"
     # confluentSchemaRegistryUrl = "<confluentSchemaRegistryUrl>"
     # consumerConfigUpdates = "<consumerConfigUpdates>"
