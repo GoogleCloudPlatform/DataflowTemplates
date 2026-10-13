@@ -346,6 +346,11 @@ public class SpannerTransactionWriterDoFnTest {
     verify(transactionContext, never()).buffer(any(Iterable.class));
     // Verify that it does NOT output to success tag (since it's dropped)
     verify(processContextMock, never()).output(any(com.google.cloud.Timestamp.class));
+    // Verify that it is written to the skip tag and not to the error tags
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG), any());
+    verify(processContextMock, never()).output(eq(PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, never()).output(eq(RETRYABLE_ERROR_TAG), any());
   }
 
   @Test
@@ -1622,9 +1627,14 @@ public class SpannerTransactionWriterDoFnTest {
 
     spannerTransactionWriterDoFn.processElement(processContextMock);
 
-    // Verify that no error was output to DLQ (since it's ignored)
-    verify(processContextMock, never())
-        .output(any(org.apache.beam.sdk.values.TupleTag.class), any());
+    // Verify that the event is written to the skip tag and not to the error tags
+    ArgumentCaptor<FailsafeElement<String, String>> captor =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG), captor.capture());
+    verify(processContextMock, never()).output(eq(PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, never()).output(eq(RETRYABLE_ERROR_TAG), any());
+    assertEquals(failsafeElement.getOriginalPayload(), captor.getValue().getOriginalPayload());
   }
 
   @Test
