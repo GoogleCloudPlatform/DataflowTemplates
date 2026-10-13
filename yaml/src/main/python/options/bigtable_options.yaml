@@ -5,18 +5,21 @@ options:
         name: "projectId"
         description: "Bigtable project ID"
         help: "The Google Cloud project ID of the Bigtable instance."
+        example: "my-gcp-project"
         required: true
         type: text
       - order: 2
         name: "instanceId"
         description: "Bigtable instance ID"
         help: "The Bigtable instance ID."
+        example: "my-bigtable-instance"
         required: true
         type: text
       - order: 3
         name: "tableId"
         description: "Bigtable output table"
         help: "Bigtable table ID to write the output to."
+        example: "my-bigtable-table"
         required: true
         type: text
 
@@ -26,6 +29,7 @@ options:
         name: "flatten"
         description: "Bigtable flatten boolean"
         help: "If set to false, output rows are nested; if true or omitted, output rows are flattened."
+        example: true
         default: true
         required: false
         type: boolean

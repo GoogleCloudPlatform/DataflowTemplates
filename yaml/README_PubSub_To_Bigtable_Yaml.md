@@ -22,11 +22,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **projectId**: The Google Cloud project ID of the Bigtable instance.
-* **instanceId**: The Bigtable instance ID.
-* **tableId**: Bigtable table ID to write the output to.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
+* **projectId**: The Google Cloud project ID of the Bigtable instance. For example, `my-gcp-project`.
+* **instanceId**: The Bigtable instance ID. For example, `my-bigtable-instance`.
+* **tableId**: Bigtable table ID to write the output to. For example, `my-bigtable-table`.
+* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing For example, `{"type": "fixed", "size": "10s"}`.
 * **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
 
 ### Optional parameters
@@ -37,7 +37,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
 * **errorHandling**: This option specifies whether and where to output error rows.
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
-* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
 
 
 
@@ -133,11 +133,11 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_Bigtabl
 export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
-export LANGUAGE=<language>
 export FIELDS=<fields>
 export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export TABLE_ID=<tableId>
+export WINDOWING=<windowing>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
@@ -147,7 +147,7 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export WINDOWING=<windowing>
+export LANGUAGE=generic
 
 gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -190,11 +190,11 @@ export REGION=us-central1
 export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
-export LANGUAGE=<language>
 export FIELDS=<fields>
 export PROJECT_ID=<projectId>
 export INSTANCE_ID=<instanceId>
 export TABLE_ID=<tableId>
+export WINDOWING=<windowing>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
@@ -204,7 +204,7 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export WINDOWING=<windowing>
+export LANGUAGE=generic
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -261,11 +261,11 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     topic = "<topic>"
     format = "<format>"
     schema = "<schema>"
-    language = "<language>"
     fields = "<fields>"
     projectId = "<projectId>"
     instanceId = "<instanceId>"
     tableId = "<tableId>"
+    windowing = "<windowing>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
     # attributes = "<attributes>"
     # attributesMap = "<attributesMap>"
@@ -273,7 +273,7 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     # timestampAttribute = "<timestampAttribute>"
     # errorHandling = "<errorHandling>"
     # subscription = "<subscription>"
-    # windowing = "<windowing>"
+    # language = "generic"
   }
 }
 ```
