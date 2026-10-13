@@ -145,7 +145,7 @@ public class SharedOracleLiveITInstance {
         LOG.info("Dropping isolated Oracle COMMON user via CDB Admin: {}", user);
         cdbAdmin.runSQLUpdate("DROP USER " + user + " CASCADE");
       } catch (Exception e) {
-        LOG.warn("Failed to drop user {} during test cleanup: {}", user, e.getMessage());
+        LOG.warn("Failed to drop user {} during test cleanup: {}", user, e.getStackTrace());
       }
     }
   }
@@ -162,20 +162,15 @@ public class SharedOracleLiveITInstance {
         "CREATE USER " + testUsername + " IDENTIFIED BY " + ORACLE_PASSWORD + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("GRANT DBA TO " + testUsername + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("GRANT SET CONTAINER TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT EXECUTE ON SYS.DBMS_LOGMNR TO " + testUsername + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("GRANT LOGMINING TO " + testUsername + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("GRANT SELECT ANY TRANSACTION TO " + testUsername + " CONTAINER=ALL");
+    // Access to the V$ views (V$DATABASE, V$LOG, V$LOGMNR_CONTENTS, ...) and DBMS_LOGMNR used by
+    // Datastream comes from SELECT_CATALOG_ROLE / EXECUTE_CATALOG_ROLE (and DBA). Do not grant
+    // object privileges on those SYS objects per test: an object GRANT is DDL that needs an
+    // exclusive library cache lock on the object, and it times out (ORA-04021) while the
+    // Datastream streams of concurrently running tests keep querying those views.
     cdbAdmin.runSQLUpdate("GRANT SELECT_CATALOG_ROLE TO " + testUsername + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("GRANT EXECUTE_CATALOG_ROLE TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT SELECT ON V_$DATABASE TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate(
-        "GRANT SELECT ON V_$LOGMNR_CONTENTS TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT SELECT ON V_$ARCHIVED_LOG TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT SELECT ON V_$LOGFILE TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT SELECT ON V_$LOG TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate(
-        "GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO " + testUsername + " CONTAINER=ALL");
-    cdbAdmin.runSQLUpdate("GRANT SELECT ON V_$TRANSACTION TO " + testUsername + " CONTAINER=ALL");
     cdbAdmin.runSQLUpdate("ALTER USER " + testUsername + " QUOTA 50m ON SYSTEM CONTAINER=ALL");
     return testUsername;
   }
