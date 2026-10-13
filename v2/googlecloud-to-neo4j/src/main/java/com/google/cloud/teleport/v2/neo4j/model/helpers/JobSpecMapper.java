@@ -26,6 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.ImportSpecificationDeserializer;
+import org.neo4j.importer.v1.ImportSpecificationDeserializer.Options;
 import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
@@ -50,9 +51,19 @@ public class JobSpecMapper {
       return parseLegacyJobSpec(options, spec);
     }
 
+    // TODO: rename overlay tokens (so that old overlay tokens referencing old specs keep working with import-spec)
     try {
-      // TODO: interpolate runtime tokens into new spec elements
-      return ImportSpecificationDeserializer.deserialize(new StringReader(content));
+      return ImportSpecificationDeserializer.deserialize(
+              new StringReader(content),
+              Options.builder()
+                      .enableInterpolation()
+                      .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
+                      .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
+                      .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
+                      .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
+                      .interpolationVariables(options.tokens())
+                      .build()
+      );
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }

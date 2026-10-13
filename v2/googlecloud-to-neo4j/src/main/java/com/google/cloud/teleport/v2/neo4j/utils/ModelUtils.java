@@ -218,14 +218,14 @@ public class ModelUtils {
     return new ArrayList<>(result);
   }
 
-  public static String replaceVariableTokens(String text, Map<String, String> replacements) {
+  public static String replaceVariableTokens(String text, Map<String, Object> replacements) {
     Matcher matcher = variablePattern.matcher(text);
     // populate the replacements map ...
     StringBuilder builder = new StringBuilder();
     int i = 0;
     while (matcher.find()) {
-      LOG.debug("Matcher group: " + matcher.group(1));
-      String replacement = replacements.get(matcher.group(2));
+      LOG.debug("Matcher group: {}", matcher.group(1));
+      var replacement = replacements.get(matcher.group(2));
       builder.append(text, i, matcher.start());
       if (replacement == null) {
         builder.append(matcher.group(1));
