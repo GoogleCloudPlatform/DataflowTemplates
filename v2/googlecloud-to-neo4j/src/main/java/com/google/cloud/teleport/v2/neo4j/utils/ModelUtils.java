@@ -29,8 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.LongValue;
@@ -48,10 +47,7 @@ import org.neo4j.importer.v1.pipeline.EntityTargetStep;
 import org.neo4j.importer.v1.pipeline.NodeTargetStep;
 import org.neo4j.importer.v1.pipeline.RelationshipTargetStep;
 import org.neo4j.importer.v1.pipeline.TargetStep;
-import org.neo4j.importer.v1.targets.EntityTarget;
-import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
-import org.neo4j.importer.v1.targets.RelationshipTarget;
 import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,35 +234,6 @@ public class ModelUtils {
     String replacedText = builder.toString();
     LOG.debug("Before: " + text + ", after: " + replacedText);
     return replacedText;
-  }
-
-  public static Set<String> getKeyProperties(EntityTarget entity) {
-    Stream<String> keyFields;
-    Stream<String> uniqueFields;
-    if (entity instanceof NodeTarget nodeTarget) {
-      keyFields =
-          nodeTarget.getSchema().getKeyConstraints().stream()
-              .flatMap(constraint -> constraint.getProperties().stream());
-      uniqueFields =
-          nodeTarget.getSchema().getUniqueConstraints().stream()
-              .flatMap(constraint -> constraint.getProperties().stream());
-    } else if (entity instanceof RelationshipTarget relationshipTarget) {
-      keyFields =
-          relationshipTarget.getSchema().getKeyConstraints().stream()
-              .flatMap(constraint -> constraint.getProperties().stream());
-      uniqueFields =
-          relationshipTarget.getSchema().getUniqueConstraints().stream()
-              .flatMap(constraint -> constraint.getProperties().stream());
-    } else {
-      throw new IllegalArgumentException(
-          "Expected node or relationship target when gathering key properties, found: %s"
-              .formatted(entity.getClass()));
-    }
-    var keys = keyFields.collect(Collectors.toCollection(LinkedHashSet::new));
-    if (!keys.isEmpty()) {
-      return keys;
-    }
-    return uniqueFields.collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private static OrderByElement convertToJsqlElement(OrderBy orderByClause)
