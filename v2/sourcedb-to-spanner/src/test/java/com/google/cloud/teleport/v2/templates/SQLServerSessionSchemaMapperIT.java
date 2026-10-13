@@ -45,10 +45,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MSSQLResourceManager msSqlResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  public MSSQLResourceManager msSqlResourceManager;
+  public SpannerResourceManager spannerResourceManager;
 
   private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
   private static final String SQLSERVER_DDL_RESOURCE =
@@ -72,7 +70,7 @@ public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
   public void noTransformationTest() throws Exception {
     loadSQLFileResource(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,

@@ -42,10 +42,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerSingleShardIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MSSQLResourceManager msSqlResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  public MSSQLResourceManager msSqlResourceManager;
+  public SpannerResourceManager spannerResourceManager;
 
   private static final String SQLSERVER_DUMP_FILE_RESOURCE =
       "SingleShardWithTransformation/sqlserver-schema.sql";
@@ -82,7 +80,7 @@ public class SQLServerSingleShardIT extends SourceDbToSpannerITBase {
   public void singleShardWithIdPopulationTest() throws Exception {
     loadSQLFileResource(msSqlResourceManager, SQLSERVER_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,

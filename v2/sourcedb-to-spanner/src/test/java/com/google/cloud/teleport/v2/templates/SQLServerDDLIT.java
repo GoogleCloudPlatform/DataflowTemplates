@@ -44,10 +44,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerDDLIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MSSQLResourceManager msSqlResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  public MSSQLResourceManager msSqlResourceManager;
+  public SpannerResourceManager spannerResourceManager;
 
   private static final String SESSION_FILE_RESOURCE = "DDLIT/company-session.json";
   private static final String SQLSERVER_DDL_RESOURCE = "DDLIT/company-sqlserver-schema.sql";
@@ -70,7 +68,7 @@ public class SQLServerDDLIT extends SourceDbToSpannerITBase {
   public void ddlModificationTest() throws Exception {
     loadSQLFileResource(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,

@@ -50,10 +50,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MSSQLResourceManager msSqlResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  public MSSQLResourceManager msSqlResourceManager;
+  public SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE = "SourceDbToSpannerSimpleIT/spanner-schema.sql";
 
@@ -105,7 +103,7 @@ public class SQLServerSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase 
     msSqlResourceManager.write(TABLE2, msSqlData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     /* First run over TLS. The testcontainer presents a self-signed certificate, hence trustServerCertificate. */
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,

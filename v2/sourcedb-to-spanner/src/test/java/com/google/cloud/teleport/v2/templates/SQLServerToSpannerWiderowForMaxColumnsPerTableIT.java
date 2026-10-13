@@ -44,7 +44,6 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
-  private PipelineLauncher.LaunchInfo jobInfo;
   private MSSQLResourceManager msSqlResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
@@ -125,7 +124,7 @@ public class SQLServerToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbTo
 
     spannerResourceManager.executeDdlStatement(getSpannerDDL(maxColumns));
 
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,

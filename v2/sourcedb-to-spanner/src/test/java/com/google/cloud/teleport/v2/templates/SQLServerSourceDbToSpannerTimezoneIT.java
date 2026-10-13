@@ -51,10 +51,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class SQLServerSourceDbToSpannerTimezoneIT extends SourceDbToSpannerITBase {
-  private static PipelineLauncher.LaunchInfo jobInfo;
-
-  public static MSSQLResourceManager msSqlResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
+  public MSSQLResourceManager msSqlResourceManager;
+  public SpannerResourceManager spannerResourceManager;
 
   private static final String SQLSERVER_DDL_RESOURCE = "TimezoneIT/sqlserver-schema.sql";
   private static final String SPANNER_DDL_RESOURCE = "TimezoneIT/sqlserver-spanner-schema.sql";
@@ -76,7 +74,7 @@ public class SQLServerSourceDbToSpannerTimezoneIT extends SourceDbToSpannerITBas
   public void testSQLServerTimezoneMapping() throws Exception {
     loadSQLFileResource(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-    jobInfo =
+    PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,
