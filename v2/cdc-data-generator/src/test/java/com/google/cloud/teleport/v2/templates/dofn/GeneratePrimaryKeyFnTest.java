@@ -19,17 +19,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.utils.CustomDataGenerator;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
+import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 /** Unit tests for {@link GeneratePrimaryKeyFn}. */
@@ -108,6 +115,56 @@ public class GeneratePrimaryKeyFnTest {
         assertThrows(RuntimeException.class, () -> fn.processElement(table, receiver));
 
     assertTrue(exception.getMessage().contains("Failed to assemble root primary key for table"));
+  }
+
+  @Test
+  public void testShardIdPickedFromSqlServerSinkConfig() {
+    DataGeneratorColumn col1 =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isGenerated(false)
+            .build();
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("Users")
+            .columns(ImmutableList.of(col1))
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(1)
+            .updateQps(0)
+            .deleteQps(0)
+            .isRoot(true)
+            .recordsPerTick(1.0)
+            .build();
+
+    SqlServerSinkConfig config =
+        new SqlServerSinkConfig(
+            ImmutableList.of(
+                new Shard("mssqlA", "h", "1433", "u", "p", "dbA", null, null, null),
+                new Shard("mssqlB", "h", "1433", "u", "p", "dbB", null, null, null)));
+    GeneratePrimaryKeyFn fn = new GeneratePrimaryKeyFn(config, "SQLSERVER", null, null);
+    fn.setup();
+
+    @SuppressWarnings("unchecked")
+    DoFn.OutputReceiver<KV<String, Row>> receiver =
+        (DoFn.OutputReceiver<KV<String, Row>>) Mockito.mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<KV<String, Row>> captor = ArgumentCaptor.forClass(KV.class);
+
+    for (int i = 0; i < 20; i++) {
+      fn.processElement(table, receiver);
+    }
+    Mockito.verify(receiver, Mockito.times(20)).output(captor.capture());
+    Set<String> seenShards = new HashSet<>();
+    for (KV<String, Row> kv : captor.getAllValues()) {
+      String shardId = kv.getValue().getString(Constants.SHARD_ID_COLUMN_NAME);
+      assertTrue(ImmutableSet.of("mssqlA", "mssqlB").contains(shardId));
+      seenShards.add(shardId);
+    }
+    // With 20 draws it is overwhelmingly likely that both shards are selected at least once.
+    assertEquals(2, seenShards.size());
   }
 
   public static class BadCustomGenerator implements CustomDataGenerator {

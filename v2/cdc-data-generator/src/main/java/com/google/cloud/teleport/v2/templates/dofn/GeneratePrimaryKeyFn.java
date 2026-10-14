@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.cloud.teleport.v2.templates.utils.CustomDataGeneratorFetcher;
 import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
@@ -86,14 +87,15 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     faker = new Faker();
     schemaCache = new HashMap<>();
 
+    List<Shard> shards = null;
     if (sinkConfig instanceof MySqlSinkConfig) {
-      MySqlSinkConfig mySqlSinkConfig = (MySqlSinkConfig) sinkConfig;
-      if (mySqlSinkConfig.getShards() != null) {
-        this.logicalShardIds =
-            mySqlSinkConfig.getShards().stream()
-                .map(Shard::getLogicalShardId)
-                .collect(Collectors.toList());
-      }
+      shards = ((MySqlSinkConfig) sinkConfig).getShards();
+    } else if (sinkConfig instanceof SqlServerSinkConfig) {
+      shards = ((SqlServerSinkConfig) sinkConfig).getShards();
+    }
+    if (shards != null) {
+      this.logicalShardIds =
+          shards.stream().map(Shard::getLogicalShardId).collect(Collectors.toList());
     }
   }
 

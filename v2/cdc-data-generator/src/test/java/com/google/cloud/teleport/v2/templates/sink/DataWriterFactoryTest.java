@@ -23,8 +23,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
+import com.google.cloud.teleport.v2.templates.sqlserver.SqlServerDataWriter;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,6 +52,16 @@ public class DataWriterFactoryTest {
     DataWriter writer = DataWriterFactory.createWriter(SinkType.SPANNER, config);
     assertNotNull(writer);
     assertTrue(writer instanceof SpannerDataWriter);
+  }
+
+  @Test
+  public void testCreateWriter_sqlServer() {
+    Shard shard = new Shard("id", "host", "user", "pass", "port", "db", null, null, null);
+    DataWriter writer =
+        DataWriterFactory.createWriter(
+            SinkType.SQLSERVER, new SqlServerSinkConfig(ImmutableList.of(shard)));
+    assertNotNull(writer);
+    assertTrue(writer instanceof SqlServerDataWriter);
   }
 
   @Test(expected = NullPointerException.class)

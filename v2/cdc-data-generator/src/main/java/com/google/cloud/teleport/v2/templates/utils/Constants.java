@@ -33,6 +33,16 @@ public final class Constants {
   // Character used to quote identifiers in MySQL (back-tick).
   public static final String MYSQL_IDENTIFIER_QUOTE = "`";
 
+  // SQL Server JDBC driver class name, used when constructing ConnectionHelperRequest.
+  public static final String SQLSERVER_JDBC_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+
+  // JDBC URL prefix for SQL Server connections.
+  public static final String JDBC_SQLSERVER_URL_PREFIX = "jdbc:sqlserver://";
+
+  // Characters used to quote identifiers in SQL Server (square brackets).
+  public static final String SQLSERVER_IDENTIFIER_QUOTE_START = "[";
+  public static final String SQLSERVER_IDENTIFIER_QUOTE_END = "]";
+
   // Column name used to carry the logical shard id through the pipeline. Prefixed with `_dg_`
   // so it cannot collide with a user-defined PK column.
   public static final String SHARD_ID_COLUMN_NAME = "_dg_shard_id";
@@ -44,6 +54,7 @@ public final class Constants {
 
   public static final String SINK_TYPE_MYSQL = "MYSQL";
   public static final String SINK_TYPE_SPANNER = "SPANNER";
+  public static final String SINK_TYPE_SQLSERVER = "SQLSERVER";
 
   public static final String MUTATION_INSERT = "INSERT";
   public static final String MUTATION_UPDATE = "UPDATE";

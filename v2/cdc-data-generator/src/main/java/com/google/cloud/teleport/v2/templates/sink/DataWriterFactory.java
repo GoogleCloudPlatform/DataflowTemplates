@@ -19,8 +19,10 @@ import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
+import com.google.cloud.teleport.v2.templates.sqlserver.SqlServerDataWriter;
 
 /**
  * Factory class for creating {@link DataWriter} instances based on {@link SinkType} and {@link
@@ -44,6 +46,8 @@ public class DataWriterFactory {
         return new MySqlDataWriter((MySqlSinkConfig) config);
       case SPANNER:
         return new SpannerDataWriter((SpannerSinkConfig) config);
+      case SQLSERVER:
+        return new SqlServerDataWriter((SqlServerSinkConfig) config);
       default:
         throw new IllegalArgumentException("Unsupported sink type: " + type);
     }
