@@ -48,9 +48,9 @@ pipeline:
     - type: WriteToSpanner
       name: WriteToSpanner
       config:
-        project_id: {{ projectId }}
-        instance_id: {{ instanceId }}
-        database_id: {{ databaseId }}
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        database: {{ databaseId }}
         table: {{ tableId }}
   windowing:
     type: fixed
