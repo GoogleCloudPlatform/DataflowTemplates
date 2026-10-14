@@ -2,8 +2,8 @@
 Pub/Sub subscription to BigQuery (YAML) template
 ---
 The Pub/Sub subscription to BigQuery template is a streaming pipeline that reads
-JSON-formatted data from a Pub/Sub subscription and writes the resulting
-records to BigQuery.
+JSON-formatted data from a Pub/Sub subscription and writes the resulting records
+to BigQuery.
 
 
 :memo: This is a Google-provided template! Please
