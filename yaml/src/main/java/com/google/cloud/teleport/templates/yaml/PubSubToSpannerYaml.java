@@ -29,7 +29,12 @@ import org.apache.beam.sdk.options.Validation;
         "The Pub/Sub to Spanner template is a streaming pipeline which ingests data from a Pub/Sub topic and writes the resulting records to Cloud Spanner.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToSpanner.yaml",
-    filesToCopy = {"main.py", "requirements.txt"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/pubsub_options.yaml",
+      "options/spanner_options.yaml"
+    },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-spanner",
     contactInformation = "https://cloud.google.com/support",
