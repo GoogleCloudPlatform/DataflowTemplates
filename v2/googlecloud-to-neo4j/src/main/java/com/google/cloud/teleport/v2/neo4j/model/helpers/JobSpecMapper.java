@@ -53,15 +53,7 @@ public class JobSpecMapper {
 
     try {
       return ImportSpecificationDeserializer.deserialize(
-          new StringReader(content),
-          Options.builder()
-              .enableInterpolation()
-              .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
-              .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
-              .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
-              .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
-              .interpolationVariables(options.tokens())
-              .build());
+          new StringReader(content), deserializationOptions(options));
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }
@@ -159,5 +151,20 @@ public class JobSpecMapper {
       return new JSONArray(0);
     }
     return spec.getJSONArray("actions");
+  }
+
+  private static Options deserializationOptions(OverlayTokens options) {
+    Map<String, Object> variables = options.tokens();
+    if (variables.isEmpty()) {
+      return Options.builder().build();
+    }
+    return Options.builder()
+        .enableInterpolation()
+        .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
+        .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
+        .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
+        .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
+        .interpolationVariables(variables)
+        .build();
   }
 }
