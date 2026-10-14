@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -131,5 +132,48 @@ public class SinkConfigParserTest {
     assertThrows(
         RuntimeException.class,
         () -> SinkConfigParser.parse(SinkType.MYSQL, file.getAbsolutePath()));
+  }
+
+  @Test
+  public void testParse_sqlServerSink_success() throws Exception {
+    String json =
+        "[\n"
+            + "  {\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1433\",\n"
+            + "    \"user\": \"sa\",\n"
+            + "    \"password\": \"pass\",\n"
+            + "    \"dbName\": \"dbA\"\n"
+            + "  },\n"
+            + "  {\n"
+            + "    \"logicalShardId\": \"shardB\",\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1433\",\n"
+            + "    \"user\": \"sa\",\n"
+            + "    \"password\": \"pass\",\n"
+            + "    \"dbName\": \"dbB\"\n"
+            + "  }\n"
+            + "]";
+    File file = tempFolder.newFile("sqlserver_shards.json");
+    FileUtils.writeStringToFile(file, json, StandardCharsets.UTF_8);
+
+    SinkConfig config = SinkConfigParser.parse(SinkType.SQLSERVER, file.getAbsolutePath());
+
+    assertThat(config).isInstanceOf(SqlServerSinkConfig.class);
+    SqlServerSinkConfig sqlServerConfig = (SqlServerSinkConfig) config;
+    assertThat(sqlServerConfig.getShards()).hasSize(2);
+    // Missing logicalShardId falls back to shard<index>.
+    assertThat(sqlServerConfig.getShards().get(0).getLogicalShardId()).isEqualTo("shard0");
+    assertThat(sqlServerConfig.getShards().get(1).getLogicalShardId()).isEqualTo("shardB");
+  }
+
+  @Test
+  public void testParse_sqlServerSink_emptyShards_throwsException() throws IOException {
+    File file = tempFolder.newFile("empty_sqlserver_shards.json");
+    FileUtils.writeStringToFile(file, "[]", StandardCharsets.UTF_8);
+
+    assertThrows(
+        RuntimeException.class,
+        () -> SinkConfigParser.parse(SinkType.SQLSERVER, file.getAbsolutePath()));
   }
 }

@@ -13,8 +13,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **sinkType**: The type of sink to generate data for. Supported values: SPANNER, MYSQL.
-* **sinkOptions**: GCS Path to a file containing JSON Options for the sink. For Spanner: {"projectId": "...", "instanceId": "...", "databaseId": "..."}. For MySQL: {"driverClassName": "...", "connectionUrl": "...", "username": "...", "password": "..."} or {"shardFilePath": "gs://..."} For example, `gs://your-bucket/path/to/sink_options.json`.
+* **sinkType**: The type of sink to generate data for. Supported values: SPANNER, MYSQL, SQLSERVER.
+* **sinkOptions**: GCS Path to a file containing JSON Options for the sink. For Spanner: {"projectId": "...", "instanceId": "...", "databaseId": "..."}. For MySQL and SQL Server: a JSON array of shards, each with "host", "port", "user", "password" (or "secretManagerUri"), "dbName" and optional "logicalShardId" / "connectionProperties". For example, `gs://your-bucket/path/to/sink_options.json`.
 
 ### Optional parameters
 
@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **insertQps**: The target Insert QPS for each table. Default is 1000.
 * **updateQps**: The target Update QPS for each table. Default is 0.
 * **deleteQps**: The target Delete QPS for each table. Default is 0.
-* **jdbcPoolSize**: The maximum number of connections to open per logical shard for JDBC (MySQL) sink. Default is 10.
+* **jdbcPoolSize**: The maximum number of connections to open per logical shard for JDBC (MySQL, SQL Server) sinks. Default is 10.
 * **updateInterval**: Interval cadence between successive UPDATEs for a given row. Default is 5 seconds.
 * **deleteInterval**: Interval cadence trailing standard updates before a trailing DELETE is scheduled. Default is 5 seconds.
 * **schemaConfig**: GCS Path to a file containing JSON overrides for data generation. For example, `gs://your-bucket/path/to/schema_config.json`.

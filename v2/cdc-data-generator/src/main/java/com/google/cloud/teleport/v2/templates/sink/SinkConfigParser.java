@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerConfigFileReader;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
@@ -73,24 +74,33 @@ public class SinkConfigParser {
       config.setDialect(dialect);
       return config;
     } else if (sinkType == SinkType.MYSQL) {
-      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkOptionsPath);
-      if (shards == null || shards.isEmpty()) {
-        throw new RuntimeException("No shards found in shard configuration: " + sinkOptionsPath);
-      }
-
-      for (int i = 0; i < shards.size(); i++) {
-        Shard shard = shards.get(i);
-        if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
-          String defaultId = "shard" + i;
-          shard.setLogicalShardId(defaultId);
-          LOG.info("Assigned default logicalShardId '{}' to shard index {}", defaultId, i);
-        }
-      }
-
-      return new MySqlSinkConfig(shards);
+      return new MySqlSinkConfig(readShards(sinkOptionsPath));
+    } else if (sinkType == SinkType.SQLSERVER) {
+      return new SqlServerSinkConfig(readShards(sinkOptionsPath));
     } else {
       throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
     }
+  }
+
+  /**
+   * Reads the ordered shard list from a JDBC shard configuration file and assigns default {@code
+   * logicalShardId}s ({@code shard<index>}) to shards that do not declare one.
+   */
+  private static List<Shard> readShards(String sinkOptionsPath) {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkOptionsPath);
+    if (shards == null || shards.isEmpty()) {
+      throw new RuntimeException("No shards found in shard configuration: " + sinkOptionsPath);
+    }
+
+    for (int i = 0; i < shards.size(); i++) {
+      Shard shard = shards.get(i);
+      if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
+        String defaultId = "shard" + i;
+        shard.setLogicalShardId(defaultId);
+        LOG.info("Assigned default logicalShardId '{}' to shard index {}", defaultId, i);
+      }
+    }
+    return shards;
   }
 }

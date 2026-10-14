@@ -2,7 +2,7 @@
 
 The **CDC Data Generator** is a high-throughput, streaming Dataflow template designed to generate realistic `INSERT`, `UPDATE`, and `DELETE` traffic against an existing target schema.
 
-By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database fleet, the generator automatically discovers the target schema, synthesizes well-typed mock records, maintains structural relationships (such as primary keys, foreign keys, unique constraints, and parent-child interleaves), and streams writes at a customizable rate (Queries Per Second, or QPS).
+By pointing the pipeline at a Cloud Spanner database or a sharded MySQL / SQL Server database fleet, the generator automatically discovers the target schema, synthesizes well-typed mock records, maintains structural relationships (such as primary keys, foreign keys, unique constraints, and parent-child interleaves), and streams writes at a customizable rate (Queries Per Second, or QPS).
 
 ---
 
@@ -16,11 +16,14 @@ By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database
     * [GCP and Dataflow Prerequisites](#gcp-and-dataflow-prerequisites)
     * [Spanner Sink Prerequisites](#spanner-sink-prerequisites)
     * [MySQL Sink Prerequisites](#mysql-sink-prerequisites)
+    * [SQL Server Sink Prerequisites](#sql-server-sink-prerequisites)
     * [Sample Spanner Sink-Options File](#sample-spanner-sink-options-file)
     * [Sample MySQL Sink-Options File (Sharded)](#sample-mysql-sink-options-file-sharded)
+    * [Sample SQL Server Sink-Options File (Sharded)](#sample-sql-server-sink-options-file-sharded)
 * [Quickstart](#quickstart)
     * [Staging and Running via Spanner](#staging-and-running-via-spanner)
     * [Staging and Running via MySQL](#staging-and-running-via-mysql)
+    * [Staging and Running via SQL Server](#staging-and-running-via-sql-server)
 * [Pipeline Parameters Reference](#pipeline-parameters-reference)
 * [End-to-End Persistence Lifecycle Walkthrough](#end-to-end-persistence-lifecycle-walkthrough)
     * [1. Root Record Ingestion (T0)](#1-root-record-ingestion-t0)
@@ -51,6 +54,7 @@ By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database
 The pipeline currently supports generating data for the following target databases:
 * **Cloud Spanner** (GoogleSQL and PostgreSQL dialects)
 * **MySQL** (Single or Sharded instances)
+* **SQL Server** (Single or Sharded instances)
 
 ---
 
@@ -83,7 +87,7 @@ At a high level, the pipeline goes through the following operational stages at l
 * **DELETE Order**: Child rows are always deleted before their parent rows. Deletions happen in reverse topological order to prevent foreign-key or referential integrity violations.
 * **UPDATE Order**: An `UPDATE` on a specific row is guaranteed to be written after its `INSERT` and strictly before its `DELETE`. There is no ordering guarantee between updates of unrelated rows.
 * **At-Least-Once Delivery**: Standard Beam at-least-once semantics are supported. The pipeline uses stateful DoFns to store active row states, ensuring that even if workers crash, the lifecycle sequences recover cleanly.
-* **Sticky MySQL Sharding**: For MySQL setups, each row selects a shard at insert time and routes every subsequent update or delete to the exact same physical database shard.
+* **Sticky JDBC Sharding**: For MySQL and SQL Server setups, each row selects a shard at insert time and routes every subsequent update or delete to the exact same physical database shard.
 
 ---
 
@@ -96,8 +100,8 @@ At a high level, the pipeline goes through the following operational stages at l
     * `roles/dataflow.worker`
     * `roles/storage.objectAdmin` on your temporary and staging GCS buckets.
     * `roles/spanner.databaseUser` on the target Spanner database (Spanner sinks only).
-    * `roles/secretmanager.secretAccessor` if your MySQL configuration retrieves passwords using Secret Manager URIs.
-3. **Network Connectivity**: Ensure Dataflow workers can communicate with the databases. If writing to MySQL, you may need to allowlist Dataflow IPs or route traffic via a private subnet.
+    * `roles/secretmanager.secretAccessor` if your MySQL / SQL Server configuration retrieves passwords using Secret Manager URIs.
+3. **Network Connectivity**: Ensure Dataflow workers can communicate with the databases. If writing to MySQL or SQL Server, you may need to allowlist Dataflow IPs or route traffic via a private subnet.
 4. **Private IP Execution (Recommended)**: When launching workers, pass the `--disable-public-ips` parameter and specify the `--subnetwork` path to ensure secure execution without public internet access.
 
 ### Spanner Sink Prerequisites
@@ -117,6 +121,23 @@ At a high level, the pipeline goes through the following operational stages at l
 
 > [!TIP]
 > **Batching Performance Knob (`rewriteBatchedStatements`)**: If you set `--batchSize` to a value greater than `1`, you **must** append `rewriteBatchedStatements=true` to the `"connectionProperties"` string (e.g., `"connectionProperties": "useSSL=false&rewriteBatchedStatements=true"`) in your MySQL shards config. Without this property, the MySQL JDBC driver compiles batch operations into sequential, single-record statements, completely negating the performance benefit of batching.
+
+### SQL Server Sink Prerequisites
+
+* The target tables must exist on all database shards before you run the pipeline.
+* The SQL Server login requires `INSERT`, `UPDATE`, `DELETE`, and `SELECT` privileges on the target tables, plus `VIEW DEFINITION` (used to discover schemas via metadata).
+* **`IDENTITY` columns are not supported.** The generator always supplies primary-key values itself (so it can issue matching `UPDATE`/`DELETE` events later), and SQL Server rejects explicit values for `IDENTITY` columns. Tables with an `IDENTITY` column are flagged with a warning during schema discovery and their inserts will be rejected and routed to the DLQ. Use a plain `BIGINT`/`INT` key (or a `uniqueidentifier`) for tables you want to generate data for.
+* Secure your passwords by storing them in Google Secret Manager and referencing them via `secretManagerUri` in your shard JSON file.
+* Schema discovery is scoped to the login's **default schema** (typically `dbo`). Writes use unqualified table names, so target tables must live in that schema.
+
+> [!NOTE]
+> **Connection defaults**: Unless overridden via `connectionProperties`, the generator appends `encrypt=false;trustServerCertificate=true` to the JDBC URL (matching the other SQL Server templates in this repository). For TLS-verified connections set e.g. `"connectionProperties": "encrypt=true;trustServerCertificate=false"`.
+
+> [!NOTE]
+> **Server-managed columns**: `rowversion` / `timestamp` and computed columns are detected automatically and never written. `xml` columns are generated as random text, which SQL Server will reject as malformed XML — override such columns with a valid XML expression (or skip them) in `schemaConfig`.
+
+> [!WARNING]
+> **`tinyint` / `smallint` columns**: the default integer generator produces 32-bit values, which overflow `tinyint` (0–255) and `smallint` (-32,768–32,767) and will route those rows to the DLQ. Provide a bounded `generator` for such columns in `schemaConfig`, e.g. `generator = "#{number.numberBetween '0','255'}"` for `tinyint` or `generator = "#{number.numberBetween '-32768','32767'}"` for `smallint`.
 
 ### Sample Spanner Sink-Options File
 
@@ -157,6 +178,35 @@ Save this JSON file containing your database shards as `mysql_shards.json` and u
 
 * **Note**: If you are testing locally or in a sandbox and don't want to use Secret Manager, you can replace `secretManagerUri` with a plain-text `"password"` key.
 * **Optional fields**: You can include `"connectionProperties"` (e.g. `"useSSL=false&allowPublicKeyRetrieval=true"`) to customize your JDBC connection string.
+
+### Sample SQL Server Sink-Options File (Sharded)
+
+The SQL Server sink uses the same shard file format as MySQL. Save it as `sqlserver_shards.json`, upload it to GCS and pass the path to `--sinkOptions`:
+
+```json
+[
+  {
+    "logicalShardId": "shard1",
+    "host": "10.11.12.13",
+    "user": "loadgen_user",
+    "secretManagerUri": "projects/123456789/secrets/mssql-pwd-shard1/versions/latest",
+    "port": "1433",
+    "dbName": "ecom_db_shard1"
+  },
+  {
+    "logicalShardId": "shard2",
+    "host": "10.11.12.14",
+    "user": "loadgen_user",
+    "secretManagerUri": "projects/123456789/secrets/mssql-pwd-shard2/versions/latest",
+    "port": "1433",
+    "dbName": "ecom_db_shard2",
+    "connectionProperties": "encrypt=true;trustServerCertificate=false;loginTimeout=30"
+  }
+]
+```
+
+* `dbName` is required: it is passed as `databaseName=` on the JDBC URL and the schema is discovered from that database.
+* `connectionProperties` are appended to the JDBC URL as `;key=value` pairs.
 
 ---
 
@@ -210,19 +260,41 @@ jdbcPoolSize=100,\
 schemaConfig=gs://my-bucket/configs/overrides.conf
 ```
 
+### Staging and Running for SQL Server
+
+```bash
+gcloud dataflow flex-template run "cdc-gen-mssql-$(date +%Y%m%d-%H%M%S)" \
+  --project="${PROJECT}" \
+  --region="${REGION}" \
+  --template-file-gcs-location="${TEMPLATE_LOCATION}" \
+  --disable-public-ips \
+  --worker-machine-type="n2-standard-64" \
+  --subnetwork="regions/${REGION}/subnetworks/my-subnet" \
+  --additional-experiments=use_runner_v2 \
+  --parameters \
+sinkType=SQLSERVER,\
+sinkOptions=gs://my-bucket/configs/sqlserver_shards.json,\
+batchSize=100,\
+insertQps=4000,\
+updateQps=2000,\
+deleteQps=100,\
+jdbcPoolSize=100,\
+schemaConfig=gs://my-bucket/configs/overrides.conf
+```
+
 ---
 
 ## Pipeline Parameters Reference
 
 | Parameter | Required | Default | Description |
 | :--- | :---: | :---: | :--- |
-| **`sinkType`** | **Yes** | — | The target database engine type. Supported values: `SPANNER` or `MYSQL`. |
-| **`sinkOptions`** | **Yes** | — | GCS path to the sink JSON configuration file. For Spanner, this is a database spec. For MySQL, this is a JSON array of database shards. |
+| **`sinkType`** | **Yes** | — | The target database engine type. Supported values: `SPANNER`, `MYSQL` or `SQLSERVER`. |
+| **`sinkOptions`** | **Yes** | — | GCS path to the sink JSON configuration file. For Spanner, this is a database spec. For MySQL and SQL Server, this is a JSON array of database shards. |
 | **`batchSize`** | No | `1` | The maximum number of mutations buffered per unique `(table, shard, operation)` combination *within a single Beam bundle* before flushing. Because flushes are bounded by Beam bundles, if a bundle finishes processing before the buffer hits `batchSize`, a flush is forced immediately. Actual batch write sizes may therefore be smaller than this setting. |
 | **`insertQps`** | No | `1000` | The **approximate** target insert rate (records per second) applied to each root table. Rates are statistical targets and subject to micro-fluctuations based on worker thread scheduling and probabilistic selection weights. Can be overridden per-table in `schemaConfig`. |
 | **`updateQps`** | No | `0` | The **approximate** target update rate (records per second) per table. If set to `0`, updates are disabled. |
 | **`deleteQps`** | No | `0` | The **approximate** target delete rate (records per second) per table. If set to `0`, deletions are disabled. |
-| **`jdbcPoolSize`** | No | `10` | The maximum number of active connections in the JDBC pool per logical MySQL shard. Only applies to MySQL. |
+| **`jdbcPoolSize`** | No | `10` | The maximum number of active connections in the JDBC pool per logical shard. Only applies to JDBC sinks (MySQL, SQL Server). |
 | **`updateInterval`** | No | `5` | The time interval (in seconds) between consecutive `UPDATE` events for a given row. |
 | **`deleteInterval`** | No | `5` | The delay (in seconds) after the final `UPDATE` before a `DELETE` event is written. |
 | **`schemaConfig`** | No | — | GCS path to a HOCON or JSON overrides configuration file used to customize data rules. |
@@ -235,7 +307,7 @@ schemaConfig=gs://my-bucket/configs/overrides.conf
 
 To avoid writing conflicts, lock contentions, or resource depletion, the pipeline automatically configures the number of partitions (`maxParallelism`) unless you manually override it:
 * **Spanner**: Defaults to `100,000` partitions. Spanner scales horizontally, so maximizing internal distribution ensures highly parallel, distributed writes across the Spanner cluster.
-* **MySQL**: Defaults to `5,000 * shardCount` partitions. Since MySQL is a traditional relational database with transaction lock pools, a lower partition count prevents the system from exhausting connection pools or causing row deadlocks.
+* **MySQL / SQL Server**: Defaults to `5,000 * shardCount` partitions. Since these are traditional relational databases with transaction lock pools, a lower partition count prevents the system from exhausting connection pools or causing row deadlocks.
 
 ---
 
@@ -498,7 +570,7 @@ You can override data generation using three main formats:
 * **Impulse Metronome**: Emits an execution pulse once every second.
 * **ScaleTicksFn & SelectTable**: Multiplies the tick by the cumulative QPS target and dynamically selects the table target based on weighted tree depths.
 * **RedistributeTicks**: Uses Apache Beam's `Redistribute.arbitrarily()` to fan out the metronome triggers across all active worker nodes.
-* **GeneratePrimaryKeyFn**: Synthesizes the primary key values. For MySQL, it also assigns a logical shard ID to ensure sticky routing.
+* **GeneratePrimaryKeyFn**: Synthesizes the primary key values. For MySQL and SQL Server, it also assigns a logical shard ID to ensure sticky routing.
 * **MapToReshuffleKey & Redistribute**: Maps the key based on `Hash(tableName + pk) % maxParallelism` and applies `Redistribute.byKey()` to ensure sticky routing of all subsequent updates and deletes to the exact same stateful worker thread.
 * **BatchAndWriteFn**: The stateful engine. It maintains buffers, runs lifecycle timers, cascades child generation, handles database connectivity pools, and routes failed writes to the DLQ.
 
@@ -520,14 +592,14 @@ Monitor these metrics in the Cloud Dataflow console under the **Job Metrics** ta
 | `writeFailures` | Counter | Number of rows that failed database writes and were routed to the DLQ. |
 | `generationFailures` | Counter | Number of rows that failed during synthesis (due to invalid Faker mapping or parsing errors). |
 | `unresolvableFkChildrenDropped` | Counter | Child records dropped because their parent records were missing from the active generation context. |
-| `recordsWritten_<ShardID>` | Counter | Total successful writes completed against a specific MySQL shard (MySQL only). |
+| `recordsWritten_<ShardID>` | Counter | Total successful writes completed against a specific JDBC shard (MySQL / SQL Server only). |
 
 ### Tuning the Knobs
 
 * **Avoid Initial Backlog Buildup (Pre-Scale Workers)**: If you are running a pipeline with a high QPS target (e.g. >10,000 inserts/sec), **do not** rely solely on Dataflow's default autoscaling from 1 worker. The metronome generates impulses immediately on startup, and a single worker will quickly become overwhelmed, building a massive state queue/backlog that is extremely slow to drain even after autoscaling kicks in. Instead, **explicitly set `--numWorkers` to match your `--maxNumWorkers` at the start** to handle the immediate workload at launch.
 * **High CPU / Worker Bottleneck**: If workers are pegged at 100% CPU but database throughput is low, increase the worker pool size using `--maxNumWorkers` or choose a higher-performance machine type.
-* **Database Bottleneck**: If `recordsWritten` lags significantly behind `insertsGenerated`, your target database is saturated. Reduce the QPS targets, or scale up Spanner nodes / MySQL database hardware.
-* **Optimizing Batching**: If you write to a high-throughput sink, increase `--batchSize` to pack more records into each transaction. However, keep this value moderate for MySQL, as large JDBC batches can increase replication lag.
+* **Database Bottleneck**: If `recordsWritten` lags significantly behind `insertsGenerated`, your target database is saturated. Reduce the QPS targets, or scale up Spanner nodes / MySQL / SQL Server database hardware.
+* **Optimizing Batching**: If you write to a high-throughput sink, increase `--batchSize` to pack more records into each transaction. However, keep this value moderate for MySQL / SQL Server, as large JDBC batches can increase replication lag.
 
 ### Logs Analysis
 
