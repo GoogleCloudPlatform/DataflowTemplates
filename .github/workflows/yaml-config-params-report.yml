@@ -1,9 +1,6 @@
 name: YAML Blueprint Config Params Report
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/yaml-config-params-report.yml'
   schedule:
     # Run at 00:00 every Monday
     - cron: '0 0 * * 1'
