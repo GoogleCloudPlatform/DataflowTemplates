@@ -40,7 +40,7 @@ pipeline:
         format: {{ format | default('JSON') }}
         schema: {{ schema }}
         attributes: {{ attributes }}
-        attribute_map: {{ attributesMap }}
+        attributes_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
     - type: WriteToBigQuery
