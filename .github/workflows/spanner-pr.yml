@@ -229,6 +229,8 @@ jobs:
         --it-cloud-proxy-host="10.128.0.16" \
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
+        --it-oracle-host="10.142.0.21" \
+        --it-oracle-sys-password="${ORACLE_PASSWORD}" \
         --it-base-container-image=":dev-image-latest" \
         --it-oracle-host="10.142.0.21" \
         --it-oracle-sys-password="${ORACLE_PASSWORD}" \
