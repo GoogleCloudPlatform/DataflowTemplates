@@ -139,7 +139,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                     oracleResourceManager.getHost(),
                     oracleUser,
                     SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    1521,
+                    oracleResourceManager.getPort(),
                     oracleResourceManager.getDatabaseName())
                 .setAllowedTables(
                     new HashMap<>() {

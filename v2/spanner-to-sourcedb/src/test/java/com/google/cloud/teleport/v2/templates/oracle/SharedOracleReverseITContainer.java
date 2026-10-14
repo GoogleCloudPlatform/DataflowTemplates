@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.oracle;
 
+import com.google.cloud.teleport.v2.spanner.resourcemanager.OracleITContainer;
 import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -32,17 +33,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Shared Oracle database used by the Spanner to Oracle (reverse replication) integration tests.
  *
- * <p>All ITs connect to the same static Oracle DB through a singleton admin connection. Each IT
- * gets its own isolated Oracle user (schema) via {@link #createIsolatedUser()}, which must be
- * dropped at the end of the IT via {@link #dropIsolatedUser(String)}, after the pipeline writing to
- * it has been cancelled.
+ * <p>A single Oracle Testcontainer ({@link OracleITContainer}) is started lazily on first use and
+ * shared by all the ITs of the test JVM, through a singleton admin connection. Each IT gets its own
+ * isolated Oracle user (schema) via {@link #createIsolatedUser()}, which must be dropped at the end
+ * of the IT via {@link #dropIsolatedUser(String)}, after the pipeline writing to it has been
+ * cancelled.
  */
 public class SharedOracleReverseITContainer {
   private static final Logger LOG = LoggerFactory.getLogger(SharedOracleReverseITContainer.class);
@@ -63,60 +64,44 @@ public class SharedOracleReverseITContainer {
   private static final int DROP_USER_MAX_ATTEMPTS = 5;
   private static final long DROP_USER_RETRY_DELAY_MILLIS = 5_000;
 
+  private static OracleITContainer container;
   private static SpannerOracleResourceManager instance;
   private static SpannerOracleResourceManager cdbAdmin;
 
-  /**
-   * Returns the admin password of the static Oracle DB, passed via {@code -DcloudOraclePassword}.
-   */
-  private static String getAdminPassword() {
-    String password = System.getProperty("cloudOracleSysPassword");
-    if (password == null || password.isEmpty()) {
-      throw new IllegalStateException("Missing -DcloudOraclePassword");
+  /** Returns the shared Oracle container, starting it on first use. */
+  private static OracleITContainer getContainer() {
+    synchronized (lock) {
+      if (container == null) {
+        LOG.info("Starting the shared Oracle container for the reverse replication ITs.");
+        // Reverse replication only writes to Oracle, so no CDC setup (ARCHIVELOG, ...) is needed.
+        container = OracleITContainer.start(/* enableCdc= */ false);
+      }
+      return container;
     }
-    return password;
   }
 
   private static SpannerOracleResourceManager getCdbAdmin() {
-    if (cdbAdmin == null) {
-      synchronized (lock) {
-        if (cdbAdmin == null) {
-          LOG.info("Initializing global Singleton CDB Admin Oracle pool (XE).");
-          String host = System.getProperty("cloudOracleHost", "localhost");
-          String password = getAdminPassword();
-          CloudOracleResourceManager.Builder builder =
-              CloudOracleResourceManager.builder("cdb_admin");
-          builder.setUsername("sys as sysdba");
-          builder.setPassword(password);
-          builder.setDatabaseName("XE");
-          builder.setHost(host);
-          builder.setPort(1521);
-          cdbAdmin = new SpannerOracleResourceManager(builder);
-        }
+    synchronized (lock) {
+      if (cdbAdmin == null) {
+        LOG.info("Initializing global Singleton CDB Admin Oracle pool (XE).");
+        cdbAdmin =
+            getContainer()
+                .createAdminResourceManager("cdb_admin", OracleITContainer.CDB_SERVICE_NAME);
       }
+      return cdbAdmin;
     }
-    return cdbAdmin;
   }
 
   public static SpannerOracleResourceManager getInstance() {
-    if (instance == null) {
-      synchronized (lock) {
-        if (instance == null) {
-          LOG.info("Initializing global Singleton PDB Admin Oracle pool (XEPDB1).");
-          String host = System.getProperty("cloudOracleHost", "localhost");
-          String password = getAdminPassword();
-          CloudOracleResourceManager.Builder builder =
-              CloudOracleResourceManager.builder("oracle_static");
-          builder.setUsername("sys as sysdba");
-          builder.setPassword(password);
-          builder.setDatabaseName("XEPDB1");
-          builder.setHost(host);
-          builder.setPort(1521);
-          instance = new SpannerOracleResourceManager(builder);
-        }
+    synchronized (lock) {
+      if (instance == null) {
+        LOG.info("Initializing global Singleton PDB Admin Oracle pool (XEPDB1).");
+        instance =
+            getContainer()
+                .createAdminResourceManager("oracle_shared", OracleITContainer.PDB_SERVICE_NAME);
       }
+      return instance;
     }
-    return instance;
   }
 
   /**
