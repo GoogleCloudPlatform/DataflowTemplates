@@ -51,8 +51,6 @@ public class JobSpecMapper {
       return parseLegacyJobSpec(options, spec);
     }
 
-    // TODO: rename overlay tokens (so that old overlay tokens referencing old specs keep working
-    // with import-spec)
     try {
       return ImportSpecificationDeserializer.deserialize(
           new StringReader(content),
