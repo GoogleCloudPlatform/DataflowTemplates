@@ -160,9 +160,33 @@ jobs:
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
         if: always()
+  python_unit_tests:
+    name: YAML Template Python Unit Tests
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      # Maven only runs these tests in the templatesValidate profile of
+      # python/pom.xml, which CI does not activate. The requirements are installed
+      # the same way as in the template's Docker image (Dockerfile-template-yaml).
+      - name: Install dependencies and run tests
+        working-directory: python
+        run: |
+          pip install --require-hashes --no-deps -r src/main/python/yaml-template/requirements.txt
+          PYTHONPATH=src/main/python/yaml-template python -m unittest discover \
+            -s src/test/python/yaml-template \
+            -p '*_test.py' \
+            -v
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
-    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, python_unit_tests]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
@@ -252,7 +276,7 @@ jobs:
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
-    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, python_unit_tests, java_integration_tests_templates]
     timeout-minutes: 600
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, perf]

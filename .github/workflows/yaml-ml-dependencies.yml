@@ -1,0 +1,67 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that the versions of the ML dependencies that the YAML template installs
+# (python/src/main/python/yaml-template/ml_dependencies.py) follow the versions
+# that apache-beam declares for the same packages. Runs on PRs that change these
+# dependencies or the version of apache-beam used by the template, and every 12
+# hours on the latest commit of main.
+name: YAML Template ML Dependencies
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'python/src/main/python/yaml-template/ml_dependencies.py'
+      - 'python/src/main/python/yaml-template/requirements.txt'
+      - 'python/src/test/python/yaml-template/check_ml_dependencies.py'
+      - '.github/workflows/yaml-ml-dependencies.yml'
+  schedule:
+    - cron: "10 3/12 * * *" # 03:10 and 15:10 UTC, like yaml-pr.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check_ml_dependencies:
+    name: Check ML Dependency Versions
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Uses the Python version of the template's image, since the requirements
+      # of apache-beam can depend on the Python version.
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      # Installs the version of apache-beam used by the template, the same way as
+      # the template's Docker image (Dockerfile-template-yaml).
+      - name: Install dependencies
+        working-directory: python
+        run: pip install --require-hashes --no-deps -r src/main/python/yaml-template/requirements.txt
+      - name: Compare ML dependency versions with apache-beam
+        working-directory: python
+        run: |
+          PYTHONPATH=src/main/python/yaml-template python \
+            src/test/python/yaml-template/check_ml_dependencies.py
