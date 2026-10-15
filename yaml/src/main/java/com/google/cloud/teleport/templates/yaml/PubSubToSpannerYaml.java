@@ -48,6 +48,16 @@ public interface PubSubToSpannerYaml {
 
   @TemplateParameter.Text(
       order = 1,
+      name = "topic",
+      optional = false,
+      description = "Pub/Sub input topic",
+      helpText = "Pub/Sub topic to read the input from.",
+      example = "projects/your-project-id/topics/your-topic-name")
+  @Validation.Required
+  String getTopic();
+
+  @TemplateParameter.Text(
+      order = 2,
       name = "format",
       optional = false,
       description = "The message format.",
@@ -57,7 +67,7 @@ public interface PubSubToSpannerYaml {
   String getFormat();
 
   @TemplateParameter.Text(
-      order = 2,
+      order = 3,
       name = "schema",
       optional = false,
       description = "Data schema.",
@@ -68,7 +78,7 @@ public interface PubSubToSpannerYaml {
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 3,
+      order = 4,
       name = "attributes",
       optional = true,
       description = "List of attribute keys.",
@@ -78,7 +88,7 @@ public interface PubSubToSpannerYaml {
   String getAttributes();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 5,
       name = "attributesMap",
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
@@ -88,7 +98,7 @@ public interface PubSubToSpannerYaml {
   String getAttributesMap();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       name = "idAttribute",
       optional = true,
       description =
@@ -99,7 +109,7 @@ public interface PubSubToSpannerYaml {
   String getIdAttribute();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       name = "timestampAttribute",
       optional = true,
       description = "Message value to use as element timestamp.",
@@ -109,7 +119,7 @@ public interface PubSubToSpannerYaml {
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "errorHandling",
       optional = true,
       description = "Error handling configuration",
@@ -118,7 +128,7 @@ public interface PubSubToSpannerYaml {
   String getErrorHandling();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       name = "subscription",
       optional = true,
       description = "Pub/Sub subscription",
@@ -127,7 +137,7 @@ public interface PubSubToSpannerYaml {
   String getSubscription();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       name = "projectId",
       optional = true,
       description = "Cloud Spanner Project ID.",
@@ -136,7 +146,7 @@ public interface PubSubToSpannerYaml {
   String getProjectId();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "instanceId",
       optional = false,
       description = "Cloud Spanner Instance ID.",
@@ -146,7 +156,7 @@ public interface PubSubToSpannerYaml {
   String getInstanceId();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "databaseId",
       optional = false,
       description = "Cloud Spanner Database ID.",
@@ -156,7 +166,7 @@ public interface PubSubToSpannerYaml {
   String getDatabaseId();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "tableId",
       optional = false,
       description = "Cloud Spanner Table ID.",
