@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
@@ -39,7 +40,7 @@ public class ChangeEventConvertor {
 
   public static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    String tableName = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
       throw new DroppedTableException(
           "Table from change event does not exist in Spanner. table=" + tableName);
@@ -81,11 +82,9 @@ public class ChangeEventConvertor {
   static Mutation changeEventToMutation(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     String changeType =
-        changeEvent.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
-            ? changeEvent
-                .get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
-                .asText(DatastreamConstants.EMPTY_EVENT)
-            : DatastreamConstants.EMPTY_EVENT;
+        changeEvent.has(Constants.EVENT_CHANGE_TYPE_KEY)
+            ? changeEvent.get(Constants.EVENT_CHANGE_TYPE_KEY).asText(Constants.EMPTY_EVENT)
+            : Constants.EMPTY_EVENT;
     /* DDL events are not handled and hence skipped.
      * The following block is to ensure that we only handle
      * a) Change events that are DML operations.
@@ -93,17 +92,17 @@ public class ChangeEventConvertor {
      * of the Stream creation are replicated as DUMP events. They do not have
      * change type.
      */
-    if (!(DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.INSERT_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.UPDATE_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.UPDATE_INSERT_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.EMPTY_EVENT.equalsIgnoreCase(changeType))) {
+    if (!(Constants.DELETE_EVENT.equalsIgnoreCase(changeType)
+        || Constants.INSERT_EVENT.equalsIgnoreCase(changeType)
+        || Constants.UPDATE_EVENT.equalsIgnoreCase(changeType)
+        || Constants.UPDATE_INSERT_EVENT.equalsIgnoreCase(changeType)
+        || Constants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)
+        || Constants.EMPTY_EVENT.equalsIgnoreCase(changeType))) {
       throw new InvalidChangeEventException("Unexpected event with change type " + changeType);
     }
 
-    if (DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)) {
+    if (Constants.DELETE_EVENT.equalsIgnoreCase(changeType)
+        || Constants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)) {
       return ChangeEventConvertor.changeEventToDeleteMutation(ddl, changeEvent);
     }
     // Dump events, Insert events and  Update events  are treated the same way.
@@ -113,7 +112,7 @@ public class ChangeEventConvertor {
   public static Mutation.WriteBuilder changeEventToShadowTableMutationBuilder(
       Ddl ddl, JsonNode changeEvent, String shadowTablePrefix)
       throws ChangeEventConvertorException {
-    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    String tableName = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
     String shadowTableName = shadowTablePrefix + tableName;
     try {
       Table table = ddl.table(shadowTableName);
@@ -139,7 +138,7 @@ public class ChangeEventConvertor {
 
   private static Mutation changeEventToInsertOrUpdateMutation(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    String tableName = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
     List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     try {
       Table table = ddl.table(tableName);
@@ -158,7 +157,7 @@ public class ChangeEventConvertor {
 
   private static Mutation changeEventToDeleteMutation(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException {
-    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    String tableName = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
     com.google.cloud.spanner.Key primaryKey =
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
             tableName, ddl, changeEvent, /* convertNameToLowerCase= */ true);

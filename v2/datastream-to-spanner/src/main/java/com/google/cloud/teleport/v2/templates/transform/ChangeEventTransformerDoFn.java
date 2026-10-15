@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_CHANGE_TYPE_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
