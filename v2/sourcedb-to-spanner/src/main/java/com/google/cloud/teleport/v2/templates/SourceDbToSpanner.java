@@ -28,14 +28,20 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConne
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import java.io.Serializable;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
+import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -148,6 +154,9 @@ public class SourceDbToSpanner {
     return connector.executeMigration(options, sourceConnectionConfig, pipeline, spannerConfig);
   }
 
+  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
+  private static final int MAX_TXN_TAG_LENGTH = 50;
+
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
     SpannerConfig spannerConfig =
@@ -156,10 +165,78 @@ public class SourceDbToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withExcludeTxnFromChangeStreams(true)
+            .withTransactionTag(new TxnTagValueProvider(getTxnTag(options)));
     if (options.getMaxCommitDelay() >= 0) {
       spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
     }
     return spannerConfig;
+  }
+
+  @VisibleForTesting
+  static String getTxnTag(PipelineOptions options) {
+    String jobId = "sourcedbToSpanner";
+    try {
+      DataflowWorkerHarnessOptions harnessOptions = options.as(DataflowWorkerHarnessOptions.class);
+      if (StringUtils.isNotBlank(harnessOptions.getJobId())) {
+        jobId = harnessOptions.getJobId();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to find Dataflow job id. Spanner transaction tags will not contain the dataflow"
+              + " job id.",
+          e);
+    }
+    // Spanner transaction tags have a limit of 50 characters. Dataflow job id is 40 chars in
+    // length.
+    String txnTag = "txBy=bulk-" + jobId;
+    if (txnTag.length() > MAX_TXN_TAG_LENGTH) {
+      txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
+    }
+    return txnTag;
+  }
+
+  private static class TxnTagValueProvider implements ValueProvider<String>, Serializable {
+    private final String defaultTxnTag;
+
+    TxnTagValueProvider(String defaultTxnTag) {
+      this.defaultTxnTag = defaultTxnTag;
+    }
+
+    @Override
+    public String get() {
+      String workerJobId = System.getProperty("job_id");
+      if ("txBy=bulk-sourcedbToSpanner".equals(defaultTxnTag)
+          && StringUtils.isNotBlank(workerJobId)) {
+        String txnTag = "txBy=bulk-" + workerJobId;
+        if (txnTag.length() > MAX_TXN_TAG_LENGTH) {
+          txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
+        }
+        return txnTag;
+      }
+      return defaultTxnTag;
+    }
+
+    @Override
+    public boolean isAccessible() {
+      return true;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof TxnTagValueProvider
+          && Objects.equals(defaultTxnTag, ((TxnTagValueProvider) other).defaultTxnTag);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(defaultTxnTag);
+    }
+
+    @Override
+    public String toString() {
+      return get();
+    }
   }
 }
