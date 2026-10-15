@@ -80,6 +80,44 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   public final TestRule skipRerunOfGenuineFailures =
       SkipRerunOfGenuineFailuresRule.fromSystemProperties();
 
+  /**
+   * DRAFT / TESTING ONLY, do not merge. Chaos rule: after a test has passed (including its @After
+   * cleanup), fail it with probability -DitChaosFailureProbability or env
+   * IT_CHAOS_FAILURE_PROBABILITY (default 0 = off). -DitChaosFailureType=assertion or env
+   * IT_CHAOS_FAILURE_TYPE=assertion makes it an AssertionError (genuine, not re-run); default is a
+   * RuntimeException (transient, re-run). Sits just inside the guard rule so the guard sees it.
+   */
+  @Rule(order = Integer.MIN_VALUE + 1)
+  public final TestRule chaosFailure =
+      (base, description) ->
+          new org.junit.runners.model.Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+              base.evaluate();
+              String p =
+                  System.getProperty(
+                      "itChaosFailureProbability",
+                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_PROBABILITY", "0"));
+              String type =
+                  System.getProperty(
+                      "itChaosFailureType",
+                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_TYPE", ""));
+              double probability = Double.parseDouble(p);
+              double roll = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
+              if (roll < probability) {
+                String message =
+                    String.format(
+                        "CHAOS: simulated random failure in %s (roll=%.2f < p=%.2f)",
+                        description.getDisplayName(), roll, probability);
+                LOG.warn("[IT-CHAOS] {}", message);
+                if ("assertion".equals(type)) {
+                  throw new AssertionError(message);
+                }
+                throw new RuntimeException(message);
+              }
+            }
+          };
+
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 

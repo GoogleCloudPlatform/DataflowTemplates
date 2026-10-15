@@ -213,7 +213,9 @@ jobs:
     # between class runners and test methods. So at most 48 / 2 = 24 ITs run concurrently per template.
     - name: Run Integration Tests
       env:
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        # DRAFT / TESTING ONLY, do not merge: run only 5 Bulk ITs and inject random failures.
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT,MySQLSingleShardIT,MySQLSourceDBToSpannerWideRowInterleaveDepthIT' }}
+        IT_CHAOS_FAILURE_PROBABILITY: '0.5'
         # Surefire reruns failed tests once (--it-retry-failures); on the rerun,
         # SkipRerunOfGenuineFailuresRule fails genuine (e.g. assertion) failures without re-running them.
         IT_SKIP_RERUN_OF_GENUINE_FAILURES: 'true'
