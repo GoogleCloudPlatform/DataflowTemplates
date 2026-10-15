@@ -52,11 +52,44 @@ public abstract class LocalityGroup implements Serializable {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
 
-    appendable.append("CREATE LOCALITY GROUP ").append(quoteIdentifier(name(), dialect()));
+    boolean isDefault = "default".equalsIgnoreCase(name());
+    appendable
+        .append(isDefault ? "ALTER LOCALITY GROUP " : "CREATE LOCALITY GROUP ")
+        .append(quoteIdentifier(name(), dialect()));
 
     if (options() != null && !options().isEmpty()) {
-      String optionsString = String.join(", ", options());
-      appendable.append("\n\tOPTIONS (").append(optionsString).append(")");
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        String optionsString = String.join(", ", options());
+        appendable
+            .append(isDefault ? "\n\tSET OPTIONS (" : "\n\tOPTIONS (")
+            .append(optionsString)
+            .append(")");
+      } else {
+        String storageClause = null;
+        String spillClause = null;
+        for (String option : options()) {
+          String[] parts = option.split("=", 2);
+          if (parts.length != 2) {
+            continue;
+          }
+          String key = parts[0].trim();
+          String val = parts[1].trim();
+          if (val.length() >= 2 && val.startsWith("\"") && val.endsWith("\"")) {
+            val = "'" + val.substring(1, val.length() - 1) + "'";
+          }
+          if (key.equalsIgnoreCase("storage")) {
+            storageClause = "STORAGE " + val;
+          } else if (key.equalsIgnoreCase("ssd_to_hdd_spill_timespan")) {
+            spillClause = "SSD_TO_HDD_SPILL_TIMESPAN " + val;
+          }
+        }
+        if (storageClause != null) {
+          appendable.append(" ").append(storageClause);
+        }
+        if (spillClause != null) {
+          appendable.append(" ").append(spillClause);
+        }
+      }
     }
   }
 

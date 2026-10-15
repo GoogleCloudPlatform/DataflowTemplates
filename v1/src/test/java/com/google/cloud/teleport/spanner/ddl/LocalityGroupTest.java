@@ -50,9 +50,7 @@ public class LocalityGroupTest {
     LocalityGroup lg =
         LocalityGroup.builder()
             .name("lg1")
-            .options(
-                ImmutableList.of(
-                    "storage = 'ssd'", "ssd_to_hdd_spill_timespan = '30d'"))
+            .options(ImmutableList.of("storage = 'ssd'", "ssd_to_hdd_spill_timespan = '30d'"))
             .build();
 
     assertThat(
@@ -66,31 +64,51 @@ public class LocalityGroupTest {
     LocalityGroup lg =
         LocalityGroup.builder(Dialect.POSTGRESQL)
             .name("lg1")
-            .options(ImmutableList.of("storage = 'ssd'"))
+            .options(ImmutableList.of("ssd_to_hdd_spill_timespan='30d'", "storage='ssd'"))
             .build();
 
     assertThat(
         lg.prettyPrint(),
-        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg1\"\n\tOPTIONS (storage = 'ssd')"));
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+  }
+
+  @Test
+  public void testDefaultLocalityGroupWithOptions() {
+    LocalityGroup lg =
+        LocalityGroup.builder()
+            .name("default")
+            .options(ImmutableList.of("storage=\"hdd\""))
+            .build();
+
+    assertThat(
+        lg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP `default`\n\tSET OPTIONS (storage=\"hdd\")"));
+  }
+
+  @Test
+  public void testDefaultLocalityGroupWithOptionsPg() {
+    LocalityGroup lg =
+        LocalityGroup.builder(Dialect.POSTGRESQL)
+            .name("default")
+            .options(ImmutableList.of("ssd_to_hdd_spill_timespan='10m'", "storage='ssd'"))
+            .build();
+
+    assertThat(
+        lg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP \"default\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10m'"));
   }
 
   @Test
   public void testEqualsAndHashCode() {
     LocalityGroup lg1 =
-        LocalityGroup.builder()
-            .name("lg1")
-            .options(ImmutableList.of("storage = 'ssd'"))
-            .build();
+        LocalityGroup.builder().name("lg1").options(ImmutableList.of("storage = 'ssd'")).build();
     LocalityGroup lg2 =
-        LocalityGroup.builder()
-            .name("lg1")
-            .options(ImmutableList.of("storage = 'ssd'"))
-            .build();
+        LocalityGroup.builder().name("lg1").options(ImmutableList.of("storage = 'ssd'")).build();
     LocalityGroup lg3 =
-        LocalityGroup.builder()
-            .name("lg2")
-            .options(ImmutableList.of("storage = 'ssd'"))
-            .build();
+        LocalityGroup.builder().name("lg2").options(ImmutableList.of("storage = 'ssd'")).build();
 
     assertEquals(lg1, lg2);
     assertEquals(lg1.hashCode(), lg2.hashCode());
