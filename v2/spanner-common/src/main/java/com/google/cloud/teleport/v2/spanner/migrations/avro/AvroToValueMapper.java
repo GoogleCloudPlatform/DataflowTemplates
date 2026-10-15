@@ -223,6 +223,9 @@ public class AvroToValueMapper {
         Type.pgFloat8(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     pgFunctions.put(
+        Type.pgFloat4(),
+        (recordValue, fieldSchema) -> Value.float32(avroFieldToFloat32(recordValue, fieldSchema)));
+    pgFunctions.put(
         Type.pgVarchar(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     pgFunctions.put(
