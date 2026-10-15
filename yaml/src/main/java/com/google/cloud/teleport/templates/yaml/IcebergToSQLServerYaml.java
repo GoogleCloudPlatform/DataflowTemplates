@@ -151,15 +151,6 @@ public interface IcebergToSQLServerYaml {
 
   @TemplateParameter.Text(
       order = 12,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET ANSI_NULLS ON\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 13,
       name = "location",
       optional = false,
       description = "The name of the table to write to.",
@@ -169,7 +160,7 @@ public interface IcebergToSQLServerYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       name = "query",
       optional = true,
       description = "The SQL statement to use for inserting records.",
@@ -178,7 +169,7 @@ public interface IcebergToSQLServerYaml {
   String getQuery();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 14,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -188,7 +179,7 @@ public interface IcebergToSQLServerYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 16,
+      order = 15,
       name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",

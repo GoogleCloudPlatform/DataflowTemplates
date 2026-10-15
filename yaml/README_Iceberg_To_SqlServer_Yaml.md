@@ -29,7 +29,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET ANSI_NULLS ON"]`.
 * **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
@@ -139,7 +138,6 @@ export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
 export QUERY=<query>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
@@ -159,7 +157,6 @@ gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
   --parameters "location=$LOCATION" \
   --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
@@ -196,7 +193,6 @@ export FILTER=<filter>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
 export QUERY=<query>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
@@ -208,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-sqlserver-yaml-job" \
 -DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING" \
 -f yaml
 ```
 
@@ -265,7 +261,6 @@ resource "google_dataflow_flex_template_job" "iceberg_to_sqlserver_yaml" {
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSql = "<connectionInitSql>"
     # query = "<query>"
     # batchSize = "1000"
     # autoSharding = "<autoSharding>"
