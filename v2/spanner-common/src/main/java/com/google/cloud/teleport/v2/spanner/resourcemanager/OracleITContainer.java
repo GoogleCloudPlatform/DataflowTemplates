@@ -34,25 +34,23 @@ import org.testcontainers.utility.DockerImageName;
  * An Oracle XE (multitenant: CDB {@code XE}, PDB {@code XEPDB1}) Testcontainer meant to be started
  * once per test JVM and shared by all the Oracle ITs of a template module.
  *
- * <p>After the container starts, a one-time setup script is run inside it to mirror the settings of
- * the static Oracle instance previously used by the ITs (CPU and memory are left at what the XE
- * container offers):
+ * <p>After the container starts, a one-time setup script is run inside it (CPU and memory are left
+ * at what the XE container offers):
  *
  * <ul>
- *   <li>{@code processes} / {@code sessions}: as high as XE allows (default 4000 / 6000,
- *       overridable with {@code -DoracleProcesses} / {@code -DoracleSessions}). The static instance
- *       used 20000 / 30000, but XE caps the SGA at 1.5G and Oracle reserves SGA per allowed
- *       process/session: above ~5000 processes the instance fails to start with ORA-00821.
- *   <li>{@code streams_pool_size=64M}, {@code open_cursors=300}.
- *   <li>Only when CDC is enabled (needed by Datastream): ARCHIVELOG mode with archived logs in a
- *       12G fast recovery area, FORCE LOGGING, MIN/PK/ALL supplemental logging at the CDB and PDB
- *       level and 3 x 100 MB redo log groups.
+ *   <li>{@code processes} / {@code sessions}: default 4000 / 6000, overridable with {@code
+ *       -DoracleProcesses} / {@code -DoracleSessions}. The static instance used 20000 / 30000, but
+ *       XE caps the SGA at 1.5G and Oracle reserves SGA per allowed process/session: above ~5000
+ *       processes the instance fails to start with ORA-00821.
+ *   <li>Only when CDC is enabled (needed by Datastream): ARCHIVELOG mode (archived logs in Oracle's
+ *       default location, without a quota), FORCE LOGGING and MIN/PK/ALL supplemental logging (as
+ *       on the static instance), and 3 extra 100 MB redo log groups.
  * </ul>
  *
  * <p>The container is published on {@link TestProperties#hostIp()} (the IP of the machine running
  * the tests, passed as {@code -DhostIp}) and its mapped port, so that it is reachable by Dataflow
  * workers and Datastream, and not only from the test JVM. It is removed by Testcontainers when the
- * JVM exits. *
+ * JVM exits.
  */
 public final class OracleITContainer {
 
@@ -194,8 +192,7 @@ public final class OracleITContainer {
     if (result.getExitCode() != 0) {
       throw new IllegalStateException(
           String.format(
-              "Oracle container setup script failed with exit code %d. The original parameters"
-                  + " are saved in /opt/oracle/oradata/init_before_it_setup.ora.%nstdout:%n%s%n"
+              "Oracle container setup script failed with exit code %d.%nstdout:%n%s%n"
                   + "stderr:%n%s",
               result.getExitCode(), result.getStdout(), result.getStderr()));
     }
@@ -238,7 +235,7 @@ public final class OracleITContainer {
 
   /**
    * Builds the bash script run inside the container (as the {@code oracle} OS user) to configure
-   * the database. Any SQL error aborts the script with a non-zero exit code.
+   * the database. Any SQL or OS error aborts the script with a non-zero exit code.
    */
   static String buildSetupScript(boolean enableCdc, int processes, int sessions) {
     StringBuilder sql = new StringBuilder();
@@ -246,40 +243,40 @@ public final class OracleITContainer {
         """
         WHENEVER SQLERROR EXIT FAILURE
         WHENEVER OSERROR EXIT FAILURE
-        SET ECHO ON FEEDBACK ON SERVEROUTPUT ON LINESIZE 200 PAGESIZE 100 SQLBLANKLINES ON
+        SET FEEDBACK OFF LINESIZE 200 PAGESIZE 100
+        COLUMN name FORMAT A28
+        COLUMN value FORMAT A60
+        COLUMN member FORMAT A70
 
-        -- Keep a copy of the original parameters, to debug if the restart below fails.
-        CREATE PFILE='/opt/oracle/oradata/init_before_it_setup.ora' FROM SPFILE;
+        PROMPT ===== Image defaults (recovery area / archive destination / redo logs) =====
+        SELECT name, value FROM v$parameter
+        WHERE name IN ('db_recovery_file_dest', 'db_recovery_file_dest_size',
+                       'db_create_file_dest', 'log_archive_dest', 'log_archive_dest_1')
+        ORDER BY name;
+        SELECT l.group#, l.bytes / 1024 / 1024 AS size_mb, f.member
+        FROM v$log l JOIN v$logfile f ON f.group# = l.group# ORDER BY l.group#;
 
-        -- 1. Instance parameters (applied on restart). processes/sessions as high as XE allows.
-        --    CPU and memory are left at the XE / container defaults.
+        -- processes / sessions, applied on restart. CPU and memory stay at the XE defaults.
         ALTER SYSTEM SET processes={{PROCESSES}} SCOPE=SPFILE;
         ALTER SYSTEM SET sessions={{SESSIONS}} SCOPE=SPFILE;
-        ALTER SYSTEM SET streams_pool_size=64M SCOPE=SPFILE;
-        ALTER SYSTEM SET open_cursors=300 SCOPE=BOTH;
         """);
 
     if (enableCdc) {
       sql.append(
           """
 
-          -- 2. OMF and fast recovery area for the archived logs, as on the static instance.
-          ALTER SYSTEM SET db_create_file_dest='/opt/oracle/oradata' SCOPE=BOTH;
-          ALTER SYSTEM SET db_recovery_file_dest_size=12G SCOPE=BOTH;
-          ALTER SYSTEM SET db_recovery_file_dest='/opt/oracle/oradata/fra' SCOPE=BOTH;
-          ALTER SYSTEM SET log_archive_dest_1='LOCATION=USE_DB_RECOVERY_FILE_DEST' SCOPE=BOTH;
-
-          -- 3. Restart in ARCHIVELOG mode.
+          -- Restart in ARCHIVELOG mode, required by Datastream. No archive destination / fast
+          -- recovery area is configured on purpose: the archived logs then go to Oracle's default
+          -- location ($ORACLE_HOME/dbs), only bounded by the container's disk, so the archiver
+          -- can't get stuck on a quota (ORA-00257).
           SHUTDOWN IMMEDIATE
           STARTUP MOUNT
           ALTER DATABASE ARCHIVELOG;
           ALTER DATABASE OPEN;
           """);
     } else {
-      sql.append(
-          """
+      sql.append("""
 
-          -- 2. Restart to apply the instance parameters.
           SHUTDOWN IMMEDIATE
           STARTUP
           """);
@@ -294,104 +291,55 @@ public final class OracleITContainer {
           IF SQLCODE != -65019 THEN RAISE; END IF; -- ORA-65019: already open
         END;
         /
-        ALTER PLUGGABLE DATABASE XEPDB1 SAVE STATE;
         """);
 
     if (enableCdc) {
       sql.append(
           """
 
-          -- 4. CDB-level logging: FORCE LOGGING and MIN / PK / ALL supplemental logging.
+          -- Logging as on the static instance. CDB-level settings apply to all PDBs.
           ALTER DATABASE FORCE LOGGING;
           ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
           ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;
           ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
-          -- 5. Redo logs: 3 groups of 100 MB, only if the image ships smaller ones.
+          -- The image ships only 2 x 10 MB redo log groups: with the frequent log switches of
+          -- concurrent tests (flushRedoLogs) and FORCE LOGGING / ALL supplemental logging, writes
+          -- would wait for the next group to be archived. Add 3 x 100 MB groups (as on the static
+          -- instance), next to the existing redo log files so that no image path is hard-coded.
           DECLARE
-            v_small  NUMBER;
-            v_status v$log.status%TYPE;
-            v_arch   v$log.archived%TYPE;
+            v_dir   VARCHAR2(512);
+            v_group NUMBER;
           BEGIN
-            SELECT COUNT(*) INTO v_small FROM v$log WHERE bytes < 100 * 1024 * 1024;
-            IF v_small = 0 THEN
-              DBMS_OUTPUT.PUT_LINE('Redo logs already >= 100 MB, nothing to do.');
-              RETURN;
-            END IF;
+            SELECT SUBSTR(member, 1, INSTR(member, '/', -1)) INTO v_dir
+            FROM v$logfile WHERE ROWNUM = 1;
+            SELECT MAX(group#) INTO v_group FROM v$log;
             FOR i IN 1 .. 3 LOOP
-              EXECUTE IMMEDIATE 'ALTER DATABASE ADD LOGFILE SIZE 100M';
-            END LOOP;
-            FOR r IN (SELECT group# FROM v$log WHERE bytes < 100 * 1024 * 1024) LOOP
-              FOR attempt IN 1 .. 30 LOOP
-                SELECT status, archived INTO v_status, v_arch FROM v$log WHERE group# = r.group#;
-                IF v_status IN ('INACTIVE', 'UNUSED') AND v_arch = 'YES' THEN
-                  EXECUTE IMMEDIATE 'ALTER DATABASE DROP LOGFILE GROUP ' || r.group#;
-                  DBMS_OUTPUT.PUT_LINE('Dropped small redo log group ' || r.group#);
-                  EXIT;
-                END IF;
-                EXECUTE IMMEDIATE 'ALTER SYSTEM SWITCH LOGFILE';
-                EXECUTE IMMEDIATE 'ALTER SYSTEM CHECKPOINT';
-                DBMS_SESSION.SLEEP(1);
-              END LOOP;
+              v_group := v_group + 1;
+              EXECUTE IMMEDIATE 'ALTER DATABASE ADD LOGFILE GROUP ' || v_group || ' ('''
+                  || v_dir || 'redo' || LPAD(v_group, 2, '0') || '.log'') SIZE 100M';
             END LOOP;
           END;
           /
-
-          -- 6. PDB-level MIN / PK / ALL supplemental logging, as on the static XEPDB1. The
-          --    CDB-level settings above already apply to all PDBs, so failures are only logged.
-          ALTER SESSION SET CONTAINER = XEPDB1;
-          DECLARE
-            PROCEDURE add_log(p_clause VARCHAR2) IS
-            BEGIN
-              EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ADD SUPPLEMENTAL LOG DATA' || p_clause;
-            EXCEPTION WHEN OTHERS THEN
-              IF SQLCODE = -32588 THEN
-                NULL; -- ORA-32588: already enabled
-              ELSE
-                DBMS_OUTPUT.PUT_LINE('WARNING: PDB supplemental logging' || p_clause
-                    || ' failed: ' || SQLERRM);
-              END IF;
-            END;
-          BEGIN
-            add_log('');
-            add_log(' (PRIMARY KEY) COLUMNS');
-            add_log(' (ALL) COLUMNS');
-          END;
-          /
-          PROMPT ===== XEPDB1 supplemental logging =====
-          SELECT * FROM dba_supplemental_logging;
-          ALTER SESSION SET CONTAINER = CDB$ROOT;
           """);
     }
 
     sql.append(
         """
 
-        -- Make sure the services are registered with the listener right away.
-        ALTER SYSTEM REGISTER;
-
-        -- Verification, to compare with the static instance.
-        PROMPT ===== Parameters =====
-        COLUMN name FORMAT A30
-        COLUMN value FORMAT A60
-        SELECT name, value FROM v$parameter
-        WHERE name IN ('processes', 'sessions', 'streams_pool_size', 'open_cursors',
-                       'db_create_file_dest', 'db_recovery_file_dest',
-                       'db_recovery_file_dest_size', 'log_archive_dest_1', 'sga_target',
-                       'pga_aggregate_target', 'cpu_count')
-        ORDER BY name;
-        PROMPT ===== Log mode / CDB supplemental logging =====
+        PROMPT ===== Result =====
+        SELECT name, value FROM v$parameter WHERE name IN ('processes', 'sessions') ORDER BY name;
         SELECT log_mode, force_logging, supplemental_log_data_min AS min_,
-               supplemental_log_data_pk AS pk, supplemental_log_data_ui AS ui,
-               supplemental_log_data_fk AS fk, supplemental_log_data_all AS all_
+               supplemental_log_data_pk AS pk, supplemental_log_data_all AS all_
         FROM v$database;
-        PROMPT ===== Redo logs =====
-        SELECT group#, bytes / 1024 / 1024 AS size_mb, status, archived FROM v$log ORDER BY group#;
+        SELECT l.group#, l.bytes / 1024 / 1024 AS size_mb, l.status, f.member
+        FROM v$log l JOIN v$logfile f ON f.group# = l.group# ORDER BY l.group#;
+        COLUMN destination FORMAT A70
+        SELECT dest_name, destination FROM v$archive_dest WHERE status = 'VALID';
         EXIT SUCCESS
         """);
 
     return "set -euo pipefail\n"
-        + "mkdir -p /opt/oracle/oradata/fra\n"
         + "sqlplus -s / as sysdba <<'EOF'\n"
         + sql.toString()
             .replace("{{PROCESSES}}", String.valueOf(processes))
