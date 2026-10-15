@@ -118,6 +118,7 @@ public class PostgreSQLInheritanceTablesIT extends SourceDbToSpannerITBase {
   }
 
   private void verifyData(SpannerResourceManager spannerResourceManager) {
+    // archive.vehicles shares the index name vehicles_pkey; only public.vehicles must be read.
     List<Map<String, Object>> vehiclesPostgreSQL =
         postgresSQLResourceManager.runSQLQuery("SELECT id, make FROM ONLY vehicles");
     ImmutableList<Struct> vehiclesSpanner =
