@@ -415,78 +415,6 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void testChangeStreamTrackAllSkipsTokenlistColumn() {
-    mockInformationSchemaChangeStreamsQuery(true);
-    mockInformationSchemaTablesQuery();
-    mockInformationSchemaColumnsQuery(true);
-    mockInformationSchemaKeyColumnUsageQuery();
-    String sql =
-        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
-            + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
-    when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
-            Options.priority(rpcPriority)))
-        .thenReturn(
-            ResultSets.forRows(
-                Type.struct(
-                    Type.StructField.of("TABLE_NAME", Type.string()),
-                    Type.StructField.of("COLUMN_NAME", Type.string())),
-                Collections.emptyList()));
-
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, rpcPriority, now)
-            .getSpannerTableByName();
-
-    List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
-    List<TrackedSpannerColumn> singersNonPkColumns =
-        ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
-    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
-  }
-
-  @Test
-  public void testChangeStreamTrackAllSkipsTokenlistColumnPostgres() {
-    mockInformationSchemaChangeStreamsQueryPostgres(true);
-    mockInformationSchemaTablesQueryPostgres();
-    mockInformationSchemaColumnsQueryPostgres(true);
-    mockInformationSchemaKeyColumnUsageQueryPostgres();
-    String sql =
-        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
-            + "WHERE CHANGE_STREAM_NAME = $1";
-    when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(),
-            Options.priority(rpcPriority)))
-        .thenReturn(
-            ResultSets.forRows(
-                Type.struct(
-                    Type.StructField.of("table_name", Type.string()),
-                    Type.StructField.of("column_name", Type.string())),
-                Collections.emptyList()));
-
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, rpcPriority, now)
-            .getSpannerTableByName();
-
-    List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
-    List<TrackedSpannerColumn> singersNonPkColumns =
-        ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
-    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
-  }
-
-  @Test
   public void testChangeStreamTrackOneColumn() {
     mockInformationSchemaChangeStreamsQuery(false);
     mockInformationSchemaChangeStreamTablesQuery();
@@ -948,10 +876,6 @@ public class SchemaUtilsTest {
   }
 
   private void mockInformationSchemaColumnsQuery() {
-    mockInformationSchemaColumnsQuery(false);
-  }
-
-  private void mockInformationSchemaColumnsQuery(boolean includeTokenlistColumn) {
     String sql =
         "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
             + "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME IN UNNEST (@tableNames)";
@@ -991,19 +915,18 @@ public class SchemaUtilsTest {
                     .set("SPANNER_TYPE")
                     .to(Value.string("STRING"))
                     .build()));
-    if (includeTokenlistColumn) {
-      rows.add(
-          Struct.newBuilder()
-              .set("TABLE_NAME")
-              .to(Value.string("Singers"))
-              .set("COLUMN_NAME")
-              .to(Value.string("FirstName_Tokens"))
-              .set("ORDINAL_POSITION")
-              .to(Value.int64(4))
-              .set("SPANNER_TYPE")
-              .to(Value.string("TOKENLIST"))
-              .build());
-    }
+    // TOKENLIST columns for full-text search should always be skipped.
+    rows.add(
+        Struct.newBuilder()
+            .set("TABLE_NAME")
+            .to(Value.string("Singers"))
+            .set("COLUMN_NAME")
+            .to(Value.string("FirstName_Tokens"))
+            .set("ORDINAL_POSITION")
+            .to(Value.int64(4))
+            .set("SPANNER_TYPE")
+            .to(Value.string("TOKENLIST"))
+            .build());
     // spotless:on
 
     when(mockReadContext.executeQuery(
@@ -1023,10 +946,6 @@ public class SchemaUtilsTest {
   }
 
   private void mockInformationSchemaColumnsQueryPostgres() {
-    mockInformationSchemaColumnsQueryPostgres(false);
-  }
-
-  private void mockInformationSchemaColumnsQueryPostgres(boolean includeTokenlistColumn) {
     StringBuilder sqlStringBuilder =
         new StringBuilder(
             "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
@@ -1068,19 +987,18 @@ public class SchemaUtilsTest {
                     .set("spanner_type")
                     .to(Value.string("character varying"))
                     .build()));
-    if (includeTokenlistColumn) {
-      rows.add(
-          Struct.newBuilder()
-              .set("table_name")
-              .to(Value.string("Singers"))
-              .set("column_name")
-              .to(Value.string("FirstName_Tokens"))
-              .set("ordinal_position")
-              .to(Value.int64(4))
-              .set("spanner_type")
-              .to(Value.string("spanner.tokenlist"))
-              .build());
-    }
+    // TOKENLIST columns for full-text search should always be skipped.
+    rows.add(
+        Struct.newBuilder()
+            .set("table_name")
+            .to(Value.string("Singers"))
+            .set("column_name")
+            .to(Value.string("FirstName_Tokens"))
+            .set("ordinal_position")
+            .to(Value.int64(4))
+            .set("spanner_type")
+            .to(Value.string("spanner.tokenlist"))
+            .build());
     // spotless:on
 
     when(mockReadContext.executeQuery(
