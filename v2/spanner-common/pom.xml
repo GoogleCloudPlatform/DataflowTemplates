@@ -86,6 +86,13 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-compute</artifactId>
         </dependency>
+        <!-- JUnit is only needed to compile testutils/retry (IT rules used by the Spanner
+             templates' tests); provided, so it is not packaged or passed on at runtime. -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -128,27 +135,6 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <!-- Publish the shared Spanner IT test utilities (e.g. the selective-retry rule) as a
-                     test-jar, so Bulk, Live, Reverse and DV ITs can use them. Only testutils/retry
-                     is included, to keep other spanner-common test classes/resources off their
-                     classpath. -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>spanner-common-test-jar</id>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                        <configuration>
-                            <includes>
-                                <include>com/google/cloud/teleport/v2/spanner/testutils/retry/**</include>
-                            </includes>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
