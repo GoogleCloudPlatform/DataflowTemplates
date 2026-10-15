@@ -1492,6 +1492,8 @@ public class DatastreamToDMLTest {
         "'{\"a\":1,\"b\":\"test\"}','{\"c\":true,\"d\":[1,2]}',"
             + "decode('aGVsbG9fd29ybGQ=','base64'),'Top.Science.Astronomy'::ltree",
         dml.getColumnsValuesSql(rowObj, tableSchema));
+  }
+
   @Test
   public void testJdbcTableCache_passesNullForEmptyCatalogAndSchema() throws Exception {
     DataSource ds = mock(DataSource.class);
