@@ -85,15 +85,6 @@ public interface SQLServerToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 5,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET ANSI_NULLS ON\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 6,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -102,7 +93,7 @@ public interface SQLServerToBigQueryYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -111,7 +102,7 @@ public interface SQLServerToBigQueryYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -120,7 +111,7 @@ public interface SQLServerToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 8,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -129,7 +120,7 @@ public interface SQLServerToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 10,
+      order = 9,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -139,7 +130,7 @@ public interface SQLServerToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 10,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
@@ -149,7 +140,7 @@ public interface SQLServerToBigQueryYaml {
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 12,
+      order = 11,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -158,7 +149,7 @@ public interface SQLServerToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 12,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -169,7 +160,7 @@ public interface SQLServerToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -180,7 +171,7 @@ public interface SQLServerToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 14,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -191,7 +182,7 @@ public interface SQLServerToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 16,
+      order = 15,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",

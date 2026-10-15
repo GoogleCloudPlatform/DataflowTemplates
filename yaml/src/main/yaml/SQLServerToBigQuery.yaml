@@ -42,7 +42,6 @@ pipeline:
         table: {{ location }}
         num_partitions: {{ numPartitions }}
         fetch_size: {{ fetchSize }}
-        connection_init_sql: {{ connectionInitSql }}
         disable_auto_commit: {{ disableAutoCommit }}
         output_parallelization: {{ outputParallelization }}
 

@@ -23,7 +23,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET ANSI_NULLS ON"]`.
 * **location**: The name of the database table to read data from. For example, `public.my_table`.
 * **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
@@ -133,7 +132,6 @@ export TABLE=<table>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
 export LOCATION=<location>
 export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
@@ -153,7 +151,6 @@ gcloud dataflow flex-template run "sqlserver-to-bigquery-yaml-job" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
   --parameters "location=$LOCATION" \
   --parameters "readQuery=$READ_QUERY" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
@@ -190,7 +187,6 @@ export TABLE=<table>
 export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
 export LOCATION=<location>
 export READ_QUERY=<readQuery>
 export PARTITION_COLUMN=<partitionColumn>
@@ -209,7 +205,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sqlserver-to-bigquery-yaml-job" \
 -DtemplateName="SQLServer_To_BigQuery_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -259,7 +255,6 @@ resource "google_dataflow_flex_template_job" "sqlserver_to_bigquery_yaml" {
     # username = "<username>"
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSql = "<connectionInitSql>"
     # location = "<location>"
     # readQuery = "<readQuery>"
     # partitionColumn = "<partitionColumn>"
