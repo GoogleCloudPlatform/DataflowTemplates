@@ -17,7 +17,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
 * **instanceId**: The Cloud Spanner instance ID. For example, `your-instance-id`.
@@ -125,7 +124,6 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_Spanner_Yaml"
 
 ### Required
-export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export INSTANCE_ID=<instanceId>
@@ -145,7 +143,6 @@ gcloud dataflow flex-template run "pubsub-to-spanner-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "topic=$TOPIC" \
   --parameters "format=$FORMAT" \
   --parameters "schema=$SCHEMA" \
   --parameters "attributes=$ATTRIBUTES" \
@@ -176,7 +173,6 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export INSTANCE_ID=<instanceId>
@@ -199,7 +195,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-spanner-yaml-job" \
 -DtemplateName="PubSub_To_Spanner_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID" \
+-Dparameters="format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID" \
 -f yaml
 ```
 
@@ -244,7 +240,6 @@ resource "google_dataflow_flex_template_job" "pubsub_to_spanner_yaml" {
   name              = "pubsub-to-spanner-yaml"
   region            = var.region
   parameters        = {
-    topic = "<topic>"
     format = "<format>"
     schema = "<schema>"
     instanceId = "<instanceId>"
