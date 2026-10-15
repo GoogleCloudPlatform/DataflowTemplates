@@ -26,6 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.ImportSpecificationDeserializer;
+import org.neo4j.importer.v1.ImportSpecificationDeserializer.Options;
 import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.validation.SpecificationException;
 import org.slf4j.Logger;
@@ -51,8 +52,8 @@ public class JobSpecMapper {
     }
 
     try {
-      // TODO: interpolate runtime tokens into new spec elements
-      return ImportSpecificationDeserializer.deserialize(new StringReader(content));
+      return ImportSpecificationDeserializer.deserialize(
+          new StringReader(content), deserializationOptions(options));
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }
@@ -150,5 +151,20 @@ public class JobSpecMapper {
       return new JSONArray(0);
     }
     return spec.getJSONArray("actions");
+  }
+
+  private static Options deserializationOptions(OverlayTokens options) {
+    Map<String, Object> variables = options.tokens();
+    if (variables.isEmpty()) {
+      return Options.builder().build();
+    }
+    return Options.builder()
+        .enableInterpolation()
+        .allowInterpolationAt("$.actions[?(@.type == 'bigquery')].sql")
+        .allowInterpolationAt("$.actions[?(@.type == 'http')].url")
+        .allowInterpolationAt("$.sources[?(@.type == 'bigquery')].query")
+        .allowInterpolationAt("$.sources[?(@.type == 'text')].urls")
+        .interpolationVariables(variables)
+        .build();
   }
 }
