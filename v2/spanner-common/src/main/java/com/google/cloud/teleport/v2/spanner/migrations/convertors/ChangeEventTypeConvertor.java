@@ -20,6 +20,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
@@ -232,7 +233,7 @@ public class ChangeEventTypeConvertor {
       // receives the resulting JSON tree, it cannot check the original Avro schema type,
       // so it checks if the source database type is PostgreSQL instead to safely decode
       // the Base64.
-      JsonNode sourceTypeNode = changeEvent.get("_metadata_source_type");
+      JsonNode sourceTypeNode = changeEvent.get(Constants.EVENT_SOURCE_TYPE_KEY);
       if (sourceTypeNode != null && "postgresql".equalsIgnoreCase(sourceTypeNode.asText())) {
         byte[] decodedBytes = Base64.getDecoder().decode(s);
         return ByteArray.copyFrom(decodedBytes);

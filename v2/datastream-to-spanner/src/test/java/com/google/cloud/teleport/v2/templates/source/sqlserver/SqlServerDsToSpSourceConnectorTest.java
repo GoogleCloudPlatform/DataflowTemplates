@@ -37,10 +37,10 @@ import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -88,7 +88,7 @@ public final class SqlServerDsToSpSourceConnectorTest {
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, 1615159728L);
     changeEvent.put(
         SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, "00000021:0000010f:0001");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "sqlserver");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, "sqlserver");
 
     ChangeEventContext context =
         connector.createChangeEventContext(
@@ -104,7 +104,7 @@ public final class SqlServerDsToSpSourceConnectorTest {
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, 1615159728L);
     changeEvent.put(
         SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, "00000021:0000010f:0001");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "sqlserver");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, "sqlserver");
 
     ChangeEventContext context =
         connector.createChangeEventContext(
