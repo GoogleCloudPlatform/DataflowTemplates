@@ -405,6 +405,21 @@ def _utc(ts: Timestamp) -> str:
   return ts.to_utc_datetime(has_tz=True).strftime('%Y-%m-%dT%H:%M:%S.%f')
 
 
+def _datetime_to_timestamp(dt: datetime.datetime) -> Timestamp:
+  """Convert a timezone-aware datetime to a Beam Timestamp.
+
+  Beam's Timestamp.from_utc_datetime only accepts tzinfo of pytz.utc or
+  datetime.timezone.utc. Depending on the pyarrow version, BigQuery Storage
+  Read API rows may carry other UTC tzinfo implementations (e.g. pyarrow>=25
+  returns zoneinfo.ZoneInfo('UTC')), so normalize to datetime.timezone.utc
+  first. Naive datetimes are passed through unchanged so Beam still rejects
+  them rather than silently interpreting them in local time.
+  """
+  if dt.tzinfo is not None:
+    dt = dt.astimezone(datetime.timezone.utc)
+  return Timestamp.from_utc_datetime(dt)
+
+
 # =============================================================================
 # Poll: _PollChangeHistoryFn (Polling SDF)
 # =============================================================================
@@ -934,7 +949,7 @@ class _ReadStorageStreamsSDF(beam.DoFn,
                 'Row missing %r column. Row keys: %s' %
                 (self._change_timestamp_column, list(row.keys())))
           if isinstance(ts, datetime.datetime):
-            ts = Timestamp.from_utc_datetime(ts)
+            ts = _datetime_to_timestamp(ts)
 
           yield TimestampedValue(row, ts)
           stream_rows += 1
@@ -1099,7 +1114,7 @@ class _DecompressArrowBatchesFn(beam.DoFn):
             'Row missing %r column. Row keys: %s' %
             (self._change_timestamp_column, list(row.keys())))
       if isinstance(ts, datetime.datetime):
-        ts = Timestamp.from_utc_datetime(ts)
+        ts = _datetime_to_timestamp(ts)
       yield TimestampedValue(row, ts)
     Metrics.counter('BigQueryChangeHistory', 'rows_emitted').inc(len(rows))
 
