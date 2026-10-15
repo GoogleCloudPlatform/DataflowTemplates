@@ -50,8 +50,11 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.spanner.retry.SkipRerunOfGenuineFailuresRule;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +67,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
 
   public static final int CUTOVER_MILLIS = 30 * 1000;
 

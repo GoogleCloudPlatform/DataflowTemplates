@@ -51,10 +51,13 @@ import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.retry.SkipRerunOfGenuineFailuresRule;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
@@ -67,6 +70,16 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
+
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 

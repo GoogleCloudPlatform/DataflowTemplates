@@ -46,16 +46,28 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.retry.SkipRerunOfGenuineFailuresRule;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
 
   private static MSSQLResourceManager staticMSSQLResourceManager;
 

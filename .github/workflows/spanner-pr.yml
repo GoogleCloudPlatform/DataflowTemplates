@@ -214,6 +214,9 @@ jobs:
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        # Surefire reruns failed tests once (--it-retry-failures); on the rerun,
+        # SkipRerunOfGenuineFailuresRule fails genuine (e.g. assertion) failures without re-running them.
+        IT_SKIP_RERUN_OF_GENUINE_FAILURES: 'true'
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
@@ -225,6 +228,7 @@ jobs:
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
+        --it-retry-failures=1 \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -249,6 +253,11 @@ jobs:
         fail-on-error: 'false'
         list-suites: 'failed'
         list-tests: 'failed'
+    # Shows retried ITs (flaky = passed on retry, or failed on every run) in the job summary and
+    # as annotations; dorny's report does not show Surefire retries.
+    - name: Integration Test retry report
+      if: always()
+      run: python3 test-infra/surefire_retry_report.py --root=.
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:

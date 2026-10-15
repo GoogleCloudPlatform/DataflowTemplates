@@ -36,6 +36,9 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.retry.SkipRerunOfGenuineFailuresRule;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +48,15 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class GCSSpannerDVITBase extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDVITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
 
   protected SpannerResourceManager spannerResourceManager;
   protected BigQueryResourceManager bigQueryResourceManager;
