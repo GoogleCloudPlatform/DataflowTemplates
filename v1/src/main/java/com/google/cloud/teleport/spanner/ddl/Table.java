@@ -59,6 +59,9 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> checkConstraints();
 
+  @Nullable
+  public abstract ImmutableList<String> options();
+
   public abstract Builder autoToBuilder();
 
   public abstract Dialect dialect();
@@ -81,6 +84,7 @@ public abstract class Table implements Serializable {
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
         .checkConstraints(ImmutableList.of())
+        .options(ImmutableList.of())
         .onDeleteCascade(false);
   }
 
@@ -100,6 +104,15 @@ public abstract class Table implements Serializable {
       default:
         throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s", dialect()));
     }
+  }
+
+  private static String unquoteOptionValue(String val) {
+    if (val.length() >= 2
+        && ((val.startsWith("'") && val.endsWith("'"))
+            || (val.startsWith("\"") && val.endsWith("\"")))) {
+      return val.substring(1, val.length() - 1);
+    }
+    return val;
   }
 
   private void prettyPrintPg(
@@ -123,6 +136,18 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
+    if (options() != null && !options().isEmpty()) {
+      for (String option : options()) {
+        String[] parts = option.split("=", 2);
+        if (parts.length == 2 && parts[0].trim().equalsIgnoreCase("locality_group")) {
+          String lgName = unquoteOptionValue(parts[1].trim());
+          appendable
+              .append(" LOCALITY GROUP ")
+              .append(
+                  "NULL".equalsIgnoreCase(lgName) ? "NULL" : quoteIdentifier(lgName, dialect()));
+        }
+      }
+    }
     if (interleaveInParent() != null) {
       appendable
           .append(" \nINTERLEAVE IN ")
@@ -171,6 +196,10 @@ public abstract class Table implements Serializable {
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
+    }
+    if (options() != null && !options().isEmpty()) {
+      String optionsString = String.join(", ", options());
+      appendable.append(",\nOPTIONS (").append(optionsString).append(")");
     }
     if (includeIndexes) {
       appendable.append("\n");
@@ -229,6 +258,8 @@ public abstract class Table implements Serializable {
     public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
 
     public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
+
+    public abstract Builder options(ImmutableList<String> options);
 
     abstract Builder dialect(Dialect dialect);
 
