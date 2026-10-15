@@ -139,14 +139,50 @@ public abstract class Index implements Serializable {
       }
     }
 
-    if (interleaveIn() != null) {
-      appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
-    }
-
+    String localityGroup = null;
+    ImmutableList.Builder<String> otherOptionsBuilder = ImmutableList.builder();
     if (options() != null) {
-      String optionsString = String.join(",", options());
-      if (!optionsString.isEmpty()) {
-        appendable.append(" WITH (").append(optionsString).append(")");
+      for (String option : options()) {
+        String[] parts = option.split("=", 2);
+        if (parts.length == 2 && parts[0].trim().equalsIgnoreCase("locality_group")) {
+          String lgName = parts[1].trim();
+          if (lgName.length() >= 2
+              && ((lgName.startsWith("'") && lgName.endsWith("'"))
+                  || (lgName.startsWith("\"") && lgName.endsWith("\"")))) {
+            lgName = lgName.substring(1, lgName.length() - 1);
+          }
+          localityGroup = lgName;
+        } else {
+          otherOptionsBuilder.add(option);
+        }
+      }
+    }
+    ImmutableList<String> otherOptions = otherOptionsBuilder.build();
+
+    if (interleaveIn() != null) {
+      if (localityGroup != null) {
+        appendable
+            .append(" LOCALITY GROUP ")
+            .append(
+                "NULL".equalsIgnoreCase(localityGroup)
+                    ? "NULL"
+                    : quoteIdentifier(localityGroup, dialect()));
+      }
+      appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
+      if (!otherOptions.isEmpty()) {
+        appendable.append(" WITH (").append(String.join(",", otherOptions)).append(")");
+      }
+    } else {
+      if (!otherOptions.isEmpty()) {
+        appendable.append(" WITH (").append(String.join(",", otherOptions)).append(")");
+      }
+      if (localityGroup != null) {
+        appendable
+            .append(" LOCALITY GROUP ")
+            .append(
+                "NULL".equalsIgnoreCase(localityGroup)
+                    ? "NULL"
+                    : quoteIdentifier(localityGroup, dialect()));
       }
     }
 

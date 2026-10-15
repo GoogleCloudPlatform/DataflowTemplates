@@ -208,6 +208,11 @@ public class DdlToAvroSchemaConverter {
       for (int i = 0; i < table.checkConstraints().size(); i++) {
         recordBuilder.prop(SPANNER_CHECK_CONSTRAINT + i, table.checkConstraints().get(i));
       }
+      if (table.options() != null) {
+        for (int i = 0; i < table.options().size(); i++) {
+          recordBuilder.prop(SPANNER_OPTION + i, table.options().get(i));
+        }
+      }
       SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
       int columnOrdinal = 0;
       for (Column cm : table.columns()) {

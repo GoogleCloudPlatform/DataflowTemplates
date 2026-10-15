@@ -716,6 +716,8 @@ public class AvroSchemaToDdlConverter {
 
     table.checkConstraints(getNumberedPropsWithPrefix(schema, SPANNER_CHECK_CONSTRAINT));
 
+    table.options(getNumberedPropsWithPrefix(schema, SPANNER_OPTION));
+
     // Table parent options.
     String spannerParent = schema.getProp(SPANNER_PARENT);
     if (!Strings.isNullOrEmpty(spannerParent)) {
