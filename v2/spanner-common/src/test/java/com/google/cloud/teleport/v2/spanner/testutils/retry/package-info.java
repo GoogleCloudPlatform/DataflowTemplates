@@ -15,4 +15,4 @@
  */
 
 /** Retry helpers for Spanner integration tests (skip re-running genuine failures). */
-package org.apache.beam.it.gcp.spanner.retry;
+package com.google.cloud.teleport.v2.spanner.testutils.retry;

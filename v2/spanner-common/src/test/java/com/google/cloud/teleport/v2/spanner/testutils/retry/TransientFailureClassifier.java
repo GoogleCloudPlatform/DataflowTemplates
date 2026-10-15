@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.beam.it.gcp.spanner.retry;
+package com.google.cloud.teleport.v2.spanner.testutils.retry;
 
 import java.util.ArrayList;
 import java.util.Collections;
