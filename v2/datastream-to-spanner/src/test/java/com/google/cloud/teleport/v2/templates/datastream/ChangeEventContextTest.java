@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
@@ -60,7 +61,7 @@ public class ChangeEventContextTest {
   public void testConvertChangeEventToMutation_Insert() throws Exception {
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
 
     ChangeEventContext context =
         new TestChangeEventContext(getJsonNode(changeEvent.toString()), ddl, "shadow_");
@@ -74,7 +75,7 @@ public class ChangeEventContextTest {
   public void testConvertChangeEventToMutation_Delete() throws Exception {
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "DELETE");
 
     ChangeEventContext context =
         new TestChangeEventContext(getJsonNode(changeEvent.toString()), ddl, "shadow_");
@@ -105,8 +106,8 @@ public class ChangeEventContextTest {
             .build();
 
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "DELETE");
     changeEvent.put("id", "123");
     changeEvent.put("name", "Test");
 
@@ -138,8 +139,8 @@ public class ChangeEventContextTest {
             .build();
 
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "DELETE");
     changeEvent.put("id", "123");
     changeEvent.put("name", "Test");
 
@@ -156,7 +157,7 @@ public class ChangeEventContextTest {
   public void testGetDataDmlStatement_DeleteWithoutGeneratedPK() throws Exception {
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "DELETE");
 
     ChangeEventContext context =
         new TestChangeEventContext(getJsonNode(changeEvent.toString()), ddl, "shadow_");
@@ -186,8 +187,8 @@ public class ChangeEventContextTest {
             .build();
 
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("id", "123");
     changeEvent.put("name", "Test");
 

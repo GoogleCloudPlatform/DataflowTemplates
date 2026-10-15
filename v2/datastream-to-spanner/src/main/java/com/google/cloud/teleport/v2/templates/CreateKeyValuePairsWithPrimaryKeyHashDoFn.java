@@ -22,11 +22,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -74,7 +74,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
       Ddl ddl = c.sideInput(ddlView);
 
-      tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+      tableName = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
       ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
       ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
       com.google.cloud.spanner.Key primaryKey =
