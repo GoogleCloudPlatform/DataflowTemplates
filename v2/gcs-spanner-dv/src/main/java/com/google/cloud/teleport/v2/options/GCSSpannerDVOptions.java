@@ -231,9 +231,30 @@ public interface GCSSpannerDVOptions extends PipelineOptions {
       optional = true,
       description = "GCS path to a file containing a list of source tables to validate",
       helpText =
-          "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`.")
+          "A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{\"tableNames\": [\"table1\", \"table2\"]}`."
+              + " Optionally, `optionalConfigurations.<sourceTable>.spannerQuery` sets the Spanner"
+              + " query used to read that table, e.g. to restrict it to the selected `shardIds`."
+              + " Key a Spanner-only table by its Spanner name."
+              + " See the 'Validating a subset of shards' section of the module README.md for the"
+              + " query rules.")
   @Default.String("")
   String getTableConfigurationFilePath();
 
   void setTableConfigurationFilePath(String value);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      description = "Comma-separated list of logical shard IDs to validate",
+      helpText =
+          "A comma-separated list of logical shard IDs (the IDs used by the sourcedb-to-spanner"
+              + " template, which appear as the `<table>/<shardId>/` directory in the Avro output)."
+              + " When set, only those shards are validated. Tables with a session file"
+              + " `ShardIdColumn` are filtered on that column; every other in-scope table needs a"
+              + " `spannerQuery` in `tableConfigurationFilePath`, otherwise the job fails.",
+      example = "shard_001,shard_007")
+  @Default.String("")
+  String getShardIds();
+
+  void setShardIds(String value);
 }

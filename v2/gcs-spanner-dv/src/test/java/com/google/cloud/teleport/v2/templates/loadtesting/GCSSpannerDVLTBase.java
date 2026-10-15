@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.common.base.MoreObjects;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -31,7 +30,6 @@ import java.util.Optional;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -46,11 +44,6 @@ import org.junit.After;
  * template.
  */
 public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
-
-  protected static final String SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(),
-          "gs://dataflow-templates/latest/flex/Avro_to_Spanner_Data_Validator");
 
   private static final int SPANNER_NODE_COUNT = 10;
   private static final int NUM_WORKERS = 1;
@@ -148,7 +141,7 @@ public abstract class GCSSpannerDVLTBase extends TemplateLoadTestBase {
     // Default to cpu_count=4 resource hint; larger LTs can override "additionalPipelineOptions"
     // via environmentOptions (which replaces this map entry in LaunchConfig.Builder).
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
+        LaunchConfig.builder(jobName, getTemplateSpecPath())
             .addEnvironment("numWorkers", NUM_WORKERS)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))

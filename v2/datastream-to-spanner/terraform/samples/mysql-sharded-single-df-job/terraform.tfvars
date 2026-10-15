@@ -1,11 +1,12 @@
 # terraform.tfvars
 
 common_params = {
-  project                         = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
-  host_project                    = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
-  region                          = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region (e.g., "us-central1")
-  migration_id                    = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
-  add_policies_to_service_account = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
+  project                             = "<YOUR_PROJECT_ID>"      # Replace with your GCP project ID
+  host_project                        = "<YOUR_HOST_PROJECT_ID>" # If you are using a shared VPC
+  region                              = "<YOUR_GCP_REGION>"      # Replace with your desired GCP region (e.g., "us-central1")
+  migration_id                        = "<YOUR_MIGRATION_ID>"    # Will be used as a prefix for all resources, auto-generated if not specified
+  add_policies_to_service_account     = "<TRUE/FALSE>"           # This will decide if roles will be attached to service accounts or not.
+  create_cutover_monitoring_dashboard = false                    # Set to true to create a Cloud Monitoring dashboard for cutover verification.
 
   datastream_params = {
     stream_prefix_path            = "<YOUR_STREAM_PREFIX>"                # Prefix for Datastream stream IDs (e.g., "data")

@@ -39,7 +39,6 @@ pipeline:
         username: "{{ username }}"
         password: "{{ password }}"
         query: {{ readQuery }}
-        driver_jars: {{ driverJars }}
         connection_properties: {{ connectionProperties }}
         partition_column: {{ partitionColumn }}
         table: {{ location }}

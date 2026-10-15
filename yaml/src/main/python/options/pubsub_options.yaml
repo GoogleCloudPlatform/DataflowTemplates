@@ -89,6 +89,160 @@ options:
         required: false
         type: text
 
+  - name: "pubsub_subscription_read_options"
+    parameters:
+      - order: 1
+        name: "subscription"
+        description: "Pub/Sub input subscription"
+        help: "Pub/Sub subscription to read the input from."
+        example: "projects/your-project-id/subscriptions/your-subscription-name"
+        required: true
+        type: text
+
+  - name: "pubsub_topic_read_options"
+    parameters:
+      - order: 1
+        name: "topic"
+        description: "Pub/Sub input topic"
+        help: "Pub/Sub topic to read the input from."
+        example: "projects/your-project-id/topics/your-topic-name"
+        required: true
+        type: text
+
+  - name: "pubsub_common_read_options"
+    parameters:
+      - order: 1
+        name: "format"
+        description: "The message format."
+        help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+        example: "JSON"
+        default: "JSON"
+        required: false
+        type: text
+      - order: 2
+        name: "schema"
+        description: "Data schema."
+        help: >
+          A schema is required if data format is JSON, AVRO or PROTO. For JSON,
+          this is a JSON schema. For AVRO and PROTO, this is the full schema
+          definition.
+        example: '{"type": "object", "properties": {"field1": {"type": "string"}}}'
+        required: false
+        type: text
+      - order: 3
+        name: "attributes"
+        description: "List of attribute keys."
+        help: >
+          List of attribute keys whose values will be flattened into the
+          output message as additional fields. For example, if the format is `raw`
+          and attributes is `[a, b]` then this read will produce elements of
+          the form `Row(payload=..., a=..., b=...)`.
+        example: '["attr1", "attr2"]'
+        required: false
+        type: text
+      - order: 4
+        name: "attributesMap"
+        description: "Name of a field in which to store the full set of attributes."
+        help: >
+          Name of a field in which to store the full set of attributes
+          associated with this message. For example, if the format is `raw` and
+          `attributes_map` is set to `attrs` then this read will produce elements
+          of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type
+          of string to string.
+          If both `attributes` and `attributes_map` are set, the overlapping
+          attribute values will be present in both the flattened structure and the
+          attribute map.
+        example: "attrs"
+        required: false
+        type: text
+      - order: 5
+        name: "idAttribute"
+        description: "The attribute on incoming Pub/Sub messages to use as a unique record identifier."
+        help: >
+          The attribute on incoming Pub/Sub messages to use as a unique
+          record identifier. When specified, the value of this attribute (which
+          can be any string that uniquely identifies the record) will be used for
+          deduplication of messages. If not provided, we cannot guarantee
+          that no duplicate data will be delivered on the Pub/Sub stream. In this
+          case, deduplication of the stream will be strictly best effort.
+        example: "id"
+        required: false
+        type: text
+      - order: 6
+        name: "timestampAttribute"
+        description: "Message value to use as element timestamp."
+        help: >
+          Message value to use as element timestamp. If None, uses message
+          publishing time as the timestamp.
+        example: "timestamp"
+        required: false
+        type: text
+      - order: 7
+        name: "publishTimeField"
+        description: "Field to add to output messages with the Pub/Sub message publish time."
+        help: "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added."
+        example: "publish_time"
+        required: false
+        type: text
+
   - name: "pubsub_write_options"
     parameters:
-
+      - order: 1
+        name: "outputTopic"
+        description: "Output Pub/Sub topic"
+        help: "The Pub/Sub topic to write the output to."
+        example: "projects/your-project-id/topics/your-topic-name"
+        required: true
+        type: text
+      - order: 2
+        name: "outputFormat"
+        description: "Output message format."
+        help: "The output message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+        example: "JSON"
+        default: "JSON"
+        required: false
+        type: text
+      - order: 3
+        name: "outputSchema"
+        description: "Output data schema."
+        help: >
+          Schema specification for the output format, if applicable.
+        example: '{"type": "object", "properties": {"field1": {"type": "string"}}}'
+        required: false
+        type: text
+      - order: 4
+        name: "outputAttributes"
+        description: "List of attribute keys for output messages."
+        help: >
+          List of attribute keys whose values will be pulled out as
+          Pub/Sub message attributes.
+        example: '["attr1", "attr2"]'
+        required: false
+        type: text
+      - order: 5
+        name: "outputAttributesMap"
+        description: "Name of a string-to-string map field for output attributes."
+        help: >
+          Name of a string-to-string map field in which to pull a set
+          of attributes associated with this message.
+        example: "attrs"
+        required: false
+        type: text
+      - order: 6
+        name: "outputIdAttribute"
+        description: "Attribute name for unique record identifier on output messages."
+        help: >
+          If set, will set an attribute for each Cloud Pub/Sub message
+          with the given name and a unique value.
+        example: "id"
+        required: false
+        type: text
+      - order: 7
+        name: "outputTimestampAttribute"
+        description: "Attribute name for publish timestamp on output messages."
+        help: >
+          If set, will set an attribute for each Cloud Pub/Sub
+          message with the given name and the message's publish time as the value.
+        example: "timestamp"
+        required: false
+        type: text

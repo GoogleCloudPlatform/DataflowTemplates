@@ -28,7 +28,6 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
-import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -50,7 +49,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -71,10 +69,6 @@ import org.slf4j.LoggerFactory;
  */
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
-  protected static final String SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(),
-          "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner");
   protected String testRootDir;
   protected final int maxWorkers = 100;
   protected final int numWorkers = 50;
@@ -229,7 +223,8 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     // Add all parameters for the template
     params.putAll(templateParameters);
 
-    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath());
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));

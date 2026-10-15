@@ -14,6 +14,8 @@ common_params = {
   replication_bucket = "my-replication-bucket"
   # Optional flag to control adding policies to the service account (defaults to true)
   add_policies_to_service_account = false
+  # Optional flag to create a Cloud Monitoring dashboard for cutback verification (defaults to false)
+  create_cutback_monitoring_dashboard = false
 }
 
 dataflow_params = {

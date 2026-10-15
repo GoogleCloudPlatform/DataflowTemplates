@@ -5,6 +5,7 @@ options:
         name: "windowing"
         description: "Windowing options"
         help: "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing"
-        is_optional: false
+        example: '{"type": "fixed", "size": "10s"}'
+        required: true
         type: text
 

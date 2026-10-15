@@ -6,7 +6,8 @@ variable "common_params" {
     region       = string
     migration_id = optional(string)
     # Will be auto-generated if not specified
-    add_policies_to_service_account = optional(bool, true)
+    add_policies_to_service_account     = optional(bool, true)
+    create_cutover_monitoring_dashboard = optional(bool, false)
   })
 }
 

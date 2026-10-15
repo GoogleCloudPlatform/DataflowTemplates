@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -26,6 +28,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -370,5 +375,179 @@ public class SourceReaderTransformTest implements Serializable {
     org.junit.Assert.assertEquals(2, patterns.size());
     org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table1/**.avro"));
     org.junit.Assert.assertTrue(patterns.contains("gs://my-bucket/dir/Table2/**.avro"));
+  }
+
+  @Test
+  public void testGetFilePatternsWithShardsOnlyMatchesEverythingOnce() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setShardIds("s1,s2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    assertEquals(
+        List.of("gs://my-bucket/dir/**.avro"),
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig));
+  }
+
+  @Test
+  public void testReadWithShardsOnlyReadsOnlySelectedShards() throws IOException {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T1")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+
+    createAvroFile(new File(tempFolder.newFolder("T1", "s1"), "data.avro"), "T1", "1");
+    createAvroFile(new File(tempFolder.newFolder("T1", "s10"), "data.avro"), "T1", "2");
+
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setShardIds("s1");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    PCollection<ComparisonRecord> output =
+        pipeline.apply(
+            new SourceReaderTransform(
+                tempFolder.getRoot().getAbsolutePath(),
+                ddlView,
+                IdentityMapper::new,
+                null,
+                tableConfig));
+
+    PAssert.that(output)
+        .satisfies(
+            records -> {
+              int count = 0;
+              for (ComparisonRecord rec : records) {
+                count++;
+              }
+              assertEquals(1, count);
+              return null;
+            });
+    pipeline.run();
+  }
+
+  @Test
+  public void testGetFilePatternsWithTablesAndShards() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setTables("T1,T2");
+    options.setShardIds("s1,s2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    List<String> patterns =
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig);
+
+    assertEquals(4, patterns.size());
+    assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                "gs://my-bucket/dir/T1/s1/**.avro",
+                "gs://my-bucket/dir/T1/s2/**.avro",
+                "gs://my-bucket/dir/T2/s1/**.avro",
+                "gs://my-bucket/dir/T2/s2/**.avro")),
+        new HashSet<>(patterns));
+  }
+
+  @Test
+  public void testGetFilePatternsWithGlobCharactersMatchesEverythingOnce() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setTables("a*b,users");
+    options.setShardIds("s1,s2");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    assertEquals(
+        List.of("gs://my-bucket/dir/**.avro"),
+        SourceReaderTransform.getFilePatterns("gs://my-bucket/dir", tableConfig));
+  }
+
+  @Test
+  public void testIsConfiguredFileMatchesExactTableAndShard() {
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setTables("a*b,users");
+    options.setShardIds("s[1");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+    String root = "gs://b/dir";
+
+    assertTrue(SourceReaderTransform.isConfiguredFile(root, tableConfig, root + "/a*b/s[1/f.avro"));
+    assertTrue(
+        SourceReaderTransform.isConfiguredFile(root, tableConfig, root + "/users/s[1/f.avro"));
+    assertFalse(
+        SourceReaderTransform.isConfiguredFile(root, tableConfig, root + "/axb/s[1/f.avro"));
+    assertFalse(
+        SourceReaderTransform.isConfiguredFile(root, tableConfig, root + "/a*b/sx1/f.avro"));
+    assertFalse(SourceReaderTransform.isConfiguredFile(root, tableConfig, root + "/a*b/f.avro"));
+  }
+
+  @Test
+  public void testReadWithGlobCharacterInTableNameReadsOnlyThatTable() throws IOException {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("a*b")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("axb")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+
+    // "a*b/**.avro" as a glob would also match axb.
+    createAvroFile(new File(tempFolder.newFolder("a*b"), "data.avro"), "a*b", "1");
+    createAvroFile(new File(tempFolder.newFolder("axb"), "data.avro"), "axb", "2");
+
+    GCSSpannerDVOptions options = PipelineOptionsFactory.as(GCSSpannerDVOptions.class);
+    options.setTables("a*b");
+    TableConfiguration tableConfig = TableConfiguration.parseFromOptions(options);
+
+    PCollection<ComparisonRecord> output =
+        pipeline.apply(
+            new SourceReaderTransform(
+                tempFolder.getRoot().getAbsolutePath(),
+                ddlView,
+                IdentityMapper::new,
+                null,
+                tableConfig));
+
+    PAssert.that(output)
+        .satisfies(
+            records -> {
+              int count = 0;
+              for (ComparisonRecord rec : records) {
+                count++;
+                assertEquals("a*b", rec.getTableName());
+              }
+              assertEquals(1, count);
+              return null;
+            });
+    pipeline.run();
   }
 }
