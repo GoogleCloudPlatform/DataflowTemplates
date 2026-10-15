@@ -66,7 +66,7 @@
     <commons-codec.version>1.21.0</commons-codec.version>
     <commons-compress.version>1.28.0</commons-compress.version>
     <commons-csv.version>1.14.1</commons-csv.version>
-    <commons-io.version>2.21.0</commons-io.version>
+    <commons-io.version>2.22.0</commons-io.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-configuration2.version>2.15.1</commons-configuration2.version>
     <commons-math3.version>3.6.1</commons-math3.version>
