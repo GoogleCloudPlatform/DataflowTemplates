@@ -29,13 +29,6 @@ options:
         example: "key1=value1;key2=value2"
         required: false
         type: text
-      - order: 5
-        name: "connectionInitSql"
-        description: "A list of SQL statements to execute upon connection initialization."
-        help: "A list of SQL statements to execute when a new connection is established."
-        example: '["SET ANSI_NULLS ON"]'
-        required: false
-        type: text
 
   - name: "sqlserver_read_options"
     parameters:

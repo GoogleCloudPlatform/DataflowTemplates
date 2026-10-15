@@ -55,13 +55,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link PubSubToBigQueryYaml}. */
+/** Integration test for {@link PubSubTopicToBigQueryYaml}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PubSubToBigQueryYaml.class)
+@TemplateIntegrationTest(PubSubTopicToBigQueryYaml.class)
 @RunWith(JUnit4.class)
-public final class PubSubToBigQueryYamlIT extends TemplateTestBase {
+public final class PubSubTopicToBigQueryYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQueryYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubTopicToBigQueryYamlIT.class);
 
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -82,16 +82,16 @@ public final class PubSubToBigQueryYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubSubToBigQuery() throws IOException {
-    pubSubToBigQuery(Function.identity());
+  public void testPubSubTopicToBigQuery() throws IOException {
+    pubSubTopicToBigQuery(Function.identity());
   }
 
-  public void pubSubToBigQuery(
+  public void pubSubTopicToBigQuery(
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)
       throws IOException {
 
-    LOG.info("Starting pubSubToBigQuery test.");
+    LOG.info("Starting pubSubTopicToBigQuery test.");
 
     // Arrange BigQuery
     List<Field> bqSchemaFields =
