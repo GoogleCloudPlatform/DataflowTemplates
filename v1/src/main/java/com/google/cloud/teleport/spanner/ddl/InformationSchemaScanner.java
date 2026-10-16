@@ -510,7 +510,7 @@ public class InformationSchemaScanner {
 
       ImmutableList<String> searchUnnest =
           !resultSet.isNull(10)
-              ? ImmutableList.<String>builder().addAll(resultSet.getStringList(10)).build()
+              ? ImmutableList.copyOf(resultSet.getStringList(10))
               : null;
 
       Map<String, Index.Builder> tableIndexes =

@@ -115,7 +115,10 @@ public abstract class Index implements Serializable {
           unnest().stream()
               .map(
                   c -> {
-                    String[] parts = c.split(" ");
+                    String[] parts = c.trim().split("\\s+");
+                    if (parts.length < 2) {
+                      throw new IllegalArgumentException("Invalid unnest expression: " + c);
+                    }
                     String path = parts[0];
                     String alias = parts[1];
 
@@ -207,7 +210,10 @@ public abstract class Index implements Serializable {
           unnest().stream()
               .map(
                   c -> {
-                    String[] parts = c.split(" ");
+                    String[] parts = c.trim().split("\\s+");
+                    if (parts.length < 2) {
+                      throw new IllegalArgumentException("Invalid unnest expression: " + c);
+                    }
                     String path = parts[0];
                     String alias = parts[1];
 
