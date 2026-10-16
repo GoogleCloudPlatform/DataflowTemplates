@@ -437,7 +437,8 @@ public class DdlToAvroSchemaConverter {
     for (LocalityGroup localityGroup : ddl.localityGroups()) {
       LOG.info("DdlToAvro localityGroup {}", localityGroup.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(generateAvroSchemaName(localityGroup.name())).namespace(this.namespace);
+          SchemaBuilder.record(generateAvroSchemaName(localityGroup.name()))
+              .namespace(this.namespace);
       recordBuilder.prop(SPANNER_NAME, localityGroup.name());
       recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");

@@ -410,7 +410,7 @@ public class InformationSchemaScannerTest {
     // Row 1: default storage="ssd" (is_inherited=true -> skipped)
     // Row 2: default ssd_to_hdd_spill_timespan=null (is_inherited=null -> skipped)
     // Row 3: lg1 storage="ssd" (is_inherited=false -> kept)
-    // Row 4: lg1 ssd_to_hdd_spill_timespan="30d" (is_inherited=false -> kept)
+    // Row 4: lg1 ssd_to_hdd_spill_timespan="30d" (is_inherited=null -> kept)
     // Row 5: lg_empty storage="ssd" (is_inherited=true -> lg_empty created with 0 options)
     // Row 6: lg_empty ssd_to_hdd_spill_timespan=null (is_inherited=null -> lg_empty created with 0
     // options)
@@ -427,8 +427,8 @@ public class InformationSchemaScannerTest {
             "ssd_to_hdd_spill_timespan");
     when(mockResultSet.isNull(2)).thenReturn(false, true, false, false, false, true);
     when(mockResultSet.getString(2)).thenReturn("ssd", "ssd", "30d", "ssd");
-    when(mockResultSet.isNull(3)).thenReturn(false, true, false, false, false, true);
-    when(mockResultSet.getBoolean(3)).thenReturn(true, false, false, true);
+    when(mockResultSet.isNull(3)).thenReturn(false, true, false, true, false, true);
+    when(mockResultSet.getBoolean(3)).thenReturn(true, false, true);
 
     InformationSchemaScanner scanner =
         new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
@@ -451,15 +451,16 @@ public class InformationSchemaScannerTest {
     when(mockContextPg.executeQuery(any())).thenReturn(mockResultSetPg);
 
     // Row 1: default storage='hdd' (is_inherited='NO' -> kept!)
-    // Row 2: default ssd_to_hdd_spill_timespan=null
+    // Row 2: default ssd_to_hdd_spill_timespan=null (is_inherited=null -> skipped)
     // Row 3: lg_pg storage='ssd' (is_inherited='NO' -> kept)
-    when(mockResultSetPg.next()).thenReturn(true, true, true, false);
-    when(mockResultSetPg.getString(0)).thenReturn("default", "default", "lg_pg");
+    // Row 4: lg_pg ssd_to_hdd_spill_timespan='10d' (is_inherited=null -> kept)
+    when(mockResultSetPg.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSetPg.getString(0)).thenReturn("default", "default", "lg_pg", "lg_pg");
     when(mockResultSetPg.getString(1))
-        .thenReturn("storage", "ssd_to_hdd_spill_timespan", "storage");
-    when(mockResultSetPg.isNull(2)).thenReturn(false, true, false);
-    when(mockResultSetPg.getString(2)).thenReturn("hdd", "ssd");
-    when(mockResultSetPg.isNull(3)).thenReturn(false, true, false);
+        .thenReturn("storage", "ssd_to_hdd_spill_timespan", "storage", "ssd_to_hdd_spill_timespan");
+    when(mockResultSetPg.isNull(2)).thenReturn(false, true, false, false);
+    when(mockResultSetPg.getString(2)).thenReturn("hdd", "ssd", "10d");
+    when(mockResultSetPg.isNull(3)).thenReturn(false, true, false, true);
     when(mockResultSetPg.getString(3)).thenReturn("NO", "NO");
 
     InformationSchemaScanner scannerPg =
@@ -472,7 +473,8 @@ public class InformationSchemaScannerTest {
     assertEquals(1, ddlPg.localityGroup("default").options().size());
     assertEquals("storage='hdd'", ddlPg.localityGroup("default").options().get(0));
     assertNotNull(ddlPg.localityGroup("lg_pg"));
-    assertEquals(1, ddlPg.localityGroup("lg_pg").options().size());
+    assertEquals(2, ddlPg.localityGroup("lg_pg").options().size());
     assertEquals("storage='ssd'", ddlPg.localityGroup("lg_pg").options().get(0));
+    assertEquals("ssd_to_hdd_spill_timespan='10d'", ddlPg.localityGroup("lg_pg").options().get(1));
   }
 }
