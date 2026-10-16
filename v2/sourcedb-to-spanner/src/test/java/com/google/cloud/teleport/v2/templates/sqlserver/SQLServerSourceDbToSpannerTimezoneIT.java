@@ -13,12 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,8 +56,10 @@ public class SQLServerSourceDbToSpannerTimezoneIT extends SourceDbToSpannerITBas
   public MSSQLResourceManager msSqlResourceManager;
   public SpannerResourceManager spannerResourceManager;
 
-  private static final String SQLSERVER_DDL_RESOURCE = "TimezoneIT/sqlserver-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "TimezoneIT/sqlserver-spanner-schema.sql";
+  private static final String SQLSERVER_DDL_RESOURCE =
+      "sqlserver/SQLServerSourceDbToSpannerTimezoneIT/sqlserver-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "sqlserver/SQLServerSourceDbToSpannerTimezoneIT/sqlserver-spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before

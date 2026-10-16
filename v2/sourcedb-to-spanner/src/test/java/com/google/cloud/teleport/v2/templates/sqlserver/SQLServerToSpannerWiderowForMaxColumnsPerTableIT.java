@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;

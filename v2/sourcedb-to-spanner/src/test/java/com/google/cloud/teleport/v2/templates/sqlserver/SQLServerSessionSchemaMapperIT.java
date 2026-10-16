@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
@@ -37,19 +39,21 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a migration with DDL
- * changes to schema for SQL Server.
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a migration from SQL
+ * Server driven by an SMT session file (composite primary key, extra source table and ignored
+ * view).
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SQLServerDDLIT extends SourceDbToSpannerITBase {
+public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
   public MSSQLResourceManager msSqlResourceManager;
   public SpannerResourceManager spannerResourceManager;
 
-  private static final String SESSION_FILE_RESOURCE = "DDLIT/company-session.json";
-  private static final String SQLSERVER_DDL_RESOURCE = "DDLIT/company-sqlserver-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "DDLIT/company-spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
+  private static final String SQLSERVER_DDL_RESOURCE =
+      "sqlserver/SQLServerSessionSchemaMapperIT/company-sqlserver-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before
@@ -65,7 +69,7 @@ public class SQLServerDDLIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void ddlModificationTest() throws Exception {
+  public void noTransformationTest() throws Exception {
     loadSQLFileResource(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     PipelineLauncher.LaunchInfo jobInfo =
@@ -103,13 +107,5 @@ public class SQLServerDDLIT extends SourceDbToSpannerITBase {
             "employee_attribute", "employee_id", "attribute_name", "value");
 
     SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
-
-    ImmutableList<Struct> vendor =
-        spannerResourceManager.readTableRecords("vendor", "vendor_id", "full_name");
-
-    SpannerAsserts.assertThatStructs(vendor).hasRows(3);
-    SpannerAsserts.assertThatStructs(vendor)
-        .hasRecordsUnorderedCaseInsensitiveColumns(
-            msSqlResourceManager.runSQLQuery("SELECT vendor_id, full_name FROM vendor"));
   }
 }

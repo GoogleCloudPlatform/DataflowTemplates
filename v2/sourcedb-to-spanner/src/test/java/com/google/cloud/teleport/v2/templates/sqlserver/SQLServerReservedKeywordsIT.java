@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -45,9 +47,10 @@ public class SQLServerReservedKeywordsIT extends SourceDbToSpannerITBase {
   public MSSQLResourceManager msSqlResourceManager;
   public SpannerResourceManager spannerResourceManager;
 
-  private static final String SQLSERVER_DDL_RESOURCE = "ReservedKeywordsIT/sqlserver-schema.sql";
+  private static final String SQLSERVER_DDL_RESOURCE =
+      "sqlserver/SQLServerReservedKeywordsIT/sqlserver-schema.sql";
   private static final String SPANNER_DDL_RESOURCE =
-      "ReservedKeywordsIT/sqlserver-spanner-schema.sql";
+      "sqlserver/SQLServerReservedKeywordsIT/sqlserver-spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before

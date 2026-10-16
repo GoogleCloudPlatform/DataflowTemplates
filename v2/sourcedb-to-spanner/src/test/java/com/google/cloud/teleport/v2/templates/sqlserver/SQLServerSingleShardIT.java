@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,14 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.collect.ImmutableList;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -37,21 +37,33 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests a migration from SQL
- * Server driven by an SMT session file (composite primary key, extra source table and ignored
- * view).
+ * An integration test for {@link SourceDbToSpanner} Flex template which tests a single sharded
+ * migration on a simple schema from SQL Server.
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
+public class SQLServerSingleShardIT extends SourceDbToSpannerITBase {
   public MSSQLResourceManager msSqlResourceManager;
   public SpannerResourceManager spannerResourceManager;
 
-  private static final String SESSION_FILE_RESOURCE = "SchemaMapperIT/company-session.json";
-  private static final String SQLSERVER_DDL_RESOURCE =
-      "SchemaMapperIT/company-sqlserver-schema.sql";
-  private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/company-spanner-schema.sql";
+  private static final String SQLSERVER_DUMP_FILE_RESOURCE =
+      "sqlserver/SQLServerSingleShardIT/sqlserver-schema.sql";
+
+  private static final String SPANNER_DDL_RESOURCE =
+      "SingleShardWithTransformation/spanner-schema.sql";
+
+  private static final String SESSION_FILE_RESOURCE = "SingleShardWithTransformation/session.json";
+
+  private static final String TABLE = "SingleShardWithTransformationTable";
+
+  private static final String PKID = "pkid";
+
+  private static final String NAME = "name";
+
+  private static final String STATUS = "status";
+
+  private static final String SHARD_ID = "migration_shard_id";
 
   /** Setup resource managers. */
   @Before
@@ -67,14 +79,14 @@ public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void noTransformationTest() throws Exception {
-    loadSQLFileResource(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
+  public void singleShardWithIdPopulationTest() throws Exception {
+    loadSQLFileResource(msSqlResourceManager, SQLSERVER_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             SESSION_FILE_RESOURCE,
-            "mapper",
+            null,
             msSqlResourceManager,
             spannerResourceManager,
             null,
@@ -82,28 +94,17 @@ public class SQLServerSessionSchemaMapperIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
-    List<Map<String, Object>> companySQLServer =
-        msSqlResourceManager.runSQLQuery("SELECT company_id, company_name FROM company");
-    ImmutableList<Struct> companySpanner =
-        spannerResourceManager.readTableRecords("company", "company_id", "company_name");
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.readTableRecords(TABLE, PKID, NAME, STATUS, SHARD_ID))
+        .hasRecordsUnorderedCaseInsensitiveColumns(getExpectedData());
+  }
 
-    SpannerAsserts.assertThatStructs(companySpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(companySQLServer);
-
-    List<Map<String, Object>> employeeSQLServer =
-        msSqlResourceManager.runSQLQuery(
-            "SELECT employee_id, company_id, employee_name, employee_address FROM employee");
-    ImmutableList<Struct> employeeSpanner =
-        spannerResourceManager.readTableRecords(
-            "employee", "employee_id", "company_id", "employee_name", "employee_address");
-
-    SpannerAsserts.assertThatStructs(employeeSpanner)
-        .hasRecordsUnorderedCaseInsensitiveColumns(employeeSQLServer);
-
-    ImmutableList<Struct> employeeAttribute =
-        spannerResourceManager.readTableRecords(
-            "employee_attribute", "employee_id", "attribute_name", "value");
-
-    SpannerAsserts.assertThatStructs(employeeAttribute).hasRows(4); // Supports composite keys
+  private List<Map<String, Object>> getExpectedData() {
+    return List.of(
+        Map.of(PKID, 1, NAME, "Alice", STATUS, "active", SHARD_ID, "Shard1"),
+        Map.of(PKID, 2, NAME, "Bob", STATUS, "inactive", SHARD_ID, "Shard1"),
+        Map.of(PKID, 3, NAME, "Carol", STATUS, "pending", SHARD_ID, "Shard1"),
+        Map.of(PKID, 4, NAME, "David", STATUS, "complete", SHARD_ID, "Shard1"),
+        Map.of(PKID, 5, NAME, "Emily", STATUS, "error", SHARD_ID, "Shard1"));
   }
 }
