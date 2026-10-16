@@ -590,14 +590,13 @@ public class DataStreamToSQL {
   public static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
     private static final Logger LOG = LoggerFactory.getLogger(ExecuteDmlFn.class);
     private static final int MAX_RETRIES = 3;
-    private static final FluentBackoff EXECUTE_BACKOFF =
-        FluentBackoff.DEFAULT
-            .withMaxRetries(MAX_RETRIES)
-            .withInitialBackoff(Duration.millis(500));
+    private static final long INITIAL_BACKOFF_MILLIS = 500L;
 
     private final org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
         dataSourceProviderFn;
-    private final FluentBackoff executeBackoff;
+    private final int maxRetries;
+    private final long initialBackoffMillis;
+    private transient FluentBackoff executeBackoff;
     private transient javax.sql.DataSource dataSource;
     private transient java.sql.Connection connection;
 
@@ -610,26 +609,28 @@ public class DataStreamToSQL {
                 FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
 
     public ExecuteDmlFn(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
-      this(dataSourceConfiguration, EXECUTE_BACKOFF);
-    }
-
-    public ExecuteDmlFn(
-        CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration, FluentBackoff executeBackoff) {
       this(
           CdcJdbcIO.DataSourceProviderFromDataSourceConfiguration.of(dataSourceConfiguration),
-          executeBackoff);
+          MAX_RETRIES,
+          INITIAL_BACKOFF_MILLIS);
     }
 
     public ExecuteDmlFn(
         org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
             dataSourceProviderFn,
-        FluentBackoff executeBackoff) {
+        int maxRetries,
+        long initialBackoffMillis) {
       this.dataSourceProviderFn = dataSourceProviderFn;
-      this.executeBackoff = executeBackoff;
+      this.maxRetries = maxRetries;
+      this.initialBackoffMillis = initialBackoffMillis;
     }
 
     @Setup
     public void setup() {
+      executeBackoff =
+          FluentBackoff.DEFAULT
+              .withMaxRetries(maxRetries)
+              .withInitialBackoff(Duration.millis(initialBackoffMillis));
       dataSource = dataSourceProviderFn.apply(null);
     }
 
@@ -724,6 +725,12 @@ public class DataStreamToSQL {
     public void processElement(ProcessContext c) throws IOException, InterruptedException {
       KV<String, DmlInfo> dmlInfo = c.element();
       Sleeper sleeper = Sleeper.DEFAULT;
+      if (executeBackoff == null) {
+        executeBackoff =
+            FluentBackoff.DEFAULT
+                .withMaxRetries(maxRetries)
+                .withInitialBackoff(Duration.millis(initialBackoffMillis));
+      }
       BackOff backoff = executeBackoff.backoff();
       while (true) {
         try {

@@ -55,10 +55,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
-import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
@@ -512,10 +511,8 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    FluentBackoff fastBackoff =
-        FluentBackoff.DEFAULT.withMaxRetries(2).withInitialBackoff(Duration.millis(1));
     CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, fastBackoff);
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -576,10 +573,8 @@ public final class CdcJdbcIOTest {
 
     // Even when maxRetries > 0, a deterministic data error (23505) on a healthy connection
     // transitions immediately to single-statement mode without tearing down connection1.
-    FluentBackoff backoffWithRetries =
-        FluentBackoff.DEFAULT.withMaxRetries(3).withInitialBackoff(Duration.millis(1));
     CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, backoffWithRetries);
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 3, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -650,10 +645,8 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    FluentBackoff singleRetryBackoff =
-        FluentBackoff.DEFAULT.withMaxRetries(1).withInitialBackoff(Duration.millis(1));
     CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, singleRetryBackoff);
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -707,10 +700,8 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    FluentBackoff noRetryBackoff =
-        FluentBackoff.DEFAULT.withMaxRetries(0).withInitialBackoff(Duration.millis(1));
     CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, noRetryBackoff);
+        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 0, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -729,6 +720,13 @@ public final class CdcJdbcIOTest {
     writeFn.finishBundle(finishBundleContext);
   }
 
+  private static class TestStatementFormatter implements CdcJdbcIO.StatementFormatter<String> {
+    @Override
+    public String formatStatement(String record) {
+      return "INSERT INTO t VALUES ('" + record + "')";
+    }
+  }
+
   @Test
   public void testWriteFn_realBasicDataSourcePool_evictsDeadIdleAndActiveConnectionsAcrossRestarts()
       throws Exception {
@@ -737,17 +735,17 @@ public final class CdcJdbcIOTest {
         CdcJdbcIO.DataSourceConfiguration.create(
                 FakeJdbcDriver.class.getName(), "jdbc:fakecdc:pool_test")
             .withMaxIdleConnections(2);
-    BasicDataSource realPool = (BasicDataSource) config.buildDatasource();
+    BasicDataSource realPool =
+        (BasicDataSource)
+            CdcJdbcIO.DataSourceProviderFromDataSourceConfiguration.of(config).apply(null);
     try {
       CdcJdbcIO.WriteVoid<String> spec =
           CdcJdbcIO.<String>writeVoid()
-              .withDataSourceProviderFn(ignored -> realPool)
-              .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+              .withDataSourceConfiguration(config)
+              .withStatementFormatter(new TestStatementFormatter())
               .withBatchSize(10L);
-      FluentBackoff fastBackoff =
-          FluentBackoff.DEFAULT.withMaxRetries(2).withInitialBackoff(Duration.millis(1));
       CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-          new CdcJdbcIO.WriteVoid.WriteFn<>(spec, fastBackoff);
+          SerializableUtils.ensureSerializable(new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L));
 
       @SuppressWarnings("unchecked")
       DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);

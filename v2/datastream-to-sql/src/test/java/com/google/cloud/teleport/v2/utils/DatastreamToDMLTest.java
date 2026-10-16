@@ -1510,12 +1510,8 @@ public class DatastreamToDMLTest {
     when(freshConnection.isClosed()).thenReturn(false);
     when(freshConnection.createStatement()).thenReturn(freshStatement);
 
-    org.apache.beam.sdk.util.FluentBackoff fastBackoff =
-        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
-            .withMaxRetries(2)
-            .withInitialBackoff(org.joda.time.Duration.millis(1));
     DataStreamToSQL.ExecuteDmlFn fn =
-        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, fastBackoff);
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, 2, 1L);
 
     DmlInfo dmlInfo =
         DmlInfo.of(
@@ -1574,12 +1570,8 @@ public class DatastreamToDMLTest {
     when(recoveredConnection.isClosed()).thenReturn(false);
     when(recoveredConnection.createStatement()).thenReturn(recoveredStatement);
 
-    org.apache.beam.sdk.util.FluentBackoff singleRetryBackoff =
-        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
-            .withMaxRetries(1)
-            .withInitialBackoff(org.joda.time.Duration.millis(1));
     DataStreamToSQL.ExecuteDmlFn fn =
-        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, singleRetryBackoff);
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, 1, 1L);
 
     DmlInfo dmlInfo =
         DmlInfo.of(
@@ -1636,12 +1628,8 @@ public class DatastreamToDMLTest {
     when(succeedingStatement.execute("INSERT INTO \"public\".\"users\" (\"id\") VALUES (2);"))
         .thenReturn(true);
 
-    org.apache.beam.sdk.util.FluentBackoff backoffWithRetries =
-        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
-            .withMaxRetries(3)
-            .withInitialBackoff(org.joda.time.Duration.millis(1));
     DataStreamToSQL.ExecuteDmlFn fn =
-        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, backoffWithRetries);
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockDataSource, 3, 1L);
 
     DmlInfo badDmlInfo =
         DmlInfo.of(
@@ -1719,17 +1707,17 @@ public class DatastreamToDMLTest {
         DataSourceConfiguration.create("org.postgresql.Driver", "jdbc:postgresql://localhost/test")
             .withUsername("postgres")
             .withPassword("pass");
-    DataStreamToSQL.ExecuteDmlFn fn1 = new DataStreamToSQL.ExecuteDmlFn(config);
-    DataStreamToSQL.ExecuteDmlFn fn2 = new DataStreamToSQL.ExecuteDmlFn(config);
+    DataStreamToSQL.ExecuteDmlFn fn1 =
+        org.apache.beam.sdk.util.SerializableUtils.ensureSerializable(
+            new DataStreamToSQL.ExecuteDmlFn(config));
+    DataStreamToSQL.ExecuteDmlFn fn2 =
+        org.apache.beam.sdk.util.SerializableUtils.ensureSerializable(
+            new DataStreamToSQL.ExecuteDmlFn(config));
     fn1.setup();
     fn2.setup();
 
-    org.apache.beam.sdk.util.FluentBackoff fastBackoff =
-        org.apache.beam.sdk.util.FluentBackoff.DEFAULT
-            .withMaxRetries(1)
-            .withInitialBackoff(org.joda.time.Duration.millis(1));
     DataStreamToSQL.ExecuteDmlFn fnWithPool =
-        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockBasicDataSource, fastBackoff);
+        new DataStreamToSQL.ExecuteDmlFn(ignored -> mockBasicDataSource, 1, 1L);
 
     DmlInfo dmlInfo =
         DmlInfo.of(

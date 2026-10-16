@@ -644,30 +644,44 @@ public class CdcJdbcIO {
 
     static class WriteFn<T> extends DoFn<T, Void> {
       private final WriteVoid<T> spec;
-      private final FluentBackoff bundleWriteBackoff;
+      private final int maxRetries;
+      private final long initialBackoffMillis;
 
       private static final int MAX_RETRIES = 5;
-      private static final FluentBackoff BUNDLE_WRITE_BACKOFF =
-          FluentBackoff.DEFAULT
-              .withMaxRetries(MAX_RETRIES)
-              .withInitialBackoff(Duration.standardSeconds(5));
+      private static final long INITIAL_BACKOFF_MILLIS = Duration.standardSeconds(5).getMillis();
 
-      private DataSource dataSource;
-      private Connection connection;
+      private transient FluentBackoff bundleWriteBackoff;
+      private transient DataSource dataSource;
+      private transient Connection connection;
       private final List<BufferedRecord<T>> records = new ArrayList<>();
 
       public WriteFn(WriteVoid<T> spec) {
-        this(spec, BUNDLE_WRITE_BACKOFF);
+        this(spec, MAX_RETRIES, INITIAL_BACKOFF_MILLIS);
       }
 
-      WriteFn(WriteVoid<T> spec, FluentBackoff bundleWriteBackoff) {
+      WriteFn(WriteVoid<T> spec, int maxRetries, long initialBackoffMillis) {
         this.spec = spec;
-        this.bundleWriteBackoff = bundleWriteBackoff;
+        this.maxRetries = maxRetries;
+        this.initialBackoffMillis = initialBackoffMillis;
       }
 
       @Setup
       public void setup() {
+        bundleWriteBackoff =
+            FluentBackoff.DEFAULT
+                .withMaxRetries(maxRetries)
+                .withInitialBackoff(Duration.millis(initialBackoffMillis));
         dataSource = spec.getDataSourceProviderFn().apply(null);
+      }
+
+      private FluentBackoff getBundleWriteBackoff() {
+        if (bundleWriteBackoff == null) {
+          bundleWriteBackoff =
+              FluentBackoff.DEFAULT
+                  .withMaxRetries(maxRetries)
+                  .withInitialBackoff(Duration.millis(initialBackoffMillis));
+        }
+        return bundleWriteBackoff;
       }
 
       @StartBundle
@@ -847,7 +861,7 @@ public class CdcJdbcIO {
           BufferedRecord<T> bufferedRecord = iterator.next();
           String formattedStatement =
               spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-          BackOff recordBackoff = bundleWriteBackoff.backoff();
+          BackOff recordBackoff = getBundleWriteBackoff().backoff();
           while (true) {
             try {
               Connection conn = getConnection();
@@ -900,7 +914,7 @@ public class CdcJdbcIO {
         }
 
         Sleeper sleeper = Sleeper.DEFAULT;
-        BackOff backoff = bundleWriteBackoff.backoff();
+        BackOff backoff = getBundleWriteBackoff().backoff();
         boolean singleStatementMode = false;
         List<BufferedRecord<T>> failedRecords = new ArrayList<>();
         while (true) {
