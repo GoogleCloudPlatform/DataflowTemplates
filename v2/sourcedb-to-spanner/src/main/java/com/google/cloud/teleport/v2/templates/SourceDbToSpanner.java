@@ -35,6 +35,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOption
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.extensions.gcp.util.GceMetadataUtil;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -181,6 +182,11 @@ public class SourceDbToSpanner {
       DataflowWorkerHarnessOptions harnessOptions = options.as(DataflowWorkerHarnessOptions.class);
       if (StringUtils.isNotBlank(harnessOptions.getJobId())) {
         jobId = harnessOptions.getJobId();
+      } else {
+        String gceJobId = GceMetadataUtil.fetchDataflowJobId();
+        if (StringUtils.isNotBlank(gceJobId)) {
+          jobId = gceJobId;
+        }
       }
     } catch (Exception e) {
       LOG.warn(
@@ -199,6 +205,7 @@ public class SourceDbToSpanner {
 
   private static class TxnTagValueProvider implements ValueProvider<String>, Serializable {
     private final String defaultTxnTag;
+    private transient volatile String resolvedTxnTag;
 
     TxnTagValueProvider(String defaultTxnTag) {
       this.defaultTxnTag = defaultTxnTag;
@@ -206,16 +213,24 @@ public class SourceDbToSpanner {
 
     @Override
     public String get() {
-      String workerJobId = System.getProperty("job_id");
-      if ("txBy=bulk-sourcedbToSpanner".equals(defaultTxnTag)
-          && StringUtils.isNotBlank(workerJobId)) {
-        String txnTag = "txBy=bulk-" + workerJobId;
-        if (txnTag.length() > MAX_TXN_TAG_LENGTH) {
-          txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
-        }
-        return txnTag;
+      if (resolvedTxnTag != null) {
+        return resolvedTxnTag;
       }
-      return defaultTxnTag;
+      String tag = defaultTxnTag;
+      if ("txBy=bulk-sourcedbToSpanner".equals(defaultTxnTag)) {
+        String workerJobId = System.getProperty("job_id");
+        if (StringUtils.isBlank(workerJobId)) {
+          workerJobId = GceMetadataUtil.fetchDataflowJobId();
+        }
+        if (StringUtils.isNotBlank(workerJobId)) {
+          tag = "txBy=bulk-" + workerJobId;
+          if (tag.length() > MAX_TXN_TAG_LENGTH) {
+            tag = tag.substring(0, MAX_TXN_TAG_LENGTH);
+          }
+        }
+      }
+      resolvedTxnTag = tag;
+      return resolvedTxnTag;
     }
 
     @Override
