@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.testutils.retry.SkipRerunOfGenuineFailuresRule;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import java.io.BufferedWriter;
@@ -55,6 +56,8 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
@@ -67,6 +70,54 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   protected String testUsername = null;
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
+
+  /**
+   * DRAFT / TESTING ONLY, do not merge. Chaos rule: after a test has passed (including its @After
+   * cleanup), fail it with probability -DitChaosFailureProbability or env
+   * IT_CHAOS_FAILURE_PROBABILITY (default 0 = off). -DitChaosFailureType=assertion or env
+   * IT_CHAOS_FAILURE_TYPE=assertion makes it an AssertionError (genuine, not re-run); default is a
+   * RuntimeException (transient, re-run). Sits just inside the guard rule so the guard sees it.
+   */
+  @Rule(order = Integer.MIN_VALUE + 1)
+  public final TestRule chaosFailure =
+      (base, description) ->
+          new org.junit.runners.model.Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+              base.evaluate();
+              String p =
+                  System.getProperty(
+                      "itChaosFailureProbability",
+                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_PROBABILITY", "0"));
+              String type =
+                  System.getProperty(
+                      "itChaosFailureType",
+                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_TYPE", ""));
+              double probability = Double.parseDouble(p);
+              double roll = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
+              if (roll < probability) {
+                String message =
+                    String.format(
+                        "CHAOS: simulated random failure in %s (roll=%.2f < p=%.2f)",
+                        description.getDisplayName(), roll, probability);
+                LOG.warn("[IT-CHAOS] {}", message);
+                if ("assertion".equals(type)) {
+                  throw new AssertionError(message);
+                }
+                throw new RuntimeException(message);
+              }
+            }
+          };
+
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 
