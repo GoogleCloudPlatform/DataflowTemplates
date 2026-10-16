@@ -64,6 +64,7 @@ public class PostgresSrcToSpSourceConnector extends AbstractJdbcSrcToSpSourceCon
           // precision and scale are >= 0, map to DECIMAL)
           .put("DECIMAL", UnifiedMappingProvider.Type.NUMBER)
           .put("DOUBLE PRECISION", UnifiedMappingProvider.Type.DOUBLE)
+          .put("ENUM", UnifiedMappingProvider.Type.STRING)
           .put("FLOAT4", UnifiedMappingProvider.Type.FLOAT)
           .put("FLOAT8", UnifiedMappingProvider.Type.DOUBLE)
           .put("INET", UnifiedMappingProvider.Type.STRING)

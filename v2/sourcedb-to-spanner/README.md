@@ -208,3 +208,6 @@ However, because the continuous reader watches the `retry/` directory indefinite
   * **`JSON` / `JSONB`:**
     * *Spanner GoogleSQL:* `JSON`, `STRING`
     * *Spanner PostgreSQL:* `JSONB`, `VARCHAR` / `TEXT`
+  * **`ENUM`:**
+    * *Spanner GoogleSQL:* `STRING`
+    * *Spanner PostgreSQL:* `VARCHAR` / `TEXT`

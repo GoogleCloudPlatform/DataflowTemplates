@@ -121,7 +121,6 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
             // "t_circle_to_float64_array",
             "t_datemultirange",
             "t_daterange",
-            "t_enum",
             // "t_float_array_to_float64_array",
             "t_float_array_to_string",
             // "t_int_array_to_int64_array",
@@ -206,6 +205,7 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     result.put("date", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("date_to_string", createRows("0001-01-01", "9999-12-31", "NULL"));
     result.put("decimal_to_string", createRows("0.12", "NULL"));
+    result.put("enum", createRows("enum1", "NULL"));
     result.put(
         "double_precision",
         createRows(
