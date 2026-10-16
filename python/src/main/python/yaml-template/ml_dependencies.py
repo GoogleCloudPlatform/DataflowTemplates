@@ -48,9 +48,6 @@ ML_EXPERIMENTAL_FEATURE = 'ML'
 #
 # The versions of these (and of `HUGGING_FACE_TENSORFLOW_DEPENDENCIES`) follow
 # the versions that apache-beam declares for the same packages in its extras.
-# The `YAML Template ML Dependencies` GitHub workflow checks this every 12
-# hours, and when these or the version of apache-beam change (see `BEAM_EXTRAS`
-# of python/src/test/python/yaml-template/check_ml_dependencies.py).
 RUN_INFERENCE_DEPENDENCIES = {
     # Only needs google-cloud-aiplatform, which is already available in both the
     # template container and the default Beam worker container.
