@@ -159,16 +159,10 @@ public abstract class Index implements Serializable {
     }
     ImmutableList<String> otherOptions = otherOptionsBuilder.build();
 
-    if (interleaveIn() != null) {
-      if (localityGroup != null) {
-        appendable
-            .append(" LOCALITY GROUP ")
-            .append(
-                "NULL".equalsIgnoreCase(localityGroup)
-                    ? "NULL"
-                    : quoteIdentifier(localityGroup, dialect()));
+    if ("SEARCH".equals(type())) {
+      if (interleaveIn() != null) {
+        appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
       }
-      appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
       if (!otherOptions.isEmpty()) {
         appendable.append(" WITH (").append(String.join(",", otherOptions)).append(")");
       }
@@ -183,6 +177,9 @@ public abstract class Index implements Serializable {
                 "NULL".equalsIgnoreCase(localityGroup)
                     ? "NULL"
                     : quoteIdentifier(localityGroup, dialect()));
+      }
+      if (interleaveIn() != null) {
+        appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
       }
     }
 
