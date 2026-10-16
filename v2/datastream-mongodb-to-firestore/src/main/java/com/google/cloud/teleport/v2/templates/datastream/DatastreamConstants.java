@@ -15,8 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.google.common.collect.ImmutableSet;
+import java.util.Set;
+
 /** Constants used in Datastream templates. */
-public class DatastreamConstants {
+public final class DatastreamConstants {
+
+  private DatastreamConstants() {
+    // Utility class; prevent instantiation
+  }
 
   // Common event metadata fields
   public static final String EVENT_SOURCE_METADATA = "_metadata_source";
@@ -37,11 +44,49 @@ public class DatastreamConstants {
   // Event types
   public static final String DELETE_EVENT = "DELETE";
   public static final String UPDATE_EVENT = "UPDATE";
+  public static final String READ_EVENT = "READ";
   public static final String EMPTY_EVENT = "";
+
+  // Read method metadata
+  public static final String EVENT_READ_METHOD_KEY = "_metadata_read_method";
+  public static final String READ_METHOD_BACKFILL = "backfill";
+  public static final String READ_METHOD_CDC = "cdc";
 
   // Default shadow collection prefix
   public static final String DEFAULT_SHADOW_COLLECTION_PREFIX = "shadow_";
 
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;
+
+  /** Internal Datastream metadata fields ignored/stripped from customer documents. */
+  public static final Set<String> DATASTREAM_METADATA_FIELDS =
+      ImmutableSet.of(
+          "_metadata_stream",
+          "_metadata_schema",
+          "_metadata_table",
+          "_metadata_source",
+          "_metadata_ssn",
+          "_metadata_rs_id",
+          "_metadata_tx_id",
+          "_metadata_uuid",
+          "_metadata_dlq_reconsumed",
+          "_metadata_error",
+          "_metadata_retry_count",
+          "_metadata_timestamp",
+          "_metadata_read_timestamp",
+          "_metadata_read_method",
+          "_metadata_deleted",
+          "_metadata_primary_keys",
+          "_metadata_log_file",
+          "_metadata_log_position",
+          "_metadata_dataflow_timestamp",
+          "_metadata_timestamp_seconds",
+          "_metadata_timestamp_nanos");
+
+  /** Fields ignored when generating shadow metadata documents. */
+  public static final Set<String> SHADOW_DOC_IGNORE_FIELDS =
+      ImmutableSet.<String>builder().addAll(DATASTREAM_METADATA_FIELDS).add("data").build();
+
+  /** Retained for backwards compatibility. */
+  public static final Set<String> MAPPER_IGNORE_FIELDS = DATASTREAM_METADATA_FIELDS;
 }
