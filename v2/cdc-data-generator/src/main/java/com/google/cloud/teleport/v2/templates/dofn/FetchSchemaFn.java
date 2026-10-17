@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher;
+import com.google.cloud.teleport.v2.templates.sqlserver.SqlServerSchemaFetcher;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.util.Map;
@@ -36,7 +37,8 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
   private static final Map<SinkType, Supplier<SinkSchemaFetcher>> fetcherProviders =
       ImmutableMap.of(
           SinkType.SPANNER, SpannerSchemaFetcher::new,
-          SinkType.MYSQL, MySqlSchemaFetcher::new);
+          SinkType.MYSQL, MySqlSchemaFetcher::new,
+          SinkType.SQLSERVER, SqlServerSchemaFetcher::new);
 
   private final SinkType sinkType;
   private final SinkConfig sinkConfig;

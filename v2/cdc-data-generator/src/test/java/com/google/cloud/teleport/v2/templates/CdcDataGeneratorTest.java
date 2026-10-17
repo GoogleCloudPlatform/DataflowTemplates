@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -114,6 +115,29 @@ public class CdcDataGeneratorTest {
             () -> CdcDataGenerator.resolveKeyParallelism(SinkType.MYSQL, invalidConfig));
     assertEquals(
         "Sink configuration must be an instance of MySqlSinkConfig for MySQL sink type.",
+        ex.getMessage());
+  }
+
+  @Test
+  public void testResolveKeyParallelism_sqlServer_multipleShards() {
+    SqlServerSinkConfig config =
+        new SqlServerSinkConfig(
+            Arrays.asList(
+                new Shard("shardA", "host", "user", "pass", "port", "db", null, null, null),
+                new Shard("shardB", "host", "user", "pass", "port", "db", null, null, null)));
+    int parallelism = CdcDataGenerator.resolveKeyParallelism(SinkType.SQLSERVER, config);
+    assertEquals(10000, parallelism);
+  }
+
+  @Test
+  public void testResolveKeyParallelism_sqlServer_invalidConfigType() {
+    SinkConfig invalidConfig = new SinkConfig() {};
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CdcDataGenerator.resolveKeyParallelism(SinkType.SQLSERVER, invalidConfig));
+    assertEquals(
+        "Sink configuration must be an instance of SqlServerSinkConfig for SQL Server sink type.",
         ex.getMessage());
   }
 

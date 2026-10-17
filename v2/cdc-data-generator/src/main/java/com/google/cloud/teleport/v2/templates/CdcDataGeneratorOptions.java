@@ -29,10 +29,12 @@ public interface CdcDataGeneratorOptions
       order = 1,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("SPANNER"),
-        @TemplateParameter.TemplateEnumOption("MYSQL")
+        @TemplateParameter.TemplateEnumOption("MYSQL"),
+        @TemplateParameter.TemplateEnumOption("SQLSERVER")
       },
       description = "Type of sink to generate data for",
-      helpText = "The type of sink to generate data for. Supported values: SPANNER, MYSQL.")
+      helpText =
+          "The type of sink to generate data for. Supported values: SPANNER, MYSQL, SQLSERVER.")
   @Required
   SinkType getSinkType();
 
@@ -44,7 +46,7 @@ public interface CdcDataGeneratorOptions
       description = "Sink Options JSON File Path",
       helpText =
           "GCS Path to a file containing JSON Options for the sink. For Spanner: {\"projectId\": \"...\", \"instanceId\": \"...\", \"databaseId\": \"...\"}. "
-              + "For MySQL: {\"driverClassName\": \"...\", \"connectionUrl\": \"...\", \"username\": \"...\", \"password\": \"...\"} or {\"shardFilePath\": \"gs://...\"}",
+              + "For MySQL and SQL Server: a JSON array of shards, each with \"host\", \"port\", \"user\", \"password\" (or \"secretManagerUri\"), \"dbName\" and optional \"logicalShardId\" / \"connectionProperties\".",
       example = "gs://your-bucket/path/to/sink_options.json")
   String getSinkOptions();
 
@@ -96,7 +98,7 @@ public interface CdcDataGeneratorOptions
       optional = true,
       description = "JDBC Connection Pool Size per Shard",
       helpText =
-          "The maximum number of connections to open per logical shard for JDBC (MySQL) sink. Default is 10.")
+          "The maximum number of connections to open per logical shard for JDBC (MySQL, SQL Server) sinks. Default is 10.")
   @Default.Integer(10)
   Integer getJdbcPoolSize();
 
@@ -178,6 +180,7 @@ public interface CdcDataGeneratorOptions
 
   enum SinkType {
     SPANNER,
-    MYSQL
+    MYSQL,
+    SQLSERVER
   }
 }
