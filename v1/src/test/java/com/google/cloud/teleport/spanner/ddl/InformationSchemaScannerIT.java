@@ -826,6 +826,69 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
 
   // TODO(b/485601737): Add PG UDFs.
 
+  private SharedTestCase pgSimpleUdf() {
+    String namedSchemaDef = "CREATE SCHEMA \"s_pgSimpleUdf\"";
+    String udfDef1 =
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_foo\"() RETURNS bigint RETURN (1)";
+    String udfDef2 =
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_default_values\"("
+            + "a text, "
+            + "b text DEFAULT NULL, "
+            + "c text DEFAULT 'NULL', "
+            + "d text DEFAULT '') "
+            + "RETURNS text RETURN (CONCAT(a, '::', b, '::', c, '::', d))";
+
+    return new SharedTestCase(
+        Arrays.asList(namedSchemaDef, udfDef1, udfDef2),
+        ddl -> {
+          assertThat(ddl.schema("s_pgSimpleUdf"), notNullValue());
+
+          Udf udf1 = ddl.udf("s_pgSimpleUdf.u_pgSimpleUdf_foo");
+          assertThat(udf1, notNullValue());
+
+          Udf udf2 = ddl.udf("s_pgSimpleUdf.u_pgSimpleUdf_default_values");
+          assertThat(udf2, notNullValue());
+
+          assertThat(udf1.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_foo"));
+          assertThat(udf1.type(), equalTo("bigint"));
+          assertThat(udf1.definition(), equalTo("'1'::bigint"));
+          assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+
+          assertThat(udf2.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_default_values"));
+          assertThat(udf2.type(), equalTo("character varying"));
+          assertThat(
+              udf2.definition(), equalTo("concat(a, '::'::text, b, '::'::text, c, '::'::text, d)"));
+          assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(
+              udf2.parameters(),
+              hasItems(
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("a")
+                      .type("character varying")
+                      .defaultExpression(null)
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("b")
+                      .type("character varying")
+                      .defaultExpression("NULL::text")
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("c")
+                      .type("character varying")
+                      .defaultExpression("'NULL'::text")
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("d")
+                      .type("character varying")
+                      .defaultExpression("''::text")
+                      .autoBuild()));
+        });
+  }
+
   private SharedTestCase interleavedIn() {
     List<String> statements =
         Arrays.asList(
@@ -1988,6 +2051,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         Arrays.asList(
             tableWithAllPgTypes(),
             pgSimpleView(),
+            pgSimpleUdf(),
             pgInterleavedIn(),
             pgReserved(),
             pgSearchIndexes(),
