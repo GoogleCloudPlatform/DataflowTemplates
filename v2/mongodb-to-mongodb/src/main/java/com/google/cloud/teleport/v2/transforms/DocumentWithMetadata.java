@@ -170,8 +170,20 @@ public class DocumentWithMetadata implements Serializable {
     return null;
   }
 
+  private transient String cachedDedupKey;
+
   /** Returns a unique deduplication key scoped by collection and document identifier. */
   public String getDedupKey() {
+    String cached = this.cachedDedupKey;
+    if (cached != null) {
+      return cached;
+    }
+    String computed = computeDedupKey();
+    this.cachedDedupKey = computed;
+    return computed;
+  }
+
+  private String computeDedupKey() {
     String col;
     if (targetCollection != null && !targetCollection.isEmpty()) {
       col = targetCollection;
@@ -179,6 +191,13 @@ public class DocumentWithMetadata implements Serializable {
       col = sourceCollection;
     } else {
       col = "default";
+    }
+    if (document != null && document.containsKey("_id")) {
+      try {
+        return col + "#" + new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
+      } catch (Exception ignored) {
+        return col + "#" + document.get("_id");
+      }
     }
     if (documentKey != null && !documentKey.isEmpty()) {
       // On sharded collections the change stream documentKey carries the shard key fields in
@@ -195,13 +214,6 @@ public class DocumentWithMetadata implements Serializable {
         // Fall through to the raw documentKey below.
       }
       return col + "#" + documentKey;
-    }
-    if (document != null && document.containsKey("_id")) {
-      try {
-        return col + "#" + new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
-      } catch (Exception ignored) {
-        return col + "#" + document.get("_id");
-      }
     }
     Object id = getId();
     if (id != null) {
