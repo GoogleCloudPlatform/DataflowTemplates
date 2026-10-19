@@ -281,17 +281,17 @@ public class MongoDbToMongoDb {
         order = 18,
         groupName = "Source",
         enumOptions = {
+          @TemplateParameter.TemplateEnumOption("BACKFILL"),
           @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
-          @TemplateParameter.TemplateEnumOption("STREAMING_CDC"),
-          @TemplateParameter.TemplateEnumOption("BACKFILL")
+          @TemplateParameter.TemplateEnumOption("STREAMING_CDC")
         },
         optional = true,
         description = "Migration Mode",
         helpText =
-            "Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in"
-                + " parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only),"
-                + " or 'BACKFILL' (historical backfill only).")
-    @Default.String("BACKFILL_AND_STREAMING")
+            "Migration mode: 'BACKFILL' (historical backfill only), 'BACKFILL_AND_STREAMING'"
+                + " (historical backfill and streaming CDC in parallel with stateful"
+                + " deduplication), or 'STREAMING_CDC' (stream CDC only). Default is 'BACKFILL'.")
+    @Default.String("BACKFILL")
     String getMigrationMode();
 
     void setMigrationMode(String value);
@@ -475,7 +475,7 @@ public class MongoDbToMongoDb {
   public static void run(Options options) {
     String migrationMode = options.getMigrationMode();
     if (migrationMode == null || migrationMode.isEmpty()) {
-      migrationMode = "BACKFILL_AND_STREAMING";
+      migrationMode = "BACKFILL";
     }
 
     Pipeline pipeline = Pipeline.create(options);

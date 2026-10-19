@@ -40,7 +40,7 @@ graph TD
 | `maxWriteRetries` | Integer | Maximum number of retry attempts for transient failures during write. | No | 3 |
 | `numWriteShards` | Integer | Number of parallel shards per collection for batched writes. | No | 64 |
 | `maxBufferingDurationMs` | Integer | Maximum duration in milliseconds to buffer documents before flushing. | No | 200 |
-| `migrationMode` | String | Migration mode: BACKFILL_AND_STREAMING, STREAMING_CDC, or BACKFILL. | No | BACKFILL_AND_STREAMING |
+| `migrationMode` | String | Migration mode: BACKFILL, BACKFILL_AND_STREAMING, or STREAMING_CDC. | No | BACKFILL |
 | `targetBackfillChunkSize` | Integer | Target document count per backfill read split. | No | 200000 |
 | `maxBackfillSplits` | Integer | Maximum backfill read splits allowed per collection. | No | 256 |
 | `maxConcurrentBackfillReads` | Integer | Maximum concurrent backfill cursors allowed across the cluster. | No | 128 |

@@ -52,7 +52,7 @@ public class MongoDbToMongoDbTest {
   public void options_defaultValues() {
     MongoDbToMongoDb.Options options = PipelineOptionsFactory.as(MongoDbToMongoDb.Options.class);
 
-    assertEquals("BACKFILL_AND_STREAMING", options.getMigrationMode());
+    assertEquals("BACKFILL", options.getMigrationMode());
     assertEquals(Integer.valueOf(1), options.getNumChangeStreamSplits());
     assertEquals("updateLookup", options.getChangeStreamFullDocument());
     assertEquals(Integer.valueOf(5000), options.getWriteBatchSize());
