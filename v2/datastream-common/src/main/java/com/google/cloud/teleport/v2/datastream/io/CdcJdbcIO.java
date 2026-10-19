@@ -751,13 +751,21 @@ public class CdcJdbcIO {
             connection.rollback();
           }
         } catch (SQLException rollbackException) {
-          LOG.warn(
-              "Rollback failed on SQL connection, invalidating connection", rollbackException);
+          LOG.warn("Rollback failed on SQL connection, invalidating connection", rollbackException);
           rollbackAndInvalidateConnectionQuietly();
         }
       }
 
-      private boolean isTransientSqlException(SQLException e) {
+      static SQLException nextSqlException(SQLException current) {
+        SQLException next = current.getNextException();
+        if (next != null) {
+          return next;
+        }
+        Throwable cause = current.getCause();
+        return cause instanceof SQLException ? (SQLException) cause : null;
+      }
+
+      boolean isTransientSqlException(SQLException e) {
         if (spec.getRetryStrategy() != null && spec.getRetryStrategy().apply(e)) {
           return true;
         }
@@ -770,12 +778,12 @@ public class CdcJdbcIO {
           if (sqlState != null && sqlState.startsWith("40")) {
             return true;
           }
-          current = current.getNextException();
+          current = nextSqlException(current);
         }
         return false;
       }
 
-      private static boolean isConnectionError(SQLException e, Connection currentConnection) {
+      static boolean isConnectionError(SQLException e, Connection currentConnection) {
         SQLException current = e;
         while (current != null) {
           if (current instanceof java.sql.SQLRecoverableException
@@ -789,7 +797,7 @@ public class CdcJdbcIO {
                   || sqlState.startsWith("57"))) {
             return true;
           }
-          current = current.getNextException();
+          current = nextSqlException(current);
         }
         if (currentConnection == null) {
           return true;
@@ -853,8 +861,7 @@ public class CdcJdbcIO {
         closeConnectionQuietly();
       }
 
-      private void executeSingleStatements(
-          Sleeper sleeper, List<BufferedRecord<T>> failedRecords)
+      private void executeSingleStatements(Sleeper sleeper, List<BufferedRecord<T>> failedRecords)
           throws SQLException, IOException, InterruptedException {
         Iterator<BufferedRecord<T>> iterator = records.iterator();
         while (iterator.hasNext()) {

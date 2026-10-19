@@ -688,7 +688,17 @@ public class DataStreamToSQL {
       }
     }
 
-    static boolean isRetryableSqlException(SQLException e, java.sql.Connection currentConnection) {
+    private static SQLException nextSqlException(SQLException current) {
+      SQLException next = current.getNextException();
+      if (next != null) {
+        return next;
+      }
+      Throwable cause = current.getCause();
+      return cause instanceof SQLException ? (SQLException) cause : null;
+    }
+
+    public static boolean isRetryableSqlException(
+        SQLException e, java.sql.Connection currentConnection) {
       SQLException current = e;
       while (current != null) {
         if (current instanceof java.sql.SQLTransientException
@@ -703,13 +713,11 @@ public class DataStreamToSQL {
               || sqlState.startsWith("57")) {
             return true;
           }
-          if (sqlState.startsWith("22")
-              || sqlState.startsWith("23")
-              || sqlState.startsWith("42")) {
+          if (sqlState.startsWith("22") || sqlState.startsWith("23") || sqlState.startsWith("42")) {
             return false;
           }
         }
-        current = current.getNextException();
+        current = nextSqlException(current);
       }
       if (currentConnection == null) {
         return true;

@@ -511,8 +511,7 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -543,8 +542,9 @@ public final class CdcJdbcIOTest {
   }
 
   @Test
-  public void testWriteFn_singleStatementMode_reusesConnectionOnDataErrorAndRoutesFailedRecordToDlq()
-      throws Exception {
+  public void
+      testWriteFn_singleStatementMode_reusesConnectionOnDataErrorAndRoutesFailedRecordToDlq()
+          throws Exception {
     DataSource mockDataSource = mock(DataSource.class);
     Connection connection1 = mock(Connection.class);
     Statement batchStatement = mock(Statement.class);
@@ -573,8 +573,7 @@ public final class CdcJdbcIOTest {
 
     // Even when maxRetries > 0, a deterministic data error (23505) on a healthy connection
     // transitions immediately to single-statement mode without tearing down connection1.
-    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 3, 1L);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 3, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -645,8 +644,7 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -700,8 +698,7 @@ public final class CdcJdbcIOTest {
             .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
             .withBatchSize(10L);
 
-    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
-        new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 0, 1L);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 0, 1L);
 
     @SuppressWarnings("unchecked")
     DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
@@ -811,5 +808,113 @@ public final class CdcJdbcIOTest {
     } finally {
       realPool.close();
     }
+  }
+
+  @Test
+  public void testWriteFn_sqlExceptionClassificationAndChaining() throws Exception {
+    Connection openConn = mock(Connection.class);
+    when(openConn.isClosed()).thenReturn(false);
+
+    Connection brokenIsClosedConn = mock(Connection.class);
+    when(brokenIsClosedConn.isClosed()).thenThrow(new SQLException("broken isClosed"));
+
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new java.sql.SQLRecoverableException("recoverable"), openConn));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new java.sql.SQLTransientConnectionException("transient conn"), openConn));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new SQLException("too many connections", "53300"), openConn));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(new SQLException("generic"), null));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new SQLException("generic"), brokenIsClosedConn));
+
+    // Verify traversal via getNextException() and getCause()
+    SQLException wrapperWithNext = new SQLException("batch failed", "99999");
+    wrapperWithNext.setNextException(new SQLException("connection reset", "08006"));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(wrapperWithNext, openConn));
+
+    SQLException wrapperWithCause =
+        new SQLException("wrapper", "99999", new SQLException("admin shutdown", "57P01"));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(wrapperWithCause, openConn));
+
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(ignored -> mock(DataSource.class))
+            .withStatementFormatter(new TestStatementFormatter())
+            .withRetryStrategy(e -> false);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec);
+
+    assertTrue(
+        writeFn.isTransientSqlException(new java.sql.SQLTransientException("transient timeout")));
+    SQLException deadlockWithCause =
+        new SQLException("wrapper", "99999", new SQLException("deadlock detected", "40P01"));
+    assertTrue(writeFn.isTransientSqlException(deadlockWithCause));
+    assertTrue(!writeFn.isTransientSqlException(new SQLException("syntax error", "42601")));
+  }
+
+  @Test
+  public void testWriteFn_handlesRollbackAndInvalidateExceptionsGracefully() throws Exception {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    Connection conn1 = mock(Connection.class);
+    Connection conn2 = mock(Connection.class);
+    Statement batchStmt = mock(Statement.class);
+    Statement singleStmtDeadlock = mock(Statement.class);
+    Statement singleStmtSuccess = mock(Statement.class);
+
+    when(mockBasicDataSource.getConnection()).thenReturn(conn1, conn2);
+    when(conn1.isClosed()).thenReturn(false);
+    when(conn1.createStatement()).thenReturn(batchStmt);
+    // Batch fails with data error (23505), then rollbackQuietly() throws SQLException, triggering
+    // rollbackAndInvalidateConnectionQuietly() where invalidateConnection() and close() also throw
+    doThrow(new SQLException("duplicate key", "23505")).when(batchStmt).executeBatch();
+    doThrow(new SQLException("rollback failed")).when(conn1).rollback();
+    doThrow(new RuntimeException("invalidate failed"))
+        .when(mockBasicDataSource)
+        .invalidateConnection(conn1);
+    doThrow(new SQLException("close failed")).when(conn1).close();
+
+    // In single-statement mode, conn2 sees a transient deadlock (40P01) on first try, rolls back
+    // quietly on healthy conn2, retries on conn2, and succeeds; close() on finishBundle throws.
+    when(conn2.isClosed()).thenReturn(false);
+    when(conn2.createStatement()).thenReturn(singleStmtDeadlock, singleStmtSuccess);
+    doThrow(new SQLException("deadlock detected", "40P01"))
+        .when(singleStmtDeadlock)
+        .executeUpdate(any());
+    when(singleStmtSuccess.executeUpdate(any())).thenReturn(1);
+    doThrow(new SQLException("close on finishBundle failed")).when(conn2).close();
+
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(ignored -> mockBasicDataSource)
+            .withStatementFormatter(new TestStatementFormatter())
+            .withBatchSize(1L);
+
+    // Exercise lazy initialization without calling setup()
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    verify(mockBasicDataSource, times(2)).getConnection();
+    verify(mockBasicDataSource).invalidateConnection(conn1);
+    verify(conn2).rollback();
+    verify(conn2).commit();
+    verify(conn2).close();
   }
 }
