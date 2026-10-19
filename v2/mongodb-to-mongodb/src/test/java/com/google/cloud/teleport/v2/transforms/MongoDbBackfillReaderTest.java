@@ -358,7 +358,10 @@ public class MongoDbBackfillReaderTest {
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
 
-    Document doc1 = new Document("_id", 1).append("name", "Item1");
+    Document doc1 =
+        new Document("_id", java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"))
+            .append("name", "Item1")
+            .append("nestedUuid", java.util.UUID.randomUUID());
     Document doc2 = new Document("_id", 2).append("name", "Item2");
 
     when(mockCursor1.hasNext()).thenReturn(true, false);

@@ -834,9 +834,12 @@ public class MongoDbBackfillReader {
           }
 
           Document doc = cursor.next();
-          BsonValue docId = doc.toBsonDocument().get("_id");
+          Object rawId = doc.get("_id");
           String nextIdJson =
-              docId != null ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS) : null;
+              rawId != null
+                  ? new Document("_id", rawId)
+                      .toJson(CANONICAL_JSON_SETTINGS, DocumentWithMetadata.DOCUMENT_CODEC)
+                  : null;
 
           if (!tracker.tryClaim(
               new BackfillSlotRestriction(
@@ -929,10 +932,7 @@ public class MongoDbBackfillReader {
       }
       if (clientCache != null) {
         for (MongoClient client : clientCache.values()) {
-          try {
-            client.close();
-          } catch (Exception ignored) {
-          }
+          MongoDbTransforms.closeIfNotShared(client);
         }
         clientCache.clear();
       }

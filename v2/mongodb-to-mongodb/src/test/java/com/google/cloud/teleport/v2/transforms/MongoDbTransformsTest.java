@@ -1260,4 +1260,17 @@ public class MongoDbTransformsTest {
       assertNotNull(client);
     }
   }
+
+  @Test
+  public void testCloseIfNotShared_preservesSharedClientAndClosesNonSharedClient() {
+    MongoClient sharedClient =
+        MongoDbTransforms.getOrCreateMongoClient("mongodb://localhost:27017/?appName=sharedTest");
+    MongoDbTransforms.closeIfNotShared(sharedClient);
+    // Shared client must remain open and usable after closeIfNotShared
+    assertNotNull(sharedClient.getDatabase("test"));
+
+    MongoClient dedicatedClient = mock(MongoClient.class);
+    MongoDbTransforms.closeIfNotShared(dedicatedClient);
+    verify(dedicatedClient).close();
+  }
 }

@@ -98,6 +98,20 @@ public class MongoDbTransforms {
   }
 
   /**
+   * Closes the given {@link MongoClient} only if it is not a shared JVM-wide instance managed by
+   * {@link #CLIENT_CACHE}. Shared clients remain open for the lifetime of the worker JVM so that
+   * concurrent {@link DoFn} instances on the same worker do not close each other's connections.
+   */
+  public static void closeIfNotShared(MongoClient client) {
+    if (client != null && !CLIENT_CACHE.containsValue(client)) {
+      try {
+        client.close();
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  /**
    * Helper method to create a MongoClient with default UuidRepresentation.STANDARD if not
    * explicitly specified in the connection string.
    */

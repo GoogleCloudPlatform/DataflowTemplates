@@ -1316,10 +1316,7 @@ public class MongoDbChangeStreamReader {
       }
       if (clientCache != null) {
         for (MongoClient client : clientCache.values()) {
-          try {
-            client.close();
-          } catch (Exception ignored) {
-          }
+          MongoDbTransforms.closeIfNotShared(client);
         }
         clientCache.clear();
       }
