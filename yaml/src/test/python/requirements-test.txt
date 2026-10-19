@@ -1,2 +1,4 @@
 apache-beam[gcp,test]
+beautifulsoup4
 jinja2
+tabulate
