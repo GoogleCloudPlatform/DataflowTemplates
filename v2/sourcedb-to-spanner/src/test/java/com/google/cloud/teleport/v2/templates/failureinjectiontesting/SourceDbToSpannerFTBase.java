@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.testutils.retry.SkipRerunOfGenuineFailuresRule;
 import com.google.gson.Gson;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -48,12 +49,24 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerFTBase.class);
+
+  /**
+   * Outermost rule: when Surefire re-runs a failed test, fails genuine failures (e.g. assertions)
+   * immediately instead of re-running them, so only transient failures are retried. Needed here too
+   * because some ITs of this module (e.g. MySQLAllDataTypesBulkAndLiveIT) extend this class. No-op
+   * unless -DitSkipRerunOfGenuineFailures=true or IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
