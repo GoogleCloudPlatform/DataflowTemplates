@@ -28,6 +28,11 @@
 
     <artifactId>sourcedb-to-spanner</artifactId>
 
+    <properties>
+        <!-- Max reruns of a failed IT in this module; override with -DbulkItRerunFailingTestsCount=N. -->
+        <bulkItRerunFailingTestsCount>3</bulkItRerunFailingTestsCount>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
@@ -315,6 +320,12 @@
                                  combine.self="override" is required so the empty value clears the
                                  parent's ${direct-runner.tests} exclusion instead of inheriting it. -->
                             <excludedGroups combine.self="override"></excludedGroups>
+                            <!-- Re-run failed ITs of this module only. Set explicitly rather than via the
+                                 surefire.rerunFailingTestsCount property, so the CI's default
+                                 -Dsurefire.rerunFailingTestsCount=0 does not override it.
+                                 SkipRerunOfGenuineFailuresRule (see SourceDbToSpannerITBase) skips the rerun
+                                 for genuine failures (e.g. assertions), so only transient failures are retried. -->
+                            <rerunFailingTestsCount>${bulkItRerunFailingTestsCount}</rerunFailingTestsCount>
                         </configuration>
                     </plugin>
                 </plugins>

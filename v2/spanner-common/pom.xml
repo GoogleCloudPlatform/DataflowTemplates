@@ -86,6 +86,13 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-compute</artifactId>
         </dependency>
+        <!-- JUnit is only needed to compile testutils/retry (IT rules used by the Spanner
+             templates' tests); provided, so it is not packaged or passed on at runtime. -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
