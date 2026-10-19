@@ -258,7 +258,7 @@ resource "google_cloudfunctions2_function" "dlq_poller" {
   description = "Polls GCS DLQ directories and publishes file counts to Cloud Monitoring"
 
   build_config {
-    runtime     = "python311"
+    runtime     = "python314"
     entry_point = "poll_gcs_dlq"
     source {
       storage_source {
