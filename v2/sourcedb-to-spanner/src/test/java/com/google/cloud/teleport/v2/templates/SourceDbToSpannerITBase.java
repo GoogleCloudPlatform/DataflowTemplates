@@ -82,11 +82,21 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   /**
    * DRAFT / TESTING ONLY, do not merge. Chaos rule: after a test has passed (including its @After
-   * cleanup), fail it with probability -DitChaosFailureProbability or env
-   * IT_CHAOS_FAILURE_PROBABILITY (default 0 = off). -DitChaosFailureType=assertion or env
-   * IT_CHAOS_FAILURE_TYPE=assertion makes it an AssertionError (genuine, not re-run); default is a
-   * RuntimeException (transient, re-run). Sits just inside the guard rule so the guard sees it.
+   * cleanup), injects a simulated failure, to exercise retries and the CI retry report:
+   *
+   * <ul>
+   *   <li>first attempt: genuine failure (assertion/NPE/illegal state, not re-run) with probability
+   *       IT_CHAOS_GENUINE_PROBABILITY, else transient failure (retryable infra-style errors) with
+   *       probability IT_CHAOS_TRANSIENT_PROBABILITY;
+   *   <li>each rerun: transient failure with probability IT_CHAOS_RERUN_TRANSIENT_PROBABILITY.
+   * </ul>
+   *
+   * <p>All probabilities default to 0 (off). Sits just inside the guard rule so the guard sees the
+   * failure.
    */
+  private static final java.util.Map<String, Integer> CHAOS_ATTEMPTS =
+      new java.util.concurrent.ConcurrentHashMap<>();
+
   @Rule(order = Integer.MIN_VALUE + 1)
   public final TestRule chaosFailure =
       (base, description) ->
@@ -94,29 +104,69 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             @Override
             public void evaluate() throws Throwable {
               base.evaluate();
-              String p =
-                  System.getProperty(
-                      "itChaosFailureProbability",
-                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_PROBABILITY", "0"));
-              String type =
-                  System.getProperty(
-                      "itChaosFailureType",
-                      System.getenv().getOrDefault("IT_CHAOS_FAILURE_TYPE", ""));
-              double probability = Double.parseDouble(p);
-              double roll = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
-              if (roll < probability) {
-                String message =
-                    String.format(
-                        "CHAOS: simulated random failure in %s (roll=%.2f < p=%.2f)",
-                        description.getDisplayName(), roll, probability);
-                LOG.warn("[IT-CHAOS] {}", message);
-                if ("assertion".equals(type)) {
-                  throw new AssertionError(message);
+              String key = description.getClassName() + "#" + description.getMethodName();
+              int attempt = CHAOS_ATTEMPTS.merge(key, 1, Integer::sum);
+              java.util.concurrent.ThreadLocalRandom random =
+                  java.util.concurrent.ThreadLocalRandom.current();
+              double roll = random.nextDouble();
+              String where =
+                  String.format(
+                      "%s (attempt %d, roll=%.2f)", description.getMethodName(), attempt, roll);
+              Throwable failure = null;
+              if (attempt == 1) {
+                double genuine = chaosProbability("IT_CHAOS_GENUINE_PROBABILITY");
+                double transientFailure = chaosProbability("IT_CHAOS_TRANSIENT_PROBABILITY");
+                if (roll < genuine) {
+                  failure = chaosGenuineFailure(random.nextInt(3), where);
+                } else if (roll < genuine + transientFailure) {
+                  failure = chaosTransientFailure(random.nextInt(4), where);
                 }
-                throw new RuntimeException(message);
+              } else if (roll < chaosProbability("IT_CHAOS_RERUN_TRANSIENT_PROBABILITY")) {
+                failure = chaosTransientFailure(random.nextInt(4), where);
+              }
+              if (failure != null) {
+                LOG.warn("[IT-CHAOS] {}", failure.toString());
+                throw failure;
               }
             }
           };
+
+  private static double chaosProbability(String envName) {
+    return Double.parseDouble(System.getenv().getOrDefault(envName, "0"));
+  }
+
+  private static Throwable chaosGenuineFailure(int kind, String where) {
+    switch (kind) {
+      case 0:
+        return new AssertionError(
+            "CHAOS genuine: expected 120 rows in Spanner table but found 118 in " + where);
+      case 1:
+        return new NullPointerException(
+            "CHAOS genuine: null value while reading a migrated column in " + where);
+      default:
+        return new IllegalStateException(
+            "CHAOS genuine: unexpected Spanner schema state in " + where);
+    }
+  }
+
+  private static Throwable chaosTransientFailure(int kind, String where) {
+    switch (kind) {
+      case 0:
+        return new RuntimeException(
+            "CHAOS transient: ZONE_RESOURCE_POOL_EXHAUSTED while starting workers in " + where);
+      case 1:
+        return new RuntimeException(
+            "CHAOS transient: Communications link failure talking to the source database in "
+                + where);
+      case 2:
+        return new RuntimeException(
+            "CHAOS transient: DEADLINE_EXCEEDED waiting for Spanner in " + where,
+            new java.util.concurrent.TimeoutException("simulated"));
+      default:
+        return new java.io.UncheckedIOException(
+            new java.io.IOException("CHAOS transient: Connection reset by peer in " + where));
+    }
+  }
 
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";

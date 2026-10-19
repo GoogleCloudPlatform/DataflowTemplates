@@ -42,6 +42,13 @@ public final class SkipRerunOfGenuineFailuresRule implements TestRule {
 
   public static final String ENABLED_ENV = "IT_SKIP_RERUN_OF_GENUINE_FAILURES";
 
+  /**
+   * Prefix of the failure message reported for a genuine failure that is not re-run, so reports can
+   * tell it apart from a test that was re-run and failed again.
+   */
+  public static final String NOT_RERUN_MESSAGE_PREFIX =
+      "Not re-run, genuine failure in an earlier attempt: ";
+
   private static final Logger LOG = LoggerFactory.getLogger(SkipRerunOfGenuineFailuresRule.class);
 
   /** Genuine failures seen in this JVM, keyed by "class#method". */
@@ -77,7 +84,8 @@ public final class SkipRerunOfGenuineFailuresRule implements TestRule {
               "[IT-RETRY] Not re-running {}: previous attempt failed genuinely: {}",
               testKey,
               previousGenuineFailure.toString());
-          throw previousGenuineFailure;
+          throw new AssertionError(
+              NOT_RERUN_MESSAGE_PREFIX + previousGenuineFailure, previousGenuineFailure);
         }
         try {
           base.evaluate();

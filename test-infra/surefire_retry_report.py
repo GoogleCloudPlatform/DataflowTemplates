@@ -80,9 +80,20 @@ def annotation_text(text):
   return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
+# Prefix SkipRerunOfGenuineFailuresRule puts on the rerun failure of a genuine failure that was
+# not re-run (see SkipRerunOfGenuineFailuresRule.NOT_RERUN_MESSAGE_PREFIX).
+NOT_RERUN_PREFIX = "Not re-run, genuine failure in an earlier attempt: "
+
+
+def plural(n, word):
+  return f"{n} {word}" if n == 1 else f"{n} {word.replace('retry', 'retries')}"
+
+
 def collect(root):
-  stats = {"files": 0, "unparsable": [], "total": 0, "passed": 0, "failed": 0, "skipped": 0}
-  flaky, failed_after_retries = [], []
+  """Returns (stats, rows): one row per test that failed at least once."""
+  stats = {"files": 0, "unparsable": [], "total": 0, "passed_first": 0, "flaky": 0,
+           "failed": 0, "skipped": 0}
+  rows = []
   for path in sorted(find_reports(root)):
     try:
       suite = ET.parse(path).getroot()
@@ -102,49 +113,47 @@ def collect(root):
         stats["skipped"] += 1
       elif finals:
         stats["failed"] += 1
-        if reruns:
-          first = finals[0]
-          failed_after_retries.append(
-              dict(module=module, name=name, runs=1 + len(reruns), tag=first.tag,
-                   message=first_line(first)))
+        not_rerun = any((c.get("message") or "").startswith(NOT_RERUN_PREFIX) for c in reruns)
+        if not_rerun:
+          status, kind = "❌ Failed: genuine failure, not retried", "genuine"
+        elif reruns:
+          status, kind = f"❌ Failed after {plural(len(reruns), 'retry')}", "retried"
+        else:
+          status, kind = "❌ Failed (no retry)", "no-retry"
+        rows.append(dict(module=module, name=name, status=status, kind=kind, final="failed",
+                         reason=first_line(finals[0])))
       else:
-        stats["passed"] += 1
         if flaky_runs:
-          first = flaky_runs[0]
-          flaky.append(
-              dict(module=module, name=name, runs=1 + len(flaky_runs), tag=first.tag,
-                   message=first_line(first)))
-  return stats, flaky, failed_after_retries
+          stats["flaky"] += 1
+          rows.append(dict(module=module, name=name, final="flaky", kind="flaky",
+                           status=f"⚠️ Passed after {plural(len(flaky_runs), 'retry')}",
+                           reason=first_line(flaky_runs[0])))
+        else:
+          stats["passed_first"] += 1
+  # Failures first, then flaky; stable within each group.
+  rows.sort(key=lambda r: 0 if r["final"] == "failed" else 1)
+  return stats, rows
 
 
-def table(rows, header):
-  out = [header, "|---|---|---|---|---|"]
-  for r in rows[:MAX_TABLE_ROWS]:
-    out.append(f"| `{r['name']}` | `{r['module']}` | {r['runs']} | `{r['tag']}` | "
-               f"{md_cell(r['message'])} |")
-  if len(rows) > MAX_TABLE_ROWS:
-    out.append(f"\n_…and {len(rows) - MAX_TABLE_ROWS} more; see the uploaded test report "
-               "artifact._")
-  out.append("")
-  return out
-
-
-def render_markdown(stats, flaky, failed_after_retries):
+def render_markdown(stats, rows):
   out = ["## 🔁 Integration test retries", ""]
-  out.append("| Tests | ✅ Passed | ⚠️ Flaky (passed on retry) | ❌ Failed | "
-             "↻ Failed after retries | ⏭ Skipped |")
-  out.append("|---|---|---|---|---|---|")
-  out.append(f"| {stats['total']} | {stats['passed']} | {len(flaky)} | {stats['failed']} | "
-             f"{len(failed_after_retries)} | {stats['skipped']} |")
+  out.append("| Tests | ✅ Passed first time | ⚠️ Passed on retry | ❌ Failed | ⏭ Skipped |")
+  out.append("|---|---|---|---|---|")
+  out.append(f"| {stats['total']} | {stats['passed_first']} | {stats['flaky']} | "
+             f"{stats['failed']} | {stats['skipped']} |")
   out.append("")
-  if flaky:
-    out.append("### ⚠️ Flaky: failed, then passed on retry")
-    out += table(flaky, "| Test | Module | Runs | First failure type | First failure |")
-  if failed_after_retries:
-    out.append("### ↻ Failed even after retries")
-    out += table(failed_after_retries, "| Test | Module | Runs | Type | First failure |")
-  if not flaky and not failed_after_retries:
-    out.append("_No test was retried._")
+  if rows:
+    out.append("### Tests that failed at least once")
+    out.append("| Test | Module | Final status | Failure reason |")
+    out.append("|---|---|---|---|")
+    for r in rows[:MAX_TABLE_ROWS]:
+      out.append(f"| `{r['name']}` | `{r['module']}` | {r['status']} | {md_cell(r['reason'])} |")
+    if len(rows) > MAX_TABLE_ROWS:
+      out.append(f"\n_…and {len(rows) - MAX_TABLE_ROWS} more; see the uploaded test report "
+                 "artifact._")
+    out.append("")
+  else:
+    out.append("_No test failed._")
     out.append("")
   if stats["unparsable"]:
     out.append("<details><summary>Unparsable report files</summary>")
@@ -152,20 +161,22 @@ def render_markdown(stats, flaky, failed_after_retries):
     out += [f"- `{u}`" for u in stats["unparsable"]]
     out.append("</details>")
     out.append("")
-  out.append(f"<sub>Parsed {stats['files']} Surefire report file(s).</sub>")
+  out.append(f"<sub>Parsed {stats['files']} Surefire report file(s). Failure reason is the error "
+             "from the first failed attempt.</sub>")
   return "\n".join(out) + "\n"
 
 
-def annotations(flaky, failed_after_retries):
-  out = []
-  for r in flaky[:MAX_ANNOTATIONS_PER_KIND]:
-    retries = r["runs"] - 1
-    out.append(f"::warning title=Flaky IT (passed after {retries} "
-               f"{'retry' if retries == 1 else 'retries'})::"
-               f"{annotation_text(r['name'] + ' [' + r['module'] + ']: ' + r['message'])}")
-  for r in failed_after_retries[:MAX_ANNOTATIONS_PER_KIND]:
-    out.append(f"::error title=IT failed on all {r['runs']} runs::"
-               f"{annotation_text(r['name'] + ' [' + r['module'] + ']: ' + r['message'])}")
+def annotations(rows):
+  out, counts = [], {"warning": 0, "error": 0}
+  for r in rows:
+    level = "warning" if r["final"] == "flaky" else "error"
+    if counts[level] >= MAX_ANNOTATIONS_PER_KIND:
+      continue
+    counts[level] += 1
+    title = ("Flaky IT: " if level == "warning" else "IT failed: ") + \
+        r["status"].split(" ", 1)[1]
+    out.append(f"::{level} title={annotation_text(title)}::"
+               f"{annotation_text(r['name'] + ' [' + r['module'] + ']: ' + r['reason'])}")
   return out
 
 
@@ -175,8 +186,8 @@ def main(argv):
   parser.add_argument("--no-annotate", action="store_true", help="Do not print annotations")
   args = parser.parse_args(argv)
   try:
-    stats, flaky, failed_after_retries = collect(args.root)
-    markdown = render_markdown(stats, flaky, failed_after_retries)
+    stats, rows = collect(args.root)
+    markdown = render_markdown(stats, rows)
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
       with open(summary_path, "a", encoding="utf-8") as f:
@@ -184,7 +195,7 @@ def main(argv):
     else:
       sys.stdout.write(markdown)
     if not args.no_annotate:
-      for line in annotations(flaky, failed_after_retries):
+      for line in annotations(rows):
         print(line)
   except Exception as e:  # never fail the job because of the report
     print(f"::warning title=Retry report failed::{annotation_text(repr(e))}")

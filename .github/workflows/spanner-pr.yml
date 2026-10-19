@@ -214,8 +214,12 @@ jobs:
     - name: Run Integration Tests
       env:
         # DRAFT / TESTING ONLY, do not merge: run only 5 Bulk ITs and inject random failures.
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT,MySQLSingleShardIT,MySQLSourceDBToSpannerWideRowInterleaveDepthIT' }}
-        IT_CHAOS_FAILURE_PROBABILITY: '0.5'
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT,MySQLSingleShardIT,MySQLSourceDBToSpannerWideRowInterleaveDepthIT,MySQLToSpannerWiderowForMaxColumnsPerTableIT,MySQLSessionSchemaMapperWithTableFilterIT,MySQLCustomTransformationsNonShardedIT,SourceDbToSpannerTimezoneIT,MySQLIdentitySchemaMapperIT' }}
+        # Per test: ~12% genuine (not re-run), ~15% pass first time, ~73% transient; each of the 3
+        # reruns fails again with 60%, so ~16% fail all 4 runs and the rest pass on a retry.
+        IT_CHAOS_GENUINE_PROBABILITY: '0.12'
+        IT_CHAOS_TRANSIENT_PROBABILITY: '0.73'
+        IT_CHAOS_RERUN_TRANSIENT_PROBABILITY: '0.6'
         # Surefire reruns failed tests once (--it-retry-failures); on the rerun,
         # SkipRerunOfGenuineFailuresRule fails genuine (e.g. assertion) failures without re-running them.
         IT_SKIP_RERUN_OF_GENUINE_FAILURES: 'true'
@@ -230,7 +234,7 @@ jobs:
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
-        --it-retry-failures=1 \
+        --it-retry-failures=3 \
         --test="$SPECIFIC_TEST"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
