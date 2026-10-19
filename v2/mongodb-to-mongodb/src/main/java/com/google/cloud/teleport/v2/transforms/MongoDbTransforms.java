@@ -81,8 +81,6 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -1437,6 +1435,27 @@ public class MongoDbTransforms {
       }
     }
 
+    private void putCoalescedOp(
+        Map<String, LinkedHashMap<Object, CoalescedOp>> coalescedByCollection,
+        String targetCol,
+        Object id,
+        WriteModel<Document> model,
+        DocumentWithMetadata item,
+        boolean isDelete) {
+      LinkedHashMap<Object, CoalescedOp> colMap =
+          coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
+      CoalescedOp prev = colMap.get(id);
+      if (prev != null) {
+        writeBatchesCoalesced.inc();
+        if (item.getTimestampSortKey() != null
+            && prev.item.getTimestampSortKey() != null
+            && item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+          return;
+        }
+      }
+      colMap.put(id, new CoalescedOp(model, item, isDelete));
+    }
+
     private void flushBatch(List<DocumentWithMetadata> items) throws InterruptedException {
       if (items == null || items.isEmpty()) {
         return;
@@ -1453,19 +1472,13 @@ public class MongoDbTransforms {
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
           Object id = item.getId();
           if (id != null) {
-            LinkedHashMap<Object, CoalescedOp> colMap =
-                coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-            CoalescedOp prev = colMap.get(id);
-            if (prev != null) {
-              writeBatchesCoalesced.inc();
-              if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
-                if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
-                  continue;
-                }
-              }
-            }
-            colMap.put(
-                id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
+            putCoalescedOp(
+                coalescedByCollection,
+                targetCol,
+                id,
+                new DeleteOneModel<>(new Document("_id", id)),
+                item,
+                true);
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1485,24 +1498,14 @@ public class MongoDbTransforms {
           if (doc != null) {
             Object id = doc.get("_id");
             if (id != null) {
-              LinkedHashMap<Object, CoalescedOp> colMap =
-                  coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-              CoalescedOp prev = colMap.get(id);
-              if (prev != null) {
-                writeBatchesCoalesced.inc();
-                if (item.getTimestampSortKey() != null && prev.item.getTimestampSortKey() != null) {
-                  if (item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
-                    continue;
-                  }
-                }
-              }
-              colMap.put(
+              putCoalescedOp(
+                  coalescedByCollection,
+                  targetCol,
                   id,
-                  new CoalescedOp(
-                      new ReplaceOneModel<>(
-                          new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
-                      item,
-                      false));
+                  new ReplaceOneModel<>(
+                      new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                  item,
+                  false);
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
@@ -1821,8 +1824,6 @@ public class MongoDbTransforms {
   /** A {@link DoFn} that applies a JavaScript UDF to the document. */
   public static class ApplyUdfFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
     private static final Logger LOG = LoggerFactory.getLogger(ApplyUdfFn.class);
-    private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
-        JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final String fileSystemPath;
     private final String functionName;
@@ -1865,17 +1866,14 @@ public class MongoDbTransforms {
       if (javascriptRuntime != null) {
         try {
           String payload = item.getOriginalDocument();
-          if (payload == null && item.getDocument() != null) {
-            payload = item.getDocument().toJson(CANONICAL_JSON_SETTINGS);
-          }
           if (payload == null) {
             c.output(item);
             return;
           }
           String transformed = javascriptRuntime.invoke(payload);
           if (transformed != null) {
-            Document doc = Document.parse(transformed);
-            c.output(item.withDocument(doc));
+            Document doc = Document.parse(transformed, DocumentWithMetadata.DOCUMENT_CODEC);
+            c.output(item.withDocument(doc, payload));
           } else {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
             udfProcessingFailures.inc();

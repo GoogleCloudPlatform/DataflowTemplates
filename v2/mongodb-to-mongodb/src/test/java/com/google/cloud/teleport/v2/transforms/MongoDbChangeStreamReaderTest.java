@@ -493,7 +493,24 @@ public class MongoDbChangeStreamReaderTest {
     Document doc = new Document("_id", 1).append("name", "Alice");
     BsonDocument docKey = new BsonDocument("_id", new BsonInt32(1));
     BsonTimestamp ts = new BsonTimestamp(1724000000, 1);
-    ChangeStreamDocument<Document> event = createEvent(OperationType.INSERT, doc, docKey, ts);
+    BsonDocument eventToken = new BsonDocument("_data", new BsonString("token-event-1"));
+    ChangeStreamDocument<Document> event =
+        new ChangeStreamDocument<>(
+            OperationType.INSERT.getValue(),
+            eventToken,
+            null,
+            null,
+            null,
+            doc,
+            null,
+            docKey,
+            ts,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     when(mockCursor.tryNext()).thenReturn(event, (ChangeStreamDocument<Document>) null);
 
@@ -519,6 +536,8 @@ public class MongoDbChangeStreamReaderTest {
 
     assertTrue(continuation.shouldResume());
     assertEquals(0L, continuation.resumeDelay().getMillis()); // Zero delay for burst
+    assertEquals(1L, tracker.currentRestriction().getOffset());
+    assertEquals(eventToken, tracker.currentRestriction().getResumeToken());
     fn.teardown();
   }
 
@@ -1049,6 +1068,18 @@ public class MongoDbChangeStreamReaderTest {
   }
 
   @Test
+  public void testBuildChangeStreamPipeline_defaultFullDocumentStrategy_omitsUnsetStage() {
+    ChangeStreamPartition partition =
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017", "testDb", "users", "users", 0, 1, null, 0, 0, "default");
+
+    List<org.bson.conversions.Bson> pipeline =
+        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+
+    assertTrue(pipeline.isEmpty());
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testPartitionCursorHolder_coalesceTimeoutDoesNotRewindToStalePostBatchToken()
       throws Exception {
@@ -1075,13 +1106,17 @@ public class MongoDbChangeStreamReaderTest {
             null,
             null);
 
-    // First tryNext() returns event1; second tryNext() blocks for 150ms (simulating server
-    // maxAwaitTime) while pollNext(20ms) times out.
+    java.util.concurrent.CountDownLatch secondTryNextEntered =
+        new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch releaseSecondTryNext =
+        new java.util.concurrent.CountDownLatch(1);
+
     when(mockCursor.tryNext())
         .thenReturn(event1)
         .thenAnswer(
             inv -> {
-              Thread.sleep(150L);
+              secondTryNextEntered.countDown();
+              releaseSecondTryNext.await();
               return null;
             });
 
@@ -1090,18 +1125,46 @@ public class MongoDbChangeStreamReaderTest {
       // Initial post-batch token must be null before any idle tryNext() completes
       assertNull(holder.getLatestPostBatchResumeToken());
 
-      ChangeStreamDocument<Document> polled = holder.pollNext(200L);
+      ChangeStreamDocument<Document> polled = holder.pollNext(1000L);
       assertNotNull(polled);
       holder.setLastResumeToken(polled.getResumeToken());
 
-      // Next poll times out while prefetcher is still inside the 150ms tryNext()
-      ChangeStreamDocument<Document> timedOutPoll = holder.pollNext(20L);
+      assertTrue(secondTryNextEntered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+
+      // Next poll times out while prefetcher is blocked inside the second tryNext()
+      ChangeStreamDocument<Document> timedOutPoll = holder.pollNext(10L);
       assertNull(timedOutPoll);
 
       // Post-batch token must be null (NOT initialToken) so lastResumeToken is not rewound
       assertNull(holder.getLatestPostBatchResumeToken());
       assertEquals(eventToken, holder.getLastResumeToken());
       assertEquals(mockCursor, holder.getCursor());
+      releaseSecondTryNext.countDown();
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testPartitionCursorHolder_prefetchExceptionRethrowsAndMarksStopped()
+      throws Exception {
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
+    when(mockCursor.tryNext()).thenThrow(new RuntimeException("Simulated cursor failure"));
+
+    try (ProcessChangeStreamPartitionFn.PartitionCursorHolder holder =
+        new ProcessChangeStreamPartitionFn.PartitionCursorHolder(mockCursor, null)) {
+      RuntimeException thrown = null;
+      for (int attempt = 0; attempt < 20 && thrown == null; attempt++) {
+        try {
+          holder.pollNext(50L);
+        } catch (RuntimeException e) {
+          thrown = e;
+        }
+      }
+      assertNotNull(thrown);
+      assertTrue(thrown.getMessage().contains("Simulated cursor failure"));
+      // Subsequent pollNext must return null immediately without hanging on dead thread
+      assertNull(holder.pollNext(5000L));
     }
   }
 

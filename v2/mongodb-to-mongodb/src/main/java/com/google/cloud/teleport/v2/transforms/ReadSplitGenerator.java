@@ -165,13 +165,14 @@ public final class ReadSplitGenerator {
                     + " \"string\", \"objectId\"]}}}"));
       }
 
-      if (branchFilters.isEmpty()) {
-        filters.add(new BsonDocument());
-      } else if (branchFilters.size() == 1) {
+      if (branchFilters.size() == 1) {
         filters.add(branchFilters.get(0));
-      } else {
+      } else if (branchFilters.size() > 1) {
         filters.add(new BsonDocument("$or", new BsonArray(branchFilters)));
       }
+    }
+    if (filters.isEmpty()) {
+      filters.add(new BsonDocument());
     }
     return filters;
   }
@@ -279,8 +280,12 @@ public final class ReadSplitGenerator {
   public static List<ProbedTypeBounds> probeActiveTypeBounds(MongoCollection<BsonDocument> col) {
     try {
       // Step 1: Global Min / Max seek (O(1) covered index scan)
+      com.mongodb.client.FindIterable<BsonDocument> findIterable = col.find();
+      if (findIterable == null) {
+        return Collections.emptyList();
+      }
       BsonDocument minDoc =
-          col.find()
+          findIterable
               .projection(new BsonDocument("_id", new BsonInt32(1)))
               .sort(new BsonDocument("_id", new BsonInt32(1)))
               .limit(1)
@@ -321,9 +326,13 @@ public final class ReadSplitGenerator {
       }
 
       // Case B: Mixed collection
+      // Note: "string" (idx 3) and "symbol" (idx 4) share the same canonical BSON sort rank,
+      // so a collection with min=Symbol("a") and max=String("z") has minIdx=4 and maxIdx=3.
       int minIdx = KNOWN_TYPE_BUCKETS.indexOf(minBucket);
       int maxIdx = KNOWN_TYPE_BUCKETS.indexOf(maxBucket);
-      if (minIdx < 0 || maxIdx < 0 || minIdx > maxIdx) {
+      boolean isSymbolToStringSharedRank =
+          "symbol".equals(minBucket.getName()) && "string".equals(maxBucket.getName());
+      if (minIdx < 0 || maxIdx < 0 || (minIdx > maxIdx && !isSymbolToStringSharedRank)) {
         return Collections.emptyList();
       }
 
@@ -556,6 +565,14 @@ public final class ReadSplitGenerator {
       return Collections.singletonList(new BsonDocument("_id", idDoc));
     }
 
+    // Non-finite numeric bounds (NaN, +/-Infinity) cannot be partitioned with $gt/$lte range
+    // predicates because MongoDB does not match NaN against finite numeric bounds.
+    if ("number".equals(bounds.getBucket().getName())
+        && (asBigDecimal(bounds.getMinKey()) == null || asBigDecimal(bounds.getMaxKey()) == null)) {
+      BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
+      return Collections.singletonList(new BsonDocument("_id", idDoc));
+    }
+
     // Filter sampled keys to this specific type (already sorted by MongoDB $sort: {_id: 1})
     List<BsonValue> typeKeys = new ArrayList<>();
     for (BsonValue k : sampledKeys) {
@@ -737,21 +754,28 @@ public final class ReadSplitGenerator {
           new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
     }
 
-    List<BsonDocument> slices = new ArrayList<>();
-    for (int i = 0; i < numSplits; i++) {
+    List<BsonValue> boundaries = new ArrayList<>(numSplits - 1);
+    for (int i = 1; i < numSplits; i++) {
+      BsonValue bound =
+          toBsonNumber(minDec.add(step.multiply(BigDecimal.valueOf(i))), minVal, maxVal);
+      if (boundaries.isEmpty() || !bound.equals(boundaries.get(boundaries.size() - 1))) {
+        boundaries.add(bound);
+      }
+    }
+    if (boundaries.isEmpty()) {
+      return Collections.singletonList(
+          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+    }
+
+    List<BsonDocument> slices = new ArrayList<>(boundaries.size() + 1);
+    for (int i = 0; i <= boundaries.size(); i++) {
       BsonDocument idDoc = new BsonDocument("$type", NUMBER_BSON_TYPES);
       if (i == 0) {
-        BigDecimal high = minDec.add(step);
-        idDoc.append("$lt", toBsonNumber(high, minVal, maxVal));
-      } else if (i == numSplits - 1) {
-        BigDecimal low = minDec.add(step.multiply(BigDecimal.valueOf(i)));
-        idDoc.append("$gte", toBsonNumber(low, minVal, maxVal));
+        idDoc.append("$lt", boundaries.get(0));
+      } else if (i == boundaries.size()) {
+        idDoc.append("$gte", boundaries.get(boundaries.size() - 1));
       } else {
-        BigDecimal low = minDec.add(step.multiply(BigDecimal.valueOf(i)));
-        BigDecimal high = minDec.add(step.multiply(BigDecimal.valueOf(i + 1)));
-        idDoc
-            .append("$gte", toBsonNumber(low, minVal, maxVal))
-            .append("$lt", toBsonNumber(high, minVal, maxVal));
+        idDoc.append("$gte", boundaries.get(i - 1)).append("$lt", boundaries.get(i));
       }
       slices.add(new BsonDocument("_id", idDoc));
     }

@@ -458,6 +458,12 @@ public class MongoDbToMongoDb {
             dtpe);
       }
     }
+    if (sec <= 0 || sec > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "startAtOperationTime epoch seconds out of valid 32-bit range: '"
+              + value
+              + "'. Expected positive epoch seconds (e.g. 1789041600, not milliseconds).");
+    }
     return new BsonTimestamp((int) sec, 0);
   }
 

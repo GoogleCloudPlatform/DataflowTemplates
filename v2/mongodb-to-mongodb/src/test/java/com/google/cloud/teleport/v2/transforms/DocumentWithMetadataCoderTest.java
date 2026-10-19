@@ -233,6 +233,28 @@ public class DocumentWithMetadataCoderTest {
     CoderProperties.coderDecodeEncodeEqual(DocumentWithMetadataCoder.of(), cdcItem);
   }
 
+  @Test
+  public void testEncodeDecode_uuidRepresentationStandardRoundTrip() throws Exception {
+    java.util.UUID idUuid = java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    java.util.UUID payloadUuid = java.util.UUID.fromString("987e6543-e21b-12d3-a456-426614174999");
+    Document doc = new Document("_id", idUuid).append("correlationId", payloadUuid);
+
+    DocumentWithMetadata item =
+        DocumentWithMetadata.backfillEvent(
+            doc, "sourceCol", "targetCol", TimestampSortKey.backfill(100L));
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    DocumentWithMetadataCoder.of().encode(item, out);
+    DocumentWithMetadata decoded =
+        DocumentWithMetadataCoder.of().decode(new ByteArrayInputStream(out.toByteArray()));
+
+    assertNotNull(decoded);
+    assertEquals(idUuid, decoded.getId());
+    assertEquals(payloadUuid, decoded.getDocument().get("correlationId", java.util.UUID.class));
+    assertEquals(item.getOriginalDocument(), decoded.getOriginalDocument());
+    CoderProperties.coderDecodeEncodeEqual(DocumentWithMetadataCoder.of(), item);
+  }
+
   private static DocumentWithMetadata withOriginalDocument(Document doc, String originalDocument) {
     return new DocumentWithMetadata(
         doc,

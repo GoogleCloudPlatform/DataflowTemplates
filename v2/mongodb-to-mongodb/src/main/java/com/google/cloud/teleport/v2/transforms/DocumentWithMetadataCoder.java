@@ -28,13 +28,9 @@ import org.apache.beam.sdk.coders.VarIntCoder;
 import org.bson.BsonBinaryReader;
 import org.bson.BsonBinaryWriter;
 import org.bson.Document;
-import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
-import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
 import org.bson.io.BasicOutputBuffer;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 
 /**
  * Deterministic binary coder for {@link DocumentWithMetadata}.
@@ -51,20 +47,6 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
   private static final BooleanCoder BOOLEAN_CODER = BooleanCoder.of();
   private static final VarIntCoder VARINT_CODER = VarIntCoder.of();
   private static final TimestampSortKeyCoder TIMESTAMP_CODER = TimestampSortKeyCoder.of();
-  private static final Codec<Document> DOCUMENT_CODEC = new DocumentCodec();
-
-  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
-      JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
-
-  /**
-   * Wire markers for the {@code originalDocument} field. A single boolean cannot distinguish "the
-   * field was null" from "the field was equal to the serialized document", so both decode to null
-   * and break {@code decode(encode(x)).equals(x)}.
-   */
-  private static final int ORIGINAL_DOC_ABSENT = 0;
-
-  private static final int ORIGINAL_DOC_SAME_AS_DOCUMENT = 1;
-  private static final int ORIGINAL_DOC_DISTINCT = 2;
 
   private DocumentWithMetadataCoder() {}
 
@@ -78,7 +60,7 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     }
     BasicOutputBuffer buffer = new BasicOutputBuffer();
     try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
-      DOCUMENT_CODEC.encode(writer, doc, EncoderContext.builder().build());
+      DocumentWithMetadata.DOCUMENT_CODEC.encode(writer, doc, EncoderContext.builder().build());
     }
     return buffer.toByteArray();
   }
@@ -88,7 +70,7 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
       return null;
     }
     try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(bytes))) {
-      return DOCUMENT_CODEC.decode(reader, DecoderContext.builder().build());
+      return DocumentWithMetadata.DOCUMENT_CODEC.decode(reader, DecoderContext.builder().build());
     }
   }
 
@@ -102,23 +84,7 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
 
     Document doc = value.getDocument();
     BYTE_ARRAY_CODER.encode(encodeBsonDocument(doc), outStream);
-
-    String originalDoc = value.rawOriginalDocument();
-    int originalDocState;
-    if (originalDoc == null) {
-      originalDocState = ORIGINAL_DOC_ABSENT;
-    } else {
-      String docJson = doc != null ? doc.toJson(CANONICAL_JSON_SETTINGS) : null;
-      if (originalDoc.equals(docJson)) {
-        originalDocState = ORIGINAL_DOC_SAME_AS_DOCUMENT;
-      } else {
-        originalDocState = ORIGINAL_DOC_DISTINCT;
-      }
-    }
-    VARINT_CODER.encode(originalDocState, outStream);
-    if (originalDocState == ORIGINAL_DOC_DISTINCT) {
-      STRING_CODER.encode(originalDoc, outStream);
-    }
+    STRING_CODER.encode(value.rawOriginalDocument(), outStream);
 
     VARINT_CODER.encode(value.getRetryCount() != null ? value.getRetryCount() : 0, outStream);
     STRING_CODER.encode(value.getErrorMessage(), outStream);
@@ -144,20 +110,7 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
 
     byte[] docBytes = BYTE_ARRAY_CODER.decode(inStream);
     Document doc = decodeBsonDocument(docBytes);
-
-    int originalDocState = VARINT_CODER.decode(inStream);
-    String originalDoc;
-    switch (originalDocState) {
-      case ORIGINAL_DOC_SAME_AS_DOCUMENT:
-        originalDoc = doc != null ? doc.toJson(CANONICAL_JSON_SETTINGS) : null;
-        break;
-      case ORIGINAL_DOC_DISTINCT:
-        originalDoc = STRING_CODER.decode(inStream);
-        break;
-      default:
-        originalDoc = null;
-        break;
-    }
+    String originalDoc = STRING_CODER.decode(inStream);
     int retryCount = VARINT_CODER.decode(inStream);
     String errorMessage = STRING_CODER.decode(inStream);
     String errorTypeStr = STRING_CODER.decode(inStream);

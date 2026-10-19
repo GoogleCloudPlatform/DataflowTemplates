@@ -327,7 +327,9 @@ public class MongoDbChangeStreamReader {
         && !partition.getMatchFilterJson().isEmpty()) {
       pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
     }
-    pipeline.add(new BsonDocument("$unset", new BsonString("updateDescription")));
+    if (partition == null || !"default".equalsIgnoreCase(partition.getFullDocumentStrategy())) {
+      pipeline.add(new BsonDocument("$unset", new BsonString("updateDescription")));
+    }
     return pipeline;
   }
 
@@ -513,15 +515,29 @@ public class MongoDbChangeStreamReader {
     private static final long serialVersionUID = 1L;
 
     private final long offset;
-    private final String resumeTokenJson;
+    private final BsonDocument resumeToken;
+    private transient String cachedResumeTokenJson;
 
     public ChangeStreamRestriction() {
-      this(0L, null);
+      this(0L, null, null);
     }
 
     public ChangeStreamRestriction(long offset, String resumeTokenJson) {
+      this(
+          offset,
+          resumeTokenJson != null ? BsonDocument.parse(resumeTokenJson) : null,
+          resumeTokenJson);
+    }
+
+    private ChangeStreamRestriction(
+        long offset, BsonDocument resumeToken, String cachedResumeTokenJson) {
       this.offset = offset;
-      this.resumeTokenJson = resumeTokenJson;
+      this.resumeToken = resumeToken;
+      this.cachedResumeTokenJson = cachedResumeTokenJson;
+    }
+
+    public static ChangeStreamRestriction of(long offset, BsonDocument resumeToken) {
+      return new ChangeStreamRestriction(offset, resumeToken, null);
     }
 
     public long getOffset() {
@@ -529,11 +545,19 @@ public class MongoDbChangeStreamReader {
     }
 
     public String getResumeTokenJson() {
-      return resumeTokenJson;
+      if (resumeToken == null) {
+        return null;
+      }
+      String json = cachedResumeTokenJson;
+      if (json == null) {
+        json = resumeToken.toJson(CANONICAL_JSON_SETTINGS);
+        cachedResumeTokenJson = json;
+      }
+      return json;
     }
 
     public BsonDocument getResumeToken() {
-      return resumeTokenJson != null ? BsonDocument.parse(resumeTokenJson) : null;
+      return resumeToken;
     }
 
     @Override
@@ -545,12 +569,12 @@ public class MongoDbChangeStreamReader {
         return false;
       }
       ChangeStreamRestriction that = (ChangeStreamRestriction) o;
-      return offset == that.offset && Objects.equals(resumeTokenJson, that.resumeTokenJson);
+      return offset == that.offset && Objects.equals(resumeToken, that.resumeToken);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(offset, resumeTokenJson);
+      return Objects.hash(offset, resumeToken);
     }
 
     @Override
@@ -558,7 +582,7 @@ public class MongoDbChangeStreamReader {
       return "ChangeStreamRestriction{offset="
           + offset
           + ", hasResumeToken="
-          + (resumeTokenJson != null)
+          + (resumeToken != null)
           + "}";
     }
   }
@@ -680,16 +704,6 @@ public class MongoDbChangeStreamReader {
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle timeout
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280 = 280;
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286 = 286;
-
-    /**
-     * Stride (in events) at which the BSON resume token is serialized to an Extended JSON string
-     * during the inner polling loop. Serializing toJson() on all 10,000 events per slice causes
-     * heavy CPU and heap contention on reader threads. Reusing the serialized token string across
-     * this stride eliminates 99.5% of serialization overhead while still satisfying Beam's
-     * claim-before-output requirement on every single element. The exact final resume token is
-     * always serialized and committed at slice completion.
-     */
-    public static final int RESUME_TOKEN_SERIALIZATION_STRIDE = 200;
 
     private final Counter changeEventsRead =
         Metrics.counter(MongoDbChangeStreamReader.class, "changeEventsRead");
@@ -821,7 +835,7 @@ public class MongoDbChangeStreamReader {
               }
               long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
               synchronized (pollLock) {
-                if (token != null) {
+                if (token != null && eventQueue.isEmpty()) {
                   latestPostBatchToken = token;
                 }
                 lastTryNextWasNull = true;
@@ -836,12 +850,13 @@ public class MongoDbChangeStreamReader {
             Thread.currentThread().interrupt();
             break;
           } catch (Throwable t) {
-            if (running) {
-              synchronized (pollLock) {
+            synchronized (pollLock) {
+              if (running) {
                 prefetchError = t;
-                completedPolls++;
-                pollLock.notifyAll();
               }
+              running = false;
+              completedPolls++;
+              pollLock.notifyAll();
             }
             break;
           }
@@ -850,14 +865,8 @@ public class MongoDbChangeStreamReader {
 
       public void requestFreshPollIfIdle() {
         this.lastAccessedMs = System.currentTimeMillis();
-        if (!eventQueue.isEmpty()) {
-          return;
-        }
         synchronized (pollLock) {
-          if (eventQueue.isEmpty()
-              && prefetchError == null
-              && completedPolls > 0
-              && lastTryNextWasNull) {
+          if (prefetchError == null && completedPolls > 0 && lastTryNextWasNull) {
             lastTryNextWasNull = false;
             pollLock.notifyAll();
           }
@@ -872,7 +881,7 @@ public class MongoDbChangeStreamReader {
         }
         long deadlineMs = System.currentTimeMillis() + timeoutMs;
         synchronized (pollLock) {
-          while (running) {
+          while (true) {
             item = eventQueue.poll();
             if (item != null) {
               return item;
@@ -880,7 +889,7 @@ public class MongoDbChangeStreamReader {
             if (prefetchError != null) {
               rethrowPrefetchError();
             }
-            if (completedPolls > 0 && lastTryNextWasNull) {
+            if (!running || (completedPolls > 0 && lastTryNextWasNull)) {
               return null;
             }
             long remainingMs = deadlineMs - System.currentTimeMillis();
@@ -895,7 +904,6 @@ public class MongoDbChangeStreamReader {
             }
           }
         }
-        return eventQueue.poll();
       }
 
       private void rethrowPrefetchError() {
@@ -925,7 +933,9 @@ public class MongoDbChangeStreamReader {
       }
 
       public BsonDocument getLatestPostBatchResumeToken() {
-        return latestPostBatchToken;
+        synchronized (pollLock) {
+          return (eventQueue.isEmpty() && lastTryNextWasNull) ? latestPostBatchToken : null;
+        }
       }
 
       public boolean isExpired(long timeoutMs) {
@@ -1151,7 +1161,6 @@ public class MongoDbChangeStreamReader {
       long currentOffset = currentRestriction.getOffset();
       BsonDocument postBatchToken = null;
       BsonDocument lastSeenResumeToken = null;
-      String currentResumeTokenJson = currentRestriction.getResumeTokenJson();
 
       try {
         if (!rebuiltThisSlice) {
@@ -1208,12 +1217,8 @@ public class MongoDbChangeStreamReader {
           if (event.getResumeToken() != null) {
             lastSeenResumeToken = event.getResumeToken();
             cursorHolder.setLastResumeToken(lastSeenResumeToken);
-            if (eventsInSlice % RESUME_TOKEN_SERIALIZATION_STRIDE == 0) {
-              currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
-            }
             if (!tracker.tryClaim(
-                new ChangeStreamRestriction(
-                    currentOffset + eventsInSlice, currentResumeTokenJson))) {
+                ChangeStreamRestriction.of(currentOffset + eventsInSlice, lastSeenResumeToken))) {
               closeCursorForPartition(partitionKey);
               return ProcessContinuation.stop();
             }
@@ -1230,10 +1235,9 @@ public class MongoDbChangeStreamReader {
           }
         }
 
-        if (lastSeenResumeToken != null) {
-          currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
+        if (postBatchToken != null) {
           if (!tracker.tryClaim(
-              new ChangeStreamRestriction(currentOffset + eventsInSlice, currentResumeTokenJson))) {
+              ChangeStreamRestriction.of(currentOffset + eventsInSlice, postBatchToken))) {
             closeCursorForPartition(partitionKey);
             return ProcessContinuation.stop();
           }

@@ -172,7 +172,16 @@ public class MongoDbToMongoDbTest {
   @Test
   public void parseStartAtOperationTime_unparseable_throwsRatherThanStartingFromNow() {
     for (String bad :
-        new String[] {"2026-09-10T12:00:00", "2026-09-10", "not-a-time", "yesterday", ""}) {
+        new String[] {
+          "2026-09-10T12:00:00",
+          "2026-09-10",
+          "not-a-time",
+          "yesterday",
+          "",
+          "1724000000000",
+          "0",
+          "-100"
+        }) {
       IllegalArgumentException e =
           assertThrows(
               "expected rejection of '" + bad + "'",
