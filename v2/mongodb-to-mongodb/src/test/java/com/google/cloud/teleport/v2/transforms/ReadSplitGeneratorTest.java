@@ -550,6 +550,52 @@ public class ReadSplitGeneratorTest {
         ReadSplitGenerator.generateProbedNumberSplits(
             new org.bson.BsonDouble(5.0), new org.bson.BsonDouble(5.0), 4);
     assertEquals(1, singleSplit.size());
+
+    // Negative zero (-0) in Decimal128 maps to BigDecimal.ZERO and interpolates normally with a
+    // finite positive max bound
+    List<BsonDocument> negZeroToPosSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new org.bson.BsonDecimal128(org.bson.types.Decimal128.NEGATIVE_ZERO),
+            new org.bson.BsonDecimal128(
+                new org.bson.types.Decimal128(new java.math.BigDecimal("100"))),
+            4);
+    assertEquals(4, negZeroToPosSplits.size());
+    assertTrue(negZeroToPosSplits.get(0).toJson().contains("25"));
+
+    // Non-finite bounds (NaN, +/-Infinity) cannot be linearly interpolated even when paired with a
+    // finite bound (e.g. min=NaN, max=100 or min=-100, max=+Infinity) and must fall back to the
+    // single unsplit $type filter so NaN/Infinity documents are never excluded by $lt/$gte bounds.
+    List<BsonDocument> nanMinWithFiniteMaxSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new org.bson.BsonDecimal128(org.bson.types.Decimal128.NaN),
+            new org.bson.BsonDecimal128(
+                new org.bson.types.Decimal128(new java.math.BigDecimal("100"))),
+            4);
+    assertEquals(1, nanMinWithFiniteMaxSplits.size());
+    assertFalse(nanMinWithFiniteMaxSplits.get(0).toJson().contains("$lt"));
+
+    List<BsonDocument> finiteMinWithPosInfMaxSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new org.bson.BsonDouble(-100.0), new org.bson.BsonDouble(Double.POSITIVE_INFINITY), 4);
+    assertEquals(1, finiteMinWithPosInfMaxSplits.size());
+    assertFalse(finiteMinWithPosInfMaxSplits.get(0).toJson().contains("$lt"));
+
+    List<BsonDocument> doubleNanMinWithFiniteMaxSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new org.bson.BsonDouble(Double.NaN), new org.bson.BsonDouble(100.0), 4);
+    assertEquals(1, doubleNanMinWithFiniteMaxSplits.size());
+
+    // Integer range smaller than numSplits (step == 0) returns single unsplit number filter
+    List<BsonDocument> smallIntRangeSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new org.bson.BsonInt32(1), new org.bson.BsonInt32(2), 4);
+    assertEquals(1, smallIntRangeSplits.size());
+
+    // ObjectId range smaller than numSplits (step == 0) returns single unsplit objectId filter
+    List<BsonDocument> smallOidRangeSplits =
+        ReadSplitGenerator.generateProbedObjectIdSplits(
+            "600000000000000000000001", "600000000000000000000002", 4);
+    assertEquals(1, smallOidRangeSplits.size());
   }
 
   @Test

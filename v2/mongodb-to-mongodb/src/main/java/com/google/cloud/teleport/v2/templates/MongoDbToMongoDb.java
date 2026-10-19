@@ -416,9 +416,9 @@ public class MongoDbToMongoDb {
         description = "Deduplication State Retention (hours)",
         helpText =
             "How long per-document deduplication state is retained after the most recent accepted"
-                + " event, in hours. Only applies when both backfill and change streams are"
-                + " enabled. Defaults to 0, meaning state is kept for the life of the job; this is"
-                + " recommended. Per-document state is only about a hundred bytes, so bounding it"
+                + " event, in hours. Only applies when change streams are enabled. Defaults to 0,"
+                + " meaning state is kept for the life of the job; this is recommended."
+                + " Per-document state is only about a hundred bytes, so bounding it"
                 + " saves little, and if state expires while backfill is still running then a"
                 + " stale backfill record for that document is treated as unseen and re-applied"
                 + " over newer change stream data. Only set this if deduplication state size is a"
@@ -772,11 +772,7 @@ public class MongoDbToMongoDb {
           documents.apply(
               "ProcessDocuments",
               new ProcessDocuments(
-                  options,
-                  retryableDlqPath,
-                  permanentDlqPath,
-                  tmpDirectory,
-                  includeCdc));
+                  options, retryableDlqPath, permanentDlqPath, tmpDirectory, includeCdc));
 
       validDocs.apply(
           "WriteDocuments",

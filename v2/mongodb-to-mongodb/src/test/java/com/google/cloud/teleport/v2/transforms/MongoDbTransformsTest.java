@@ -982,6 +982,72 @@ public class MongoDbTransformsTest {
 
   @Test
   @SuppressWarnings("unchecked")
+  public void testWriteBatchesCoalescing_staleDeleteAfterInsert_keepsInsert() throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    org.mockito.ArgumentCaptor<List<WriteModel<Document>>> captor =
+        org.mockito.ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    // Newer Insert event at T=1000, inc=1
+    Document doc1 = new Document("_id", 100).append("name", "Alice");
+    DocumentWithMetadata newerInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            doc1,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000, 1),
+            null);
+
+    // Older Delete event at T=800, inc=1 arriving out of order in the same batch
+    DocumentWithMetadata staleDeleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(800, 1),
+            new Document("_id", 100).toJson());
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element())
+        .thenReturn(KV.of("users#0", Arrays.asList(newerInsertItem, staleDeleteItem)));
+
+    fn.processElement(mockCtx);
+
+    @SuppressWarnings("unchecked")
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    List<WriteModel<Document>> capturedModels = captor.getValue();
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
   public void testWriteBatchesCoalescing_multipleUpdates_emitsLatestPayload() throws Exception {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
@@ -1183,5 +1249,15 @@ public class MongoDbTransformsTest {
     ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
     assertEquals(2, replaceModel.getReplacement().get("val"));
     assertEquals(new Binary(idBytes), replaceModel.getReplacement().get("_id"));
+  }
+
+  @Test
+  public void testCreateMongoClient_respectsConnectionStringPoolAndSocketTimeouts() {
+    try (MongoClient client =
+        MongoDbTransforms.createMongoClient(
+            "mongodb://localhost:27017/?maxPoolSize=64&minPoolSize=2&waitQueueTimeoutMS=5000"
+                + "&connectTimeoutMS=3000&socketTimeoutMS=10000")) {
+      assertNotNull(client);
+    }
   }
 }

@@ -1047,4 +1047,112 @@ public class MongoDbChangeStreamReaderTest {
         new BsonDocument("$unset", new BsonString("updateDescription")),
         pipeline.get(1).toBsonDocument());
   }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testPartitionCursorHolder_coalesceTimeoutDoesNotRewindToStalePostBatchToken()
+      throws Exception {
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
+    BsonDocument initialToken = new BsonDocument("_data", new BsonString("initial-token"));
+    BsonDocument eventToken = new BsonDocument("_data", new BsonString("event-token-1"));
+
+    ChangeStreamDocument<Document> event1 =
+        new ChangeStreamDocument<>(
+            OperationType.INSERT.getValue(),
+            eventToken,
+            null,
+            null,
+            null,
+            new Document("_id", 1),
+            null,
+            new BsonDocument("_id", new BsonInt32(1)),
+            new BsonTimestamp(1724000000, 1),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    // First tryNext() returns event1; second tryNext() blocks for 150ms (simulating server
+    // maxAwaitTime) while pollNext(20ms) times out.
+    when(mockCursor.tryNext())
+        .thenReturn(event1)
+        .thenAnswer(
+            inv -> {
+              Thread.sleep(150L);
+              return null;
+            });
+
+    try (ProcessChangeStreamPartitionFn.PartitionCursorHolder holder =
+        new ProcessChangeStreamPartitionFn.PartitionCursorHolder(mockCursor, initialToken)) {
+      // Initial post-batch token must be null before any idle tryNext() completes
+      assertNull(holder.getLatestPostBatchResumeToken());
+
+      ChangeStreamDocument<Document> polled = holder.pollNext(200L);
+      assertNotNull(polled);
+      holder.setLastResumeToken(polled.getResumeToken());
+
+      // Next poll times out while prefetcher is still inside the 150ms tryNext()
+      ChangeStreamDocument<Document> timedOutPoll = holder.pollNext(20L);
+      assertNull(timedOutPoll);
+
+      // Post-batch token must be null (NOT initialToken) so lastResumeToken is not rewound
+      assertNull(holder.getLatestPostBatchResumeToken());
+      assertEquals(eventToken, holder.getLastResumeToken());
+      assertEquals(mockCursor, holder.getCursor());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testProcessChangeStreamPartitionFn_tokenMismatch_rebuildsCursor() {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    ChangeStreamIterable<Document> mockStream = mock(ChangeStreamIterable.class);
+    MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
+        mock(MongoChangeStreamCursor.class);
+
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+    when(mockCol.watch(anyList())).thenReturn(mockStream);
+    when(mockStream.batchSize(anyInt())).thenReturn(mockStream);
+    when(mockStream.maxAwaitTime(anyLong(), any())).thenReturn(mockStream);
+    when(mockStream.fullDocument(any())).thenReturn(mockStream);
+    when(mockStream.resumeAfter(any())).thenReturn(mockStream);
+    when(mockStream.cursor()).thenReturn(mockCursor);
+    when(mockCursor.tryNext()).thenReturn(null);
+
+    ProcessChangeStreamPartitionFn fn = new ProcessChangeStreamPartitionFn(uri -> mockClient);
+    ChangeStreamPartition partition =
+        new ChangeStreamPartition(
+            "mongodb://localhost:27017",
+            "testDb",
+            "users",
+            "users",
+            0,
+            1,
+            null,
+            0,
+            0,
+            "whenAvailable");
+
+    OutputReceiver<DocumentWithMetadata> mockReceiver = mock(OutputReceiver.class);
+
+    // Slice 1 starts with null token
+    ChangeStreamRestrictionTracker tracker1 =
+        new ChangeStreamRestrictionTracker(new ChangeStreamRestriction(0L, null));
+    fn.processElement(partition, tracker1, mockReceiver);
+
+    // Slice 2 arrives with a different restriction token, triggering TOKEN_MISMATCH rebuild
+    ChangeStreamRestrictionTracker tracker2 =
+        new ChangeStreamRestrictionTracker(
+            new ChangeStreamRestriction(1L, "{\"_data\": \"different-token\"}"));
+    fn.processElement(partition, tracker2, mockReceiver);
+
+    verify(mockStream, times(2)).cursor();
+    fn.teardown();
+  }
 }

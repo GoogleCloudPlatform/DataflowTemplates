@@ -668,6 +668,9 @@ public final class ReadSplitGenerator {
   }
 
   private static BigDecimal asBigDecimal(BsonValue val) {
+    if (val == null) {
+      return null;
+    }
     if (val.isInt32()) {
       return BigDecimal.valueOf(val.asInt32().getValue());
     }
@@ -677,18 +680,23 @@ public final class ReadSplitGenerator {
     if (val.isDouble()) {
       double d = val.asDouble().getValue();
       if (Double.isNaN(d) || Double.isInfinite(d)) {
-        return BigDecimal.ZERO;
+        return null;
       }
       return BigDecimal.valueOf(d);
     }
     if (val.isDecimal128()) {
+      org.bson.types.Decimal128 dec = val.asDecimal128().getValue();
+      if (!dec.isFinite()) {
+        return null;
+      }
       try {
-        return val.asDecimal128().getValue().bigDecimalValue();
-      } catch (NumberFormatException e) {
+        return dec.bigDecimalValue();
+      } catch (ArithmeticException e) {
+        // Finite Decimal128 only throws ArithmeticException for negative zero (-0)
         return BigDecimal.ZERO;
       }
     }
-    return BigDecimal.ZERO;
+    return null;
   }
 
   private static BsonValue toBsonNumber(
@@ -708,8 +716,12 @@ public final class ReadSplitGenerator {
       BsonValue minVal, BsonValue maxVal, int numSplits) {
     BigDecimal minDec = asBigDecimal(minVal);
     BigDecimal maxDec = asBigDecimal(maxVal);
+    if (numSplits <= 1 || minDec == null || maxDec == null) {
+      return Collections.singletonList(
+          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+    }
     BigDecimal range = maxDec.subtract(minDec);
-    if (numSplits <= 1 || range.compareTo(BigDecimal.ZERO) <= 0) {
+    if (range.compareTo(BigDecimal.ZERO) <= 0) {
       return Collections.singletonList(
           new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
     }

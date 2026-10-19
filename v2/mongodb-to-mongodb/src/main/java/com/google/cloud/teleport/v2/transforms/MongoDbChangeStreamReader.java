@@ -33,6 +33,7 @@ import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.metrics.Counter;
@@ -762,6 +763,7 @@ public class MongoDbChangeStreamReader {
      */
     public static class PartitionCursorHolder implements AutoCloseable {
       public static final int PREFETCH_QUEUE_CAPACITY = 4096;
+      private static final AtomicInteger PREFETCHER_THREAD_ID = new AtomicInteger(0);
 
       private final MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor;
       private final ArrayBlockingQueue<ChangeStreamDocument<Document>> eventQueue =
@@ -782,8 +784,11 @@ public class MongoDbChangeStreamReader {
         this.cursor = cursor;
         this.lastAccessedMs = System.currentTimeMillis();
         this.lastResumeToken = initialToken;
-        this.latestPostBatchToken = initialToken;
-        this.prefetcherThread = new Thread(this::runPrefetchLoop, "mongodb-cdc-prefetcher");
+        this.latestPostBatchToken = null;
+        this.prefetcherThread =
+            new Thread(
+                this::runPrefetchLoop,
+                "mongodb-cdc-prefetcher-" + PREFETCHER_THREAD_ID.incrementAndGet());
         this.prefetcherThread.setDaemon(true);
         this.prefetcherThread.start();
       }
@@ -799,6 +804,7 @@ public class MongoDbChangeStreamReader {
             if (event != null) {
               synchronized (pollLock) {
                 lastTryNextWasNull = false;
+                latestPostBatchToken = null;
               }
               while (running && !eventQueue.offer(event, 50L, TimeUnit.MILLISECONDS)) {
                 // Bounded queue is full; wait for consumer to drain or close()
