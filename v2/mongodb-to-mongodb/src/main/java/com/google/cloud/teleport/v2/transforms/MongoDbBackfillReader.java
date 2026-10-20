@@ -655,6 +655,7 @@ public class MongoDbBackfillReader {
    * Splittable DoFn executing sequential backfill partitions assigned to a concurrency slot. Caps
    * maximum active cursors against MongoDB to the total number of slots cluster-wide.
    */
+  @DoFn.BoundedPerElement
   public static class ProcessBackfillSlotFn extends DoFn<BackfillSlotTask, DocumentWithMetadata> {
 
     public static final int MAX_DOCS_PER_SLICE = 2000;

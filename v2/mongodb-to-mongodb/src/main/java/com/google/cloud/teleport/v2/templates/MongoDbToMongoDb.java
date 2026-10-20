@@ -509,9 +509,13 @@ public class MongoDbToMongoDb {
       }
     }
 
-    String stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
     String tmpDirectory = options.getTempLocation();
     if (tmpDirectory == null || tmpDirectory.isEmpty()) {
+      String stagingLocation = null;
+      try {
+        stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
+      } catch (Exception ignored) {
+      }
       if (stagingLocation != null && !stagingLocation.isEmpty()) {
         tmpDirectory =
             stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";

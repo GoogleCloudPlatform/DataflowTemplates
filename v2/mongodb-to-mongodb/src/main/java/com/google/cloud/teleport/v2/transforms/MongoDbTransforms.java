@@ -363,18 +363,37 @@ public class MongoDbTransforms {
 
       boolean isUnbounded = input.isBounded() == PCollection.IsBounded.UNBOUNDED;
 
+      String filePrefix =
+          (getName() != null && !getName().isEmpty())
+              ? "/error-" + getName().replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase()
+              : "/error";
+
       PCollection<String> retryableJson =
           retryable.apply(
               "MapToJson_Retryable",
               ParDo.of(
                   new DoFn<DocumentWithMetadata, String>() {
+                    @Override
+                    public Duration getAllowedTimestampSkew() {
+                      return Duration.millis(Long.MAX_VALUE);
+                    }
+
                     @ProcessElement
                     public void processElement(ProcessContext c) {
                       dlqRetryableEmitted.inc();
                       DocumentWithMetadata item = c.element();
-                      c.output(
+                      String json =
                           item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
+                      if (c.timestamp()
+                          .isAfter(
+                              GlobalWindow.INSTANCE
+                                  .maxTimestamp()
+                                  .minus(Duration.standardMinutes(2)))) {
+                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
+                      } else {
+                        c.output(json);
+                      }
                     }
                   }));
 
@@ -384,13 +403,14 @@ public class MongoDbTransforms {
             .apply(
                 "WriteDlq_Retryable",
                 TextIO.write()
-                    .to(retryablePath + "/error")
+                    .to(retryablePath + filePrefix)
                     .withSuffix(".json")
                     .withWindowedWrites()
                     .withNumShards(1));
       } else {
         retryableJson.apply(
-            "WriteDlq_Retryable", TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
+            "WriteDlq_Retryable",
+            TextIO.write().to(retryablePath + filePrefix).withSuffix(".json"));
       }
 
       PCollection<String> permanentJson =
@@ -398,13 +418,27 @@ public class MongoDbTransforms {
               "MapToJson_Permanent",
               ParDo.of(
                   new DoFn<DocumentWithMetadata, String>() {
+                    @Override
+                    public Duration getAllowedTimestampSkew() {
+                      return Duration.millis(Long.MAX_VALUE);
+                    }
+
                     @ProcessElement
                     public void processElement(ProcessContext c) {
                       dlqPermanentEmitted.inc();
                       DocumentWithMetadata item = c.element();
-                      c.output(
+                      String json =
                           item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
+                      if (c.timestamp()
+                          .isAfter(
+                              GlobalWindow.INSTANCE
+                                  .maxTimestamp()
+                                  .minus(Duration.standardMinutes(2)))) {
+                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
+                      } else {
+                        c.output(json);
+                      }
                     }
                   }));
 
@@ -414,13 +448,14 @@ public class MongoDbTransforms {
             .apply(
                 "WriteDlq_Permanent",
                 TextIO.write()
-                    .to(permanentPath + "/error")
+                    .to(permanentPath + filePrefix)
                     .withSuffix(".json")
                     .withWindowedWrites()
                     .withNumShards(1));
       } else {
         permanentJson.apply(
-            "WriteDlq_Permanent", TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
+            "WriteDlq_Permanent",
+            TextIO.write().to(permanentPath + filePrefix).withSuffix(".json"));
       }
 
       return PDone.in(input.getPipeline());
@@ -1458,7 +1493,14 @@ public class MongoDbTransforms {
         boolean isDelete) {
       LinkedHashMap<Object, CoalescedOp> colMap =
           coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-      CoalescedOp prev = colMap.get(id);
+      // org.bson.Document implements Map, whose equals/hashCode ignore key insertion order,
+      // whereas MongoDB treats composite subdocument _ids with different field order as distinct
+      // documents. Use the canonical JSON dedupKey for Map/byte[] _ids to preserve field order.
+      Object coalesceKey =
+          (id instanceof Map || id instanceof byte[]) && item.getDedupKey() != null
+              ? item.getDedupKey()
+              : id;
+      CoalescedOp prev = colMap.get(coalesceKey);
       if (prev != null) {
         writeBatchesCoalesced.inc();
         if (item.getTimestampSortKey() != null
@@ -1467,7 +1509,7 @@ public class MongoDbTransforms {
           return;
         }
       }
-      colMap.put(id, new CoalescedOp(model, item, isDelete));
+      colMap.put(coalesceKey, new CoalescedOp(model, item, isDelete));
     }
 
     private void flushBatch(List<DocumentWithMetadata> items) throws InterruptedException {
