@@ -679,7 +679,10 @@ public abstract class RandomDdlGenerator {
         break;
       }
       if (++retries >= 10) {
-        length++;
+        int maxLimit = getDialect() == Dialect.POSTGRESQL ? 63 : 128;
+        if (length < maxLimit) {
+          length++;
+        }
         retries = 0;
       }
     }
