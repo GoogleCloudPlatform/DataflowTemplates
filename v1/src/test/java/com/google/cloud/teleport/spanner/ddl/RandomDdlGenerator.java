@@ -672,10 +672,15 @@ public abstract class RandomDdlGenerator {
 
   private String generateIdentifier(int length) {
     String id;
+    int retries = 0;
     while (true) {
       id = RandomUtils.randomAlphanumeric(length);
       if (!allIdentifiers.contains(id.toLowerCase())) {
         break;
+      }
+      if (++retries >= 10) {
+        length++;
+        retries = 0;
       }
     }
     allIdentifiers.add(id.toLowerCase());
