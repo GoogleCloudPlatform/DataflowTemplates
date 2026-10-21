@@ -1,24 +1,4 @@
 options:
-  - name: "pubsub_topic_options"
-    parameters:
-      - order: 1
-        name: "topic"
-        description: "Pub/Sub input topic"
-        help: "Pub/Sub topic to read the input from."
-        example: "projects/your-project-id/topics/your-topic-name"
-        required: true
-        type: text
-
-  - name: "pubsub_subscription_options"
-    parameters:
-      - order: 1
-        name: "subscription"
-        description: "Pub/Sub input subscription"
-        help: "Pub/Sub subscription to read the input from."
-        example: "projects/your-project-id/subscriptions/your-subscription-name"
-        required: true
-        type: text
-
   - name: "pubsub_common_options"
     parameters:
       - order: 1

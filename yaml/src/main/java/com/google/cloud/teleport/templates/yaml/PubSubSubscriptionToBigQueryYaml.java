@@ -30,7 +30,12 @@ import org.apache.beam.sdk.options.Validation;
         "The Pub/Sub subscription to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub subscription and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubSubscriptionToBigQuery.yaml",
-    filesToCopy = {"main.py", "requirements.txt"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/bigquery_options.yaml",
+      "options/pubsub_options.yaml"
+    },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-subscription-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
@@ -55,22 +60,21 @@ public interface PubSubSubscriptionToBigQueryYaml {
   @TemplateParameter.Text(
       order = 2,
       name = "format",
-      optional = false,
+      optional = true,
       description = "The message format.",
       helpText = "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.",
-      example = "")
-  @Validation.Required
+      example = "JSON")
+  @Default.String("JSON")
   String getFormat();
 
   @TemplateParameter.Text(
       order = 3,
       name = "schema",
-      optional = false,
+      optional = true,
       description = "Data schema.",
       helpText =
-          "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
-      example = "")
-  @Validation.Required
+          "A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.",
+      example = "{\"type\": \"object\", \"properties\": {\"field1\": {\"type\": \"string\"}}}")
   String getSchema();
 
   @TemplateParameter.Text(
@@ -79,8 +83,8 @@ public interface PubSubSubscriptionToBigQueryYaml {
       optional = true,
       description = "List of attribute keys.",
       helpText =
-          "List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
-      example = "")
+          "List of attribute keys whose values will be flattened into the output message as additional fields. For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.",
+      example = "[\"attr1\", \"attr2\"]")
   String getAttributes();
 
   @TemplateParameter.Text(
@@ -89,8 +93,8 @@ public interface PubSubSubscriptionToBigQueryYaml {
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
       helpText =
-          "Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
-      example = "")
+          "Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.",
+      example = "attrs")
   String getAttributesMap();
 
   @TemplateParameter.Text(
@@ -101,7 +105,7 @@ public interface PubSubSubscriptionToBigQueryYaml {
           "The attribute on incoming Pub/Sub messages to use as a unique record identifier.",
       helpText =
           "The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.",
-      example = "")
+      example = "id")
   String getIdAttribute();
 
   @TemplateParameter.Text(
@@ -110,18 +114,19 @@ public interface PubSubSubscriptionToBigQueryYaml {
       optional = true,
       description = "Message value to use as element timestamp.",
       helpText =
-          "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
-      example = "")
+          "Message value to use as element timestamp. If None, uses message publishing time as the timestamp.",
+      example = "timestamp")
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
       order = 8,
-      name = "errorHandling",
+      name = "publishTimeField",
       optional = true,
-      description = "Error handling configuration",
-      helpText = "This option specifies whether and where to output error rows.",
-      example = "")
-  String getErrorHandling();
+      description = "Field to add to output messages with the Pub/Sub message publish time.",
+      helpText =
+          "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
+      example = "publish_time")
+  String getPublishTimeField();
 
   @TemplateParameter.Text(
       order = 9,

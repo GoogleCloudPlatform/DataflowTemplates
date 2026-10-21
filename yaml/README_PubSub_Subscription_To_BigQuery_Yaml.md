@@ -19,17 +19,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
-* **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
-* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
 * **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>. For write,  the table's schema must match input objects. For example, `my-project:my_dataset.my_table`.
 
 ### Optional parameters
 
-* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.
-* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.
-* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.
-* **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
-* **errorHandling**: This option specifies whether and where to output error rows.
+* **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`. Defaults to: JSON.
+* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition. For example, `{"type": "object", "properties": {"field1": {"type": "string"}}}`.
+* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields. For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`. For example, `["attr1", "attr2"]`.
+* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map. For example, `attrs`.
+* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort. For example, `id`.
+* **timestampAttribute**: Message value to use as element timestamp. If None, uses message publishing time as the timestamp. For example, `timestamp`.
+* **publishTimeField**: Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added. For example, `publish_time`.
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1. For example, `1`.
@@ -126,16 +126,16 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_Subscripti
 
 ### Required
 export SUBSCRIPTION=<subscription>
-export FORMAT=<format>
-export SCHEMA=<schema>
 export TABLE=<table>
 
 ### Optional
+export FORMAT=JSON
+export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export ERROR_HANDLING=<errorHandling>
+export PUBLISH_TIME_FIELD=<publishTimeField>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -151,7 +151,7 @@ gcloud dataflow flex-template run "pubsub-subscription-to-bigquery-yaml-job" \
   --parameters "attributesMap=$ATTRIBUTES_MAP" \
   --parameters "idAttribute=$ID_ATTRIBUTE" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
-  --parameters "errorHandling=$ERROR_HANDLING" \
+  --parameters "publishTimeField=$PUBLISH_TIME_FIELD" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
@@ -175,16 +175,16 @@ export REGION=us-central1
 
 ### Required
 export SUBSCRIPTION=<subscription>
-export FORMAT=<format>
-export SCHEMA=<schema>
 export TABLE=<table>
 
 ### Optional
+export FORMAT=JSON
+export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export ERROR_HANDLING=<errorHandling>
+export PUBLISH_TIME_FIELD=<publishTimeField>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
@@ -196,7 +196,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-bigquery-yaml-job" \
 -DtemplateName="PubSub_Subscription_To_BigQuery_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
 -f yaml
 ```
 
@@ -242,14 +242,14 @@ resource "google_dataflow_flex_template_job" "pubsub_subscription_to_bigquery_ya
   region            = var.region
   parameters        = {
     subscription = "<subscription>"
-    format = "<format>"
-    schema = "<schema>"
     table = "<table>"
+    # format = "JSON"
+    # schema = "<schema>"
     # attributes = "<attributes>"
     # attributesMap = "<attributesMap>"
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
-    # errorHandling = "<errorHandling>"
+    # publishTimeField = "<publishTimeField>"
     # createDisposition = "CREATE_NEVER"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"

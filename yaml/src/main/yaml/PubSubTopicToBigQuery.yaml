@@ -26,7 +26,7 @@ template:
     - "bigquery_options"
 
   parameters:
-    - pubsub_topic_options
+    - pubsub_topic_read_options
     - pubsub_common_options
     - bigquery_common_options
     - bigquery_write_options
