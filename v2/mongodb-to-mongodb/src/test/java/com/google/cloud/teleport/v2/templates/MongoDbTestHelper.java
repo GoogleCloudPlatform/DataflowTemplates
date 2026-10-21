@@ -25,10 +25,12 @@ import com.google.cloud.firestore.v1.FirestoreAdminClient;
 import com.google.cloud.firestore.v1.FirestoreAdminSettings;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.google.common.collect.ImmutableList;
+import com.google.firestore.admin.v1.CreateDatabaseRequest;
 import com.google.firestore.admin.v1.Database;
 import com.google.firestore.admin.v1.Database.DataAccessMode;
 import com.google.firestore.admin.v1.Database.DatabaseEdition;
 import com.google.firestore.admin.v1.Database.DatabaseType;
+import com.google.firestore.admin.v1.DeleteDatabaseRequest;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -46,6 +48,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -57,7 +60,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
-import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.mongodb.MongoDBResourceManager;
 import org.bson.BsonArray;
@@ -388,13 +390,14 @@ final class MongoDbTestHelper {
   static final class TestEnvironment {
     final MongoDBResourceManager sourceMongoManager;
     final MongoDBResourceManager targetMongoManager;
-    final FirestoreAdminResourceManager firestoreAdminResourceManager;
     final String sourceUri;
     final String targetUri;
     final String sourceDatabase;
     final String targetDatabase;
     final MongoClient sourceClient;
     final MongoClient targetClient;
+    private final FirestoreAdminClient firestoreAdminClient;
+    private final String firestoreDatabaseResourceName;
     private final String defaultJobName;
     private final String specPath;
     private final PipelineLauncher launcher;
@@ -405,7 +408,8 @@ final class MongoDbTestHelper {
     private TestEnvironment(
         MongoDBResourceManager sourceMongoManager,
         MongoDBResourceManager targetMongoManager,
-        FirestoreAdminResourceManager firestoreAdminResourceManager,
+        FirestoreAdminClient firestoreAdminClient,
+        String firestoreDatabaseResourceName,
         String sourceUri,
         String targetUri,
         String sourceDatabase,
@@ -420,7 +424,8 @@ final class MongoDbTestHelper {
         TemporaryFolder tempFolder) {
       this.sourceMongoManager = sourceMongoManager;
       this.targetMongoManager = targetMongoManager;
-      this.firestoreAdminResourceManager = firestoreAdminResourceManager;
+      this.firestoreAdminClient = firestoreAdminClient;
+      this.firestoreDatabaseResourceName = firestoreDatabaseResourceName;
       this.sourceUri = sourceUri;
       this.targetUri = targetUri;
       this.sourceDatabase = sourceDatabase;
@@ -444,7 +449,7 @@ final class MongoDbTestHelper {
     }
 
     boolean isFirestoreTarget() {
-      return firestoreAdminResourceManager != null;
+      return firestoreDatabaseResourceName != null;
     }
 
     LaunchConfig.Builder baseLaunchConfig() throws IOException {
@@ -611,8 +616,8 @@ final class MongoDbTestHelper {
       }
       closeClientQuietly(sourceClient);
       closeClientQuietly(targetClient);
-      ResourceManagerUtils.cleanResources(
-          sourceMongoManager, targetMongoManager, firestoreAdminResourceManager);
+      deleteFirestoreDatabaseQuietly(firestoreAdminClient, firestoreDatabaseResourceName);
+      ResourceManagerUtils.cleanResources(sourceMongoManager, targetMongoManager);
     }
   }
 
@@ -634,80 +639,99 @@ final class MongoDbTestHelper {
             + UUID.randomUUID().toString().substring(0, 6);
 
     MongoDBResourceManager sourceMongoManager = null;
-    String sourceUri;
-    String sourceDatabase;
-    String customSourceUri =
-        TestProperties.getProperty("sourceMongoUri", "", TestProperties.Type.PROPERTY);
-    if (customSourceUri != null && !customSourceUri.isEmpty()) {
-      sourceUri = customSourceUri;
-      sourceDatabase = "it_src_" + uniqueSuffix;
-    } else {
-      sourceMongoManager =
-          MongoDBResourceManager.builder(testName).setContainerImageTag(MONGO_IMAGE_TAG).build();
-      sourceUri = sourceMongoManager.getUri();
-      sourceDatabase = sourceMongoManager.getDatabaseName();
-    }
-
     MongoDBResourceManager targetMongoManager = null;
-    FirestoreAdminResourceManager firestoreAdminResourceManager = null;
-    String targetUri;
-    String targetDatabase;
-    String customTargetUri =
-        TestProperties.getProperty("targetMongoUri", "", TestProperties.Type.PROPERTY);
-    boolean useTestcontainersTarget =
-        Boolean.parseBoolean(
-            TestProperties.getProperty(
-                "useTestcontainersTarget", "false", TestProperties.Type.PROPERTY));
+    FirestoreAdminClient firestoreAdminClient = null;
+    String firestoreDatabaseResourceName = null;
+    MongoClient sourceClient = null;
+    MongoClient targetClient = null;
 
-    if (customTargetUri != null && !customTargetUri.isEmpty()) {
-      targetUri = customTargetUri;
-      targetDatabase = "it_tgt_" + uniqueSuffix;
-    } else if (useTestcontainersTarget) {
-      targetMongoManager =
-          MongoDBResourceManager.builder(testName + "_target")
-              .setContainerImageTag(MONGO_IMAGE_TAG)
-              .build();
-      targetUri = targetMongoManager.getUri();
-      targetDatabase = targetMongoManager.getDatabaseName();
-    } else {
-      targetDatabase = "dst-" + UUID.randomUUID();
-      firestoreAdminResourceManager =
-          FirestoreAdminResourceManager.builder(testName)
-              .setProject(project)
-              .setRegion(region)
-              .setCredentials(credentials)
-              .build();
-      firestoreAdminResourceManager.createDatabase(
+    try {
+      String sourceUri;
+      String sourceDatabase;
+      String customSourceUri =
+          TestProperties.getProperty("sourceMongoUri", "", TestProperties.Type.PROPERTY);
+      if (customSourceUri != null && !customSourceUri.isEmpty()) {
+        sourceUri = customSourceUri;
+        sourceDatabase = "it_src_" + uniqueSuffix;
+      } else {
+        sourceMongoManager =
+            MongoDBResourceManager.builder(testName).setContainerImageTag(MONGO_IMAGE_TAG).build();
+        sourceUri = sourceMongoManager.getUri();
+        sourceDatabase = sourceMongoManager.getDatabaseName();
+      }
+
+      String targetUri;
+      String targetDatabase;
+      String customTargetUri =
+          TestProperties.getProperty("targetMongoUri", "", TestProperties.Type.PROPERTY);
+      boolean useTestcontainersTarget =
+          Boolean.parseBoolean(
+              TestProperties.getProperty(
+                  "useTestcontainersTarget", "false", TestProperties.Type.PROPERTY));
+
+      if (customTargetUri != null && !customTargetUri.isEmpty()) {
+        targetUri = customTargetUri;
+        targetDatabase = "it_tgt_" + uniqueSuffix;
+      } else if (useTestcontainersTarget) {
+        targetMongoManager =
+            MongoDBResourceManager.builder(testName + "_target")
+                .setContainerImageTag(MONGO_IMAGE_TAG)
+                .build();
+        targetUri = targetMongoManager.getUri();
+        targetDatabase = targetMongoManager.getDatabaseName();
+      } else {
+        targetDatabase = "dst-" + UUID.randomUUID();
+        String resourceName = "projects/" + project + "/databases/" + targetDatabase;
+        FirestoreAdminSettings.Builder settingsBuilder = FirestoreAdminSettings.newBuilder();
+        if (credentials != null) {
+          settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(credentials));
+        }
+        firestoreAdminClient = FirestoreAdminClient.create(settingsBuilder.build());
+        LOG.info(
+            "Creating Firestore Enterprise MongoDB-compatible database '{}' in {}...",
+            resourceName,
+            region);
+        Database createdDb =
+            createFirestoreDatabase(firestoreAdminClient, project, region, targetDatabase);
+        firestoreDatabaseResourceName = resourceName;
+        if (createdDb.getUid().isEmpty()) {
+          createdDb = firestoreAdminClient.getDatabase(resourceName);
+        }
+        LOG.info(
+            "Provisioned Firestore Enterprise database '{}' (uid={}, location={})",
+            targetDatabase,
+            createdDb.getUid(),
+            createdDb.getLocationId());
+        targetUri = buildFirestoreMongoUri(createdDb, targetDatabase, credentials);
+      }
+
+      sourceClient = MongoDbTransforms.createMongoClient(sourceUri);
+      targetClient = MongoDbTransforms.createMongoClient(targetUri);
+
+      return new TestEnvironment(
+          sourceMongoManager,
+          targetMongoManager,
+          firestoreAdminClient,
+          firestoreDatabaseResourceName,
+          sourceUri,
+          targetUri,
+          sourceDatabase,
           targetDatabase,
-          Database.newBuilder()
-              .setName(targetDatabase)
-              .setType(DatabaseType.FIRESTORE_NATIVE)
-              .setDatabaseEdition(DatabaseEdition.ENTERPRISE)
-              .setMongodbCompatibleDataAccessMode(DataAccessMode.DATA_ACCESS_MODE_ENABLED)
-              .setLocationId(region)
-              .build());
-      targetUri = buildFirestoreMongoUri(project, targetDatabase, credentials);
+          sourceClient,
+          targetClient,
+          testName,
+          specPath,
+          launcher,
+          gcsClient,
+          gcsPathResolver,
+          tempFolder);
+    } catch (RuntimeException | IOException e) {
+      closeClientQuietly(sourceClient);
+      closeClientQuietly(targetClient);
+      deleteFirestoreDatabaseQuietly(firestoreAdminClient, firestoreDatabaseResourceName);
+      ResourceManagerUtils.cleanResources(sourceMongoManager, targetMongoManager);
+      throw e;
     }
-
-    MongoClient sourceClient = MongoDbTransforms.createMongoClient(sourceUri);
-    MongoClient targetClient = MongoDbTransforms.createMongoClient(targetUri);
-
-    return new TestEnvironment(
-        sourceMongoManager,
-        targetMongoManager,
-        firestoreAdminResourceManager,
-        sourceUri,
-        targetUri,
-        sourceDatabase,
-        targetDatabase,
-        sourceClient,
-        targetClient,
-        testName,
-        specPath,
-        launcher,
-        gcsClient,
-        gcsPathResolver,
-        tempFolder);
   }
 
   static boolean isDirectRunner(PipelineLauncher launcher) {
@@ -860,20 +884,64 @@ final class MongoDbTestHelper {
     return new RawBsonDocument(doc, BSON_DOCUMENT_CODEC);
   }
 
+  private static Database createFirestoreDatabase(
+      FirestoreAdminClient adminClient, String project, String region, String targetDatabase)
+      throws IOException {
+    try {
+      return adminClient
+          .createDatabaseAsync(
+              CreateDatabaseRequest.newBuilder()
+                  .setParent("projects/" + project)
+                  .setDatabaseId(targetDatabase)
+                  .setDatabase(
+                      Database.newBuilder()
+                          .setName(targetDatabase)
+                          .setType(DatabaseType.FIRESTORE_NATIVE)
+                          .setDatabaseEdition(DatabaseEdition.ENTERPRISE)
+                          .setMongodbCompatibleDataAccessMode(
+                              DataAccessMode.DATA_ACCESS_MODE_ENABLED)
+                          .setLocationId(region)
+                          .build())
+                  .build())
+          .get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted while creating Firestore database " + targetDatabase, e);
+    } catch (ExecutionException e) {
+      throw new IOException("Failed to create Firestore database " + targetDatabase, e);
+    }
+  }
+
   private static String buildFirestoreMongoUri(
-      String project, String targetDatabase, Credentials credentials) throws IOException {
-    try (FirestoreAdminClient adminClient =
-        FirestoreAdminClient.create(
-            FirestoreAdminSettings.newBuilder()
-                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-                .build())) {
-      Database db = adminClient.getDatabase("projects/" + project + "/databases/" + targetDatabase);
-      String encodedToken = URLEncoder.encode(getAccessToken(credentials), StandardCharsets.UTF_8);
-      return String.format(
-          "mongodb://access_token:%s@%s.%s.firestore.goog:443/%s"
-              + "?loadBalanced=true&tls=true&retryWrites=false"
-              + "&authMechanism=PLAIN&authSource=$external",
-          encodedToken, db.getUid(), db.getLocationId(), targetDatabase);
+      Database db, String targetDatabase, Credentials credentials) throws IOException {
+    String encodedToken = URLEncoder.encode(getAccessToken(credentials), StandardCharsets.UTF_8);
+    return String.format(
+        "mongodb://access_token:%s@%s.%s.firestore.goog:443/%s"
+            + "?loadBalanced=true&tls=true&retryWrites=false"
+            + "&authMechanism=PLAIN&authSource=$external",
+        encodedToken, db.getUid(), db.getLocationId(), targetDatabase);
+  }
+
+  private static void deleteFirestoreDatabaseQuietly(
+      FirestoreAdminClient adminClient, String databaseResourceName) {
+    if (adminClient == null) {
+      return;
+    }
+    try (adminClient) {
+      if (databaseResourceName != null) {
+        // Invoke the unary DeleteDatabase RPC directly rather than polling deleteDatabaseAsync().
+        // Firestore deletes the database metadata immediately, whereas its background storage-GC
+        // LRO stays open past GAX's 5-minute poll timeout and throws CancellationException.
+        adminClient
+            .deleteDatabaseCallable()
+            .call(DeleteDatabaseRequest.newBuilder().setName(databaseResourceName).build());
+        LOG.info("Deleted Firestore Enterprise database '{}'", databaseResourceName);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to delete Firestore Enterprise database '{}': {}",
+          databaseResourceName,
+          e.getMessage());
     }
   }
 

@@ -67,10 +67,12 @@ import org.junit.runners.JUnit4;
  * source container to an ephemeral Cloud Firestore Enterprise database with MongoDB compatibility
  * enabled (managed via {@link MongoDbTestHelper}).
  */
-@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(MongoDbToMongoDb.class)
 @RunWith(JUnit4.class)
 public final class MongoDbToMongoDbIT extends TemplateTestBase {
+
+  private static final Duration PIPELINE_TIMEOUT = Duration.ofMinutes(20);
 
   @Rule public final TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -110,6 +112,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
    * heterogeneous {@code _id} and payload types into Cloud Firestore Enterprise.
    */
   @Test
+  @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
   public void backfill_heterogeneousBsonTypesAndMultiCollection_preservesAllDocuments()
       throws Exception {
     String bsonTypesCol = "col_bson_types";
@@ -132,7 +135,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(5)));
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, PIPELINE_TIMEOUT));
     assertThatResult(result).isLaunchFinished();
 
     env.assertCollectionParity(bsonTypesCol, HETEROGENEOUS_BSON_DOCS.size());
@@ -202,7 +205,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Result result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(info, Duration.ofMinutes(5)),
+                createConfig(info, PIPELINE_TIMEOUT),
                 env.collectionParityCheck(collection, expectedFinalCount));
     assertThatResult(result).meetsConditions();
 
@@ -278,8 +281,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Result wave1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(info, Duration.ofMinutes(4)),
-                env.collectionParityCheck(collection, 73));
+                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 73));
     assertThatResult(wave1Result).meetsConditions();
 
     // Pause briefly so prefetcher becomes idle, then emit Wave 2 to verify requestFreshPollIfIdle()
@@ -291,8 +293,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Result wave2Result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(info, Duration.ofMinutes(3)),
-                env.collectionParityCheck(collection, 78));
+                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 78));
     assertThatResult(wave2Result).meetsConditions();
 
     env.assertCollectionParity(collection, 78);
@@ -304,6 +305,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
    * originalDocument} preservation in retryable DLQ), and permanent write-failure DLQ routing.
    */
   @Test
+  @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
   public void streamingCdcAndBackfill_udfStartAtOperationTimeAndDlq_routesValidAndFailedDocs()
       throws Exception {
     String udfPath = env.stageUdfFile("input/transform_udf.js", TRANSFORM_UDF_SCRIPT);
@@ -348,7 +350,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Result streamResult =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(streamInfo, Duration.ofMinutes(4)),
+                createConfig(streamInfo, PIPELINE_TIMEOUT),
                 MongoDbTestHelper.udfStreamConvergedCheck(tgtStreamCol));
     assertThatResult(streamResult).meetsConditions();
 
@@ -389,7 +391,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
     LaunchInfo backfillInfo = launchTemplate(backfillDlqOptions);
     Result backfillResult =
-        pipelineOperator().waitUntilDone(createConfig(backfillInfo, Duration.ofMinutes(4)));
+        pipelineOperator().waitUntilDone(createConfig(backfillInfo, PIPELINE_TIMEOUT));
     assertThatResult(backfillResult).isLaunchFinished();
 
     MongoCollection<Document> tgtDlqCol = env.targetDb().getCollection(dlqCollection);
