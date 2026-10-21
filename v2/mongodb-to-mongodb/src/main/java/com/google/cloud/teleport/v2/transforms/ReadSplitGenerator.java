@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -30,10 +31,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.bson.BsonArray;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.BsonInt32;
+import org.bson.BsonInt64;
 import org.bson.BsonString;
+import org.bson.BsonType;
 import org.bson.BsonValue;
+import org.bson.types.Decimal128;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -280,36 +286,14 @@ public final class ReadSplitGenerator {
   public static List<ProbedTypeBounds> probeActiveTypeBounds(MongoCollection<BsonDocument> col) {
     try {
       // Step 1: Global Min / Max seek (O(1) covered index scan)
-      com.mongodb.client.FindIterable<BsonDocument> findIterable = col.find();
-      if (findIterable == null) {
+      BsonValue minVal = probeGlobalBound(col, /* direction= */ 1);
+      if (minVal == null) {
         return Collections.emptyList();
       }
-      BsonDocument minDoc =
-          findIterable
-              .projection(new BsonDocument("_id", new BsonInt32(1)))
-              .sort(new BsonDocument("_id", new BsonInt32(1)))
-              .limit(1)
-              .maxTime(5, TimeUnit.SECONDS)
-              .first();
-
-      if (minDoc == null || !minDoc.containsKey("_id")) {
+      BsonValue maxVal = probeGlobalBound(col, /* direction= */ -1);
+      if (maxVal == null) {
         return Collections.emptyList();
       }
-
-      BsonDocument maxDoc =
-          col.find()
-              .projection(new BsonDocument("_id", new BsonInt32(1)))
-              .sort(new BsonDocument("_id", new BsonInt32(-1)))
-              .limit(1)
-              .maxTime(5, TimeUnit.SECONDS)
-              .first();
-
-      if (maxDoc == null || !maxDoc.containsKey("_id")) {
-        return Collections.emptyList();
-      }
-
-      BsonValue minVal = minDoc.get("_id");
-      BsonValue maxVal = maxDoc.get("_id");
 
       TypeBucket minBucket = getBucketForValue(minVal);
       TypeBucket maxBucket = getBucketForValue(maxVal);
@@ -339,7 +323,7 @@ public final class ReadSplitGenerator {
       List<ProbedTypeBounds> activeBounds = new ArrayList<>();
 
       // 1. Min bucket: we already have minVal, seek maxVal for this type
-      BsonValue minBucketMax = probeBucketBound(col, minBucket, -1);
+      BsonValue minBucketMax = probeBucketBound(col, minBucket, /* direction= */ -1);
       if (minBucketMax == null) {
         return Collections.emptyList();
       }
@@ -348,9 +332,9 @@ public final class ReadSplitGenerator {
       // 2. Intermediate candidate buckets: probe existence and min bound in one sorted query
       for (int i = minIdx + 1; i < maxIdx; i++) {
         TypeBucket candidate = KNOWN_TYPE_BUCKETS.get(i);
-        BsonValue candMin = probeBucketBound(col, candidate, 1);
+        BsonValue candMin = probeBucketBound(col, candidate, /* direction= */ 1);
         if (candMin != null) {
-          BsonValue candMax = probeBucketBound(col, candidate, -1);
+          BsonValue candMax = probeBucketBound(col, candidate, /* direction= */ -1);
           if (candMax == null) {
             return Collections.emptyList();
           }
@@ -359,7 +343,7 @@ public final class ReadSplitGenerator {
       }
 
       // 3. Max bucket: we already have maxVal, seek minVal for this type
-      BsonValue maxBucketMin = probeBucketBound(col, maxBucket, 1);
+      BsonValue maxBucketMin = probeBucketBound(col, maxBucket, /* direction= */ 1);
       if (maxBucketMin == null) {
         return Collections.emptyList();
       }
@@ -376,19 +360,27 @@ public final class ReadSplitGenerator {
     }
   }
 
+  private static BsonValue probeGlobalBound(MongoCollection<BsonDocument> col, int direction) {
+    return firstIdFromFind(col.find(), direction);
+  }
+
   private static BsonValue probeBucketBound(
       MongoCollection<BsonDocument> col, TypeBucket bucket, int direction) {
+    return firstIdFromFind(col.find(bucket.query()), direction);
+  }
+
+  private static BsonValue firstIdFromFind(FindIterable<BsonDocument> iterable, int direction) {
+    if (iterable == null) {
+      return null;
+    }
     BsonDocument doc =
-        col.find(bucket.query())
+        iterable
             .projection(new BsonDocument("_id", new BsonInt32(1)))
             .sort(new BsonDocument("_id", new BsonInt32(direction)))
             .limit(1)
             .maxTime(5, TimeUnit.SECONDS)
             .first();
-    if (doc != null && doc.containsKey("_id")) {
-      return doc.get("_id");
-    }
-    return null;
+    return (doc != null && doc.containsKey("_id")) ? doc.get("_id") : null;
   }
 
   /**
@@ -480,12 +472,11 @@ public final class ReadSplitGenerator {
       return generateSplitsForTypeBounds(activeTypes.get(0), effectiveSplits, sampledKeys);
     }
 
-    // Mixed collection: single-key types (minKey == maxKey) only need 1 split,
+    // Mixed collection: single-key types (minKey == maxKey) and booleans only need 1 split,
     // preserving split budget for multi-document types.
     List<ProbedTypeBounds> multiDocTypes = new ArrayList<>();
     for (ProbedTypeBounds bounds : activeTypes) {
-      if (!Objects.equals(bounds.getMinKey(), bounds.getMaxKey())
-          && !"bool".equals(bounds.getBucket().getName())) {
+      if (!isSingleSplitBucket(bounds)) {
         multiDocTypes.add(bounds);
       }
     }
@@ -495,41 +486,44 @@ public final class ReadSplitGenerator {
 
     int totalMultiDocSamples = 0;
     for (ProbedTypeBounds bounds : multiDocTypes) {
-      for (BsonValue k : sampledKeys) {
-        if (matchesType(k, bounds.getBucket())) {
-          totalMultiDocSamples++;
-        }
-      }
+      totalMultiDocSamples += countBucketSamples(sampledKeys, bounds.getBucket());
     }
 
     List<BsonDocument> combinedFilters = new ArrayList<>();
     for (ProbedTypeBounds bounds : activeTypes) {
-      if (Objects.equals(bounds.getMinKey(), bounds.getMaxKey())
-          || "bool".equals(bounds.getBucket().getName())) {
-        BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
-        combinedFilters.add(new BsonDocument("_id", idDoc));
-      } else {
-        int typeSplits;
-        if (totalMultiDocSamples > 0) {
-          int bucketSamples = 0;
-          for (BsonValue k : sampledKeys) {
-            if (matchesType(k, bounds.getBucket())) {
-              bucketSamples++;
-            }
-          }
-          typeSplits =
-              Math.max(
-                  1,
-                  (int)
-                      Math.round(
-                          ((double) bucketSamples / totalMultiDocSamples) * remainingSplits));
-        } else {
-          typeSplits = Math.max(1, remainingSplits / multiDocTypes.size());
-        }
-        combinedFilters.addAll(generateSplitsForTypeBounds(bounds, typeSplits, sampledKeys));
+      if (isSingleSplitBucket(bounds)) {
+        combinedFilters.add(bounds.getBucket().query());
+        continue;
       }
+      int typeSplits;
+      if (totalMultiDocSamples > 0) {
+        int bucketSamples = countBucketSamples(sampledKeys, bounds.getBucket());
+        typeSplits =
+            Math.max(
+                1,
+                (int)
+                    Math.round(((double) bucketSamples / totalMultiDocSamples) * remainingSplits));
+      } else {
+        typeSplits = Math.max(1, remainingSplits / multiDocTypes.size());
+      }
+      combinedFilters.addAll(generateSplitsForTypeBounds(bounds, typeSplits, sampledKeys));
     }
     return combinedFilters;
+  }
+
+  private static boolean isSingleSplitBucket(ProbedTypeBounds bounds) {
+    return Objects.equals(bounds.getMinKey(), bounds.getMaxKey())
+        || "bool".equals(bounds.getBucket().getName());
+  }
+
+  private static int countBucketSamples(List<BsonValue> sampledKeys, TypeBucket bucket) {
+    int count = 0;
+    for (BsonValue k : sampledKeys) {
+      if (matchesType(k, bucket)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   private static List<BsonValue> sampleCollectionKeys(
@@ -650,7 +644,7 @@ public final class ReadSplitGenerator {
     }
     switch (bucket.getName()) {
       case "minKey":
-        return k.getBsonType() == org.bson.BsonType.MIN_KEY;
+        return k.getBsonType() == BsonType.MIN_KEY;
       case "null":
         return k.isNull();
       case "number":
@@ -674,7 +668,7 @@ public final class ReadSplitGenerator {
       case "regex":
         return k.isRegularExpression();
       case "maxKey":
-        return k.getBsonType() == org.bson.BsonType.MAX_KEY;
+        return k.getBsonType() == BsonType.MAX_KEY;
       default:
         return false;
     }
@@ -702,7 +696,7 @@ public final class ReadSplitGenerator {
       return BigDecimal.valueOf(d);
     }
     if (val.isDecimal128()) {
-      org.bson.types.Decimal128 dec = val.asDecimal128().getValue();
+      Decimal128 dec = val.asDecimal128().getValue();
       if (!dec.isFinite()) {
         return null;
       }
@@ -719,13 +713,12 @@ public final class ReadSplitGenerator {
   private static BsonValue toBsonNumber(
       BigDecimal val, BsonValue originalMin, BsonValue originalMax) {
     if (originalMin.isDecimal128() || originalMax.isDecimal128()) {
-      return new org.bson.BsonDecimal128(
-          new org.bson.types.Decimal128(val.round(MathContext.DECIMAL128)));
+      return new BsonDecimal128(new Decimal128(val.round(MathContext.DECIMAL128)));
     }
     if (originalMin.isDouble() || originalMax.isDouble()) {
-      return new org.bson.BsonDouble(val.doubleValue());
+      return new BsonDouble(val.doubleValue());
     }
-    return new org.bson.BsonInt64(val.longValue());
+    return new BsonInt64(val.longValue());
   }
 
   /** Generates contiguous numeric range splits interpolated between probed min and max values. */
@@ -734,13 +727,11 @@ public final class ReadSplitGenerator {
     BigDecimal minDec = asBigDecimal(minVal);
     BigDecimal maxDec = asBigDecimal(maxVal);
     if (numSplits <= 1 || minDec == null || maxDec == null) {
-      return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+      return singleNumberBucketFilter();
     }
     BigDecimal range = maxDec.subtract(minDec);
     if (range.compareTo(BigDecimal.ZERO) <= 0) {
-      return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+      return singleNumberBucketFilter();
     }
 
     boolean isFloatingPoint =
@@ -750,8 +741,7 @@ public final class ReadSplitGenerator {
             ? range.divide(BigDecimal.valueOf(numSplits), MathContext.DECIMAL128)
             : range.divideToIntegralValue(BigDecimal.valueOf(numSplits));
     if (step.compareTo(BigDecimal.ZERO) <= 0) {
-      return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+      return singleNumberBucketFilter();
     }
 
     List<BsonValue> boundaries = new ArrayList<>(numSplits - 1);
@@ -763,8 +753,7 @@ public final class ReadSplitGenerator {
       }
     }
     if (boundaries.isEmpty()) {
-      return Collections.singletonList(
-          new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
+      return singleNumberBucketFilter();
     }
 
     List<BsonDocument> slices = new ArrayList<>(boundaries.size() + 1);
@@ -780,6 +769,11 @@ public final class ReadSplitGenerator {
       slices.add(new BsonDocument("_id", idDoc));
     }
     return slices;
+  }
+
+  private static List<BsonDocument> singleNumberBucketFilter() {
+    return Collections.singletonList(
+        new BsonDocument("_id", new BsonDocument("$type", NUMBER_BSON_TYPES)));
   }
 
   /**

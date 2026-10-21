@@ -509,20 +509,7 @@ public class MongoDbToMongoDb {
       }
     }
 
-    String tmpDirectory = options.getTempLocation();
-    if (tmpDirectory == null || tmpDirectory.isEmpty()) {
-      String stagingLocation = null;
-      try {
-        stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
-      } catch (Exception ignored) {
-      }
-      if (stagingLocation != null && !stagingLocation.isEmpty()) {
-        tmpDirectory =
-            stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
-      } else {
-        tmpDirectory = "/tmp";
-      }
-    }
+    String tmpDirectory = resolveTempDirectory(options);
 
     String dlqDirectory = options.getDlqDirectory();
     if (dlqDirectory == null || dlqDirectory.isEmpty()) {
@@ -790,6 +777,23 @@ public class MongoDbToMongoDb {
     }
 
     pipeline.run();
+  }
+
+  private static String resolveTempDirectory(Options options) {
+    String tmpDirectory = options.getTempLocation();
+    if (tmpDirectory != null && !tmpDirectory.isEmpty()) {
+      return tmpDirectory;
+    }
+    String stagingLocation = null;
+    try {
+      stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
+    } catch (Exception ignored) {
+      // Non-Dataflow runners (e.g. DirectRunner) may reject DataflowPipelineOptions projection.
+    }
+    if (stagingLocation != null && !stagingLocation.isEmpty()) {
+      return stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
+    }
+    return "/tmp";
   }
 
   /**

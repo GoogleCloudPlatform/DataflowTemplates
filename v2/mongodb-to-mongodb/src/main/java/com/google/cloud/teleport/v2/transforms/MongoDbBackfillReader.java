@@ -835,12 +835,7 @@ public class MongoDbBackfillReader {
           }
 
           Document doc = cursor.next();
-          Object rawId = doc.get("_id");
-          String nextIdJson =
-              rawId != null
-                  ? new Document("_id", rawId)
-                      .toJson(CANONICAL_JSON_SETTINGS, DocumentWithMetadata.DOCUMENT_CODEC)
-                  : null;
+          String nextIdJson = DocumentWithMetadata.serializeIdDocument(doc.get("_id"));
 
           if (!tracker.tryClaim(
               new BackfillSlotRestriction(

@@ -44,6 +44,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContinuation;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
@@ -53,6 +55,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -903,7 +906,7 @@ public class MongoDbChangeStreamReaderTest {
   }
 
   @Test
-  public void testMapChangeStreamEvent_lazyOriginalDocAndNormalizedShardedKey() {
+  public void mapChangeStreamEvent_lazyOriginalDocAndNormalizedShardedKey() {
     Document doc = new Document("_id", "doc-777").append("tenantId", "acme").append("v", 1);
     BsonDocument shardedDocKey =
         new BsonDocument("tenantId", new BsonString("acme"))
@@ -928,7 +931,7 @@ public class MongoDbChangeStreamReaderTest {
   @Test
   @SuppressWarnings("unchecked")
   public void
-      testProcessChangeStreamPartitionFn_backgroundPrefetchAcrossSlices_reusesCursorWithoutMismatch() {
+      processChangeStreamPartitionFn_backgroundPrefetchAcrossSlices_reusesCursorWithoutMismatch() {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);
@@ -1018,7 +1021,7 @@ public class MongoDbChangeStreamReaderTest {
   }
 
   @Test
-  public void testBuildChangeStreamPipeline_singleStream_includesUnsetUpdateDescription() {
+  public void buildChangeStreamPipeline_singleStream_includesUnsetUpdateDescription() {
     ChangeStreamPartition partition =
         new ChangeStreamPartition(
             "mongodb://localhost:27017",
@@ -1032,8 +1035,7 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "whenAvailable");
 
-    List<org.bson.conversions.Bson> pipeline =
-        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+    List<Bson> pipeline = MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
 
     assertEquals(1, pipeline.size());
     assertEquals(
@@ -1042,7 +1044,7 @@ public class MongoDbChangeStreamReaderTest {
   }
 
   @Test
-  public void testBuildChangeStreamPipeline_withMatchFilter_ordersMatchBeforeUnset() {
+  public void buildChangeStreamPipeline_withMatchFilter_ordersMatchBeforeUnset() {
     String matchJson = MongoDbChangeStreamReader.generateHashedMatchFilter(4, 1).toJson();
     ChangeStreamPartition partition =
         new ChangeStreamPartition(
@@ -1057,8 +1059,7 @@ public class MongoDbChangeStreamReaderTest {
             0,
             "whenAvailable");
 
-    List<org.bson.conversions.Bson> pipeline =
-        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+    List<Bson> pipeline = MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
 
     assertEquals(2, pipeline.size());
     assertTrue(pipeline.get(0).toBsonDocument().containsKey("$match"));
@@ -1068,20 +1069,19 @@ public class MongoDbChangeStreamReaderTest {
   }
 
   @Test
-  public void testBuildChangeStreamPipeline_defaultFullDocumentStrategy_omitsUnsetStage() {
+  public void buildChangeStreamPipeline_defaultFullDocumentStrategy_omitsUnsetStage() {
     ChangeStreamPartition partition =
         new ChangeStreamPartition(
             "mongodb://localhost:27017", "testDb", "users", "users", 0, 1, null, 0, 0, "default");
 
-    List<org.bson.conversions.Bson> pipeline =
-        MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
+    List<Bson> pipeline = MongoDbChangeStreamReader.buildChangeStreamPipeline(partition);
 
     assertTrue(pipeline.isEmpty());
   }
 
   @Test
   @SuppressWarnings("unchecked")
-  public void testPartitionCursorHolder_coalesceTimeoutDoesNotRewindToStalePostBatchToken()
+  public void partitionCursorHolder_coalesceTimeoutDoesNotRewindToStalePostBatchToken()
       throws Exception {
     MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
         mock(MongoChangeStreamCursor.class);
@@ -1106,10 +1106,8 @@ public class MongoDbChangeStreamReaderTest {
             null,
             null);
 
-    java.util.concurrent.CountDownLatch secondTryNextEntered =
-        new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch releaseSecondTryNext =
-        new java.util.concurrent.CountDownLatch(1);
+    CountDownLatch secondTryNextEntered = new CountDownLatch(1);
+    CountDownLatch releaseSecondTryNext = new CountDownLatch(1);
 
     when(mockCursor.tryNext())
         .thenReturn(event1)
@@ -1129,7 +1127,7 @@ public class MongoDbChangeStreamReaderTest {
       assertNotNull(polled);
       holder.setLastResumeToken(polled.getResumeToken());
 
-      assertTrue(secondTryNextEntered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+      assertTrue(secondTryNextEntered.await(5, TimeUnit.SECONDS));
 
       // Next poll times out while prefetcher is blocked inside the second tryNext()
       ChangeStreamDocument<Document> timedOutPoll = holder.pollNext(10L);
@@ -1145,8 +1143,7 @@ public class MongoDbChangeStreamReaderTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  public void testPartitionCursorHolder_prefetchExceptionRethrowsAndMarksStopped()
-      throws Exception {
+  public void partitionCursorHolder_prefetchExceptionRethrowsAndMarksStopped() throws Exception {
     MongoChangeStreamCursor<ChangeStreamDocument<Document>> mockCursor =
         mock(MongoChangeStreamCursor.class);
     when(mockCursor.tryNext()).thenThrow(new RuntimeException("Simulated cursor failure"));
@@ -1170,7 +1167,7 @@ public class MongoDbChangeStreamReaderTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  public void testProcessChangeStreamPartitionFn_tokenMismatch_rebuildsCursor() {
+  public void processChangeStreamPartitionFn_tokenMismatch_rebuildsCursor() {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<Document> mockCol = mock(MongoCollection.class);

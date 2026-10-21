@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -107,6 +108,7 @@ public class MongoDbTransforms {
       try {
         client.close();
       } catch (Exception ignored) {
+        // Best-effort close during DoFn teardown.
       }
     }
   }
@@ -127,33 +129,22 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> {
-          int maxSize =
-              connectionString.getMaxConnectionPoolSize() != null
-                  ? connectionString.getMaxConnectionPoolSize()
-                  : 256;
-          int minSize =
-              connectionString.getMinConnectionPoolSize() != null
-                  ? connectionString.getMinConnectionPoolSize()
-                  : 0;
-          int maxWait =
-              connectionString.getMaxWaitTime() != null ? connectionString.getMaxWaitTime() : 30000;
-          pool.maxSize(maxSize).minSize(minSize).maxWaitTime(maxWait, TimeUnit.MILLISECONDS);
-        });
+        pool ->
+            pool.maxSize(
+                    Objects.requireNonNullElse(connectionString.getMaxConnectionPoolSize(), 256))
+                .minSize(Objects.requireNonNullElse(connectionString.getMinConnectionPoolSize(), 0))
+                .maxWaitTime(
+                    Objects.requireNonNullElse(connectionString.getMaxWaitTime(), 30_000),
+                    TimeUnit.MILLISECONDS));
     builder.applyToSocketSettings(
-        socket -> {
-          int connectTimeout =
-              connectionString.getConnectTimeout() != null
-                  ? connectionString.getConnectTimeout()
-                  : 15000;
-          int readTimeout =
-              connectionString.getSocketTimeout() != null
-                  ? connectionString.getSocketTimeout()
-                  : 60000;
-          socket
-              .connectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
-              .readTimeout(readTimeout, TimeUnit.MILLISECONDS);
-        });
+        socket ->
+            socket
+                .connectTimeout(
+                    Objects.requireNonNullElse(connectionString.getConnectTimeout(), 15_000),
+                    TimeUnit.MILLISECONDS)
+                .readTimeout(
+                    Objects.requireNonNullElse(connectionString.getSocketTimeout(), 60_000),
+                    TimeUnit.MILLISECONDS));
     return MongoClients.create(builder.build());
   }
 
@@ -368,97 +359,65 @@ public class MongoDbTransforms {
               ? "/error-" + getName().replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase()
               : "/error";
 
-      PCollection<String> retryableJson =
-          retryable.apply(
-              "MapToJson_Retryable",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @Override
-                    public Duration getAllowedTimestampSkew() {
-                      return Duration.millis(Long.MAX_VALUE);
-                    }
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqRetryableEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      String json =
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
-                      if (c.timestamp()
-                          .isAfter(
-                              GlobalWindow.INSTANCE
-                                  .maxTimestamp()
-                                  .minus(Duration.standardMinutes(2)))) {
-                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
-                      } else {
-                        c.output(json);
-                      }
-                    }
-                  }));
-
-      if (isUnbounded) {
-        retryableJson
-            .apply("WindowRetryableDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Retryable",
-                TextIO.write()
-                    .to(retryablePath + filePrefix)
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        retryableJson.apply(
-            "WriteDlq_Retryable",
-            TextIO.write().to(retryablePath + filePrefix).withSuffix(".json"));
-      }
-
-      PCollection<String> permanentJson =
-          permanent.apply(
-              "MapToJson_Permanent",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @Override
-                    public Duration getAllowedTimestampSkew() {
-                      return Duration.millis(Long.MAX_VALUE);
-                    }
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqPermanentEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      String json =
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
-                      if (c.timestamp()
-                          .isAfter(
-                              GlobalWindow.INSTANCE
-                                  .maxTimestamp()
-                                  .minus(Duration.standardMinutes(2)))) {
-                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
-                      } else {
-                        c.output(json);
-                      }
-                    }
-                  }));
-
-      if (isUnbounded) {
-        permanentJson
-            .apply("WindowPermanentDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Permanent",
-                TextIO.write()
-                    .to(permanentPath + filePrefix)
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        permanentJson.apply(
-            "WriteDlq_Permanent",
-            TextIO.write().to(permanentPath + filePrefix).withSuffix(".json"));
-      }
+      writeDlqTier(
+          retryable, "Retryable", retryablePath + filePrefix, dlqRetryableEmitted, isUnbounded);
+      writeDlqTier(
+          permanent, "Permanent", permanentPath + filePrefix, dlqPermanentEmitted, isUnbounded);
 
       return PDone.in(input.getPipeline());
+    }
+
+    private static void writeDlqTier(
+        PCollection<DocumentWithMetadata> tierItems,
+        String tierName,
+        String outputPrefix,
+        Counter emittedCounter,
+        boolean isUnbounded) {
+      PCollection<String> jsonLines =
+          tierItems.apply(
+              "MapToJson_" + tierName,
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, String>() {
+                    @Override
+                    public Duration getAllowedTimestampSkew() {
+                      return Duration.millis(Long.MAX_VALUE);
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      emittedCounter.inc();
+                      DocumentWithMetadata item = c.element();
+                      String json =
+                          item.toDlqJson(
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
+                      if (c.timestamp()
+                          .isAfter(
+                              GlobalWindow.INSTANCE
+                                  .maxTimestamp()
+                                  .minus(Duration.standardMinutes(2)))) {
+                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
+                      } else {
+                        c.output(json);
+                      }
+                    }
+                  }));
+
+      if (isUnbounded) {
+        jsonLines
+            .apply(
+                "Window" + tierName + "Dlq",
+                Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+            .apply(
+                "WriteDlq_" + tierName,
+                TextIO.write()
+                    .to(outputPrefix)
+                    .withSuffix(".json")
+                    .withWindowedWrites()
+                    .withNumShards(1));
+      } else {
+        jsonLines.apply(
+            "WriteDlq_" + tierName, TextIO.write().to(outputPrefix).withSuffix(".json"));
+      }
     }
   }
 
@@ -1534,7 +1493,7 @@ public class MongoDbTransforms {
                 id,
                 new DeleteOneModel<>(new Document("_id", id)),
                 item,
-                true);
+                /* isDelete= */ true);
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1561,7 +1520,7 @@ public class MongoDbTransforms {
                   new ReplaceOneModel<>(
                       new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
                   item,
-                  false);
+                  /* isDelete= */ false);
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(

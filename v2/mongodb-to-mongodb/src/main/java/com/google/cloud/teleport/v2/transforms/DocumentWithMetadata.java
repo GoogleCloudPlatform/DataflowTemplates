@@ -203,10 +203,7 @@ public class DocumentWithMetadata implements Serializable {
     }
     if (document != null && document.containsKey("_id")) {
       try {
-        return col
-            + "#"
-            + new Document("_id", document.get("_id"))
-                .toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC);
+        return col + "#" + serializeIdDocument(document.get("_id"));
       } catch (Exception ignored) {
         return col + "#" + document.get("_id");
       }
@@ -220,10 +217,7 @@ public class DocumentWithMetadata implements Serializable {
       try {
         Document keyDoc = Document.parse(documentKey, DOCUMENT_CODEC);
         if (keyDoc.containsKey("_id")) {
-          return col
-              + "#"
-              + new Document("_id", keyDoc.get("_id"))
-                  .toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC);
+          return col + "#" + serializeIdDocument(keyDoc.get("_id"));
         }
       } catch (Exception ignored) {
         // Fall through to the raw documentKey below.
@@ -517,11 +511,10 @@ public class DocumentWithMetadata implements Serializable {
       String sourceCollection,
       String targetCollection,
       TimestampSortKey timestampSortKey) {
-    String docKey = null;
-    if (document != null && document.containsKey("_id")) {
-      docKey =
-          new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC);
-    }
+    String docKey =
+        (document != null && document.containsKey("_id"))
+            ? serializeIdDocument(document.get("_id"))
+            : null;
     return new DocumentWithMetadata(
         document,
         null,
@@ -535,6 +528,12 @@ public class DocumentWithMetadata implements Serializable {
         timestampSortKey,
         docKey,
         false);
+  }
+
+  static String serializeIdDocument(Object id) {
+    return id != null
+        ? new Document("_id", id).toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC)
+        : null;
   }
 
   /**

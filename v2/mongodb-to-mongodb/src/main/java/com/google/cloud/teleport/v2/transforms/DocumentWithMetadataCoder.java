@@ -54,26 +54,6 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     return INSTANCE;
   }
 
-  private static byte[] encodeBsonDocument(Document doc) {
-    if (doc == null) {
-      return null;
-    }
-    BasicOutputBuffer buffer = new BasicOutputBuffer();
-    try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
-      DocumentWithMetadata.DOCUMENT_CODEC.encode(writer, doc, EncoderContext.builder().build());
-    }
-    return buffer.toByteArray();
-  }
-
-  private static Document decodeBsonDocument(byte[] bytes) {
-    if (bytes == null) {
-      return null;
-    }
-    try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(bytes))) {
-      return DocumentWithMetadata.DOCUMENT_CODEC.decode(reader, DecoderContext.builder().build());
-    }
-  }
-
   @Override
   public void encode(DocumentWithMetadata value, OutputStream outStream) throws IOException {
     if (value == null) {
@@ -152,5 +132,25 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     BOOLEAN_CODER.verifyDeterministic();
     VARINT_CODER.verifyDeterministic();
     TIMESTAMP_CODER.verifyDeterministic();
+  }
+
+  private static byte[] encodeBsonDocument(Document doc) {
+    if (doc == null) {
+      return null;
+    }
+    BasicOutputBuffer buffer = new BasicOutputBuffer();
+    try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
+      DocumentWithMetadata.DOCUMENT_CODEC.encode(writer, doc, EncoderContext.builder().build());
+    }
+    return buffer.toByteArray();
+  }
+
+  private static Document decodeBsonDocument(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+    try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(bytes))) {
+      return DocumentWithMetadata.DOCUMENT_CODEC.decode(reader, DecoderContext.builder().build());
+    }
   }
 }

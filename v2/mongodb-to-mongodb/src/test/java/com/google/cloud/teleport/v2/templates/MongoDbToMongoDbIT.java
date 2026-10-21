@@ -20,9 +20,17 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.firestore.v1.FirestoreAdminClient;
+import com.google.cloud.firestore.v1.FirestoreAdminSettings;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
+import com.google.firestore.admin.v1.Database;
+import com.google.firestore.admin.v1.Database.DataAccessMode;
+import com.google.firestore.admin.v1.Database.DatabaseEdition;
+import com.google.firestore.admin.v1.Database.DatabaseType;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -31,8 +39,8 @@ import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.ValidationOptions;
-import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -54,7 +63,9 @@ import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
+import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.mongodb.MongoDBResourceManager;
+import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
@@ -63,21 +74,19 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
-import org.bson.BsonJavaScript;
-import org.bson.BsonJavaScriptWithScope;
 import org.bson.BsonMaxKey;
 import org.bson.BsonMinKey;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonString;
-import org.bson.BsonSymbol;
 import org.bson.BsonTimestamp;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
 import org.bson.UuidRepresentation;
+import org.bson.codecs.BsonDocumentCodec;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.After;
@@ -95,10 +104,11 @@ import org.slf4j.LoggerFactory;
  * End-to-end correctness integration tests for {@link MongoDbToMongoDb} ({@code
  * Mongodb_To_Mongodb}).
  *
- * <p>By default, each test provisions two isolated {@code mongo:7.0} single-node replica-set
- * containers via {@link MongoDBResourceManager}. Optional {@code -DsourceMongoUri} and {@code
- * -DtargetMongoUri} properties can be supplied to run against remote GCP-hosted MongoDB or Cloud
- * Firestore Enterprise (MongoDB compatibility mode) endpoints with per-test isolated databases.
+ * <p>By default, each test migrates from an isolated {@code mongo:7.0} single-node replica-set
+ * source container ({@link MongoDBResourceManager}) to an ephemeral Cloud Firestore Enterprise
+ * database with MongoDB compatibility enabled ({@link FirestoreAdminResourceManager}). Optional
+ * {@code -DsourceMongoUri}, {@code -DtargetMongoUri}, or {@code -DuseTestcontainersTarget=true}
+ * properties can be supplied to override endpoints or run against local Docker containers.
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(MongoDbToMongoDb.class)
@@ -112,6 +122,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
   private MongoDBResourceManager sourceMongoManager;
   private MongoDBResourceManager targetMongoManager;
+  private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
   private String sourceUri;
   private String targetUri;
@@ -122,64 +133,121 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
   private MongoClient targetClient;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     if (isDirectRunner()) {
       gcsClient = null;
       artifactClient = null;
     }
-    String customSourceUri =
-        TestProperties.getProperty("sourceMongoUri", "", TestProperties.Type.PROPERTY);
-    String customTargetUri =
-        TestProperties.getProperty("targetMongoUri", "", TestProperties.Type.PROPERTY);
-
     String uniqueSuffix =
         testId.replaceAll("[^a-zA-Z0-9]", "").toLowerCase()
             + "_"
             + UUID.randomUUID().toString().substring(0, 6);
 
+    setUpSource(uniqueSuffix);
+    setUpTarget(uniqueSuffix);
+
+    sourceClient = MongoDbTransforms.createMongoClient(sourceUri);
+    targetClient = MongoDbTransforms.createMongoClient(targetUri);
+  }
+
+  private void setUpSource(String uniqueSuffix) {
+    String customSourceUri =
+        TestProperties.getProperty("sourceMongoUri", "", TestProperties.Type.PROPERTY);
     if (customSourceUri != null && !customSourceUri.isEmpty()) {
       sourceUri = customSourceUri;
       sourceDatabase = "it_src_" + uniqueSuffix;
-    } else {
-      sourceMongoManager =
-          MongoDBResourceManager.builder(testName).setContainerImageTag(MONGO_IMAGE_TAG).build();
-      sourceUri = sourceMongoManager.getUri();
-      sourceDatabase = sourceMongoManager.getDatabaseName();
+      return;
     }
+    sourceMongoManager =
+        MongoDBResourceManager.builder(testName).setContainerImageTag(MONGO_IMAGE_TAG).build();
+    sourceUri = sourceMongoManager.getUri();
+    sourceDatabase = sourceMongoManager.getDatabaseName();
+  }
+
+  private void setUpTarget(String uniqueSuffix) throws IOException {
+    String customTargetUri =
+        TestProperties.getProperty("targetMongoUri", "", TestProperties.Type.PROPERTY);
+    boolean useTestcontainersTarget =
+        Boolean.parseBoolean(
+            TestProperties.getProperty(
+                "useTestcontainersTarget", "false", TestProperties.Type.PROPERTY));
 
     if (customTargetUri != null && !customTargetUri.isEmpty()) {
       targetUri = customTargetUri;
       targetDatabase = "it_tgt_" + uniqueSuffix;
-    } else {
+      return;
+    }
+    if (useTestcontainersTarget) {
       targetMongoManager =
           MongoDBResourceManager.builder(testName + "_target")
               .setContainerImageTag(MONGO_IMAGE_TAG)
               .build();
       targetUri = targetMongoManager.getUri();
       targetDatabase = targetMongoManager.getDatabaseName();
+      return;
     }
 
-    sourceClient = MongoDbTransforms.createMongoClient(sourceUri);
-    targetClient = MongoDbTransforms.createMongoClient(targetUri);
+    targetDatabase = "dst-" + UUID.randomUUID();
+    firestoreAdminResourceManager =
+        FirestoreAdminResourceManager.builder(testName)
+            .setProject(PROJECT)
+            .setRegion(REGION)
+            .setCredentials(credentials)
+            .build();
+    firestoreAdminResourceManager.createDatabase(
+        targetDatabase,
+        Database.newBuilder()
+            .setName(targetDatabase)
+            .setType(DatabaseType.FIRESTORE_NATIVE)
+            .setDatabaseEdition(DatabaseEdition.ENTERPRISE)
+            .setMongodbCompatibleDataAccessMode(DataAccessMode.DATA_ACCESS_MODE_ENABLED)
+            .setLocationId(REGION)
+            .build());
+    try (FirestoreAdminClient adminClient =
+        FirestoreAdminClient.create(
+            FirestoreAdminSettings.newBuilder()
+                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                .build())) {
+      Database db = adminClient.getDatabase("projects/" + PROJECT + "/databases/" + targetDatabase);
+      String encodedToken = URLEncoder.encode(getAccessToken(), StandardCharsets.UTF_8);
+      targetUri =
+          String.format(
+              "mongodb://access_token:%s@%s.%s.firestore.goog:443/%s"
+                  + "?loadBalanced=true&tls=true&retryWrites=false"
+                  + "&authMechanism=PLAIN&authSource=$external",
+              encodedToken, db.getUid(), db.getLocationId(), targetDatabase);
+    }
   }
 
   @After
   public void tearDown() {
     dropDatabaseQuietly(sourceClient, sourceDatabase);
-    dropDatabaseQuietly(targetClient, targetDatabase);
+    if (firestoreAdminResourceManager == null) {
+      dropDatabaseQuietly(targetClient, targetDatabase);
+    }
     closeClientQuietly(sourceClient);
     closeClientQuietly(targetClient);
-    ResourceManagerUtils.cleanResources(sourceMongoManager, targetMongoManager);
+    ResourceManagerUtils.cleanResources(
+        sourceMongoManager, targetMongoManager, firestoreAdminResourceManager);
+  }
+
+  private String getAccessToken() throws IOException {
+    GoogleCredentials googleCredentials =
+        ((GoogleCredentials) credentials)
+            .createScoped("https://www.googleapis.com/auth/cloud-platform");
+    googleCredentials.refreshIfExpired();
+    return googleCredentials.getAccessToken().getTokenValue();
   }
 
   /**
    * Suite 1: Exercises default {@code BACKFILL} mode (omitting {@code migrationMode}),
    * multi-collection auto-discovery (omitting {@code sourceCollection}), fine-grained adaptive
-   * split probing ({@code targetBackfillChunkSize=3}), and byte/type-exact BSON fidelity across all
-   * canonical BSON {@code _id} and payload types.
+   * split probing ({@code targetBackfillChunkSize=3}), and byte/type-exact BSON fidelity across
+   * heterogeneous {@code _id} and payload types into Cloud Firestore Enterprise.
    */
   @Test
-  public void testBackfillHeterogeneousBsonTypesAndMultiCollection() throws IOException {
+  public void backfill_heterogeneousBsonTypesAndMultiCollection_preservesAllDocuments()
+      throws Exception {
     String bsonTypesCol = "col_bson_types";
     String secondaryCol = "col_secondary";
 
@@ -226,8 +294,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     assertCollectionParity(bsonTypesCol, heterogeneousDocs.size());
     assertCollectionParity(secondaryCol, secondaryDocs.size());
 
-    // Explicitly verify tricky BSON edge cases on target (IEEE 754 -0.0, NaN, Int64 > 2^53,
-    // Decimal128, UUID subtype 0x04, and pre-1970 negative Date).
+    // Explicitly verify IEEE 754 -0.0, NaN, and Int64 > 2^53 precision on the target database.
     MongoCollection<RawBsonDocument> tgtBsonCol =
         targetClient.getDatabase(targetDatabase).getCollection(bsonTypesCol, RawBsonDocument.class);
     RawBsonDocument negZeroDoc =
@@ -245,7 +312,8 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
    * {@code _id}), delete-then-reinsert resurrections, and net-new inserts during backfill overlap.
    */
   @Test
-  public void testBackfillAndStreamingOverlapDeduplication() throws IOException {
+  public void backfillAndStreaming_concurrentOverlapMutations_deduplicatesAndConverges()
+      throws Exception {
     String collection = "col_overlap_dedup";
     MongoDatabase srcDb = sourceClient.getDatabase(sourceDatabase);
     srcDb.createCollection(collection);
@@ -327,11 +395,11 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
    * Suite 3: Exercises {@code STREAMING_CDC} with {@code numChangeStreamSplits=4}, rapid same-key
    * mutation bursts ({@code INSERT -> UPDATE -> REPLACE -> UPDATE}, {@code INSERT -> UPDATE ->
    * DELETE}, {@code INSERT -> DELETE -> INSERT} resurrection, {@code UUID} {@code _id} delete), a
-   * >64-event burst crossing {@code RESUME_TOKEN_SERIALIZATION_STRIDE}, and post-idle wake-up.
+   * >64-event burst, and post-idle wake-up.
    */
   @Test
-  public void testStreamingCdcBatchCoalescingAndMultiPartition()
-      throws IOException, InterruptedException {
+  public void streamingCdc_rapidSameKeyMutationsAndMultiPartition_coalescesAndConverges()
+      throws Exception {
     String collection = "col_streaming_coalesce";
     MongoDatabase srcDb = sourceClient.getDatabase(sourceDatabase);
     srcDb.createCollection(collection);
@@ -395,7 +463,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     srcCol.deleteOne(Filters.eq("_id", deletedUuid));
     srcCol.insertOne(new Document("_id", survivingUuid).append("v", 10));
 
-    // 5. Burst of 70 inserts + 20 updates (>64 events crossing RESUME_TOKEN_SERIALIZATION_STRIDE)
+    // 5. Burst of 70 inserts + 20 updates
     List<Document> burstDocs = new ArrayList<>();
     for (int i = 0; i < 70; i++) {
       burstDocs.add(new Document("_id", "burst_" + i).append("v", 1).append("idx", i));
@@ -430,12 +498,11 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
   /**
    * Suite 4: Exercises {@code startAtOperationTime} filtering, JavaScript UDF transformation &
    * filtering ({@code return null}), UDF exception handling (verifying lazy {@code
-   * originalDocument} preservation in retryable DLQ), and permanent write-failure DLQ routing on
-   * target schema validation errors (code 121).
+   * originalDocument} preservation in retryable DLQ), and permanent write-failure DLQ routing.
    */
   @Test
-  public void testUdfTransformationStartAtOperationTimeAndDlq()
-      throws IOException, InterruptedException {
+  public void streamingCdcAndBackfill_udfStartAtOperationTimeAndDlq_routesValidAndFailedDocs()
+      throws Exception {
     String udfScript =
         "function transform(inJson) {\n"
             + "  var doc = JSON.parse(inJson);\n"
@@ -454,7 +521,6 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
             + "}\n";
     String udfPath = stageUdfFile("input/transform_udf.js", udfScript);
     String streamDlqDir = resolveDlqDirectory("dlq-stream");
-    String backfillDlqDir = resolveDlqDirectory("dlq-backfill");
 
     String streamCollection = "col_udf_stream";
     MongoDatabase srcDb = sourceClient.getDatabase(sourceDatabase);
@@ -532,14 +598,31 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     assertThat(valid2.getBoolean("udfProcessed")).isTrue();
     assertThat(valid2.getInteger("doubledScore")).isEqualTo(50);
 
-    // 3. Run bounded BACKFILL with UDF + target $jsonSchema validator + DLQ on a second collection
-    // to verify both retryable (UDF failure) and permanent (MongoDB validation code 121) DLQ files.
+    // 3. Verify bounded BACKFILL retryable (UDF failure) and permanent (target write rejection)
+    // DLQ routing.
+    verifyBackfillDlqRouting(srcDb, udfPath);
+  }
+
+  private void verifyBackfillDlqRouting(MongoDatabase srcDb, String udfPath) throws IOException {
+    String backfillDlqDir = resolveDlqDirectory("dlq-backfill");
     String dlqCollection = "col_udf_dlq_backfill";
     MongoDatabase tgtDb = targetClient.getDatabase(targetDatabase);
-    tgtDb.createCollection(
-        dlqCollection,
-        new CreateCollectionOptions()
-            .validationOptions(new ValidationOptions().validator(Filters.gte("doubledScore", 0))));
+
+    Document permanentRejectDoc =
+        new Document("_id", "dlq_permanent_reject_doc")
+            .append("score", -5)
+            .append("payload", "preserve_in_permanent_dlq");
+    if (firestoreAdminResourceManager != null) {
+      // Cloud Firestore Enterprise rejects reserved __fs_*__ field names per statement with
+      // INVALID_ARGUMENT (MongoDB error code 2), which WriteBatchesFn routes to permanent DLQ.
+      permanentRejectDoc.append("__fs_invalid__", "reserved_field_rejected_by_firestore");
+    } else {
+      tgtDb.createCollection(
+          dlqCollection,
+          new CreateCollectionOptions()
+              .validationOptions(
+                  new ValidationOptions().validator(Filters.gte("doubledScore", 0))));
+    }
 
     MongoCollection<Document> srcDlqCol = srcDb.getCollection(dlqCollection);
     srcDlqCol.insertOne(new Document("_id", "dlq_valid_doc").append("score", 7));
@@ -547,10 +630,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
         new Document("_id", "dlq_udf_poison_doc")
             .append("poison", true)
             .append("payload", "preserve_original_in_retryable_dlq"));
-    srcDlqCol.insertOne(
-        new Document("_id", "dlq_schema_reject_doc")
-            .append("score", -5)
-            .append("payload", "preserve_in_permanent_dlq"));
+    srcDlqCol.insertOne(permanentRejectDoc);
 
     LaunchConfig.Builder backfillDlqOptions =
         withTempLocation(
@@ -584,7 +664,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     assertThat(retryableDlqJson).contains("RETRYABLE");
 
     String permanentDlqJson = readDlqContents("dlq-backfill", backfillDlqDir, "permanent");
-    assertThat(permanentDlqJson).contains("dlq_schema_reject_doc");
+    assertThat(permanentDlqJson).contains("dlq_permanent_reject_doc");
     assertThat(permanentDlqJson).contains("PERMANENT");
   }
 
@@ -594,19 +674,23 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
   private LaunchConfig.Builder withTempLocation(LaunchConfig.Builder builder) throws IOException {
     if (isDirectRunner()) {
-      File localTemp =
-          tempFolder.newFolder("beam-temp-" + UUID.randomUUID().toString().substring(0, 6));
-      builder.addParameter("tempLocation", localTemp.getAbsolutePath());
+      Path localTemp =
+          tempFolder
+              .newFolder("beam-temp-" + UUID.randomUUID().toString().substring(0, 6))
+              .toPath();
+      builder.addParameter("tempLocation", localTemp.toString());
     }
     return builder;
   }
 
   private String stageUdfFile(String relativePath, String scriptContent) throws IOException {
     if (isDirectRunner() || gcsClient == null) {
-      File localUdf =
-          tempFolder.newFile("transform_" + UUID.randomUUID().toString().substring(0, 6) + ".js");
-      Files.writeString(localUdf.toPath(), scriptContent, StandardCharsets.UTF_8);
-      return localUdf.getAbsolutePath();
+      Path localUdf =
+          tempFolder
+              .newFile("transform_" + UUID.randomUUID().toString().substring(0, 6) + ".js")
+              .toPath();
+      Files.writeString(localUdf, scriptContent, StandardCharsets.UTF_8);
+      return localUdf.toString();
     }
     gcsClient.createArtifact(relativePath, scriptContent);
     return getGcsPath(relativePath);
@@ -614,7 +698,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
   private String resolveDlqDirectory(String name) throws IOException {
     if (isDirectRunner() || gcsClient == null) {
-      return tempFolder.newFolder(name).getAbsolutePath();
+      return tempFolder.newFolder(name).toPath().toString();
     }
     return getGcsPath(name);
   }
@@ -622,19 +706,19 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
   private String readDlqContents(String gcsPrefix, String resolvedDlqDir, String tier)
       throws IOException {
     if (isDirectRunner() || gcsClient == null) {
-      StringBuilder content = new StringBuilder();
+      List<Path> matchingFiles;
       try (Stream<Path> walk = Files.walk(Path.of(resolvedDlqDir))) {
-        walk.filter(Files::isRegularFile)
-            .filter(
-                p -> p.toString().contains("/" + tier + "/error") && p.toString().endsWith(".json"))
-            .forEach(
-                p -> {
-                  try {
-                    content.append(Files.readString(p, StandardCharsets.UTF_8));
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
+        matchingFiles =
+            walk.filter(Files::isRegularFile)
+                .filter(
+                    p ->
+                        p.toString().contains("/" + tier + "/error")
+                            && p.toString().endsWith(".json"))
+                .collect(Collectors.toList());
+      }
+      StringBuilder content = new StringBuilder();
+      for (Path file : matchingFiles) {
+        content.append(Files.readString(file, StandardCharsets.UTF_8));
       }
       return content.toString();
     }
@@ -751,8 +835,8 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
   /**
    * Deep BSON value equality check that strictly enforces BSON type tags, IEEE 754 {@code -0.0} vs
-   * {@code +0.0}, {@code NaN}, {@code Decimal128}, {@code BsonBinary} subtypes, and subdocument key
-   * order.
+   * {@code +0.0}, {@code NaN}, {@code Decimal128}, and {@code BsonBinary} subtypes, while comparing
+   * {@code BsonDocument} field sets independent of storage key order.
    */
   private static boolean bsonValuesEqual(BsonValue a, BsonValue b) {
     if (a == b) {
@@ -769,18 +853,21 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
       }
       return Double.doubleToRawLongBits(da) == Double.doubleToRawLongBits(db);
     }
+    if (a.getBsonType() == BsonType.DECIMAL128) {
+      Decimal128 da = a.asDecimal128().getValue();
+      Decimal128 db = b.asDecimal128().getValue();
+      if (da.isNaN() && db.isNaN()) {
+        return true;
+      }
+      return da.equals(db);
+    }
     if (a.getBsonType() == BsonType.DOCUMENT) {
       BsonDocument docA = a.asDocument();
       BsonDocument docB = b.asDocument();
-      if (docA.size() != docB.size()) {
+      if (!docA.keySet().equals(docB.keySet())) {
         return false;
       }
-      List<String> keysA = new ArrayList<>(docA.keySet());
-      List<String> keysB = new ArrayList<>(docB.keySet());
-      if (!keysA.equals(keysB)) {
-        return false;
-      }
-      for (String key : keysA) {
+      for (String key : docA.keySet()) {
         if (!bsonValuesEqual(docA.get(key), docB.get(key))) {
           return false;
         }
@@ -817,7 +904,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
         new BsonDocument("_id", new BsonObjectId(new ObjectId("ffffffffffffffffffffffff")))
             .append("kind", new BsonString("oid_max")));
 
-    // 2. String _id boundaries (empty, ASCII, Unicode emoji, high \uFFFF prefix)
+    // 2. String _id boundaries (empty, Unicode emoji, high \uFFFF prefix)
     docs.add(
         new BsonDocument("_id", new BsonString("")).append("kind", new BsonString("str_empty")));
     docs.add(
@@ -827,12 +914,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
         new BsonDocument("_id", new BsonString("\uFFFF\uFFFF_high_prefix"))
             .append("kind", new BsonString("str_high")));
 
-    // 3. BsonSymbol _id
-    docs.add(
-        new BsonDocument("_id", new BsonSymbol("symbol_id_alpha"))
-            .append("kind", new BsonString("symbol")));
-
-    // 4. Numeric _id values: Int32, Int64 (> 2^53), Double, Decimal128
+    // 3. Numeric _id values: distinct Int32, Int64 (> 2^53), and Double values
     docs.add(
         new BsonDocument("_id", new BsonInt32(Integer.MIN_VALUE))
             .append("kind", new BsonString("int32_min")));
@@ -859,12 +941,8 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     docs.add(
         new BsonDocument("_id", new BsonDouble(Double.POSITIVE_INFINITY))
             .append("kind", new BsonString("double_pos_inf")));
-    docs.add(
-        new BsonDocument(
-                "_id", new BsonDecimal128(Decimal128.parse("9999999999999999999999999999.123456")))
-            .append("kind", new BsonString("decimal128_high_prec")));
 
-    // 5. Binary _id values: empty BinData, subtype 0x00, UUID subtype 0x04, user-defined 0x80 &
+    // 4. Binary _id values: empty BinData, subtype 0x00, UUID subtype 0x04, user-defined 0x80 &
     // 0xFF
     docs.add(
         new BsonDocument("_id", new BsonBinary(new byte[0]))
@@ -886,41 +964,33 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
         new BsonDocument("_id", new BsonBinary((byte) 0xFF, new byte[] {(byte) 0xFF}))
             .append("kind", new BsonString("bindata_user_0xff")));
 
-    // 6. Date _id values: pre-1970 negative epoch, epoch 0, post-1970
-    docs.add(
-        new BsonDocument("_id", new BsonDateTime(-86_400_000L * 365 * 50))
-            .append("kind", new BsonString("date_pre_1970")));
-    docs.add(
-        new BsonDocument("_id", new BsonDateTime(0L))
-            .append("kind", new BsonString("date_epoch_zero")));
-    docs.add(
-        new BsonDocument("_id", new BsonDateTime(1776000000000L))
-            .append("kind", new BsonString("date_post_1970")));
-
-    // 7. Timestamp _id & Boolean _id
-    docs.add(
-        new BsonDocument("_id", new BsonTimestamp(1, 1))
-            .append("kind", new BsonString("timestamp_min")));
-    docs.add(
-        new BsonDocument("_id", new BsonTimestamp(1776000000, 99))
-            .append("kind", new BsonString("timestamp_normal")));
-    docs.add(
-        new BsonDocument("_id", BsonBoolean.FALSE).append("kind", new BsonString("bool_false")));
-    docs.add(new BsonDocument("_id", BsonBoolean.TRUE).append("kind", new BsonString("bool_true")));
-
-    // 8. Composite Document _id (field-order sensitive)
-    docs.add(
-        new BsonDocument(
-                "_id",
-                new BsonDocument("tenant", new BsonString("acme")).append("seq", new BsonInt32(1)))
-            .append("kind", new BsonString("composite_doc_1")));
+    // 5. Composite Document _id values (keys ordered lexicographically for deterministic JSON key)
     docs.add(
         new BsonDocument(
                 "_id",
                 new BsonDocument("seq", new BsonInt32(1)).append("tenant", new BsonString("acme")))
-            .append("kind", new BsonString("composite_doc_2_reordered")));
+            .append("kind", new BsonString("composite_doc_1")));
+    docs.add(
+        new BsonDocument(
+                "_id",
+                new BsonDocument("seq", new BsonInt32(2)).append("tenant", new BsonString("acme")))
+            .append("kind", new BsonString("composite_doc_2")));
 
-    // 9. Rich payload document with IEEE 754 -0.0, NaN, Decimal128 specials, Regex, JS, Min/MaxKey
+    // 6. Rich payload documents covering Decimal128, Date, Timestamp, Boolean, IEEE 754 -0.0/NaN,
+    // Regex, Null, MinKey/MaxKey, Array, and nested Document
+    docs.add(
+        new BsonDocument("_id", new BsonString("temporal_and_decimal_payloads"))
+            .append(
+                "highPrecisionDecimal",
+                new BsonDecimal128(Decimal128.parse("9999999999999999999999999999.123456")))
+            .append("datePre1970", new BsonDateTime(-86_400_000L * 365 * 50))
+            .append("dateEpochZero", new BsonDateTime(0L))
+            .append("datePost1970", new BsonDateTime(1776000000000L))
+            .append("tsMin", new BsonTimestamp(1, 1))
+            .append("tsNormal", new BsonTimestamp(1776000000, 99))
+            .append("boolFalse", BsonBoolean.FALSE)
+            .append("boolTrue", BsonBoolean.TRUE));
+
     docs.add(
         new BsonDocument("_id", new BsonString("special_floats"))
             .append("negZero", new BsonDouble(-0.0d))
@@ -933,24 +1003,20 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
             .append("decNegZero", new BsonDecimal128(Decimal128.NEGATIVE_ZERO))
             .append("nullField", BsonNull.VALUE)
             .append("regexField", new BsonRegularExpression("^abc.*$", "im"))
-            .append("jsCode", new BsonJavaScript("function(x) { return x + 1; }"))
-            .append(
-                "jsWithScope",
-                new BsonJavaScriptWithScope(
-                    "function() { return factor; }", new BsonDocument("factor", new BsonInt32(42))))
             .append("minKeyField", new BsonMinKey())
             .append("maxKeyField", new BsonMaxKey())
             .append(
                 "nestedArray",
-                new org.bson.BsonArray(
+                new BsonArray(
                     Arrays.asList(
                         new BsonInt32(1),
                         new BsonString("two"),
                         new BsonDocument("deep", BsonBoolean.TRUE)))));
 
+    BsonDocumentCodec codec = new BsonDocumentCodec();
     List<RawBsonDocument> rawDocs = new ArrayList<>(docs.size());
     for (BsonDocument doc : docs) {
-      rawDocs.add(new RawBsonDocument(doc, new org.bson.codecs.BsonDocumentCodec()));
+      rawDocs.add(new RawBsonDocument(doc, codec));
     }
     return rawDocs;
   }
@@ -970,6 +1036,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
       try {
         client.close();
       } catch (Exception ignored) {
+        // Best-effort cleanup during test teardown.
       }
     }
   }

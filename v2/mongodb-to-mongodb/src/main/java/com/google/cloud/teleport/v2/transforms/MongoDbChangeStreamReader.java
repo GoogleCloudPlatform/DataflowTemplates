@@ -816,50 +816,63 @@ public class MongoDbChangeStreamReader {
               break;
             }
             if (event != null) {
-              synchronized (pollLock) {
-                lastTryNextWasNull = false;
-                latestPostBatchToken = null;
-              }
-              while (running && !eventQueue.offer(event, 50L, TimeUnit.MILLISECONDS)) {
-                // Bounded queue is full; wait for consumer to drain or close()
-              }
-              synchronized (pollLock) {
-                completedPolls++;
-                pollLock.notifyAll();
-              }
+              enqueueEvent(event);
             } else {
-              BsonDocument token = null;
-              try {
-                token = cursor.getResumeToken();
-              } catch (Exception ignored) {
-              }
-              long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
-              synchronized (pollLock) {
-                if (token != null && eventQueue.isEmpty()) {
-                  latestPostBatchToken = token;
-                }
-                lastTryNextWasNull = true;
-                completedPolls++;
-                pollLock.notifyAll();
-                if (elapsedMs < 5L && running && lastTryNextWasNull) {
-                  pollLock.wait(5L);
-                }
-              }
+              handleEmptyPoll(startNs);
             }
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             break;
           } catch (Throwable t) {
-            synchronized (pollLock) {
-              if (running) {
-                prefetchError = t;
-              }
-              running = false;
-              completedPolls++;
-              pollLock.notifyAll();
-            }
+            recordPrefetchFailure(t);
             break;
           }
+        }
+      }
+
+      private void enqueueEvent(ChangeStreamDocument<Document> event) throws InterruptedException {
+        synchronized (pollLock) {
+          lastTryNextWasNull = false;
+          latestPostBatchToken = null;
+        }
+        while (running && !eventQueue.offer(event, 50L, TimeUnit.MILLISECONDS)) {
+          // Bounded queue is full; wait for consumer to drain or close().
+        }
+        synchronized (pollLock) {
+          completedPolls++;
+          pollLock.notifyAll();
+        }
+      }
+
+      private void handleEmptyPoll(long startNs) throws InterruptedException {
+        BsonDocument token = null;
+        try {
+          token = cursor.getResumeToken();
+        } catch (Exception ignored) {
+          // Cursor may not expose a post-batch resume token on transient close; safe to skip.
+        }
+        long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
+        synchronized (pollLock) {
+          if (token != null && eventQueue.isEmpty()) {
+            latestPostBatchToken = token;
+          }
+          lastTryNextWasNull = true;
+          completedPolls++;
+          pollLock.notifyAll();
+          if (elapsedMs < 5L && running && lastTryNextWasNull) {
+            pollLock.wait(5L);
+          }
+        }
+      }
+
+      private void recordPrefetchFailure(Throwable t) {
+        synchronized (pollLock) {
+          if (running) {
+            prefetchError = t;
+          }
+          running = false;
+          completedPolls++;
+          pollLock.notifyAll();
         }
       }
 
@@ -915,7 +928,7 @@ public class MongoDbChangeStreamReader {
         if (err instanceof Error) {
           throw (Error) err;
         }
-        throw new RuntimeException(err);
+        throw new IllegalStateException("Unexpected error in change stream prefetcher", err);
       }
 
       public MongoChangeStreamCursor<ChangeStreamDocument<Document>> getCursor() {
@@ -1398,6 +1411,6 @@ public class MongoDbChangeStreamReader {
     }
 
     return DocumentWithMetadata.cdcEvent(
-        fullDoc, null, eventCol, targetCol, opType, sortKey, docKeyStr);
+        fullDoc, /* originalDocument= */ null, eventCol, targetCol, opType, sortKey, docKeyStr);
   }
 }
