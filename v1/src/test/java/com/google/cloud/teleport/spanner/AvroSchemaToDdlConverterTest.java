@@ -1531,6 +1531,16 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerOption_0\" : \"storage=\\\"ssd\\\"\","
             + "  \"spannerOption_1\" : \"ssd_to_hdd_spill_timespan=\\\"30d\\\"\""
             + "}";
+    String emptyLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"lg_empty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\""
+            + "}";
     String tableAvroString =
         "{"
             + "  \"type\" : \"record\","
@@ -1540,6 +1550,10 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"id\","
             + "    \"type\" : \"long\","
             + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"description\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(MAX)\""
             + "  }, {"
             + "    \"name\" : \"name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
@@ -1556,22 +1570,25 @@ public class AvroSchemaToDdlConverterTest {
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(defaultLgAvroString));
     schemas.add(parser.parse(lgAvroString));
+    schemas.add(parser.parse(emptyLgAvroString));
     schemas.add(parser.parse(tableAvroString));
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(schemas);
-    assertThat(ddl.localityGroups(), hasSize(2));
+    assertThat(ddl.localityGroups(), hasSize(3));
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `description` STRING(MAX),"
                 + " `name` STRING(MAX) OPTIONS (locality_group=\"default\"),"
                 + " ) PRIMARY KEY (`id` ASC),"
                 + " OPTIONS (locality_group=\"LocalityGroup1\")"
                 + " CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\"LocalityGroup1\")"
                 + " ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"
+                + " CREATE LOCALITY GROUP `lg_empty`"
                 + " CREATE LOCALITY GROUP `LocalityGroup1`"
                 + " OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
   }
@@ -1601,6 +1618,16 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerOption_0\" : \"ssd_to_hdd_spill_timespan='30d'\","
             + "  \"spannerOption_1\" : \"storage='ssd'\""
             + "}";
+    String emptyLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"lg_empty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\""
+            + "}";
     String tableAvroString =
         "{"
             + "  \"type\" : \"record\","
@@ -1610,6 +1637,10 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"id\","
             + "    \"type\" : \"long\","
             + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"description\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"character varying\""
             + "  }, {"
             + "    \"name\" : \"name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
@@ -1626,22 +1657,25 @@ public class AvroSchemaToDdlConverterTest {
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(defaultLgAvroString));
     schemas.add(parser.parse(lgAvroString));
+    schemas.add(parser.parse(emptyLgAvroString));
     schemas.add(parser.parse(tableAvroString));
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
     Ddl ddl = converter.toDdl(schemas);
-    assertThat(ddl.localityGroups(), hasSize(2));
+    assertThat(ddl.localityGroups(), hasSize(3));
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
+                + " \"description\" character varying,"
                 + " \"name\" character varying LOCALITY GROUP \"default\","
                 + " PRIMARY KEY (\"id\")"
                 + " ) LOCALITY GROUP \"LocalityGroup1\""
                 + " CREATE INDEX \"UsersByName\" ON \"Users\"(\"name\" ASC) LOCALITY GROUP \"LocalityGroup1\""
                 + " ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"
+                + " CREATE LOCALITY GROUP \"lg_empty\""
                 + " CREATE LOCALITY GROUP \"LocalityGroup1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
   }
 

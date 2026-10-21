@@ -1816,10 +1816,19 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan=\"10m\""));
           assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage=\"ssd\""));
 
+          Schema emptyAvroSchema = schemas.get("lg_it_gsql_empty");
+          assertThat(emptyAvroSchema, notNullValue());
+          assertThat(emptyAvroSchema.getName(), equalTo("lg_it_gsql_empty"));
+          assertThat(emptyAvroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(emptyAvroSchema.getProp("spannerOption_0"), nullValue());
+
           Ddl roundTripDdl = toDdlConverter.toDdl(result);
           assertThat(
               roundTripDdl.localityGroup("lg_it_gsql").prettyPrint(),
               equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_gsql").prettyPrint()));
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_gsql_empty").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_gsql_empty").prettyPrint()));
           assertThat(
               roundTripDdl.table("t_localityGroups_Users").prettyPrint(),
               equalToCompressingWhiteSpace(ddl.table("t_localityGroups_Users").prettyPrint()));
@@ -1879,10 +1888,19 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan='10m'"));
           assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage='ssd'"));
 
+          Schema emptyAvroSchema = schemas.get("lg_it_pg_empty");
+          assertThat(emptyAvroSchema, notNullValue());
+          assertThat(emptyAvroSchema.getName(), equalTo("lg_it_pg_empty"));
+          assertThat(emptyAvroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(emptyAvroSchema.getProp("spannerOption_0"), nullValue());
+
           Ddl roundTripDdl = toDdlConverter.toDdl(result);
           assertThat(
               roundTripDdl.localityGroup("lg_it_pg").prettyPrint(),
               equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_pg").prettyPrint()));
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_pg_empty").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_pg_empty").prettyPrint()));
           assertThat(
               roundTripDdl.table("t_pgLocalityGroups_Users").prettyPrint(),
               equalToCompressingWhiteSpace(ddl.table("t_pgLocalityGroups_Users").prettyPrint()));

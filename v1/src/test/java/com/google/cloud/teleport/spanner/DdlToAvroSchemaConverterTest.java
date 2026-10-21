@@ -2392,6 +2392,7 @@ public class DdlToAvroSchemaConverterTest {
         new DdlToAvroSchemaConverter("spannertest", "booleans", false);
     String lgName1 = "lg1";
     String lgName2 = "lg2";
+    String lgEmpty = "lg_empty";
     Ddl ddl =
         Ddl.builder()
             .createLocalityGroup(lgName1)
@@ -2400,10 +2401,16 @@ public class DdlToAvroSchemaConverterTest {
             .createLocalityGroup(lgName2)
             .options(ImmutableList.of("storage=\"ssd\"", "ssd_to_hdd_spill_timespan=\"30d\""))
             .endLocalityGroup()
+            .createLocalityGroup(lgEmpty)
+            .endLocalityGroup()
             .createTable("Users")
             .column("id")
             .int64()
             .notNull()
+            .endColumn()
+            .column("description")
+            .string()
+            .max()
             .endColumn()
             .column("name")
             .string()
@@ -2421,7 +2428,7 @@ public class DdlToAvroSchemaConverterTest {
             .build();
 
     Collection<Schema> result = converter.convert(ddl);
-    assertThat(result, hasSize(3));
+    assertThat(result, hasSize(4));
 
     Iterator<Schema> it = result.iterator();
     Schema tableSchema = it.next();
@@ -2431,6 +2438,7 @@ public class DdlToAvroSchemaConverterTest {
         tableSchema.getProp(SPANNER_INDEX + "0"),
         equalTo(
             "CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\"lg2\")"));
+    assertThat(tableSchema.getField("description").getProp(SPANNER_OPTION + "0"), nullValue());
     assertThat(
         tableSchema.getField("name").getProp(SPANNER_OPTION + "0"),
         equalTo("locality_group=\"lg2\""));
@@ -2454,6 +2462,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema2.getProp(SPANNER_OPTION + "0"), equalTo("storage=\"ssd\""));
     assertThat(
         avroSchema2.getProp(SPANNER_OPTION + "1"), equalTo("ssd_to_hdd_spill_timespan=\"30d\""));
+
+    Schema avroSchemaEmpty = it.next();
+    assertThat(avroSchemaEmpty.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchemaEmpty.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchemaEmpty.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchemaEmpty.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchemaEmpty.getFields(), empty());
+    assertThat(avroSchemaEmpty.getName(), equalTo(lgEmpty));
+    assertThat(avroSchemaEmpty.getProp(SPANNER_OPTION + "0"), nullValue());
   }
 
   @Test
