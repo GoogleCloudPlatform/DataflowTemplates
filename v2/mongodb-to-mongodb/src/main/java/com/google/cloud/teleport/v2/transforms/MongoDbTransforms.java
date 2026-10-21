@@ -333,6 +333,12 @@ public class MongoDbTransforms {
         Metrics.counter(WriteToDlq.class, "dlqPermanentEmitted");
 
     public WriteToDlq(String retryablePath, String permanentPath, String tempLocation) {
+      this(null, retryablePath, permanentPath, tempLocation);
+    }
+
+    public WriteToDlq(
+        String stageName, String retryablePath, String permanentPath, String tempLocation) {
+      super(stageName);
       this.retryablePath = retryablePath;
       this.permanentPath = permanentPath;
       this.tempLocation = tempLocation;

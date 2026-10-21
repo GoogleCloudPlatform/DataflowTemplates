@@ -862,7 +862,8 @@ public class MongoDbToMongoDb {
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteToDlq_UDF", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+                "WriteToDlq_UDF",
+                new WriteToDlq("udf", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents = udfProcessed.get(udfSuccessTag).setCoder(DocumentWithMetadataCoder.of());
       }
@@ -882,7 +883,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+              new WriteToDlq("validate", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return processed.get(successTag).setCoder(DocumentWithMetadataCoder.of());
     }
@@ -938,7 +939,8 @@ public class MongoDbToMongoDb {
                           : DEFAULT_WRITE_RATE_RAMP_UP_STEPS));
 
       writeFailures.apply(
-          "WriteToDlq_Write", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+          "WriteToDlq_Write",
+          new WriteToDlq("write", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
     }
