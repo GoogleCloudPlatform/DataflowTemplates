@@ -590,16 +590,7 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl localityGroupName {}", localityGroupName);
 
     LocalityGroup.Builder builder = LocalityGroup.builder(dialect).name(localityGroupName);
-
-    ImmutableList.Builder<String> localityGroupOptions = ImmutableList.builder();
-    for (int i = 0; ; i++) {
-      String spannerOption = schema.getProp(SPANNER_OPTION + i);
-      if (spannerOption == null) {
-        break;
-      }
-      localityGroupOptions.add(spannerOption);
-    }
-    builder.options(localityGroupOptions.build());
+    builder.options(getNumberedPropsWithPrefix(schema, SPANNER_OPTION));
 
     return builder.build();
   }
