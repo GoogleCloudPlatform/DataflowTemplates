@@ -82,6 +82,18 @@
             <scope>compile</scope>
             <version>${project.version}</version>
         </dependency>
+        <!--
+          Testcontainers (used by the IT helper resourcemanager/OracleITContainer) implements JUnit 4's
+          TestRule, so JUnit is needed to compile main. 'provided' (overriding the 'test' scope set in
+          the parent) keeps it out of the spanner-common jar and of the templates depending on it;
+          the helper is only used from the template modules' tests, which already have JUnit.
+        -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-compute</artifactId>
