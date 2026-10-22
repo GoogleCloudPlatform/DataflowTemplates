@@ -115,7 +115,7 @@ public interface PubSubSubscriptionToBigQueryYaml {
       description = "Message value to use as element timestamp.",
       helpText =
           "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
-      example = "2015-10-29T23:41:41.123Z")
+      example = "timestamp")
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
@@ -125,7 +125,7 @@ public interface PubSubSubscriptionToBigQueryYaml {
       description = "Field to add to output messages with the Pub/Sub message publish time.",
       helpText =
           "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
-      example = "2015-10-29T23:41:41.123Z")
+      example = "publish_time")
   String getPublishTimeField();
 
   @TemplateParameter.Text(
