@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
 import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.api.gax.rpc.AbortedException;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.v1.FirestoreAdminClient;
@@ -457,8 +458,9 @@ final class MongoDbTestHelper {
     }
 
     LaunchConfig.Builder baseLaunchConfig(String jobName) throws IOException {
+      String sanitizedJobName = jobName.replace('_', '-');
       LaunchConfig.Builder builder =
-          LaunchConfig.builder(jobName, specPath)
+          LaunchConfig.builder(sanitizedJobName, specPath)
               .addParameter("sourceUri", sourceUri)
               .addParameter("targetUri", targetUri)
               .addParameter("sourceDatabase", sourceDatabase)
@@ -932,11 +934,26 @@ final class MongoDbTestHelper {
         // Invoke the unary DeleteDatabase RPC directly rather than polling deleteDatabaseAsync().
         // Firestore deletes the database metadata immediately, whereas its background storage-GC
         // LRO stays open past GAX's 5-minute poll timeout and throws CancellationException.
-        adminClient
-            .deleteDatabaseCallable()
-            .call(DeleteDatabaseRequest.newBuilder().setName(databaseResourceName).build());
-        LOG.info("Deleted Firestore Enterprise database '{}'", databaseResourceName);
+        DeleteDatabaseRequest request =
+            DeleteDatabaseRequest.newBuilder().setName(databaseResourceName).build();
+        int maxAttempts = 4;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            adminClient.deleteDatabaseCallable().call(request);
+            LOG.info("Deleted Firestore Enterprise database '{}'", databaseResourceName);
+            break;
+          } catch (AbortedException e) {
+            if (attempt == maxAttempts) {
+              throw e;
+            }
+            Thread.sleep(2000L);
+          }
+        }
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn(
+          "Interrupted while deleting Firestore Enterprise database '{}'", databaseResourceName);
     } catch (Exception e) {
       LOG.warn(
           "Failed to delete Firestore Enterprise database '{}': {}",
