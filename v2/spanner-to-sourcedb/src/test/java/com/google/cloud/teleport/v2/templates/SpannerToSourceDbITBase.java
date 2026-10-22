@@ -23,7 +23,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
+import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.oracle.SharedOracleReverseITContainer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;

@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
+import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
 import com.google.common.io.Resources;
