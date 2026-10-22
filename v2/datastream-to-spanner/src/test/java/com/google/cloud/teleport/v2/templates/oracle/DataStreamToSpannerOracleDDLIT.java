@@ -20,7 +20,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
@@ -77,7 +76,6 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   public static org.apache.beam.it.gcp.datastream.DatastreamResourceManager
       datastreamResourceManager;
   private static String oracleUser;
@@ -88,8 +86,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
     synchronized (DataStreamToSpannerOracleDDLIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -120,11 +117,9 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
           "Books"
         };
 
-        executeOracleSqlFileScript(
-            oracleResourceManager,
-            "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql",
-            oracleUser);
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.executeSqlScript(
+            oracleUser, "oracle/DataStreamToSpannerOracleDDLIT/oracle-schema.sql");
+        SharedOracleLiveITContainer.flushRedoLogs();
 
         jobInfo =
             launchDataflowJob(
@@ -144,12 +139,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
                 gcsResourceManager,
                 datastreamResourceManager,
                 null, // sessionResourceContent
-                org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                        oracleResourceManager.getHost(),
-                        oracleUser, // Explicit Datastream logminer user instead of 'system'
-                        SharedOracleLiveITInstance.ORACLE_PASSWORD, // Datastream user password
-                        oracleResourceManager.getPort(),
-                        oracleResourceManager.getDatabaseName())
+                SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                     .setAllowedTables(
                         java.util.Map.of(
                             oracleUser.toUpperCase(),
@@ -172,7 +162,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, pubsubResourceManager, gcsResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -189,11 +179,10 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
                       @Override
                       protected CheckResult check() {
                         try {
-                          executeOracleSqlFileScript(
-                              oracleResourceManager,
-                              "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql",
-                              oracleUser);
-                          SharedOracleLiveITInstance.flushRedoLogs();
+                          SharedOracleLiveITContainer.executeSqlScript(
+                              oracleUser,
+                              "oracle/DataStreamToSpannerOracleDDLIT/oracle-inserts.sql");
+                          SharedOracleLiveITContainer.flushRedoLogs();
                           return new CheckResult(true, "Success");
                         } catch (Exception e) {
                           return new CheckResult(false, e.getMessage());

@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.collect.ImmutableList;
@@ -67,7 +66,6 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   private static String oracleUser;
 
   private static final String SPANNER_DDL_RESOURCE =
@@ -91,42 +89,36 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
 
         // Pre-insert books
-        executeOracleSql(
-            oracleResourceManager,
+        SharedOracleLiveITContainer.executeSql(
+            oracleUser,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the"
-                + " Rings', 1)",
-            oracleUser);
-        executeOracleSql(
-            oracleResourceManager,
+                + " Rings', 1)");
+        SharedOracleLiveITContainer.executeSql(
+            oracleUser,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and"
-                + " Prejudice', 2)",
-            oracleUser);
-        executeOracleSql(
-            oracleResourceManager,
+                + " Prejudice', 2)");
+        SharedOracleLiveITContainer.executeSql(
+            oracleUser,
             "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers"
-                + " Guide to the Galaxy', 3)",
-            oracleUser);
+                + " Guide to the Galaxy', 3)");
 
         // Pre-insert categories
-        executeOracleSql(
-            oracleResourceManager,
+        SharedOracleLiveITContainer.executeSql(
+            oracleUser,
             "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz',"
-                + " CURRENT_TIMESTAMP)",
-            oracleUser);
-        executeOracleSql(
-            oracleResourceManager,
+                + " CURRENT_TIMESTAMP)");
+        SharedOracleLiveITContainer.executeSql(
+            oracleUser,
             "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
-                + " CURRENT_TIMESTAMP)",
-            oracleUser);
+                + " CURRENT_TIMESTAMP)");
 
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.flushRedoLogs();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -135,12 +127,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
                 .build();
 
         OracleSource oracleSource =
-            OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    1521,
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(
                     new HashMap<>() {
                       {
@@ -190,7 +177,7 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -214,24 +201,20 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
 
     assertCategoryTableBackfillContents();
 
-    executeOracleSql(
-        oracleResourceManager,
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(3, 'def',"
-            + " CURRENT_TIMESTAMP)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
+            + " CURRENT_TIMESTAMP)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(4, 'ghi',"
-            + " CURRENT_TIMESTAMP)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager, "DELETE FROM \"Category\" WHERE \"category_id\"=1", oracleUser);
+            + " CURRENT_TIMESTAMP)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "UPDATE \"Category\" SET \"name\"='abc1' WHERE \"category_id\"=2");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "DELETE FROM \"Category\" WHERE \"category_id\"=1");
 
-    SharedOracleLiveITInstance.flushRedoLogs();
+    SharedOracleLiveITContainer.flushRedoLogs();
 
     conditionCheck =
         ChainedConditionCheck.builder(

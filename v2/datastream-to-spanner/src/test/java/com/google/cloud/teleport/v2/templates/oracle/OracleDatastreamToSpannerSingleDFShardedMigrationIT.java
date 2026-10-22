@@ -20,7 +20,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
@@ -79,7 +78,6 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   private static String streamNameA;
   private static String oracleUser;
@@ -101,10 +99,9 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
       }
 
       if (jobInfo == null) {
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA_FILE_RESOURCE);
 
         datastreamResourceManager =
             org.apache.beam.it.gcp.datastream.DatastreamResourceManager.builder(
@@ -113,12 +110,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
                 .setPrivateConnectivity("datastream-connect-2")
                 .build();
         org.apache.beam.it.gcp.datastream.OracleSource oracleSource =
-            org.apache.beam.it.gcp.datastream.OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    oracleResourceManager.getPort(),
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(
                     java.util.Map.of(oracleUser.toUpperCase(), java.util.List.of("Users")))
                 .build();
@@ -210,7 +202,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -246,55 +238,35 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
 
   private void insertDataInOracle() throws Exception {
     LOG.info("Inserting rows into Users table in Oracle");
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)",
-        oracleUser);
-    SharedOracleLiveITInstance.flushRedoLogs();
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (1, 'Tester1', 20)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (3, 'Tester3', 103)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (13, 'Tester13', 113)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (4, 'Tester4', 104)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (5, 'Tester5', 105)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (6, 'Tester6', 106)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (7, 'Tester7', 107)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (8, 'Tester8', 108)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (9, 'Tester9', 109)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (10, 'Tester10', 110)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (11, 'Tester11', 111)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Users\" (\"id\", \"name\", \"age\") VALUES (12, 'Tester12', 112)");
+    SharedOracleLiveITContainer.flushRedoLogs();
   }
 
   private void assertUsersTableContents() {

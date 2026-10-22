@@ -19,7 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
@@ -71,7 +70,6 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   private static String oracleUser;
 
@@ -89,8 +87,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -100,16 +97,11 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+        SharedOracleLiveITContainer.flushRedoLogs();
 
         OracleSource oracleSource =
-            OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    oracleResourceManager.getPort(),
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("DateData")))
                 .build();
 
@@ -150,7 +142,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -165,19 +157,17 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
           @Override
           protected CheckResult check() {
             try {
-              executeOracleSql(
-                  oracleResourceManager,
+              SharedOracleLiveITContainer.executeSql(
+                  oracleUser,
                   "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
                       + " VALUES (1, TIMESTAMP '2024-02-02 10:00:00.000000', TIMESTAMP '2024-02-02"
-                      + " 20:00:00.000000')",
-                  oracleUser);
-              executeOracleSql(
-                  oracleResourceManager,
+                      + " 20:00:00.000000')");
+              SharedOracleLiveITContainer.executeSql(
+                  oracleUser,
                   "INSERT INTO \"DateData\" (\"id\", \"timestamp_column\", \"datetime_column\")"
                       + " VALUES (2, TIMESTAMP '2024-02-02 20:00:00.000000', TIMESTAMP '2024-02-03"
-                      + " 06:00:00.000000')",
-                  oracleUser);
-              SharedOracleLiveITInstance.flushRedoLogs();
+                      + " 06:00:00.000000')");
+              SharedOracleLiveITContainer.flushRedoLogs();
               return new CheckResult(true, "Data inserted successfully");
             } catch (Exception e) {
               LOG.error("Failed to insert data into Oracle", e);

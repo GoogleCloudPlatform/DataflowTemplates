@@ -22,7 +22,6 @@ import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.pubsub.v1.SubscriptionName;
@@ -67,7 +66,7 @@ import org.slf4j.LoggerFactory;
  * and for both GoogleSQL and PostgreSQL-dialect Spanner databases.
  *
  * <p>Each test provisions an isolated Oracle common user (schema) on the shared static Oracle
- * instance via {@link SharedOracleLiveITInstance}, its own Spanner database, Datastream stream,
+ * instance via {@link SharedOracleLiveITContainer}, its own Spanner database, Datastream stream,
  * Pub/Sub notifications and Dataflow job.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -104,7 +103,6 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
   private SubscriptionName subscription;
   private SubscriptionName dlqSubscription;
 
-  private SpannerOracleResourceManager oracleResourceManager;
   private String oracleUser;
   private DatastreamResourceManager datastreamResourceManager;
   private SpannerResourceManager spannerResourceManager;
@@ -142,7 +140,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -185,8 +183,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
     this.spannerDialect = spannerDialect;
 
     // Create Oracle resources: shared PDB admin + isolated per-test schema (common user).
-    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
     // Create Spanner Resource Manager
     spannerResourceManager =
@@ -195,16 +192,11 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
             : setUpSpannerResourceManager();
 
     // Create Oracle tables
-    executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
-    SharedOracleLiveITInstance.flushRedoLogs();
+    SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+    SharedOracleLiveITContainer.flushRedoLogs();
 
     OracleSource oracleSource =
-        OracleSource.builder(
-                oracleResourceManager.getHost(),
-                oracleUser,
-                SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                oracleResourceManager.getPort(),
-                oracleResourceManager.getDatabaseName())
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
             .setAllowedTables(Map.of(oracleUser.toUpperCase(), TABLE_NAMES))
             .build();
 
@@ -412,7 +404,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
                       values.get(MEMBER),
                       values.get(ENTRY_ADDED)));
             }
-            executeOracleSql(oracleResourceManager, String.join(";", inserts), oracleUser);
+            SharedOracleLiveITContainer.executeSql(oracleUser, String.join(";", inserts));
             cdcEvents.put(tableName, rows);
             messages.add(String.format("%d rows to %s", rows.size(), tableName));
           }
@@ -423,7 +415,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
 
         // Force log file archive - needed so Datastream can see changes which are read from
         // archived log files.
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.flushRedoLogs();
         return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
       }
     };
@@ -475,7 +467,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
                     String.format("DELETE FROM %s WHERE %s = %d", q(tableName), q(ROW_ID), i));
               }
             }
-            executeOracleSql(oracleResourceManager, String.join(";", statements), oracleUser);
+            SharedOracleLiveITContainer.executeSql(oracleUser, String.join(";", statements));
             cdcEvents.put(tableName, newCdcEvents);
             messages.add(String.format("%d changes to %s", newCdcEvents.size(), tableName));
           }
@@ -486,7 +478,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
 
         // Force log file archive - needed so Datastream can see changes which are read from
         // archived log files.
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.flushRedoLogs();
         return new CheckResult(true, "Sent " + String.join(", ", messages) + ".");
       }
     };

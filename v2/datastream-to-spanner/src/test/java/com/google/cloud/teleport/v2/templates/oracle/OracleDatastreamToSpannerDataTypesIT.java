@@ -25,7 +25,6 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.io.Resources;
@@ -148,7 +147,6 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   private static final HashSet<OracleDatastreamToSpannerDataTypesIT> testInstances =
       new HashSet<>();
 
-  private static SpannerOracleResourceManager oracleResourceManager;
   private static String oracleUser;
   private static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -161,8 +159,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
     synchronized (OracleDatastreamToSpannerDataTypesIT.class) {
       testInstances.add(this);
       if (spannerResourceManager == null) {
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
         spannerResourceManager = setUpSpannerResourceManager();
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
@@ -173,8 +170,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
                 .build();
 
         LOG.info("Creating Oracle schema and data in {}", oracleUser);
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
-        SharedOracleLiveITInstance.flushRedoLogs();
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+        SharedOracleLiveITContainer.flushRedoLogs();
       }
     }
   }
@@ -190,7 +187,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   /**
@@ -273,12 +270,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     OracleSource oracleSource =
-        OracleSource.builder(
-                oracleResourceManager.getHost(),
-                oracleUser,
-                SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                oracleResourceManager.getPort(),
-                oracleResourceManager.getDatabaseName())
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
             .setAllowedTables(Map.of(oracleUser.toUpperCase(), getAllowedTables(expected)))
             .build();
 

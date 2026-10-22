@@ -23,7 +23,6 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.io.Resources;
@@ -72,7 +71,6 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
   private static final HashSet<DataStreamToSpannerOracleRetryDLQIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   public static PubsubResourceManager pubsubResourceManager;
@@ -89,10 +87,9 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         spannerResourceManager = setUpSpannerResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA_FILE_RESOURCE, oracleUser);
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
 
@@ -115,12 +112,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
                 .replace("gs://" + gcsResourceManager.getBucket(), "");
 
         OracleSource oracleSourceA =
-            OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    oracleResourceManager.getPort(),
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(
                     Map.of(
                         oracleUser.toUpperCase(),
@@ -202,7 +194,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         gcsResourceManager,
         datastreamResourceManager,
         pubsubResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -391,37 +383,30 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
 
   private void insertDataInOracle() throws Exception {
     LOG.info("Inserting data in Oracle Shard A");
-    executeOracleSql(
-        oracleResourceManager,
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
-            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
+            + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (3, 101, 1000, 'Website')",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
+            + " VALUES (3, 101, 1000, 'Website')");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (2, 102, 1000, 'AppStore')",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
+            + " VALUES (2, 102, 1000, 'AppStore')");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
-            + " VALUES (4, 103, 1000, 'AppStore')",
-        oracleUser);
+            + " VALUES (4, 103, 1000, 'AppStore')");
 
     LOG.info("Inserting data in Oracle Shard B");
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')",
-        oracleUser);
-    executeOracleSql(
-        oracleResourceManager,
-        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')",
-        oracleUser);
-    SharedOracleLiveITInstance.flushRedoLogs();
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser, "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')");
+    SharedOracleLiveITContainer.flushRedoLogs();
   }
 
   private String getCustomShardJarPath() {

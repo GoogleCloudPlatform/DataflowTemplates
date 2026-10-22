@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.time.Duration;
@@ -62,7 +61,6 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
   private static final String SESSION_FILE =
       "oracle/DatastreamToSpannerReservedKeywordsOracleIT/session.json";
 
-  private SpannerOracleResourceManager oracleResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private GcsResourceManager gcsResourceManager;
   private PubsubResourceManager pubsubResourceManager;
@@ -72,8 +70,7 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
   @Before
   public void setUp() throws Exception {
     LOG.info("Setting up Oracle resource manager...");
-    oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-    oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
     LOG.info("Setting up Spanner resource manager...");
     spannerResourceManager = setUpSpannerResourceManager();
@@ -106,14 +103,14 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
   public void testOracleReservedKeywords() throws Exception {
     LOG.info("Executing Oracle DDL script...");
-    executeOracleSqlFileScript(oracleResourceManager, ORACLE_DDL_RESOURCE, oracleUser);
-    SharedOracleLiveITInstance.flushRedoLogs();
+    SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+    SharedOracleLiveITContainer.flushRedoLogs();
 
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
@@ -122,18 +119,13 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     String sessionFileContent =
         generateSessionFile(
             1,
-            oracleResourceManager.getDatabaseName(),
+            SharedOracleLiveITContainer.getInstance().getDatabaseName(),
             spannerResourceManager.getDatabaseId(),
             List.of("true"), // Table name
             SESSION_FILE);
 
     OracleSource oracleSource =
-        OracleSource.builder(
-                oracleResourceManager.getHost(),
-                oracleUser,
-                SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                oracleResourceManager.getPort(),
-                oracleResourceManager.getDatabaseName())
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
             .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("true")))
             .build();
 

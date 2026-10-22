@@ -20,7 +20,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.io.IOException;
@@ -69,7 +68,6 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
   private static final String ORACLE_TABLE_ALLTYPES = "ALLTYPES";
   private static final String SPANNER_TABLE_MY_TABLE = "MY_TABLE";
   private static final String SPANNER_TABLE_ALLTYPES = "ALLTYPES";
-  private static SpannerOracleResourceManager oracleResourceManager;
   private static SpannerResourceManager shadowSpannerResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -88,8 +86,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
     synchronized (OracleSeparateShadowTableDatabasePKFocusedIT.class) {
       testInstances.add(this);
       if (!initialized) {
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
@@ -101,16 +98,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                 .setPrivateConnectivity("datastream-connect-2")
                 .build();
 
-        executeOracleSqlFileScript(oracleResourceManager, ORACLE_SCHEMA, oracleUser);
+        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA);
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
         OracleSource oracleSource =
-            OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    oracleResourceManager.getPort(),
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(
                     Map.of(
                         oracleUser.toUpperCase(),
@@ -157,7 +149,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -175,19 +167,13 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                executeOracleSql(
-                    oracleResourceManager,
-                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (1, 10)",
-                    oracleUser);
-                executeOracleSql(
-                    oracleResourceManager,
-                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (2, 20)",
-                    oracleUser);
-                executeOracleSql(
-                    oracleResourceManager,
-                    "INSERT INTO MY_TABLE (ID, VAL) VALUES (3, 30)",
-                    oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "INSERT INTO MY_TABLE (ID, VAL) VALUES (1, 10)");
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "INSERT INTO MY_TABLE (ID, VAL) VALUES (2, 20)");
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "INSERT INTO MY_TABLE (ID, VAL) VALUES (3, 30)");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -210,11 +196,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                executeOracleSql(
-                    oracleResourceManager, "UPDATE MY_TABLE SET VAL = 10 WHERE ID = 2", oracleUser);
-                executeOracleSql(
-                    oracleResourceManager, "DELETE FROM MY_TABLE WHERE ID = 1", oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "UPDATE MY_TABLE SET VAL = 10 WHERE ID = 2");
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "DELETE FROM MY_TABLE WHERE ID = 1");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -237,9 +223,9 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                executeOracleSql(
-                    oracleResourceManager, "UPDATE MY_TABLE SET ID = 10 WHERE ID = 3", oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "UPDATE MY_TABLE SET ID = 10 WHERE ID = 3");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -327,33 +313,30 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
             if (!executed) {
               try {
                 // 1
-                executeOracleSql(
-                    oracleResourceManager,
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 1, 3.14, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 10)",
-                    oracleUser);
+                        + " 'YYYY-MM-DD'), 12345.1234, 10)");
                 // 2
-                executeOracleSql(
-                    oracleResourceManager,
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 2, 3.1415, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 20)",
-                    oracleUser);
+                        + " 'YYYY-MM-DD'), 12345.1234, 20)");
                 // 3
-                executeOracleSql(
-                    oracleResourceManager,
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
                         + " ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
-                        + " 'YYYY-MM-DD'), 12345.1234, 30)",
-                    oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                        + " 'YYYY-MM-DD'), 12345.1234, 30)");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -376,15 +359,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                executeOracleSql(
-                    oracleResourceManager,
-                    "DELETE FROM ALLTYPES WHERE INT64_FIELD = 1",
-                    oracleUser);
-                executeOracleSql(
-                    oracleResourceManager,
-                    "UPDATE ALLTYPES SET VAL = 10 WHERE INT64_FIELD = 2",
-                    oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "DELETE FROM ALLTYPES WHERE INT64_FIELD = 1");
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "UPDATE ALLTYPES SET VAL = 10 WHERE INT64_FIELD = 2");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());
@@ -407,11 +386,9 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
           protected CheckResult check() {
             if (!executed) {
               try {
-                executeOracleSql(
-                    oracleResourceManager,
-                    "UPDATE ALLTYPES SET INT64_FIELD = 10 WHERE INT64_FIELD = 3",
-                    oracleUser);
-                SharedOracleLiveITInstance.flushRedoLogs();
+                SharedOracleLiveITContainer.executeSql(
+                    oracleUser, "UPDATE ALLTYPES SET INT64_FIELD = 10 WHERE INT64_FIELD = 3");
+                SharedOracleLiveITContainer.flushRedoLogs();
                 executed = true;
               } catch (Exception e) {
                 return new CheckResult(false, e.getMessage());

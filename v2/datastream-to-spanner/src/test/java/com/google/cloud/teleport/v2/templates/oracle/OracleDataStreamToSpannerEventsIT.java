@@ -21,7 +21,6 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.resourcemanager.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.collect.ImmutableList;
@@ -70,7 +69,6 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
   public static SpannerResourceManager spannerResourceManager;
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
-  public static SpannerOracleResourceManager oracleResourceManager;
   private static String oracleUser;
 
   @Before
@@ -90,21 +88,13 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
-        oracleResourceManager = SharedOracleLiveITInstance.getInstance();
-        oracleUser = SharedOracleLiveITInstance.setupOracleIsolatedUser();
+        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
-        executeOracleSqlFileScript(
-            oracleResourceManager,
-            "oracle/OracleDataStreamToSpannerEventsIT/oracle-schema.sql",
-            oracleUser);
+        SharedOracleLiveITContainer.executeSqlScript(
+            oracleUser, "oracle/OracleDataStreamToSpannerEventsIT/oracle-schema.sql");
 
         OracleSource jdbcSource =
-            OracleSource.builder(
-                    oracleResourceManager.getHost(),
-                    oracleUser,
-                    SharedOracleLiveITInstance.ORACLE_PASSWORD,
-                    oracleResourceManager.getPort(),
-                    oracleResourceManager.getDatabaseName())
+            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
                 .setAllowedTables(
                     Map.of(
                         oracleUser.toUpperCase(),
@@ -146,7 +136,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
-    SharedOracleLiveITInstance.dropUser(oracleUser);
+    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -243,17 +233,15 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
       protected CheckResult check() {
         if (!executed) {
           try {
-            executeOracleSql(
-                oracleResourceManager,
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
+                    + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))",
-                oracleUser);
-            SharedOracleLiveITInstance.flushRedoLogs();
+                    + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
+            SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
             return new CheckResult(false, e.getMessage());
@@ -277,12 +265,11 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
       protected CheckResult check() {
         if (!executed) {
           try {
-            executeOracleSql(
-                oracleResourceManager,
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))",
-                oracleUser);
-            SharedOracleLiveITInstance.flushRedoLogs();
+                    + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
+            SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
             return new CheckResult(false, e.getMessage());
@@ -306,17 +293,15 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
       protected CheckResult check() {
         if (!executed) {
           try {
-            executeOracleSql(
-                oracleResourceManager,
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (1, 'movie1',"
-                    + " TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
+                    + " TO_TIMESTAMP('2023-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS'), 12345.09876)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Movie\"(\"id\",\"name\",\"startTime\",\"actor\") VALUES (2, 'movie2',"
-                    + " TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)",
-                oracleUser);
-            SharedOracleLiveITInstance.flushRedoLogs();
+                    + " TO_TIMESTAMP('2023-11-25 17:10:12', 'YYYY-MM-DD HH24:MI:SS'), 931.5123)");
+            SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
             return new CheckResult(false, e.getMessage());
@@ -340,61 +325,45 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
       protected CheckResult check() {
         if (!executed) {
           try {
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (1, 'a1')",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (2, 'a2')",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (3, 'a3')",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (4, 'a4')",
-                oracleUser);
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser, "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (1, 'a1')");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser, "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (2, 'a2')");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser, "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (3, 'a3')");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser, "INSERT INTO \"Authors\"(\"author_id\",\"name\") VALUES (4, 'a4')");
 
-            executeOracleSql(
-                oracleResourceManager,
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                    + " (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
+                    + " (1, 'Article001', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                    + " (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
+                    + " (2, 'Article002', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 1)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                    + " (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
+                    + " (3, 'Article004', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 4)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
                 "INSERT INTO \"Articles\"(\"id\",\"name\",\"published_date\",\"author_id\") VALUES"
-                    + " (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)",
-                oracleUser);
+                    + " (4, 'Article005', TO_DATE('2024-01-01', 'YYYY-MM-DD'), 3)");
 
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (1, 'Book005', 3)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (2, 'Book002', 3)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (3, 'Book004', 4)",
-                oracleUser);
-            executeOracleSql(
-                oracleResourceManager,
-                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (4, 'Book005', 2)",
-                oracleUser);
-            SharedOracleLiveITInstance.flushRedoLogs();
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (1, 'Book005', 3)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (2, 'Book002', 3)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (3, 'Book004', 4)");
+            SharedOracleLiveITContainer.executeSql(
+                oracleUser,
+                "INSERT INTO \"Books\"(\"id\",\"title\",\"author_id\") VALUES (4, 'Book005', 2)");
+            SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
             return new CheckResult(false, e.getMessage());
