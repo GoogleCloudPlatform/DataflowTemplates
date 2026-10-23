@@ -141,17 +141,12 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     return rows;
   }
 
-  private List<byte[]> getRowversionBytes(String type) {
+  private List<byte[]> getRowversionBytes(Connection conn, String type) {
     String tableName = String.format("%s_table", type);
     String colName = String.format("%s_col", type);
     String query = String.format("SELECT [%s] FROM [%s] ORDER BY [id]", colName, tableName);
     List<byte[]> values = new ArrayList<>();
-    try (Connection conn =
-            DriverManager.getConnection(
-                msSqlResourceManager.getUri(),
-                msSqlResourceManager.getUsername(),
-                msSqlResourceManager.getPassword());
-        Statement stmt = conn.createStatement();
+    try (Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {
       while (rs.next()) {
         values.add(rs.getBytes(1));
@@ -525,47 +520,57 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     //         "PGl0ZW0gaWQ9IjEiLz4=",
     //         "NULL"));
 
-    List<byte[]> rvBytes = getRowversionBytes("rowversion");
-    expectedData.put(
-        "rowversion",
-        createRows(
-            "rowversion",
-            Hex.encodeHexString(rvBytes.get(0)),
-            Hex.encodeHexString(rvBytes.get(1))));
-    List<byte[]> rvToBytes = getRowversionBytes("rowversion_to_bytes");
-    expectedData.put(
-        "rowversion_to_bytes",
-        createRows(
-            "rowversion_to_bytes",
-            Base64.getEncoder().encodeToString(rvToBytes.get(0)),
-            Base64.getEncoder().encodeToString(rvToBytes.get(1))));
-    List<byte[]> rvToInt64 = getRowversionBytes("rowversion_to_int64");
-    expectedData.put(
-        "rowversion_to_int64",
-        createRows(
-            "rowversion_to_int64",
-            String.valueOf(new BigInteger(rvToInt64.get(0)).longValue()),
-            String.valueOf(new BigInteger(rvToInt64.get(1)).longValue())));
+    try (Connection conn =
+        DriverManager.getConnection(
+            msSqlResourceManager.getUri(),
+            msSqlResourceManager.getUsername(),
+            msSqlResourceManager.getPassword())) {
+      List<byte[]> rvBytes = getRowversionBytes(conn, "rowversion");
+      expectedData.put(
+          "rowversion",
+          createRows(
+              "rowversion",
+              Hex.encodeHexString(rvBytes.get(0)),
+              Hex.encodeHexString(rvBytes.get(1))));
+      List<byte[]> rvToBytes = getRowversionBytes(conn, "rowversion_to_bytes");
+      expectedData.put(
+          "rowversion_to_bytes",
+          createRows(
+              "rowversion_to_bytes",
+              Base64.getEncoder().encodeToString(rvToBytes.get(0)),
+              Base64.getEncoder().encodeToString(rvToBytes.get(1))));
+      List<byte[]> rvToInt64 = getRowversionBytes(conn, "rowversion_to_int64");
+      expectedData.put(
+          "rowversion_to_int64",
+          createRows(
+              "rowversion_to_int64",
+              String.valueOf(new BigInteger(rvToInt64.get(0)).longValue()),
+              String.valueOf(new BigInteger(rvToInt64.get(1)).longValue())));
 
-    List<byte[]> tsBytes = getRowversionBytes("timestamp");
-    expectedData.put(
-        "timestamp",
-        createRows(
-            "timestamp", Hex.encodeHexString(tsBytes.get(0)), Hex.encodeHexString(tsBytes.get(1))));
-    List<byte[]> tsToBytes = getRowversionBytes("timestamp_to_bytes");
-    expectedData.put(
-        "timestamp_to_bytes",
-        createRows(
-            "timestamp_to_bytes",
-            Base64.getEncoder().encodeToString(tsToBytes.get(0)),
-            Base64.getEncoder().encodeToString(tsToBytes.get(1))));
-    List<byte[]> tsToInt64 = getRowversionBytes("timestamp_to_int64");
-    expectedData.put(
-        "timestamp_to_int64",
-        createRows(
-            "timestamp_to_int64",
-            String.valueOf(new BigInteger(tsToInt64.get(0)).longValue()),
-            String.valueOf(new BigInteger(tsToInt64.get(1)).longValue())));
+      List<byte[]> tsBytes = getRowversionBytes(conn, "timestamp");
+      expectedData.put(
+          "timestamp",
+          createRows(
+              "timestamp",
+              Hex.encodeHexString(tsBytes.get(0)),
+              Hex.encodeHexString(tsBytes.get(1))));
+      List<byte[]> tsToBytes = getRowversionBytes(conn, "timestamp_to_bytes");
+      expectedData.put(
+          "timestamp_to_bytes",
+          createRows(
+              "timestamp_to_bytes",
+              Base64.getEncoder().encodeToString(tsToBytes.get(0)),
+              Base64.getEncoder().encodeToString(tsToBytes.get(1))));
+      List<byte[]> tsToInt64 = getRowversionBytes(conn, "timestamp_to_int64");
+      expectedData.put(
+          "timestamp_to_int64",
+          createRows(
+              "timestamp_to_int64",
+              String.valueOf(new BigInteger(tsToInt64.get(0)).longValue()),
+              String.valueOf(new BigInteger(tsToInt64.get(1)).longValue())));
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to establish connection to SQL Server", e);
+    }
 
     expectedData.put("json", createRows("json", "{\"key\":\"val1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"key\":\"val1\"}", "NULL"));
