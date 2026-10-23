@@ -24,10 +24,19 @@ import static org.junit.Assert.assertThat;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
+import com.google.common.io.Resources;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 
 /** Tests {@link AvroSchemaToDdlConverter}. */
@@ -952,7 +961,60 @@ public class AvroSchemaToDdlConverterTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT \"bar\")"
-                + " RETURNS TEXT SQL SECURITY INVOKER RETURN SELECT 1"));
+                + " RETURNS TEXT SECURITY INVOKER RETURN SELECT 1"));
+  }
+
+  @Test
+  public void pgUdfsFromImportPipelineResources() throws IOException {
+    Schema udfSchema = readAvroSchema("ImportPipelineIT/postgres/UdfSchema.avro");
+    Schema pgAddSchema = readAvroSchema("ImportPipelineIT/postgres/pg_add.avro");
+    Schema pgMultiplySchema = readAvroSchema("ImportPipelineIT/postgres/pg_multiply.avro");
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Arrays.asList(udfSchema, pgAddSchema, pgMultiplySchema));
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.udfs(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SCHEMA \"UdfSchema\"\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_add\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE SECURITY INVOKER RETURN (a + b)\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_multiply\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE SECURITY INVOKER RETURN (SELECT (a * b))"));
+  }
+
+  @Test
+  public void pgUdfsRoundTrip() {
+    Ddl sourceDdl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSchema("s1")
+            .endNamedSchema()
+            .createUdf("s1.Foo1")
+            .name("s1.Foo1")
+            .definition("(SELECT 'bar')")
+            .type("text")
+            .endUdf()
+            .createUdf("s1.Foo2")
+            .name("s1.Foo2")
+            .definition("(SELECT 'bar')")
+            .security(Udf.SqlSecurity.INVOKER)
+            .type("text")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 text", "s1.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse("arg1 text DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .build();
+
+    DdlToAvroSchemaConverter ddlToAvro =
+        new DdlToAvroSchemaConverter("spannerexport", "1.0.0", false);
+    Collection<Schema> avroSchemas = ddlToAvro.convert(sourceDdl);
+
+    AvroSchemaToDdlConverter avroToDdl = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl destinationDdl = avroToDdl.toDdl(avroSchemas);
+
+    assertThat(destinationDdl.prettyPrint(), equalToCompressingWhiteSpace(sourceDdl.prettyPrint()));
   }
 
   @Test
@@ -2084,5 +2146,13 @@ public class AvroSchemaToDdlConverterTest {
             + " KEY (AccountID)\n"
             + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  private static Schema readAvroSchema(String resourceName) throws IOException {
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(
+            new File(Resources.getResource(resourceName).getFile()), new GenericDatumReader<>())) {
+      return reader.getSchema();
+    }
   }
 }
