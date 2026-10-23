@@ -501,6 +501,13 @@ public class SpannerChangeStreamsUtils {
       TrackedSpannerColumn column, JSONObject keysJsonObject, Key.Builder keyBuilder) {
     Type.Code code = column.getType().getCode();
     String name = column.getName();
+    // A present JSON null is JSONObject.NULL, which the typed getters below reject. isNull is also
+    // true when the key is absent, so require has() and append a typed null. Missing keys still
+    // fail in those getters.
+    if (keysJsonObject.has(name) && keysJsonObject.isNull(name)) {
+      keyBuilder.append((String) null);
+      return;
+    }
     switch (code) {
       case BOOL:
         keyBuilder.append(keysJsonObject.getBoolean(name));
