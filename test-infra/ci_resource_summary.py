@@ -74,7 +74,9 @@ def _tests(mode_dir):
 
 def _mysql_usage(mode_dir):
   last = None
-  for path in glob.glob(os.path.join(mode_dir, "surefire", "*-output.txt")):
+  paths = glob.glob(os.path.join(mode_dir, "surefire", "*-output.txt"))
+  paths.append(os.path.join(mode_dir, "console.log"))
+  for path in [p for p in paths if os.path.exists(p)]:
     with open(path, errors="replace") as f:
       for line in f:
         if "Shared mysql container usage:" in line:

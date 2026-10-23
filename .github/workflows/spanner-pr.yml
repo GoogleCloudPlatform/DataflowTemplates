@@ -103,8 +103,8 @@ jobs:
     # containers: first with one MySQL container per test (today), then with one shared container.
     - name: Run Integration Tests (baseline - one container per test)
       env:
-        # TEMPORARY (S6 shared MySQL container trial): run only these Bulk MySQL ITs.
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT' }}
+        # TEMPORARY (S6 shared MySQL container trial): the 19 Bulk MySQL ITs that can share a container.
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLCustomTransformationsNonShardedIT,MySQLDataTypesIT,MySQLDataTypesPGDialectIT,MySQLDDLIT,MySQLFileOverridesSchemaMapperIT,MySQLForeignKeyDependencyIT,MySQLIdentitySchemaMapperIT,MySQLIdentitySchemaMapperWithTransformationIT,MySQLReservedKeywordsIT,MySQLSessionSchemaMapperIT,MySQLSessionSchemaMapperWithTableFilterIT,MySQLSessionSchemaMapperWithTransformationIT,MySQLSingleShardIT,MySQLSourceDBToSpannerWideRowInterleaveDepthIT,MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT,MySQLSourceDBToSpannerWideRowMaxRowSizeIT,MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT,MySQLStringOverridesSchemaMapperIT,SourceDbToSpannerTimezoneIT' }}
         SHARED_TEST_CONTAINERS: 'false'
       run: |
         out="$GITHUB_WORKSPACE/s6-stats/baseline"
@@ -121,8 +121,8 @@ jobs:
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
-        --test="$SPECIFIC_TEST"
-        rc=$?
+        --test="$SPECIFIC_TEST" 2>&1 | tee "$out/console.log"
+        rc=${PIPESTATUS[0]}
         set -e
         kill "$monitor_pid" || true
         mkdir -p "$out/surefire"
@@ -132,8 +132,8 @@ jobs:
     - name: Run Integration Tests (shared MySQL container)
       if: always()
       env:
-        # TEMPORARY (S6 shared MySQL container trial): run only these Bulk MySQL ITs.
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT' }}
+        # TEMPORARY (S6 shared MySQL container trial): the 19 Bulk MySQL ITs that can share a container.
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLCustomTransformationsNonShardedIT,MySQLDataTypesIT,MySQLDataTypesPGDialectIT,MySQLDDLIT,MySQLFileOverridesSchemaMapperIT,MySQLForeignKeyDependencyIT,MySQLIdentitySchemaMapperIT,MySQLIdentitySchemaMapperWithTransformationIT,MySQLReservedKeywordsIT,MySQLSessionSchemaMapperIT,MySQLSessionSchemaMapperWithTableFilterIT,MySQLSessionSchemaMapperWithTransformationIT,MySQLSingleShardIT,MySQLSourceDBToSpannerWideRowInterleaveDepthIT,MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT,MySQLSourceDBToSpannerWideRowMaxRowSizeIT,MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT,MySQLStringOverridesSchemaMapperIT,SourceDbToSpannerTimezoneIT' }}
         SHARED_TEST_CONTAINERS: 'true'
       run: |
         out="$GITHUB_WORKSPACE/s6-stats/shared"
@@ -150,8 +150,8 @@ jobs:
         --it-integration-test-parallelism=48 \
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
-        --test="$SPECIFIC_TEST"
-        rc=$?
+        --test="$SPECIFIC_TEST" 2>&1 | tee "$out/console.log"
+        rc=${PIPESTATUS[0]}
         set -e
         kill "$monitor_pid" || true
         mkdir -p "$out/surefire"
