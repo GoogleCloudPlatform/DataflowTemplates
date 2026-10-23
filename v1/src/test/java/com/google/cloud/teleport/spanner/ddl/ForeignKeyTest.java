@@ -28,13 +28,16 @@ import org.junit.runners.JUnit4;
 public final class ForeignKeyTest {
 
   @Test
-  public void testParsingOnDeleteCascadeActions() {
+  public void testParsingOnDeleteActions() {
     var onDeleteCascadeAction = ReferentialAction.getReferentialAction("DELETE", "CASCADE");
     assertThat(onDeleteCascadeAction)
         .isEquivalentAccordingToCompareTo(ReferentialAction.ON_DELETE_CASCADE);
     var onDeleteNoAction = ReferentialAction.getReferentialAction("DELETE", "no action");
     assertThat(onDeleteNoAction)
         .isEquivalentAccordingToCompareTo(ReferentialAction.ON_DELETE_NO_ACTION);
+    var onDeleteSetNullAction = ReferentialAction.getReferentialAction("DELETE", "set null");
+    assertThat(onDeleteSetNullAction)
+        .isEquivalentAccordingToCompareTo(ReferentialAction.ON_DELETE_SET_NULL);
   }
 
   @Test
