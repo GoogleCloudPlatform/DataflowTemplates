@@ -78,7 +78,7 @@ public final class SQLServerDMLGeneratorTest {
 
     String sql = response.getDmlStatement();
     assertNotNull(sql);
-    assertTrue(sql.contains("MERGE INTO [Singers] WITH (HOLDLOCK) AS target"));
+    assertTrue(sql.contains("MERGE INTO [Singers] WITH (HOLDLOCK, UPDLOCK) AS target"));
     assertTrue(sql.contains("ON (target.[SingerId] = 999)"));
     assertTrue(sql.contains("WHEN MATCHED THEN UPDATE SET"));
     assertTrue(sql.contains("target.[FirstName] = 'John'"));
@@ -227,7 +227,7 @@ public final class SQLServerDMLGeneratorTest {
             "my]table", allColValues, onCondition, Set.of("col]1"));
 
     String sql = response.getDmlStatement();
-    assertTrue(sql.startsWith("MERGE INTO [my]]table] WITH (HOLDLOCK) AS target"));
+    assertTrue(sql.startsWith("MERGE INTO [my]]table] WITH (HOLDLOCK, UPDLOCK) AS target"));
     assertTrue(sql.contains("target.[col]]1] = 'val1'"));
     assertTrue(sql.contains("[col]]1]"));
     assertTrue(sql.contains("target.[col2] = 'val2'"));
