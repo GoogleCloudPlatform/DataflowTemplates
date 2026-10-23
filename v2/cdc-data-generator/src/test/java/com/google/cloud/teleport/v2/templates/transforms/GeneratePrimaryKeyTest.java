@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.source.mysql.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.dofn.GeneratePrimaryKeyFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
@@ -112,7 +113,9 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
+            .apply(
+                "GeneratePK",
+                new GeneratePrimaryKey(new MySqlSinkConfig(), SinkType.MYSQL.name(), null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -158,7 +161,9 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table, table, table, table, table))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
+            .apply(
+                "GeneratePK",
+                new GeneratePrimaryKey(new MySqlSinkConfig(), SinkType.MYSQL.name(), null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -212,7 +217,9 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(t1, t2, t1))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null, null, null));
+            .apply(
+                "GeneratePK",
+                new GeneratePrimaryKey(new MySqlSinkConfig(), SinkType.MYSQL.name(), null, null));
 
     PAssert.that(out)
         .satisfies(
