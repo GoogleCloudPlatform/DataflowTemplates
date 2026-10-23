@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.templates.shared.MySQLEngine;
+import com.google.cloud.teleport.v2.templates.shared.SharedDatabaseServer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import java.io.BufferedWriter;
@@ -40,6 +42,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -55,6 +59,8 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.junit.ClassRule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
@@ -70,7 +76,62 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 
+  /**
+   * Databases created on shared containers, per test class. They are dropped by {@link
+   * #DROP_SHARED_DATABASES} once all tests of the class are done, because many test classes keep
+   * their resource managers in static fields shared by all of their test methods.
+   */
+  private static final Map<Class<?>, List<Runnable>> SHARED_DATABASE_CLEANUPS =
+      new ConcurrentHashMap<>();
+
+  @ClassRule
+  public static final TestRule DROP_SHARED_DATABASES =
+      (base, description) ->
+          new org.junit.runners.model.Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+              try {
+                base.evaluate();
+              } finally {
+                List<Runnable> cleanups =
+                    SHARED_DATABASE_CLEANUPS.remove(description.getTestClass());
+                if (cleanups != null) {
+                  cleanups.forEach(Runnable::run);
+                }
+              }
+            }
+          };
+
+  /**
+   * Returns a MySQL resource manager for the test. By default the test gets its own database on a
+   * MySQL container shared by all tests in the JVM; with {@code -DsharedTestContainers=false} it
+   * gets its own container instead.
+   */
   public MySQLResourceManager setUpMySQLResourceManager() {
+    if (!SharedDatabaseServer.isEnabled()) {
+      return setUpDedicatedMySQLResourceManager();
+    }
+    SharedDatabaseServer server = SharedDatabaseServer.get(MySQLEngine.INSTANCE);
+    String databaseName = server.createDatabase(testName);
+    SHARED_DATABASE_CLEANUPS
+        .computeIfAbsent(getClass(), k -> new CopyOnWriteArrayList<>())
+        .add(() -> server.dropDatabase(databaseName));
+    MySQLResourceManager.Builder builder = MySQLResourceManager.builder(testName);
+    builder.setDatabaseName(databaseName);
+    builder.setUsername(server.getUsername());
+    builder.setPassword(server.getPassword());
+    builder.setHost(server.getHost());
+    builder.setPort(server.getPort());
+    builder.useStaticContainer();
+    return builder.build();
+  }
+
+  /**
+   * Returns a MySQL resource manager backed by a container of its own. Use this instead of {@link
+   * #setUpMySQLResourceManager()} for tests that change server-wide settings (e.g. {@code SET
+   * GLOBAL}), which would affect other tests on a shared container.
+   */
+  public MySQLResourceManager setUpDedicatedMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
   }
 
