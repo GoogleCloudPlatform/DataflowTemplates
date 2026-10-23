@@ -1,0 +1,50 @@
+digraph Architecture {
+  node [shape=box, fontname="Helvetica", style=filled, fillcolor=lightblue];
+  
+  Datastream [label="Source DB\n(via Datastream)", shape=cylinder];
+  GCS [label="Google Cloud Storage\n(AVRO/JSON)", shape=folder];
+  Spanner [label="Cloud Spanner\n(Destination & Shadow Tables)", shape=cylinder];
+  DLQ [label="Dead Letter Queue\n(GCS)", shape=folder];
+  FilteredEventsGCS [label="Filtered Events\n(GCS)", shape=folder];
+
+  subgraph cluster_dataflow {
+    label="Cloud Dataflow (DataStreamToSpanner)";
+    fontname="Helvetica-Bold";
+    style=dashed;
+    color=gray;
+
+    ReadDataStream [label="DataStreamIO\n(Read Events)"];
+    ProcessSchema [label="Process Information Schema\n(Read DDL)"];
+    ReadDLQ [label="FileBasedDeadLetterQueueReconsumer\n(Read from DLQ)"];
+    Reshuffle [label="Reshuffle\n(Random Key)"];
+    TransformEvents [label="Apply Transformation to events"];
+    WriteSpanner [label="Write events to Cloud Spanner"];
+    WriteFiltered [label="Write Filtered Events"];
+    WriteDLQRetry [label="Write To DLQ\n(Retryable Errors)"];
+    WriteDLQSevere [label="Write To Severe DLQ\n(Severe Errors)"];
+  }
+
+  Datastream -> GCS [label=" Change Events"];
+  GCS -> ReadDataStream;
+  Spanner -> ProcessSchema [label=" DDL"];
+  ProcessSchema -> TransformEvents [label=" SideInput: DDL View", style=dotted];
+  ProcessSchema -> WriteSpanner [label=" SideInput: DDL View", style=dotted];
+  DLQ -> ReadDLQ [label=" Failed Events"];
+  
+  ReadDataStream -> Reshuffle;
+  ReadDLQ -> Reshuffle [label=" Retryable Events"];
+  ReadDLQ -> WriteDLQSevere [label=" Permanent Errors"];
+  
+  Reshuffle -> TransformEvents [label=" JSON Records"];
+  TransformEvents -> WriteFiltered [label=" Filtered Events"];
+  WriteFiltered -> FilteredEventsGCS;
+  TransformEvents -> WriteSpanner [label=" Transformed Events"];
+  TransformEvents -> WriteDLQSevere [label=" Permanent Errors"];
+  
+  WriteSpanner -> Spanner [label=" Spanner Mutations"];
+  WriteSpanner -> WriteDLQRetry [label=" Retryable Errors"];
+  WriteSpanner -> WriteDLQSevere [label=" Permanent Errors"];
+
+  WriteDLQRetry -> DLQ;
+  WriteDLQSevere -> DLQ;
+}
