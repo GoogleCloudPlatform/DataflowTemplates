@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -31,6 +32,19 @@ public class UdfParameterTest {
         UdfParameter.builder().functionSpecificName("s1.foo").name("p1").type("string").autoBuild();
 
     assertThat(udfParameter.toString(), equalToCompressingWhiteSpace("`p1` string"));
+  }
+
+  @Test
+  public void testBasicPgUdfParameter() {
+    UdfParameter udfParameter =
+        UdfParameter.builder()
+            .functionSpecificName("s1.foo")
+            .name("p1")
+            .type("TEXT")
+            .dialect(Dialect.POSTGRESQL)
+            .autoBuild();
+
+    assertThat(udfParameter.toString(), equalToCompressingWhiteSpace("\"p1\" TEXT"));
   }
 
   @Test
@@ -70,9 +84,157 @@ public class UdfParameterTest {
   }
 
   @Test
-  public void testUdfParameterParseMissingDefaultKeyword() {
+  public void testUdfParameterParseQuoted() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("`p 1` int32", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p 1` int32"));
+    assertEquals("p 1", udfParameter.name());
+  }
+
+  @Test
+  public void testUdfParameterParsePgQuoted() {
+    UdfParameter udfParameter = UdfParameter.parse("\"p 1\" TEXT", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p 1\" TEXT"));
+    assertEquals("p 1", udfParameter.name());
+  }
+
+  @Test
+  public void testUdfParameterParseQuotedWithDefault() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("`p1` int32 DEFAULT 5", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` int32 DEFAULT 5"));
+  }
+
+  @Test
+  public void testUdfParameterParsePgTypeWithSpace() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("p1 double precision", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p1\" double precision"));
+    assertThat(udfParameter.type(), equalToCompressingWhiteSpace("double precision"));
+  }
+
+  @Test
+  public void testUdfParameterParsePgMultiWordTypeWithDefaultKeywordInLiteral() {
+    // As reported by INFORMATION_SCHEMA.PARAMETERS for `"Str" text DEFAULT 'it''s the DEFAULT
+    // value'`.
+    UdfParameter udfParameter =
+        UdfParameter.parse(
+            "\"Str\" character varying DEFAULT 'it''s the DEFAULT value'::text",
+            "s1.foo",
+            Dialect.POSTGRESQL);
+    assertEquals("Str", udfParameter.name());
+    assertEquals("character varying", udfParameter.type());
+    assertEquals("'it''s the DEFAULT value'::text", udfParameter.defaultExpression());
+  }
+
+  @Test
+  public void testUdfParameterParseGsqlStructTypes() {
+    // INFORMATION_SCHEMA.PARAMETERS.DATA_TYPE reports struct types with spaces.
+    UdfParameter struct =
+        UdfParameter.parse("`p1` STRUCT<x INT64, y STRING>", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+    assertEquals("p1", struct.name());
+    assertEquals("STRUCT<x INT64, y STRING>", struct.type());
+    assertEquals(null, struct.defaultExpression());
+
+    UdfParameter arrayOfStruct =
+        UdfParameter.parse(
+            "`p1` ARRAY<STRUCT<x INT64, y STRING>> DEFAULT [STRUCT(1, 'a')]",
+            "s1.foo",
+            Dialect.GOOGLE_STANDARD_SQL);
+    assertEquals("p1", arrayOfStruct.name());
+    assertEquals("ARRAY<STRUCT<x INT64, y STRING>>", arrayOfStruct.type());
+    assertEquals("[STRUCT(1, 'a')]", arrayOfStruct.defaultExpression());
+    assertEquals(
+        arrayOfStruct,
+        UdfParameter.parse(arrayOfStruct.prettyPrint(), "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testUdfParameterParseCaseInsensitiveDefault() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("p1 int32 dEfAuLt 5", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` int32 DEFAULT 5"));
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("5"));
+  }
+
+  @Test
+  public void testUdfParameterParseDefaultExpressionWithDefault() {
+    // Tests when the default expression itself contains the word 'default'
+    UdfParameter udfParameter =
+        UdfParameter.parse(
+            "p1 string DEFAULT 'default string'", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(
+        udfParameter.prettyPrint(),
+        equalToCompressingWhiteSpace("`p1` string DEFAULT 'default string'"));
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("'default string'"));
+  }
+
+  @Test
+  public void testUdfParameterParseEmptyString() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> UdfParameter.parse("p1 int32 1", "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+        () -> UdfParameter.parse("", "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testUdfParameterParseNullString() {
+    assertThrows(
+        NullPointerException.class,
+        () -> UdfParameter.parse(null, "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testUdfParameterParseLeadingAndTrailingWhitespace() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("  \"pQ\" integer DEFAULT 1  ", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(
+        udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"pQ\" integer DEFAULT 1"));
+    assertEquals("pQ", udfParameter.name());
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("1"));
+  }
+
+  @Test
+  public void testUdfParameterParsePgMissingDefaultExpression() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> UdfParameter.parse("p1 text DEFAULT", "s1.foo", Dialect.POSTGRESQL));
+  }
+
+  @Test
+  public void testUdfParameterParseMultiLineDefault() {
+    UdfParameter gsql =
+        UdfParameter.parse("`p1` INT64 DEFAULT 1\n+ 2", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+    assertEquals("p1", gsql.name());
+    assertEquals("INT64", gsql.type());
+    assertEquals("1\n+ 2", gsql.defaultExpression());
+
+    UdfParameter pg =
+        UdfParameter.parse("\"p1\" bigint DEFAULT (1\n+ 2)", "s1.foo", Dialect.POSTGRESQL);
+    assertEquals("p1", pg.name());
+    assertEquals("bigint", pg.type());
+    assertEquals("(1\n+ 2)", pg.defaultExpression());
+  }
+
+  @Test
+  public void testUdfParameterParseRoundTrip() {
+    // Parameters scanned from the information schema carry unquoted names; parsing their
+    // pretty-printed (quoted) form, as done on import, must produce an equal parameter.
+    for (Dialect dialect : Dialect.values()) {
+      UdfParameter scanned =
+          UdfParameter.builder(dialect)
+              .functionSpecificName("s1.foo")
+              .name("pQ")
+              .type(dialect == Dialect.POSTGRESQL ? "bigint" : "INT64")
+              .defaultExpression("1")
+              .autoBuild();
+      assertEquals(scanned, UdfParameter.parse(scanned.prettyPrint(), "s1.foo", dialect));
+    }
   }
 }
