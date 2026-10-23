@@ -150,6 +150,107 @@ public final class AbstractPipelineLauncherTest {
         () -> new FakePipelineLauncher(client).drainJob(PROJECT, REGION, JOB_ID));
   }
 
+  @Test
+  public void testWaitUntilActive_alreadyRunning() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    when(get.execute()).thenReturn(new Job().setCurrentState(JobState.RUNNING.toString()));
+
+    JobState actual = new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID);
+
+    assertThat(actual).isEqualTo(JobState.RUNNING);
+    verify(get, times(1)).execute();
+  }
+
+  @Test
+  public void testWaitUntilActive_transitionsFromUnknownToRunning() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    when(get.execute())
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.RUNNING.toString()));
+
+    JobState actual = new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID);
+
+    assertThat(actual).isEqualTo(JobState.RUNNING);
+    verify(get, times(2)).execute();
+  }
+
+  @Test
+  public void testWaitUntilActive_transitionsFromPendingToRunning() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    when(get.execute())
+        .thenReturn(new Job().setCurrentState(JobState.PENDING.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.RUNNING.toString()));
+
+    JobState actual = new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID);
+
+    assertThat(actual).isEqualTo(JobState.RUNNING);
+    verify(get, times(2)).execute();
+  }
+
+  @Test
+  public void testWaitUntilActive_throwsWhenFailed() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    when(get.execute())
+        .thenReturn(new Job().setCurrentState(JobState.PENDING.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.FAILED.toString()));
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () -> new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID));
+
+    assertThat(exception).hasMessageThat().contains("The job failed before launch!");
+    assertThat(exception).hasMessageThat().contains(JOB_ID);
+  }
+
+  @Test
+  public void testWaitUntilActive_throwsWhenUnknownExceedsMaxRetries() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    when(get.execute()).thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()));
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () -> new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID));
+
+    assertThat(exception).hasMessageThat().contains("Job state remained UNKNOWN for too long");
+    assertThat(exception).hasMessageThat().contains(JOB_ID);
+    // initial check + 10 retries = 11 execute calls
+    verify(get, times(11)).execute();
+  }
+
+  @Test
+  public void testWaitUntilActive_resetsUnknownCounterOnPending() throws IOException {
+    Get get = mock(Get.class);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
+    // 5 UNKNOWN, then 1 PENDING (resets counter), then 7 UNKNOWN, then RUNNING
+    // Total UNKNOWN checks is 12 (> 10), but consecutive UNKNOWN never exceeds 10
+    when(get.execute())
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.PENDING.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.UNKNOWN.toString()))
+        .thenReturn(new Job().setCurrentState(JobState.RUNNING.toString()));
+
+    JobState actual = new FakePipelineLauncher(client).waitUntilActive(PROJECT, REGION, JOB_ID);
+
+    assertThat(actual).isEqualTo(JobState.RUNNING);
+  }
+
   private static Locations.Jobs getLocationJobs(Dataflow client) {
     return client.projects().locations().jobs();
   }
@@ -160,6 +261,11 @@ public final class AbstractPipelineLauncherTest {
   private static final class FakePipelineLauncher extends AbstractPipelineLauncher {
     FakePipelineLauncher(Dataflow client) {
       super(client);
+    }
+
+    @Override
+    protected void sleep(long seconds) {
+      // No-op for testing to avoid slowing down test runs
     }
 
     @Override
