@@ -50,7 +50,7 @@ public class SourceConnectorFactory {
     if (sinkType == null) {
       throw new IllegalArgumentException("Unsupported sink type: null");
     }
-    return getSourceConnector(sinkType.toUpperCase());
+    return getSourceConnector(SinkType.valueOf(sinkType.toUpperCase()));
   }
 
   /**
