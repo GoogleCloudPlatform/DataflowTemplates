@@ -67,7 +67,7 @@ public class SpannerGeneratedColumnUtils {
     return combinedCondition;
   }
 
-  public static void assertRowInMySQL(
+  public static void assertRowInSourceDb(
       Map<String, List<Map<String, Object>>> expectedData,
       JDBCResourceManager jdbcResourceManager) {
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
