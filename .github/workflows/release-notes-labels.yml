@@ -10,7 +10,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Add extra labels to Dependabot PRs
-        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.event.action != 'unlabeled' }}
+        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.event.action == 'opened' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -40,6 +40,7 @@ jobs:
           fi
 
       - uses: mheap/github-action-required-labels@23e10fde7e062233401931a0eece796cd9bf3177 # v5.6.0
+        if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
         with:
           mode: minimum
           count: 1
