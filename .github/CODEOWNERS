@@ -1,5 +1,8 @@
 # review when someone opens a pull request
 
+# GitHub workflows and repository configuration
+/.github/ @GoogleCloudPlatform/dataflow-templates-wg
+
 # Spanner Import Export templates
 v1/src/main/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
 v1/src/test/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
