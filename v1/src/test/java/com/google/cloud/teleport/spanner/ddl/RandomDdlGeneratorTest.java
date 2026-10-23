@@ -71,4 +71,28 @@ public final class RandomDdlGeneratorTest {
 
     assertThat(first.prettyPrint()).isEqualTo(second.prettyPrint());
   }
+
+  @Test
+  public void testGenerateResetsIdentifiersAcrossCallsOnSameInstance() {
+    RandomDdlGenerator generator =
+        RandomDdlGenerator.builder()
+            .setRandom(new Random(7L))
+            .setMaxIdLength(1)
+            .setMaxBranchPerLevel(new int[] {1})
+            .setMaxPkComponents(1)
+            .setMaxColumns(1)
+            .setMaxIndex(1)
+            .setMaxForeignKeys(1)
+            .setMaxChangeStreams(0)
+            .build();
+
+    // Generate >26 single-table schemas from the same generator instance; since each call only
+    // needs at most 3 identifiers, every call should still be able to use length-1 identifiers.
+    for (int i = 0; i < 30; i++) {
+      Ddl ddl = generator.generate();
+      for (Table table : ddl.allTables()) {
+        assertThat(table.name()).hasLength(1);
+      }
+    }
+  }
 }

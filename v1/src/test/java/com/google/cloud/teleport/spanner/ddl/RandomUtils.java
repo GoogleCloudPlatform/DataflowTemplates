@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /** Utilities for {@link Random}. */
 public final class RandomUtils {
@@ -29,7 +30,7 @@ public final class RandomUtils {
   private RandomUtils() {}
 
   public static String randomAlphanumeric(int length) {
-    return randomAlphanumeric(length, new Random());
+    return randomAlphanumeric(length, ThreadLocalRandom.current());
   }
 
   public static String randomAlphanumeric(int length, Random random) {

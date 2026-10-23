@@ -212,9 +212,11 @@ public abstract class RandomDdlGenerator {
 
   private static final int MAX_IDENTIFIER_ATTEMPTS_PER_LENGTH = 100;
 
-  private Set<String> allIdentifiers = Sets.newHashSet("generated");
+  private final Set<String> allIdentifiers = Sets.newHashSet("generated");
 
   public Ddl generate() {
+    allIdentifiers.clear();
+    allIdentifiers.add("generated");
     Ddl.Builder builder = Ddl.builder(getDialect());
     int numParentTables = 1 + getRandom().nextInt(getMaxBranchPerLevel()[0]);
     for (int i = 0; i < numParentTables; i++) {
