@@ -82,7 +82,7 @@ public class MySqlSourceConnector implements ISourceConnector {
 
   @Override
   public DataWriter createDataWriter(SinkConfig sinkConfig) {
-    if (sinkConfig != null && !(sinkConfig instanceof MySqlSinkConfig)) {
+    if (!(sinkConfig instanceof MySqlSinkConfig)) {
       throw new IllegalArgumentException(
           "Sink configuration must be an instance of MySqlSinkConfig for MySQL sink type.");
     }

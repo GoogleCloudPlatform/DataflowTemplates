@@ -67,7 +67,8 @@ public class SpannerConfigFileReader {
       return config;
     } catch (IOException e) {
       LOG.error("Failed to read Spanner configuration file: {}", spannerConfigFilePath, e);
-      throw new RuntimeException("Failed to read Spanner configuration file: " + spannerConfigFilePath, e);
+      throw new RuntimeException(
+          "Failed to read Spanner configuration file: " + spannerConfigFilePath, e);
     }
   }
 }

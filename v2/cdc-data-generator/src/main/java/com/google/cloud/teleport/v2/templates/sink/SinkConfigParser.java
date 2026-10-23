@@ -35,8 +35,7 @@ public class SinkConfigParser {
 
   @VisibleForTesting
   public static void setDialectProvider(DialectProvider provider) {
-    SpannerSourceConnector.setDialectProvider(
-        provider != null ? provider::getDialect : null);
+    SpannerSourceConnector.setDialectProvider(provider != null ? provider::getDialect : null);
   }
 
   /**

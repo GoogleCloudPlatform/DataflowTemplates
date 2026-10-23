@@ -74,9 +74,20 @@ public class SpannerSourceConnector implements ISourceConnector {
 
     SpannerConfigFileReader reader = new SpannerConfigFileReader();
     SpannerSinkConfig config = reader.getSpannerConfig(sinkOptionsPath);
+
     String projectId = config.getProjectId();
+    if (projectId == null || projectId.isEmpty()) {
+      throw new IllegalArgumentException("Missing projectId in Spanner configuration.");
+    }
     String instanceId = config.getInstanceId();
+    if (instanceId == null || instanceId.isEmpty()) {
+      throw new IllegalArgumentException("Missing instanceId in Spanner configuration.");
+    }
+
     String databaseId = config.getDatabaseId();
+    if (databaseId == null || databaseId.isEmpty()) {
+      throw new IllegalArgumentException("Missing databaseId in Spanner configuration.");
+    }
 
     Dialect dialect = dialectProvider.getDialect(projectId, instanceId, databaseId);
     LOG.info("Pre-fetched Spanner dialect on driver: {}", dialect);
@@ -97,7 +108,7 @@ public class SpannerSourceConnector implements ISourceConnector {
 
   @Override
   public DataWriter createDataWriter(SinkConfig sinkConfig) {
-    if (sinkConfig != null && !(sinkConfig instanceof SpannerSinkConfig)) {
+    if (!(sinkConfig instanceof SpannerSinkConfig)) {
       throw new IllegalArgumentException(
           "Sink configuration must be an instance of SpannerSinkConfig for Spanner sink type.");
     }

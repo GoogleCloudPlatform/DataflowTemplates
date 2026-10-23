@@ -88,8 +88,7 @@ public class SpannerSourceConnectorTest {
 
   @Test
   public void testCreateDataWriter() {
-    SpannerSinkConfig config =
-        new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
+    SpannerSinkConfig config = new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
     DataWriter writer = connector.createDataWriter(config);
     assertThat(writer).isInstanceOf(SpannerDataWriter.class);
   }
@@ -97,22 +96,19 @@ public class SpannerSourceConnectorTest {
   @Test
   public void testCreateDataWriter_invalidConfigThrows() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> connector.createDataWriter(new SinkConfig() {}));
+        IllegalArgumentException.class, () -> connector.createDataWriter(new SinkConfig() {}));
   }
 
   @Test
   public void testResolveKeyParallelism() {
-    SpannerSinkConfig config =
-        new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
+    SpannerSinkConfig config = new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
     assertThat(connector.resolveKeyParallelism(config)).isEqualTo(100000);
     assertThat(connector.resolveKeyParallelism(null)).isEqualTo(100000);
   }
 
   @Test
   public void testGetLogicalShardIds() {
-    SpannerSinkConfig config =
-        new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
+    SpannerSinkConfig config = new SpannerSinkConfig("p", "i", "d", Dialect.GOOGLE_STANDARD_SQL);
     assertThat(connector.getLogicalShardIds(config)).isEmpty();
     assertThat(connector.getLogicalShardIds(null)).isEmpty();
   }

@@ -111,8 +111,7 @@ public class MySqlSourceConnectorTest {
   @Test
   public void testCreateDataWriter_invalidConfigThrows() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> connector.createDataWriter(new SinkConfig() {}));
+        IllegalArgumentException.class, () -> connector.createDataWriter(new SinkConfig() {}));
   }
 
   @Test
@@ -133,8 +132,7 @@ public class MySqlSourceConnectorTest {
   @Test
   public void testResolveKeyParallelism_invalidConfigThrows() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> connector.resolveKeyParallelism(new SinkConfig() {}));
+        IllegalArgumentException.class, () -> connector.resolveKeyParallelism(new SinkConfig() {}));
   }
 
   @Test

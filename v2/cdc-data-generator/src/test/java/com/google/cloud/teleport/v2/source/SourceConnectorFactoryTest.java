@@ -48,8 +48,7 @@ public class SourceConnectorFactoryTest {
 
   @Test
   public void testGetSourceConnector_byOptions() {
-    CdcDataGeneratorOptions options =
-        PipelineOptionsFactory.as(CdcDataGeneratorOptions.class);
+    CdcDataGeneratorOptions options = PipelineOptionsFactory.as(CdcDataGeneratorOptions.class);
     options.setSinkType(SinkType.SPANNER);
     assertThat(SourceConnectorFactory.getSourceConnector(options))
         .isInstanceOf(SpannerSourceConnector.class);
@@ -65,11 +64,9 @@ public class SourceConnectorFactoryTest {
         IllegalArgumentException.class,
         () -> SourceConnectorFactory.getSourceConnector((CdcDataGeneratorOptions) null));
 
-    CdcDataGeneratorOptions options =
-        PipelineOptionsFactory.as(CdcDataGeneratorOptions.class);
+    CdcDataGeneratorOptions options = PipelineOptionsFactory.as(CdcDataGeneratorOptions.class);
     assertThrows(
-        IllegalArgumentException.class,
-        () -> SourceConnectorFactory.getSourceConnector(options));
+        IllegalArgumentException.class, () -> SourceConnectorFactory.getSourceConnector(options));
   }
 
   @Test

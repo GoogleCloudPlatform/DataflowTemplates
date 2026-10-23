@@ -46,6 +46,13 @@ public class SourceConnectorFactory {
     }
   }
 
+  public static ISourceConnector getSourceConnector(String sinkType) {
+    if (sinkType == null) {
+      throw new IllegalArgumentException("Unsupported sink type: null");
+    }
+    return getSourceConnector(sinkType.toUpperCase());
+  }
+
   /**
    * Gets the appropriate {@link ISourceConnector} from the given {@link CdcDataGeneratorOptions}.
    *
