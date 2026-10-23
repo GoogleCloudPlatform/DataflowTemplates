@@ -158,6 +158,44 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     return values;
   }
 
+  private void addRowversionExpectedData(Map<String, List<Map<String, Object>>> expectedData) {
+    try (Connection conn =
+        DriverManager.getConnection(
+            msSqlResourceManager.getUri(),
+            msSqlResourceManager.getUsername(),
+            msSqlResourceManager.getPassword())) {
+      for (String baseType : List.of("rowversion", "timestamp")) {
+        List<byte[]> defaultBytes = getRowversionBytes(conn, baseType);
+        expectedData.put(
+            baseType,
+            createRows(
+                baseType,
+                Hex.encodeHexString(defaultBytes.get(0)),
+                Hex.encodeHexString(defaultBytes.get(1))));
+
+        String toBytesType = baseType + "_to_bytes";
+        List<byte[]> toBytes = getRowversionBytes(conn, toBytesType);
+        expectedData.put(
+            toBytesType,
+            createRows(
+                toBytesType,
+                Base64.getEncoder().encodeToString(toBytes.get(0)),
+                Base64.getEncoder().encodeToString(toBytes.get(1))));
+
+        String toInt64Type = baseType + "_to_int64";
+        List<byte[]> toInt64 = getRowversionBytes(conn, toInt64Type);
+        expectedData.put(
+            toInt64Type,
+            createRows(
+                toInt64Type,
+                String.valueOf(new BigInteger(toInt64.get(0)).longValue()),
+                String.valueOf(new BigInteger(toInt64.get(1)).longValue())));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to establish connection to SQL Server", e);
+    }
+  }
+
   private Map<String, List<Map<String, Object>>> getExpectedData() {
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     expectedData.put("tinyint", createRows("tinyint", "0", "255", "128", "42", "NULL"));
@@ -520,57 +558,7 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     //         "PGl0ZW0gaWQ9IjEiLz4=",
     //         "NULL"));
 
-    try (Connection conn =
-        DriverManager.getConnection(
-            msSqlResourceManager.getUri(),
-            msSqlResourceManager.getUsername(),
-            msSqlResourceManager.getPassword())) {
-      List<byte[]> rvBytes = getRowversionBytes(conn, "rowversion");
-      expectedData.put(
-          "rowversion",
-          createRows(
-              "rowversion",
-              Hex.encodeHexString(rvBytes.get(0)),
-              Hex.encodeHexString(rvBytes.get(1))));
-      List<byte[]> rvToBytes = getRowversionBytes(conn, "rowversion_to_bytes");
-      expectedData.put(
-          "rowversion_to_bytes",
-          createRows(
-              "rowversion_to_bytes",
-              Base64.getEncoder().encodeToString(rvToBytes.get(0)),
-              Base64.getEncoder().encodeToString(rvToBytes.get(1))));
-      List<byte[]> rvToInt64 = getRowversionBytes(conn, "rowversion_to_int64");
-      expectedData.put(
-          "rowversion_to_int64",
-          createRows(
-              "rowversion_to_int64",
-              String.valueOf(new BigInteger(rvToInt64.get(0)).longValue()),
-              String.valueOf(new BigInteger(rvToInt64.get(1)).longValue())));
-
-      List<byte[]> tsBytes = getRowversionBytes(conn, "timestamp");
-      expectedData.put(
-          "timestamp",
-          createRows(
-              "timestamp",
-              Hex.encodeHexString(tsBytes.get(0)),
-              Hex.encodeHexString(tsBytes.get(1))));
-      List<byte[]> tsToBytes = getRowversionBytes(conn, "timestamp_to_bytes");
-      expectedData.put(
-          "timestamp_to_bytes",
-          createRows(
-              "timestamp_to_bytes",
-              Base64.getEncoder().encodeToString(tsToBytes.get(0)),
-              Base64.getEncoder().encodeToString(tsToBytes.get(1))));
-      List<byte[]> tsToInt64 = getRowversionBytes(conn, "timestamp_to_int64");
-      expectedData.put(
-          "timestamp_to_int64",
-          createRows(
-              "timestamp_to_int64",
-              String.valueOf(new BigInteger(tsToInt64.get(0)).longValue()),
-              String.valueOf(new BigInteger(tsToInt64.get(1)).longValue())));
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to establish connection to SQL Server", e);
-    }
+    addRowversionExpectedData(expectedData);
 
     expectedData.put("json", createRows("json", "{\"key\":\"val1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"key\":\"val1\"}", "NULL"));
