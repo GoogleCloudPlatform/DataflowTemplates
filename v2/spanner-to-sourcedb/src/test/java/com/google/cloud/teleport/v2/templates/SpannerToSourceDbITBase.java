@@ -23,6 +23,8 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
+import com.google.cloud.teleport.v2.templates.oracle.SharedOracleReverseITContainer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -56,6 +58,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  protected String testUsername;
+  protected String testUsernameShardA;
+  protected String testUsernameShardB;
 
   private static MSSQLResourceManager staticMSSQLResourceManager;
 
@@ -219,6 +224,23 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
+    if (shardId.equals("Shard1") && testUsername != null) {
+      shard.setNamespace(testUsername);
+      shard.setUser(testUsername);
+      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+    } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
+        && testUsernameShardA != null) {
+      shard.setNamespace(testUsernameShardA);
+      shard.setUser(testUsernameShardA);
+      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+    } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
+        && testUsernameShardB != null) {
+      shard.setNamespace(testUsernameShardB);
+      shard.setUser(testUsernameShardB);
+      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
+      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
@@ -231,7 +253,12 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setHost(msSqlRm.getHost());
       shard.setPort(String.valueOf(msSqlRm.getPort()));
       shard.setDbName(msSqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
     } else {
+
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
     return shard;
@@ -357,7 +384,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                                 sourceType,
                                 com.google.cloud.teleport.v2.templates.constants.Constants
                                     .SOURCE_POSTGRESQL)
-                            && !Objects.equals(sourceType, SOURCE_SQLSERVER))
+                            && !Objects.equals(sourceType, SOURCE_SQLSERVER)
+                            && !Objects.equals(sourceType, "oracle"))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -380,6 +408,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     if (jobParameters != null) {
       params.putAll(jobParameters);
+      params.put("workerMachineType", "n1-standard-4");
     }
     if (shardingCustomJarPath != null) {
       params.put(
