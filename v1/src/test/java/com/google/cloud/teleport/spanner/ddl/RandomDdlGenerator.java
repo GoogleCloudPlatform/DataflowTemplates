@@ -210,7 +210,9 @@ public abstract class RandomDdlGenerator {
 
   public abstract Builder toBuilder();
 
-  private Set<String> allIdentifiers = Sets.newHashSet();
+  private static final int MAX_IDENTIFIER_ATTEMPTS_PER_LENGTH = 100;
+
+  private Set<String> allIdentifiers = Sets.newHashSet("generated");
 
   public Ddl generate() {
     Ddl.Builder builder = Ddl.builder(getDialect());
@@ -672,10 +674,15 @@ public abstract class RandomDdlGenerator {
 
   private String generateIdentifier(int length) {
     String id;
+    int attempts = 0;
     while (true) {
-      id = RandomUtils.randomAlphanumeric(length);
+      id = RandomUtils.randomAlphanumeric(length, getRandom());
       if (!allIdentifiers.contains(id.toLowerCase())) {
         break;
+      }
+      if (++attempts >= MAX_IDENTIFIER_ATTEMPTS_PER_LENGTH) {
+        length++;
+        attempts = 0;
       }
     }
     allIdentifiers.add(id.toLowerCase());

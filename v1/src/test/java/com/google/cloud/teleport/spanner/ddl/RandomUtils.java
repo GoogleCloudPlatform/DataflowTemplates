@@ -29,7 +29,10 @@ public final class RandomUtils {
   private RandomUtils() {}
 
   public static String randomAlphanumeric(int length) {
-    Random random = new Random();
+    return randomAlphanumeric(length, new Random());
+  }
+
+  public static String randomAlphanumeric(int length, Random random) {
     char[] result = new char[length];
     result[0] = ALPHA.charAt(random.nextInt(ALPHA.length()));
     for (int i = 1; i < length; i++) {
