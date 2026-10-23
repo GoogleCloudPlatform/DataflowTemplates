@@ -40,7 +40,8 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  * so other engines can reuse this class by adding a new {@link Engine} implementation.
  *
  * <p>The container is started lazily on first use and removed by Testcontainers when the JVM exits.
- * Sharing can be turned off with {@code -DsharedTestContainers=false}.
+ * Sharing can be turned off with {@code -DsharedTestContainers=false} or the environment variable
+ * {@code SHARED_TEST_CONTAINERS=false}.
  */
 public final class SharedDatabaseServer {
 
@@ -48,6 +49,9 @@ public final class SharedDatabaseServer {
 
   /** System property that turns sharing on (default) or off. */
   public static final String ENABLED_PROPERTY = "sharedTestContainers";
+
+  /** Environment variable that turns sharing on (default) or off, if the property is not set. */
+  public static final String ENABLED_ENV = "SHARED_TEST_CONTAINERS";
 
   // Containers occasionally fail to come up on busy CI runners; starting a new one usually works.
   private static final int STARTUP_ATTEMPTS = 3;
@@ -95,7 +99,11 @@ public final class SharedDatabaseServer {
 
   /** Returns whether tests should use shared database servers. */
   public static boolean isEnabled() {
-    return Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "true"));
+    String value = System.getProperty(ENABLED_PROPERTY);
+    if (value == null) {
+      value = System.getenv(ENABLED_ENV);
+    }
+    return value == null || Boolean.parseBoolean(value);
   }
 
   /** Returns the shared server for the engine, starting it on first use. */
@@ -187,9 +195,14 @@ public final class SharedDatabaseServer {
     } catch (RuntimeException e) {
       LOG.warn("Failed to drop database {} on shared {} container", databaseName, engine.name(), e);
     }
+    // Logged after every drop because logging may already be shut down when the JVM exits.
+    logUsage();
   }
 
-  /** Logs how much the shared server was used. Called automatically when the JVM exits. */
+  /**
+   * Logs how much the shared server was used so far. Called after every dropped database and when
+   * the JVM exits.
+   */
   public void logUsage() {
     Map<String, String> usage = new LinkedHashMap<>();
     usage.put("databasesCreated", String.valueOf(databasesCreated.get()));
