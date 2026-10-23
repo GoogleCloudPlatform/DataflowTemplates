@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.sqlserver;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,27 +45,28 @@ import org.slf4j.LoggerFactory;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all SQL Server data
- * types migration to Google Standard SQL dialect Spanner.
+ * types migration to PostgreSQL dialect Spanner.
  */
 @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SQLServerDataTypesIT.class);
+public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(SQLServerDataTypesPGDialectIT.class);
   protected LaunchInfo jobInfo;
 
   protected MSSQLResourceManager msSqlResourceManager;
   protected SpannerResourceManager spannerResourceManager;
 
   private static final String SQLSERVER_DATA_TYPES_RESOURCE =
-      "DataTypesIT/sqlserver-data-types.sql";
-  private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/sqlserver-spanner-schema.sql";
+      "sqlserver/SQLServerDataTypesIT/sqlserver-data-types.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "sqlserver/SQLServerDataTypesPGDialectIT/sqlserver-pg-dialect-spanner-schema.sql";
 
   /** Setup resource managers. */
   @Before
   public void setUp() throws Exception {
     msSqlResourceManager = setUpMSSQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
+    spannerResourceManager = setUpPGDialectSpannerResourceManager();
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
@@ -188,10 +191,10 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
         "decimal",
         createRows(
             "decimal",
-            "68.75",
+            "68.750000000",
             "9999999999999999999.999999999",
             "-9999999999999999999.999999999",
-            "0",
+            "0.000000000",
             "NULL"));
     expectedData.put(
         "decimal_to_float64",
@@ -210,10 +213,10 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
         "numeric",
         createRows(
             "numeric",
-            "68.75",
+            "68.750000000",
             "9999999999999999999.999999999",
             "-9999999999999999999.999999999",
-            "0",
+            "0.000000000",
             "NULL"));
     expectedData.put(
         "numeric_to_float64",
@@ -231,15 +234,20 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
         "numeric_pk",
         createRows(
             "numeric_pk",
-            "68.75",
+            "68.750000000",
             "9999999999999999999.999999999",
             "-9999999999999999999.999999999",
-            "0"));
+            "0.000000000"));
 
     expectedData.put(
         "money",
         createRows(
-            "money", "-922337203685477.5808", "922337203685477.5807", "123.45", "0", "NULL"));
+            "money",
+            "-922337203685477.580800000",
+            "922337203685477.580700000",
+            "123.450000000",
+            "0.000000000",
+            "NULL"));
     expectedData.put(
         "money_to_float64",
         createRows(
@@ -261,7 +269,13 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
 
     expectedData.put(
         "smallmoney",
-        createRows("smallmoney", "-214748.3648", "214748.3647", "50.25", "0", "NULL"));
+        createRows(
+            "smallmoney",
+            "-214748.364800000",
+            "214748.364700000",
+            "50.250000000",
+            "0.000000000",
+            "NULL"));
     expectedData.put(
         "smallmoney_to_float64",
         createRows("smallmoney_to_float64", "-214748.3648", "214748.3647", "50.25", "0.0", "NULL"));
@@ -277,7 +291,12 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "float_to_numeric",
         createRows(
-            "float_to_numeric", "45.56", "123456789.123456", "-123456789.123456", "0", "NULL"));
+            "float_to_numeric",
+            "45.560000000",
+            "123456789.123456000",
+            "-123456789.123456000",
+            "0.000000000",
+            "NULL"));
 
     expectedData.put("real", createRows("real", "-3.4E38", "3.4E38", "12.34", "0.0", "NULL"));
     expectedData.put(
@@ -507,7 +526,7 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     // expectedData.put(
     //     "timestamp_to_int64", createRows("timestamp_to_int64", "placeholder1", "placeholder2"));
 
-    expectedData.put("json", createRows("json", "{\"key\":\"val1\"}", "NULL"));
+    expectedData.put("json", createRows("json", "{\"key\": \"val1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"key\":\"val1\"}", "NULL"));
 
     return expectedData;
