@@ -386,6 +386,7 @@ public class CdcJdbcIO {
         if (getMaxIdleConnections() != null && getMaxIdleConnections().get() != null) {
           basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
         }
+        basicDataSource.setTestOnBorrow(true);
 
         return basicDataSource;
       }
@@ -641,34 +642,171 @@ public class CdcJdbcIO {
       }
     }
 
-    private static class WriteFn<T> extends DoFn<T, Void> {
+    static class WriteFn<T> extends DoFn<T, Void> {
       private final WriteVoid<T> spec;
+      private final int maxRetries;
+      private final long initialBackoffMillis;
 
       private static final int MAX_RETRIES = 5;
-      private static final FluentBackoff BUNDLE_WRITE_BACKOFF =
-          FluentBackoff.DEFAULT
-              .withMaxRetries(MAX_RETRIES)
-              .withInitialBackoff(Duration.standardSeconds(5));
+      private static final long INITIAL_BACKOFF_MILLIS = Duration.standardSeconds(5).getMillis();
 
-      private DataSource dataSource;
-      private Connection connection;
-      private Statement statement;
+      private transient FluentBackoff bundleWriteBackoff;
+      private transient DataSource dataSource;
+      private transient Connection connection;
       private final List<BufferedRecord<T>> records = new ArrayList<>();
 
       public WriteFn(WriteVoid<T> spec) {
+        this(spec, MAX_RETRIES, INITIAL_BACKOFF_MILLIS);
+      }
+
+      WriteFn(WriteVoid<T> spec, int maxRetries, long initialBackoffMillis) {
         this.spec = spec;
+        this.maxRetries = maxRetries;
+        this.initialBackoffMillis = initialBackoffMillis;
       }
 
       @Setup
       public void setup() {
+        bundleWriteBackoff =
+            FluentBackoff.DEFAULT
+                .withMaxRetries(maxRetries)
+                .withInitialBackoff(Duration.millis(initialBackoffMillis));
         dataSource = spec.getDataSourceProviderFn().apply(null);
       }
 
+      private FluentBackoff getBundleWriteBackoff() {
+        if (bundleWriteBackoff == null) {
+          bundleWriteBackoff =
+              FluentBackoff.DEFAULT
+                  .withMaxRetries(maxRetries)
+                  .withInitialBackoff(Duration.millis(initialBackoffMillis));
+        }
+        return bundleWriteBackoff;
+      }
+
       @StartBundle
-      public void startBundle() throws Exception {
-        connection = dataSource.getConnection();
-        connection.setAutoCommit(false);
-        statement = connection.createStatement();
+      public void startBundle() {
+        records.clear();
+      }
+
+      private Connection getConnection() throws SQLException {
+        if (dataSource == null) {
+          dataSource = spec.getDataSourceProviderFn().apply(null);
+        }
+        if (connection == null || connection.isClosed()) {
+          connection = dataSource.getConnection();
+          connection.setAutoCommit(false);
+        }
+        return connection;
+      }
+
+      private void closeConnectionQuietly() {
+        if (connection != null) {
+          try {
+            connection.close();
+          } catch (SQLException e) {
+            LOG.warn("Failed to close SQL connection", e);
+          } finally {
+            connection = null;
+          }
+        }
+      }
+
+      private void rollbackAndInvalidateConnectionQuietly() {
+        if (connection != null) {
+          try {
+            if (!connection.isClosed()) {
+              connection.rollback();
+            }
+          } catch (SQLException e) {
+            LOG.warn("Failed to rollback SQL connection", e);
+          }
+          try {
+            if (dataSource instanceof BasicDataSource) {
+              ((BasicDataSource) dataSource).invalidateConnection(connection);
+            } else {
+              connection.close();
+            }
+          } catch (Exception e) {
+            LOG.warn("Failed to invalidate or close SQL connection", e);
+            try {
+              connection.close();
+            } catch (SQLException ex) {
+              LOG.warn("Failed to close SQL connection after invalidate failure", ex);
+            }
+          } finally {
+            connection = null;
+          }
+        }
+      }
+
+      private void rollbackQuietly() {
+        if (connection == null) {
+          return;
+        }
+        try {
+          if (connection.isClosed()) {
+            rollbackAndInvalidateConnectionQuietly();
+          } else {
+            connection.rollback();
+          }
+        } catch (SQLException rollbackException) {
+          LOG.warn("Rollback failed on SQL connection, invalidating connection", rollbackException);
+          rollbackAndInvalidateConnectionQuietly();
+        }
+      }
+
+      static SQLException nextSqlException(SQLException current) {
+        SQLException next = current.getNextException();
+        if (next != null) {
+          return next;
+        }
+        Throwable cause = current.getCause();
+        return cause instanceof SQLException ? (SQLException) cause : null;
+      }
+
+      boolean isTransientSqlException(SQLException e) {
+        if (spec.getRetryStrategy() != null && spec.getRetryStrategy().apply(e)) {
+          return true;
+        }
+        SQLException current = e;
+        while (current != null) {
+          if (current instanceof java.sql.SQLTransientException) {
+            return true;
+          }
+          String sqlState = current.getSQLState();
+          if (sqlState != null && sqlState.startsWith("40")) {
+            return true;
+          }
+          current = nextSqlException(current);
+        }
+        return false;
+      }
+
+      static boolean isConnectionError(SQLException e, Connection currentConnection) {
+        SQLException current = e;
+        while (current != null) {
+          if (current instanceof java.sql.SQLRecoverableException
+              || current instanceof java.sql.SQLTransientConnectionException) {
+            return true;
+          }
+          String sqlState = current.getSQLState();
+          if (sqlState != null
+              && (sqlState.startsWith("08")
+                  || sqlState.startsWith("53")
+                  || sqlState.startsWith("57"))) {
+            return true;
+          }
+          current = nextSqlException(current);
+        }
+        if (currentConnection == null) {
+          return true;
+        }
+        try {
+          return currentConnection.isClosed();
+        } catch (SQLException ex) {
+          return true;
+        }
       }
 
       @ProcessElement
@@ -694,29 +832,84 @@ public class CdcJdbcIO {
 
       @FinishBundle
       public void finishBundle(FinishBundleContext context) throws Exception {
-        if (!records.isEmpty()) {
-          List<BufferedRecord<T>> failedRecords = executeBatch();
-          for (BufferedRecord<T> failedRecord : failedRecords) {
-            try {
-              // Use explicit type witness <String> for output
-              context.<String>output(
-                  DLQ_TAG,
-                  spec.getDlqJsonFormatter().apply(failedRecord.record),
-                  failedRecord.timestamp,
-                  failedRecord.window);
-            } catch (Exception e) {
-              LOG.error(
-                  "Failed to format or output DLQ message in finishBundle: {}", e.getMessage());
+        try {
+          if (!records.isEmpty()) {
+            List<BufferedRecord<T>> failedRecords = executeBatch();
+            for (BufferedRecord<T> failedRecord : failedRecords) {
+              try {
+                // Use explicit type witness <String> for output
+                context.<String>output(
+                    DLQ_TAG,
+                    spec.getDlqJsonFormatter().apply(failedRecord.record),
+                    failedRecord.timestamp,
+                    failedRecord.window);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to format or output DLQ message in finishBundle: {}", e.getMessage());
+              }
             }
           }
-        }
-        try {
-          if (statement != null) {
-            statement.close();
-          }
         } finally {
-          if (connection != null) {
-            connection.close();
+          records.clear();
+          closeConnectionQuietly();
+        }
+      }
+
+      @Teardown
+      public void teardown() {
+        records.clear();
+        closeConnectionQuietly();
+      }
+
+      private void executeSingleStatements(Sleeper sleeper, List<BufferedRecord<T>> failedRecords)
+          throws SQLException, IOException, InterruptedException {
+        Iterator<BufferedRecord<T>> iterator = records.iterator();
+        while (iterator.hasNext()) {
+          BufferedRecord<T> bufferedRecord = iterator.next();
+          String formattedStatement =
+              spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+          BackOff recordBackoff = getBundleWriteBackoff().backoff();
+          while (true) {
+            try {
+              Connection conn = getConnection();
+              try (Statement statement = conn.createStatement()) {
+                statement.executeUpdate(formattedStatement);
+              }
+              conn.commit();
+              iterator.remove();
+              break;
+            } catch (SQLException exception) {
+              boolean connectionError = isConnectionError(exception, connection);
+              boolean retryable = connectionError || isTransientSqlException(exception);
+              if (connectionError) {
+                rollbackAndInvalidateConnectionQuietly();
+              } else {
+                rollbackQuietly();
+              }
+              if (retryable) {
+                if (!BackOffUtils.next(sleeper, recordBackoff)) {
+                  LOG.error(
+                      "Exhausted retries for transient/connection SQLException in"
+                          + " single-statement mode while executing statement: {}",
+                      formattedStatement,
+                      exception);
+                  throw exception;
+                }
+                LOG.warn(
+                    "Retryable SQLException occurred in single-statement mode,"
+                        + " retrying statement: {}",
+                    exception.toString());
+              } else {
+                LOG.error(
+                    "SQLException Occurred: {} while executing statement: {}. Adding to failed"
+                        + " records.",
+                    exception.toString(),
+                    formattedStatement);
+                failedRecords.add(bufferedRecord);
+                iterator.remove();
+                break;
+              }
+            }
           }
         }
       }
@@ -728,60 +921,48 @@ public class CdcJdbcIO {
         }
 
         Sleeper sleeper = Sleeper.DEFAULT;
-        BackOff backoff = BUNDLE_WRITE_BACKOFF.backoff();
+        BackOff backoff = getBundleWriteBackoff().backoff();
         boolean singleStatementMode = false;
         List<BufferedRecord<T>> failedRecords = new ArrayList<>();
         while (true) {
           try {
             if (singleStatementMode) {
-              statement = connection.createStatement();
-              Iterator<BufferedRecord<T>> iterator = records.iterator();
-              while (iterator.hasNext()) {
-                BufferedRecord<T> bufferedRecord = iterator.next();
-                String formattedStatement =
-                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-                try {
-                  statement.executeUpdate(formattedStatement);
-                  connection.commit();
-                  iterator.remove();
-                } catch (SQLException exception) {
-                  LOG.error(
-                      "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
-                      exception.toString(),
-                      formattedStatement);
-                  connection.rollback();
-                  failedRecords.add(bufferedRecord);
-                }
-              }
+              executeSingleStatements(sleeper, failedRecords);
             } else {
-              statement = connection.createStatement();
-              for (BufferedRecord<T> bufferedRecord : records) {
-                String formattedStatement =
-                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
-                statement.addBatch(formattedStatement);
+              Connection conn = getConnection();
+              try (Statement statement = conn.createStatement()) {
+                for (BufferedRecord<T> bufferedRecord : records) {
+                  String formattedStatement =
+                      spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+                  statement.addBatch(formattedStatement);
+                }
+                statement.executeBatch();
               }
-              statement.executeBatch();
-              connection.commit();
+              conn.commit();
               records.clear();
             }
             break;
           } catch (SQLException exception) {
             if (singleStatementMode) {
-              LOG.error(
-                  "Errors occurred during single-statement mode. "
-                      + "Records in this batch that failed have been sent to DLQ.",
-                  exception);
-              break; // Exit retry loop
+              throw exception;
             }
 
-            connection.rollback();
-            if (!BackOffUtils.next(sleeper, backoff)) {
+            boolean connectionError = isConnectionError(exception, connection);
+            boolean retryable = connectionError || isTransientSqlException(exception);
+            if (connectionError) {
+              rollbackAndInvalidateConnectionQuietly();
+            } else {
+              rollbackQuietly();
+            }
+
+            if (!retryable || !BackOffUtils.next(sleeper, backoff)) {
               LOG.warn(
                   "Batch write failed: {}. Retrying in single-statement mode.",
                   exception.getMessage());
               singleStatementMode = true;
+            } else {
+              LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
             }
-            LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
           }
         }
         return failedRecords;

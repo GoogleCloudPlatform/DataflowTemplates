@@ -20,18 +20,45 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,6 +75,216 @@ public final class CdcJdbcIOTest {
   private static final Integer LOGIN_TIMEOUT = 30;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  /**
+   * In-memory fault-injecting JDBC {@link Driver} used to test {@link BasicDataSource} connection
+   * pooling, {@code testOnBorrow} validation, connection invalidation, and {@link Statement}
+   * lifecycle across simulated Cloud SQL server restarts without requiring Docker.
+   */
+  public static final class FakeJdbcDriver implements Driver {
+    private static final String PREFIX = "jdbc:fakecdc:";
+    private static final AtomicInteger SERVER_EPOCH = new AtomicInteger(1);
+    private static final AtomicInteger CREATED_CONNECTIONS = new AtomicInteger(0);
+    private static final AtomicBoolean FAIL_NEXT_BATCH_WITH_RESTART = new AtomicBoolean(false);
+    private static final List<String> COMMITTED_SQL =
+        Collections.synchronizedList(new ArrayList<>());
+    private static final List<Statement> CREATED_STATEMENTS =
+        Collections.synchronizedList(new ArrayList<>());
+
+    static {
+      try {
+        DriverManager.registerDriver(new FakeJdbcDriver());
+      } catch (SQLException e) {
+        throw new ExceptionInInitializerError(e);
+      }
+    }
+
+    static void reset() {
+      SERVER_EPOCH.set(1);
+      CREATED_CONNECTIONS.set(0);
+      FAIL_NEXT_BATCH_WITH_RESTART.set(false);
+      COMMITTED_SQL.clear();
+      CREATED_STATEMENTS.clear();
+    }
+
+    static void simulateServerRestart() {
+      SERVER_EPOCH.incrementAndGet();
+    }
+
+    static void failNextBatchWithServerRestart() {
+      FAIL_NEXT_BATCH_WITH_RESTART.set(true);
+    }
+
+    @Override
+    public Connection connect(String url, Properties info) throws SQLException {
+      if (!acceptsURL(url)) {
+        return null;
+      }
+      final int connEpoch = SERVER_EPOCH.get();
+      final int connId = CREATED_CONNECTIONS.incrementAndGet();
+      final AtomicBoolean closed = new AtomicBoolean(false);
+      final AtomicBoolean autoCommit = new AtomicBoolean(true);
+      final List<String> pendingSql = new ArrayList<>();
+
+      return (Connection)
+          Proxy.newProxyInstance(
+              FakeJdbcDriver.class.getClassLoader(),
+              new Class<?>[] {Connection.class},
+              (proxy, method, args) -> {
+                String name = method.getName();
+                switch (name) {
+                  case "equals":
+                    return proxy == args[0];
+                  case "hashCode":
+                    return System.identityHashCode(proxy);
+                  case "toString":
+                    return "FakeConnection#" + connId + "@epoch" + connEpoch;
+                  case "isClosed":
+                    return closed.get();
+                  case "close":
+                    closed.set(true);
+                    pendingSql.clear();
+                    return null;
+                  case "isValid":
+                    return !closed.get() && SERVER_EPOCH.get() == connEpoch;
+                  case "getAutoCommit":
+                    return autoCommit.get();
+                  case "setAutoCommit":
+                    autoCommit.set((Boolean) args[0]);
+                    return null;
+                  case "commit":
+                    if (closed.get() || SERVER_EPOCH.get() != connEpoch) {
+                      throw new SQLException("Connection closed or reset", "08006");
+                    }
+                    COMMITTED_SQL.addAll(pendingSql);
+                    pendingSql.clear();
+                    return null;
+                  case "rollback":
+                    pendingSql.clear();
+                    if (closed.get() || SERVER_EPOCH.get() != connEpoch) {
+                      throw new SQLException("Connection closed or reset", "08006");
+                    }
+                    return null;
+                  case "createStatement":
+                    if (closed.get()) {
+                      throw new SQLException("This connection has been closed.", "08003");
+                    }
+                    if (SERVER_EPOCH.get() != connEpoch) {
+                      throw new SQLException(
+                          "FATAL: terminating connection due to administrator command", "57P01");
+                    }
+                    Statement stmt = createStatementProxy(connEpoch, closed, pendingSql);
+                    CREATED_STATEMENTS.add(stmt);
+                    return stmt;
+                  case "isReadOnly":
+                  case "isWrapperFor":
+                    return false;
+                  case "getTransactionIsolation":
+                    return Connection.TRANSACTION_READ_COMMITTED;
+                  default:
+                    return defaultReturnValue(method.getReturnType());
+                }
+              });
+    }
+
+    private static Statement createStatementProxy(
+        int connEpoch, AtomicBoolean connClosed, List<String> pendingSql) {
+      final AtomicBoolean stmtClosed = new AtomicBoolean(false);
+      final List<String> batchSql = new ArrayList<>();
+      return (Statement)
+          Proxy.newProxyInstance(
+              FakeJdbcDriver.class.getClassLoader(),
+              new Class<?>[] {Statement.class},
+              (proxy, method, args) -> {
+                String name = method.getName();
+                switch (name) {
+                  case "equals":
+                    return proxy == args[0];
+                  case "hashCode":
+                    return System.identityHashCode(proxy);
+                  case "toString":
+                    return "FakeStatement@epoch" + connEpoch;
+                  case "close":
+                    stmtClosed.set(true);
+                    batchSql.clear();
+                    return null;
+                  case "isClosed":
+                    return stmtClosed.get();
+                  case "addBatch":
+                    batchSql.add((String) args[0]);
+                    return null;
+                  case "executeBatch":
+                    if (stmtClosed.get() || connClosed.get()) {
+                      throw new SQLException("Statement or connection closed", "08003");
+                    }
+                    if (FAIL_NEXT_BATCH_WITH_RESTART.compareAndSet(true, false)) {
+                      SERVER_EPOCH.incrementAndGet();
+                    }
+                    if (SERVER_EPOCH.get() != connEpoch) {
+                      throw new SQLException(
+                          "FATAL: terminating connection due to administrator command", "57P01");
+                    }
+                    pendingSql.addAll(batchSql);
+                    int[] counts = new int[batchSql.size()];
+                    batchSql.clear();
+                    return counts;
+                  case "executeUpdate":
+                    if (stmtClosed.get() || connClosed.get()) {
+                      throw new SQLException("Statement or connection closed", "08003");
+                    }
+                    if (SERVER_EPOCH.get() != connEpoch) {
+                      throw new SQLException(
+                          "FATAL: terminating connection due to administrator command", "57P01");
+                    }
+                    pendingSql.add((String) args[0]);
+                    return 1;
+                  default:
+                    return defaultReturnValue(method.getReturnType());
+                }
+              });
+    }
+
+    private static Object defaultReturnValue(Class<?> returnType) {
+      if (returnType == boolean.class) {
+        return false;
+      } else if (returnType == int.class) {
+        return 0;
+      } else if (returnType == long.class) {
+        return 0L;
+      }
+      return null;
+    }
+
+    @Override
+    public boolean acceptsURL(String url) {
+      return url != null && url.startsWith(PREFIX);
+    }
+
+    @Override
+    public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
+      return new DriverPropertyInfo[0];
+    }
+
+    @Override
+    public int getMajorVersion() {
+      return 1;
+    }
+
+    @Override
+    public int getMinorVersion() {
+      return 0;
+    }
+
+    @Override
+    public boolean jdbcCompliant() {
+      return false;
+    }
+
+    @Override
+    public Logger getParentLogger() {
+      return Logger.getGlobal();
+    }
+  }
 
   @Test
   public void testDataSourceConfiguration_withLoginTimeout_staticValue() {
@@ -107,6 +344,7 @@ public final class CdcJdbcIOTest {
     assertEquals(URL, basicDataSource.getUrl());
     assertEquals(USERNAME, basicDataSource.getUsername());
     assertEquals(PASSWORD, basicDataSource.getPassword());
+    assertTrue(basicDataSource.getTestOnBorrow());
   }
 
   @Test
@@ -142,6 +380,7 @@ public final class CdcJdbcIOTest {
     assertEquals(URL, basicDataSource.getUrl());
     assertEquals(USERNAME, basicDataSource.getUsername());
     assertEquals(PASSWORD, basicDataSource.getPassword());
+    assertTrue(basicDataSource.getTestOnBorrow());
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -241,5 +480,441 @@ public final class CdcJdbcIOTest {
 
     assertTrue("Should retry on 40001", strategy.apply(deadlockException));
     assertTrue("Should not retry on other states", !strategy.apply(otherException));
+  }
+
+  @Test
+  public void testWriteFn_reconnectsWhenConnectionClosedDuringBatch() throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection closedConnection = mock(Connection.class);
+    Connection freshConnection = mock(Connection.class);
+    Statement brokenStatement = mock(Statement.class);
+    Statement freshStatement = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(closedConnection, freshConnection);
+    when(closedConnection.isClosed()).thenReturn(false, true);
+    when(closedConnection.createStatement()).thenReturn(brokenStatement);
+    doThrow(new SQLException("This connection has been closed.", "08006"))
+        .when(brokenStatement)
+        .executeBatch();
+    doThrow(new SQLException("This connection has been closed.", "08006"))
+        .when(closedConnection)
+        .rollback();
+
+    when(freshConnection.isClosed()).thenReturn(false);
+    when(freshConnection.createStatement()).thenReturn(freshStatement);
+    when(freshStatement.executeBatch()).thenReturn(new int[] {1});
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    verify(mockDataSource, times(2)).getConnection();
+    verify(brokenStatement).close();
+    verify(closedConnection).close();
+    verify(freshStatement).addBatch("INSERT INTO t VALUES ('{\"id\": 1}')");
+    verify(freshStatement).executeBatch();
+    verify(freshStatement).close();
+    verify(freshConnection).commit();
+    verify(freshConnection).close();
+    verify(finishBundleContext, never())
+        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), any());
+  }
+
+  @Test
+  public void
+      testWriteFn_singleStatementMode_reusesConnectionOnDataErrorAndRoutesFailedRecordToDlq()
+          throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection connection1 = mock(Connection.class);
+    Statement batchStatement = mock(Statement.class);
+    Statement singleStatementFail = mock(Statement.class);
+    Statement singleStatementSuccess = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(connection1);
+    when(connection1.isClosed()).thenReturn(false);
+    when(connection1.createStatement())
+        .thenReturn(batchStatement, singleStatementFail, singleStatementSuccess);
+    doThrow(new SQLException("Batch execution failed: duplicate key", "23505"))
+        .when(batchStatement)
+        .executeBatch();
+    doThrow(new SQLException("duplicate key value violates unique constraint", "23505"))
+        .when(singleStatementFail)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
+    when(singleStatementSuccess.executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')"))
+        .thenReturn(1);
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    // Even when maxRetries > 0, a deterministic data error (23505) on a healthy connection
+    // transitions immediately to single-statement mode without tearing down connection1.
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 3, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}", "{\"id\": 2}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    // Only 1 connection is borrowed for the entire bundle: rolled back after batch failure and
+    // after record 1's data error, reused for record 2, and closed once in finishBundle.
+    verify(mockDataSource, times(1)).getConnection();
+    verify(connection1, times(2)).rollback();
+    verify(batchStatement).close();
+    verify(singleStatementFail).close();
+    verify(singleStatementSuccess).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
+    verify(singleStatementSuccess).close();
+    verify(connection1).commit();
+    verify(connection1, times(1)).close();
+    verify(finishBundleContext, times(1))
+        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
+  }
+
+  @Test
+  public void testWriteFn_singleStatementMode_reconnectsAndRetriesRecordOnConnectionError()
+      throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection connection1 = mock(Connection.class);
+    Connection connection2 = mock(Connection.class);
+    Statement batchStatement = mock(Statement.class);
+    Statement record1BadDataStmt = mock(Statement.class);
+    Statement record2ConnDropStmt = mock(Statement.class);
+    Statement record2RetrySuccessStmt = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(connection1, connection2);
+
+    when(connection1.isClosed()).thenReturn(false);
+    when(connection1.createStatement())
+        .thenReturn(batchStatement, record1BadDataStmt, record2ConnDropStmt);
+    doThrow(new SQLException("Batch execution failed: duplicate key", "23505"))
+        .when(batchStatement)
+        .executeBatch();
+    doThrow(new SQLException("duplicate key value violates unique constraint", "23505"))
+        .when(record1BadDataStmt)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 1}')");
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(record2ConnDropStmt)
+        .executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
+
+    when(connection2.isClosed()).thenReturn(false);
+    when(connection2.createStatement()).thenReturn(record2RetrySuccessStmt);
+    when(record2RetrySuccessStmt.executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')"))
+        .thenReturn(1);
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}", "{\"id\": 2}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    // Record 1 (23505) goes to DLQ; Record 2 hits 57P01 on connection1, invalidates connection1,
+    // reconnects on connection2, retries Record 2, and commits without losing Record 2 to DLQ.
+    verify(mockDataSource, times(2)).getConnection();
+    verify(connection1).close();
+    verify(record2RetrySuccessStmt).executeUpdate("INSERT INTO t VALUES ('{\"id\": 2}')");
+    verify(connection2).commit();
+    verify(connection2).close();
+    verify(finishBundleContext, times(1))
+        .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), eq(window));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testWriteFn_singleStatementMode_throwsWhenConnectionErrorRetriesExhausted()
+      throws Exception {
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection brokenConnection = mock(Connection.class);
+    Statement brokenStatement = mock(Statement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(brokenConnection);
+    when(brokenConnection.isClosed()).thenReturn(false);
+    when(brokenConnection.createStatement()).thenReturn(brokenStatement);
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(brokenStatement)
+        .executeBatch();
+    doThrow(new SQLException("FATAL: terminating connection due to administrator command", "57P01"))
+        .when(brokenStatement)
+        .executeUpdate(any());
+
+    SerializableFunction<Void, DataSource> providerFn = ignored -> mockDataSource;
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(providerFn)
+            .withStatementFormatter(record -> "INSERT INTO t VALUES ('" + record + "')")
+            .withBatchSize(10L);
+
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 0, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.setup();
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+  }
+
+  private static class TestStatementFormatter implements CdcJdbcIO.StatementFormatter<String> {
+    @Override
+    public String formatStatement(String record) {
+      return "INSERT INTO t VALUES ('" + record + "')";
+    }
+  }
+
+  @Test
+  public void testWriteFn_realBasicDataSourcePool_evictsDeadIdleAndActiveConnectionsAcrossRestarts()
+      throws Exception {
+    FakeJdbcDriver.reset();
+    CdcJdbcIO.DataSourceConfiguration config =
+        CdcJdbcIO.DataSourceConfiguration.create(
+                FakeJdbcDriver.class.getName(), "jdbc:fakecdc:pool_test")
+            .withMaxIdleConnections(2);
+    BasicDataSource realPool =
+        (BasicDataSource)
+            CdcJdbcIO.DataSourceProviderFromDataSourceConfiguration.of(config).apply(null);
+    try {
+      CdcJdbcIO.WriteVoid<String> spec =
+          CdcJdbcIO.<String>writeVoid()
+              .withDataSourceConfiguration(config)
+              .withStatementFormatter(new TestStatementFormatter())
+              .withBatchSize(10L);
+      CdcJdbcIO.WriteVoid.WriteFn<String> writeFn =
+          SerializableUtils.ensureSerializable(new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 2, 1L));
+
+      @SuppressWarnings("unchecked")
+      DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+      @SuppressWarnings("unchecked")
+      DoFn<String, Void>.FinishBundleContext finishBundleContext =
+          mock(DoFn.FinishBundleContext.class);
+      BoundedWindow window = mock(BoundedWindow.class);
+      when(processContext.timestamp()).thenReturn(Instant.now());
+      when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+      writeFn.setup();
+
+      // 1. Bundle 1 initializes the pool (DBCP2 validateConnectionFactory creates & destroys 1
+      // probe connection, then borrows 1 pooled connection) and returns the pooled connection to
+      // the BasicDataSource idle pool on finishBundle().
+      when(processContext.element()).thenReturn("{\"id\": 1}");
+      writeFn.startBundle();
+      writeFn.processElement(processContext, window);
+      writeFn.finishBundle(finishBundleContext);
+      int connectionsAfterBundle1 = FakeJdbcDriver.CREATED_CONNECTIONS.get();
+      assertTrue(connectionsAfterBundle1 >= 1);
+      assertEquals(0, realPool.getNumActive());
+      assertEquals(1, realPool.getNumIdle());
+
+      // 2. Simulate Cloud SQL restart while the pooled connection is sitting idle in DBCP2.
+      // Because testOnBorrow=true is enabled, borrowing on Bundle 2 detects isValid()==false,
+      // evicts the dead idle connection, and transparently creates 1 new connection.
+      FakeJdbcDriver.simulateServerRestart();
+      when(processContext.element()).thenReturn("{\"id\": 2}");
+      writeFn.startBundle();
+      writeFn.processElement(processContext, window);
+      writeFn.finishBundle(finishBundleContext);
+      int connectionsAfterBundle2 = FakeJdbcDriver.CREATED_CONNECTIONS.get();
+      assertEquals(connectionsAfterBundle1 + 1, connectionsAfterBundle2);
+      assertEquals(0, realPool.getNumActive());
+      assertEquals(1, realPool.getNumIdle());
+
+      // 3. Simulate Cloud SQL restart mid-bundle (after the connection is borrowed, during
+      // executeBatch()). WriteFn catches 57P01, calls BasicDataSource.invalidateConnection()
+      // so the broken connection is NOT returned to the idle pool, borrows 1 fresh connection,
+      // and succeeds.
+      FakeJdbcDriver.failNextBatchWithServerRestart();
+      when(processContext.element()).thenReturn("{\"id\": 3}");
+      writeFn.startBundle();
+      writeFn.processElement(processContext, window);
+      writeFn.finishBundle(finishBundleContext);
+      int connectionsAfterBundle3 = FakeJdbcDriver.CREATED_CONNECTIONS.get();
+      assertEquals(connectionsAfterBundle2 + 1, connectionsAfterBundle3);
+      assertEquals(0, realPool.getNumActive());
+      assertEquals(1, realPool.getNumIdle());
+
+      // All 3 records were committed once and 0 records went to DLQ.
+      assertEquals(3, FakeJdbcDriver.COMMITTED_SQL.size());
+      verify(finishBundleContext, never())
+          .output(eq(CdcJdbcIO.WriteVoid.DLQ_TAG), any(), any(), any());
+
+      // Every Statement created across all bundles and retries was closed via try-with-resources.
+      assertTrue(!FakeJdbcDriver.CREATED_STATEMENTS.isEmpty());
+      for (Statement stmt : FakeJdbcDriver.CREATED_STATEMENTS) {
+        assertTrue("Statement should be closed", stmt.isClosed());
+      }
+      writeFn.teardown();
+    } finally {
+      realPool.close();
+    }
+  }
+
+  @Test
+  public void testWriteFn_sqlExceptionClassificationAndChaining() throws Exception {
+    Connection openConn = mock(Connection.class);
+    when(openConn.isClosed()).thenReturn(false);
+
+    Connection brokenIsClosedConn = mock(Connection.class);
+    when(brokenIsClosedConn.isClosed()).thenThrow(new SQLException("broken isClosed"));
+
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new java.sql.SQLRecoverableException("recoverable"), openConn));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new java.sql.SQLTransientConnectionException("transient conn"), openConn));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new SQLException("too many connections", "53300"), openConn));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(new SQLException("generic"), null));
+    assertTrue(
+        CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(
+            new SQLException("generic"), brokenIsClosedConn));
+
+    // Verify traversal via getNextException() and getCause()
+    SQLException wrapperWithNext = new SQLException("batch failed", "99999");
+    wrapperWithNext.setNextException(new SQLException("connection reset", "08006"));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(wrapperWithNext, openConn));
+
+    SQLException wrapperWithCause =
+        new SQLException("wrapper", "99999", new SQLException("admin shutdown", "57P01"));
+    assertTrue(CdcJdbcIO.WriteVoid.WriteFn.isConnectionError(wrapperWithCause, openConn));
+
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(ignored -> mock(DataSource.class))
+            .withStatementFormatter(new TestStatementFormatter())
+            .withRetryStrategy(e -> false);
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec);
+
+    assertTrue(
+        writeFn.isTransientSqlException(new java.sql.SQLTransientException("transient timeout")));
+    SQLException deadlockWithCause =
+        new SQLException("wrapper", "99999", new SQLException("deadlock detected", "40P01"));
+    assertTrue(writeFn.isTransientSqlException(deadlockWithCause));
+    assertTrue(!writeFn.isTransientSqlException(new SQLException("syntax error", "42601")));
+  }
+
+  @Test
+  public void testWriteFn_handlesRollbackAndInvalidateExceptionsGracefully() throws Exception {
+    BasicDataSource mockBasicDataSource = mock(BasicDataSource.class);
+    Connection conn1 = mock(Connection.class);
+    Connection conn2 = mock(Connection.class);
+    Statement batchStmt = mock(Statement.class);
+    Statement singleStmtDeadlock = mock(Statement.class);
+    Statement singleStmtSuccess = mock(Statement.class);
+
+    when(mockBasicDataSource.getConnection()).thenReturn(conn1, conn2);
+    when(conn1.isClosed()).thenReturn(false);
+    when(conn1.createStatement()).thenReturn(batchStmt);
+    // Batch fails with data error (23505), then rollbackQuietly() throws SQLException, triggering
+    // rollbackAndInvalidateConnectionQuietly() where invalidateConnection() and close() also throw
+    doThrow(new SQLException("duplicate key", "23505")).when(batchStmt).executeBatch();
+    doThrow(new SQLException("rollback failed")).when(conn1).rollback();
+    doThrow(new RuntimeException("invalidate failed"))
+        .when(mockBasicDataSource)
+        .invalidateConnection(conn1);
+    doThrow(new SQLException("close failed")).when(conn1).close();
+
+    // In single-statement mode, conn2 sees a transient deadlock (40P01) on first try, rolls back
+    // quietly on healthy conn2, retries on conn2, and succeeds; close() on finishBundle throws.
+    when(conn2.isClosed()).thenReturn(false);
+    when(conn2.createStatement()).thenReturn(singleStmtDeadlock, singleStmtSuccess);
+    doThrow(new SQLException("deadlock detected", "40P01"))
+        .when(singleStmtDeadlock)
+        .executeUpdate(any());
+    when(singleStmtSuccess.executeUpdate(any())).thenReturn(1);
+    doThrow(new SQLException("close on finishBundle failed")).when(conn2).close();
+
+    CdcJdbcIO.WriteVoid<String> spec =
+        CdcJdbcIO.<String>writeVoid()
+            .withDataSourceProviderFn(ignored -> mockBasicDataSource)
+            .withStatementFormatter(new TestStatementFormatter())
+            .withBatchSize(1L);
+
+    // Exercise lazy initialization without calling setup()
+    CdcJdbcIO.WriteVoid.WriteFn<String> writeFn = new CdcJdbcIO.WriteVoid.WriteFn<>(spec, 1, 1L);
+
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.ProcessContext processContext = mock(DoFn.ProcessContext.class);
+    @SuppressWarnings("unchecked")
+    DoFn<String, Void>.FinishBundleContext finishBundleContext =
+        mock(DoFn.FinishBundleContext.class);
+    BoundedWindow window = mock(BoundedWindow.class);
+
+    when(processContext.element()).thenReturn("{\"id\": 1}");
+    when(processContext.timestamp()).thenReturn(Instant.now());
+    when(processContext.pane()).thenReturn(PaneInfo.NO_FIRING);
+
+    writeFn.startBundle();
+    writeFn.processElement(processContext, window);
+    writeFn.finishBundle(finishBundleContext);
+
+    verify(mockBasicDataSource, times(2)).getConnection();
+    verify(mockBasicDataSource).invalidateConnection(conn1);
+    verify(conn2).rollback();
+    verify(conn2).commit();
+    verify(conn2).close();
   }
 }
