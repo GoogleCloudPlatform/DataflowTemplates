@@ -22,9 +22,15 @@ import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +40,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -132,6 +139,28 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
       rows.add(row);
     }
     return rows;
+  }
+
+  private List<byte[]> getRowversionBytes(String type) {
+    String tableName = String.format("%s_table", type);
+    String colName = String.format("%s_col", type);
+    String query = String.format("SELECT [%s] FROM [%s] ORDER BY [id]", colName, tableName);
+    List<byte[]> values = new ArrayList<>();
+    try (Connection conn =
+            DriverManager.getConnection(
+                msSqlResourceManager.getUri(),
+                msSqlResourceManager.getUsername(),
+                msSqlResourceManager.getPassword());
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(query)) {
+      while (rs.next()) {
+        values.add(rs.getBytes(1));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to fetch rowversion/timestamp values from " + tableName, e);
+    }
+    return values;
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -512,19 +541,47 @@ public class SQLServerDataTypesPGDialectIT extends SourceDbToSpannerITBase {
     //         "PGl0ZW0gaWQ9IjEiLz4=",
     //         "NULL"));
 
-    // TODO: Enable once ROWVERSION/TIMESTAMP dynamic value validation is supported.
-    // expectedData.put("rowversion", createRows("rowversion", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "rowversion_to_bytes", createRows("rowversion_to_bytes", "placeholder1",
-    // "placeholder2"));
-    // expectedData.put(
-    //     "rowversion_to_int64", createRows("rowversion_to_int64", "placeholder1",
-    // "placeholder2"));
-    // expectedData.put("timestamp", createRows("timestamp", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "timestamp_to_bytes", createRows("timestamp_to_bytes", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "timestamp_to_int64", createRows("timestamp_to_int64", "placeholder1", "placeholder2"));
+    List<byte[]> rvBytes = getRowversionBytes("rowversion");
+    expectedData.put(
+        "rowversion",
+        createRows(
+            "rowversion",
+            Hex.encodeHexString(rvBytes.get(0)),
+            Hex.encodeHexString(rvBytes.get(1))));
+    List<byte[]> rvToBytes = getRowversionBytes("rowversion_to_bytes");
+    expectedData.put(
+        "rowversion_to_bytes",
+        createRows(
+            "rowversion_to_bytes",
+            Base64.getEncoder().encodeToString(rvToBytes.get(0)),
+            Base64.getEncoder().encodeToString(rvToBytes.get(1))));
+    List<byte[]> rvToInt64 = getRowversionBytes("rowversion_to_int64");
+    expectedData.put(
+        "rowversion_to_int64",
+        createRows(
+            "rowversion_to_int64",
+            String.valueOf(new BigInteger(rvToInt64.get(0)).longValue()),
+            String.valueOf(new BigInteger(rvToInt64.get(1)).longValue())));
+
+    List<byte[]> tsBytes = getRowversionBytes("timestamp");
+    expectedData.put(
+        "timestamp",
+        createRows(
+            "timestamp", Hex.encodeHexString(tsBytes.get(0)), Hex.encodeHexString(tsBytes.get(1))));
+    List<byte[]> tsToBytes = getRowversionBytes("timestamp_to_bytes");
+    expectedData.put(
+        "timestamp_to_bytes",
+        createRows(
+            "timestamp_to_bytes",
+            Base64.getEncoder().encodeToString(tsToBytes.get(0)),
+            Base64.getEncoder().encodeToString(tsToBytes.get(1))));
+    List<byte[]> tsToInt64 = getRowversionBytes("timestamp_to_int64");
+    expectedData.put(
+        "timestamp_to_int64",
+        createRows(
+            "timestamp_to_int64",
+            String.valueOf(new BigInteger(tsToInt64.get(0)).longValue()),
+            String.valueOf(new BigInteger(tsToInt64.get(1)).longValue())));
 
     expectedData.put("json", createRows("json", "{\"key\": \"val1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"key\":\"val1\"}", "NULL"));
