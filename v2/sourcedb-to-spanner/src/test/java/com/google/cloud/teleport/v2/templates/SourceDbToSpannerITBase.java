@@ -109,7 +109,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
    */
   public MySQLResourceManager setUpMySQLResourceManager() {
     if (!SharedDatabaseServer.isEnabled()) {
-      return MySQLResourceManager.builder(testName).build();
+      return setUpDedicatedMySQLResourceManager();
     }
     SharedDatabaseServer server = SharedDatabaseServer.get(MySQLEngine.INSTANCE);
     String databaseName = server.createDatabase(testName);
@@ -124,6 +124,15 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     builder.setPort(server.getPort());
     builder.useStaticContainer();
     return builder.build();
+  }
+
+  /**
+   * Returns a MySQL resource manager backed by a container of its own. Use this instead of {@link
+   * #setUpMySQLResourceManager()} for tests that change server-wide settings (e.g. {@code SET
+   * GLOBAL}), which would affect other tests on a shared container.
+   */
+  public MySQLResourceManager setUpDedicatedMySQLResourceManager() {
+    return MySQLResourceManager.builder(testName).build();
   }
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
