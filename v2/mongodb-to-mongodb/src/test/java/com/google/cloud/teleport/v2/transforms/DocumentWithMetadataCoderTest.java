@@ -23,8 +23,11 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.UUID;
 import org.apache.beam.sdk.testing.CoderProperties;
 import org.bson.Document;
+import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -194,6 +197,64 @@ public class DocumentWithMetadataCoderTest {
     CoderProperties.coderDecodeEncodeEqual(
         DocumentWithMetadataCoder.of(),
         withOriginalDocument(doc, new Document("_id", 3).append("k", "original").toJson()));
+  }
+
+  @Test
+  public void encodeDecode_binaryBsonTypesAndLazyCdcEvent() throws Exception {
+    ObjectId oid = new ObjectId("66d57f9b000000012b022c01");
+    Document nested = new Document("nestedKey", "nestedVal").append("count", 42L);
+    Document doc =
+        new Document("_id", oid)
+            .append("decimal", Decimal128.parse("12345.6789"))
+            .append("nested", nested);
+
+    DocumentWithMetadata cdcItem =
+        DocumentWithMetadata.cdcEvent(
+            doc,
+            null,
+            "sourceCol",
+            "targetCol",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1724000000L, 1L),
+            "{\"_id\": {\"$oid\": \"66d57f9b000000012b022c01\"}}");
+
+    assertNull(cdcItem.rawOriginalDocument());
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    DocumentWithMetadataCoder.of().encode(cdcItem, out);
+    DocumentWithMetadata decoded =
+        DocumentWithMetadataCoder.of().decode(new ByteArrayInputStream(out.toByteArray()));
+
+    assertNotNull(decoded);
+    assertNull(decoded.rawOriginalDocument());
+    assertEquals(oid, decoded.getId());
+    assertEquals(
+        Decimal128.parse("12345.6789"), decoded.getDocument().get("decimal", Decimal128.class));
+    assertEquals(nested, decoded.getDocument().get("nested", Document.class));
+    assertEquals(cdcItem.getOriginalDocument(), decoded.getOriginalDocument());
+    CoderProperties.coderDecodeEncodeEqual(DocumentWithMetadataCoder.of(), cdcItem);
+  }
+
+  @Test
+  public void encodeDecode_uuidRepresentationStandardRoundTrip() throws Exception {
+    UUID idUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    UUID payloadUuid = UUID.fromString("987e6543-e21b-12d3-a456-426614174999");
+    Document doc = new Document("_id", idUuid).append("correlationId", payloadUuid);
+
+    DocumentWithMetadata item =
+        DocumentWithMetadata.backfillEvent(
+            doc, "sourceCol", "targetCol", TimestampSortKey.backfill(100L));
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    DocumentWithMetadataCoder.of().encode(item, out);
+    DocumentWithMetadata decoded =
+        DocumentWithMetadataCoder.of().decode(new ByteArrayInputStream(out.toByteArray()));
+
+    assertNotNull(decoded);
+    assertEquals(idUuid, decoded.getId());
+    assertEquals(payloadUuid, decoded.getDocument().get("correlationId", UUID.class));
+    assertEquals(item.getOriginalDocument(), decoded.getOriginalDocument());
+    CoderProperties.coderDecodeEncodeEqual(DocumentWithMetadataCoder.of(), item);
   }
 
   private static DocumentWithMetadata withOriginalDocument(Document doc, String originalDocument) {

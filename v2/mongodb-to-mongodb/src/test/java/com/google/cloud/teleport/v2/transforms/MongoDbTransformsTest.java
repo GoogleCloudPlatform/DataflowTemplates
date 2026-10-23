@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -39,12 +40,18 @@ import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
@@ -77,6 +84,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.MethodSorters;
+import org.mockito.ArgumentCaptor;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -847,6 +855,117 @@ public class MongoDbTransformsTest {
   }
 
   @Test
+  public void writeBatchesCoalescing_staleInsertAfterDelete_preservesDelete() throws Exception {
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(1000, 1),
+            new Document("_id", 100).toJson());
+    DocumentWithMetadata staleInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", 100).append("name", "Alice"),
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(900, 1),
+            null);
+
+    List<WriteModel<Document>> capturedModels =
+        runWriteBatchesFn("users#0", Arrays.asList(deleteItem, staleInsertItem));
+
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof DeleteOneModel);
+  }
+
+  @Test
+  public void writeBatchesCoalescing_newerInsertAfterDelete_replacesWithInsert() throws Exception {
+    DocumentWithMetadata deleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(800, 1),
+            new Document("_id", 100).toJson());
+    DocumentWithMetadata newerInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", 100).append("name", "Alice"),
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000, 1),
+            null);
+
+    List<WriteModel<Document>> capturedModels =
+        runWriteBatchesFn("users#0", Arrays.asList(deleteItem, newerInsertItem));
+
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+  }
+
+  @Test
+  public void writeBatchesCoalescing_staleDeleteAfterInsert_keepsInsert() throws Exception {
+    DocumentWithMetadata newerInsertItem =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", 100).append("name", "Alice"),
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(1000, 1),
+            null);
+    DocumentWithMetadata staleDeleteItem =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(800, 1),
+            new Document("_id", 100).toJson());
+
+    List<WriteModel<Document>> capturedModels =
+        runWriteBatchesFn("users#0", Arrays.asList(newerInsertItem, staleDeleteItem));
+
+    assertEquals(1, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+  }
+
+  @Test
+  public void writeBatchesCoalescing_compositeDocumentIdsWithDifferentKeyOrder_preservesBoth()
+      throws Exception {
+    Document idTenantFirst = new Document("tenant", "acme").append("seq", 1);
+    Document idSeqFirst = new Document("seq", 1).append("tenant", "acme");
+
+    DocumentWithMetadata doc1 =
+        DocumentWithMetadata.backfillEvent(
+            new Document("_id", idTenantFirst).append("val", "v1"),
+            "orders",
+            "orders",
+            TimestampSortKey.backfill(100L));
+    DocumentWithMetadata doc2 =
+        DocumentWithMetadata.backfillEvent(
+            new Document("_id", idSeqFirst).append("val", "v2"),
+            "orders",
+            "orders",
+            TimestampSortKey.backfill(100L));
+
+    List<WriteModel<Document>> capturedModels =
+        runWriteBatchesFn("orders#0", Arrays.asList(doc1, doc2));
+
+    assertEquals(2, capturedModels.size());
+    assertTrue(capturedModels.get(0) instanceof ReplaceOneModel);
+    assertTrue(capturedModels.get(1) instanceof ReplaceOneModel);
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testWriteBatchesCoalescing_multipleUpdates_emitsLatestPayload() throws Exception {
     MongoClient mockClient = mock(MongoClient.class);
@@ -1049,5 +1168,148 @@ public class MongoDbTransformsTest {
     ReplaceOneModel<Document> replaceModel = (ReplaceOneModel<Document>) capturedModels.get(0);
     assertEquals(2, replaceModel.getReplacement().get("val"));
     assertEquals(new Binary(idBytes), replaceModel.getReplacement().get("_id"));
+  }
+
+  @Test
+  public void createMongoClient_respectsConnectionStringPoolAndSocketTimeouts() {
+    try (MongoClient client =
+        MongoDbTransforms.createMongoClient(
+            "mongodb://localhost:27017/?maxPoolSize=64&minPoolSize=2&waitQueueTimeoutMS=5000"
+                + "&connectTimeoutMS=3000&socketTimeoutMS=10000")) {
+      assertNotNull(client);
+    }
+  }
+
+  @Test
+  public void closeIfNotShared_preservesSharedClientAndClosesNonSharedClient() {
+    MongoClient sharedClient =
+        MongoDbTransforms.getOrCreateMongoClient("mongodb://localhost:27017/?appName=sharedTest");
+    MongoDbTransforms.closeIfNotShared(sharedClient);
+    // Shared client must remain open and usable after closeIfNotShared
+    assertNotNull(sharedClient.getDatabase("test"));
+
+    MongoClient dedicatedClient = mock(MongoClient.class);
+    MongoDbTransforms.closeIfNotShared(dedicatedClient);
+    verify(dedicatedClient).close();
+  }
+
+  @Test
+  public void writeToDlq_multipleStagesSharingDirectory_preservesRecordsFromAllStages()
+      throws Exception {
+    Path retryableDir = tempFolder.newFolder("dlq-retryable").toPath();
+    Path permanentDir = tempFolder.newFolder("dlq-permanent").toPath();
+    String tempDir = tempFolder.newFolder("dlq-temp").getAbsolutePath();
+
+    DocumentWithMetadata udfFailure =
+        DocumentWithMetadata.of(
+                new Document("_id", "udf_failed_doc").append("payload", "from_udf"), "src", "tgt")
+            .withFailure(
+                "UDF failure",
+                DocumentWithMetadata.ErrorType.RETRYABLE,
+                DocumentWithMetadata.FailureStage.UDF);
+    DocumentWithMetadata writeFailure =
+        DocumentWithMetadata.of(
+                new Document("_id", "write_failed_doc").append("payload", "from_write"),
+                "src",
+                "tgt")
+            .withFailure(
+                "Permanent write failure",
+                DocumentWithMetadata.ErrorType.PERMANENT,
+                DocumentWithMetadata.FailureStage.WRITE);
+
+    pipeline
+        .apply(
+            "UdfFailures",
+            Create.of(Collections.singletonList(udfFailure))
+                .withCoder(DocumentWithMetadataCoder.of()))
+        .apply(
+            "WriteToDlq_UDF",
+            new MongoDbTransforms.WriteToDlq(
+                "udf", retryableDir.toString(), permanentDir.toString(), tempDir));
+
+    pipeline
+        .apply("EmptyValidateFailures", Create.empty(DocumentWithMetadataCoder.of()))
+        .apply(
+            "WriteToDlq_Validate",
+            new MongoDbTransforms.WriteToDlq(
+                "validate", retryableDir.toString(), permanentDir.toString(), tempDir));
+
+    pipeline
+        .apply(
+            "WriteFailures",
+            Create.of(Collections.singletonList(writeFailure))
+                .withCoder(DocumentWithMetadataCoder.of()))
+        .apply(
+            "WriteToDlq_Write",
+            new MongoDbTransforms.WriteToDlq(
+                "write", retryableDir.toString(), permanentDir.toString(), tempDir));
+
+    pipeline.run().waitUntilFinish();
+
+    List<String> retryableFileNames;
+    try (Stream<Path> files = Files.list(retryableDir)) {
+      retryableFileNames =
+          files.map(p -> p.getFileName().toString()).sorted().collect(Collectors.toList());
+    }
+
+    assertThat(retryableFileNames).hasSize(3);
+    assertThat(retryableFileNames.get(0)).startsWith("error-udf-");
+    assertThat(retryableFileNames.get(1)).startsWith("error-validate-");
+    assertThat(retryableFileNames.get(2)).startsWith("error-write-");
+
+    String retryableContents = readDirectoryContents(retryableDir);
+    assertThat(retryableContents).contains("udf_failed_doc");
+    assertThat(retryableContents).contains("from_udf");
+
+    String permanentContents = readDirectoryContents(permanentDir);
+    assertThat(permanentContents).contains("write_failed_doc");
+    assertThat(permanentContents).contains("from_write");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<WriteModel<Document>> runWriteBatchesFn(
+      String shardKey, List<DocumentWithMetadata> items) throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    ArgumentCaptor<List<WriteModel<Document>>> captor = ArgumentCaptor.forClass(List.class);
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+
+    fn.setup();
+    fn.startBundle();
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext mockCtx =
+        mock(DoFn.ProcessContext.class);
+    when(mockCtx.element()).thenReturn(KV.of(shardKey, items));
+    fn.processElement(mockCtx);
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        mockFinishCtx = mock(DoFn.FinishBundleContext.class);
+    fn.finishBundle(mockFinishCtx);
+    fn.teardown();
+
+    verify(mockCol).bulkWrite(captor.capture(), any(BulkWriteOptions.class));
+    return captor.getValue();
+  }
+
+  private static String readDirectoryContents(Path directory) throws IOException {
+    StringBuilder contents = new StringBuilder();
+    try (Stream<Path> files = Files.list(directory)) {
+      for (Path path : files.sorted().collect(Collectors.toList())) {
+        contents.append(Files.readString(path, StandardCharsets.UTF_8));
+      }
+    }
+    return contents.toString();
   }
 }

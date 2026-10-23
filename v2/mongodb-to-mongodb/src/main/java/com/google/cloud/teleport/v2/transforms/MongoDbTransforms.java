@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -58,6 +59,7 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
@@ -80,8 +82,6 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -96,6 +96,21 @@ public class MongoDbTransforms {
   /** Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent. */
   public static MongoClient getOrCreateMongoClient(String uri) {
     return CLIENT_CACHE.computeIfAbsent(uri, MongoDbTransforms::createMongoClient);
+  }
+
+  /**
+   * Closes the given {@link MongoClient} only if it is not a shared JVM-wide instance managed by
+   * {@link #CLIENT_CACHE}. Shared clients remain open for the lifetime of the worker JVM so that
+   * concurrent {@link DoFn} instances on the same worker do not close each other's connections.
+   */
+  public static void closeIfNotShared(MongoClient client) {
+    if (client != null && !CLIENT_CACHE.containsValue(client)) {
+      try {
+        client.close();
+      } catch (Exception ignored) {
+        // Best-effort close during DoFn teardown.
+      }
+    }
   }
 
   /**
@@ -114,9 +129,22 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> pool.maxSize(256).minSize(0).maxWaitTime(30, TimeUnit.SECONDS));
+        pool ->
+            pool.maxSize(
+                    Objects.requireNonNullElse(connectionString.getMaxConnectionPoolSize(), 256))
+                .minSize(Objects.requireNonNullElse(connectionString.getMinConnectionPoolSize(), 0))
+                .maxWaitTime(
+                    Objects.requireNonNullElse(connectionString.getMaxWaitTime(), 30_000),
+                    TimeUnit.MILLISECONDS));
     builder.applyToSocketSettings(
-        socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS));
+        socket ->
+            socket
+                .connectTimeout(
+                    Objects.requireNonNullElse(connectionString.getConnectTimeout(), 15_000),
+                    TimeUnit.MILLISECONDS)
+                .readTimeout(
+                    Objects.requireNonNullElse(connectionString.getSocketTimeout(), 60_000),
+                    TimeUnit.MILLISECONDS));
     return MongoClients.create(builder.build());
   }
 
@@ -305,6 +333,12 @@ public class MongoDbTransforms {
         Metrics.counter(WriteToDlq.class, "dlqPermanentEmitted");
 
     public WriteToDlq(String retryablePath, String permanentPath, String tempLocation) {
+      this(null, retryablePath, permanentPath, tempLocation);
+    }
+
+    public WriteToDlq(
+        String stageName, String retryablePath, String permanentPath, String tempLocation) {
+      super(stageName);
       this.retryablePath = retryablePath;
       this.permanentPath = permanentPath;
       this.tempLocation = tempLocation;
@@ -326,67 +360,70 @@ public class MongoDbTransforms {
 
       boolean isUnbounded = input.isBounded() == PCollection.IsBounded.UNBOUNDED;
 
-      PCollection<String> retryableJson =
-          retryable.apply(
-              "MapToJson_Retryable",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqRetryableEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      c.output(
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
-                    }
-                  }));
+      String filePrefix =
+          (getName() != null && !getName().isEmpty())
+              ? "/error-" + getName().replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase()
+              : "/error";
 
-      if (isUnbounded) {
-        retryableJson
-            .apply("WindowRetryableDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Retryable",
-                TextIO.write()
-                    .to(retryablePath + "/error")
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        retryableJson.apply(
-            "WriteDlq_Retryable", TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
-      }
-
-      PCollection<String> permanentJson =
-          permanent.apply(
-              "MapToJson_Permanent",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqPermanentEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      c.output(
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
-                    }
-                  }));
-
-      if (isUnbounded) {
-        permanentJson
-            .apply("WindowPermanentDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Permanent",
-                TextIO.write()
-                    .to(permanentPath + "/error")
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        permanentJson.apply(
-            "WriteDlq_Permanent", TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
-      }
+      writeDlqTier(
+          retryable, "Retryable", retryablePath + filePrefix, dlqRetryableEmitted, isUnbounded);
+      writeDlqTier(
+          permanent, "Permanent", permanentPath + filePrefix, dlqPermanentEmitted, isUnbounded);
 
       return PDone.in(input.getPipeline());
+    }
+
+    private static void writeDlqTier(
+        PCollection<DocumentWithMetadata> tierItems,
+        String tierName,
+        String outputPrefix,
+        Counter emittedCounter,
+        boolean isUnbounded) {
+      PCollection<String> jsonLines =
+          tierItems.apply(
+              "MapToJson_" + tierName,
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, String>() {
+                    @Override
+                    public Duration getAllowedTimestampSkew() {
+                      return Duration.millis(Long.MAX_VALUE);
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      emittedCounter.inc();
+                      DocumentWithMetadata item = c.element();
+                      String json =
+                          item.toDlqJson(
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
+                      if (c.timestamp()
+                          .isAfter(
+                              GlobalWindow.INSTANCE
+                                  .maxTimestamp()
+                                  .minus(Duration.standardMinutes(2)))) {
+                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
+                      } else {
+                        c.output(json);
+                      }
+                    }
+                  }));
+
+      if (isUnbounded) {
+        jsonLines
+            .apply(
+                "Window" + tierName + "Dlq",
+                Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+            .apply(
+                "WriteDlq_" + tierName,
+                TextIO.write()
+                    .to(outputPrefix)
+                    .withSuffix(".json")
+                    .withWindowedWrites()
+                    .withNumShards(1));
+      } else {
+        jsonLines.apply(
+            "WriteDlq_" + tierName, TextIO.write().to(outputPrefix).withSuffix(".json"));
+      }
     }
   }
 
@@ -1124,6 +1161,8 @@ public class MongoDbTransforms {
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
     private final Counter writeBatchesCoalesced =
         Metrics.counter(WriteWithDlq.class, "writeBatchesCoalesced");
+    private final Distribution bulkWriteLatencyMs =
+        Metrics.distribution(WriteWithDlq.class, "bulkWriteLatencyMs");
 
     private transient MongoClient mongoClient;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
@@ -1410,6 +1449,34 @@ public class MongoDbTransforms {
       }
     }
 
+    private void putCoalescedOp(
+        Map<String, LinkedHashMap<Object, CoalescedOp>> coalescedByCollection,
+        String targetCol,
+        Object id,
+        WriteModel<Document> model,
+        DocumentWithMetadata item,
+        boolean isDelete) {
+      LinkedHashMap<Object, CoalescedOp> colMap =
+          coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
+      // org.bson.Document implements Map, whose equals/hashCode ignore key insertion order,
+      // whereas MongoDB treats composite subdocument _ids with different field order as distinct
+      // documents. Use the canonical JSON dedupKey for Map/byte[] _ids to preserve field order.
+      Object coalesceKey =
+          (id instanceof Map || id instanceof byte[]) && item.getDedupKey() != null
+              ? item.getDedupKey()
+              : id;
+      CoalescedOp prev = colMap.get(coalesceKey);
+      if (prev != null) {
+        writeBatchesCoalesced.inc();
+        if (item.getTimestampSortKey() != null
+            && prev.item.getTimestampSortKey() != null
+            && item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+          return;
+        }
+      }
+      colMap.put(coalesceKey, new CoalescedOp(model, item, isDelete));
+    }
+
     private void flushBatch(List<DocumentWithMetadata> items) throws InterruptedException {
       if (items == null || items.isEmpty()) {
         return;
@@ -1426,14 +1493,13 @@ public class MongoDbTransforms {
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
           Object id = item.getId();
           if (id != null) {
-            LinkedHashMap<Object, CoalescedOp> colMap =
-                coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-            CoalescedOp prev =
-                colMap.put(
-                    id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
-            if (prev != null) {
-              writeBatchesCoalesced.inc();
-            }
+            putCoalescedOp(
+                coalescedByCollection,
+                targetCol,
+                id,
+                new DeleteOneModel<>(new Document("_id", id)),
+                item,
+                /* isDelete= */ true);
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1453,19 +1519,14 @@ public class MongoDbTransforms {
           if (doc != null) {
             Object id = doc.get("_id");
             if (id != null) {
-              LinkedHashMap<Object, CoalescedOp> colMap =
-                  coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-              CoalescedOp prev =
-                  colMap.put(
-                      id,
-                      new CoalescedOp(
-                          new ReplaceOneModel<>(
-                              new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
-                          item,
-                          false));
-              if (prev != null) {
-                writeBatchesCoalesced.inc();
-              }
+              putCoalescedOp(
+                  coalescedByCollection,
+                  targetCol,
+                  id,
+                  new ReplaceOneModel<>(
+                      new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                  item,
+                  /* isDelete= */ false);
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
@@ -1536,13 +1597,17 @@ public class MongoDbTransforms {
       Sleeper sleeper = Sleeper.DEFAULT;
 
       while (true) {
+        long writeStartMs = System.currentTimeMillis();
         try {
           col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
+          long writeLatency = System.currentTimeMillis() - writeStartMs;
+          bulkWriteLatencyMs.update(writeLatency);
           successfulCount.addAndGet(currentItemList.size());
           LOG.debug(
-              "Successfully bulk-wrote {} documents to collection '{}'",
+              "Successfully bulk-wrote {} documents to collection '{}' in {}ms",
               currentItemList.size(),
-              colName);
+              colName,
+              writeLatency);
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();
@@ -1780,8 +1845,6 @@ public class MongoDbTransforms {
   /** A {@link DoFn} that applies a JavaScript UDF to the document. */
   public static class ApplyUdfFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
     private static final Logger LOG = LoggerFactory.getLogger(ApplyUdfFn.class);
-    private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
-        JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final String fileSystemPath;
     private final String functionName;
@@ -1824,17 +1887,14 @@ public class MongoDbTransforms {
       if (javascriptRuntime != null) {
         try {
           String payload = item.getOriginalDocument();
-          if (payload == null && item.getDocument() != null) {
-            payload = item.getDocument().toJson(CANONICAL_JSON_SETTINGS);
-          }
           if (payload == null) {
             c.output(item);
             return;
           }
           String transformed = javascriptRuntime.invoke(payload);
           if (transformed != null) {
-            Document doc = Document.parse(transformed);
-            c.output(item.withDocument(doc));
+            Document doc = Document.parse(transformed, DocumentWithMetadata.DOCUMENT_CODEC);
+            c.output(item.withDocument(doc, payload));
           } else {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
             udfProcessingFailures.inc();

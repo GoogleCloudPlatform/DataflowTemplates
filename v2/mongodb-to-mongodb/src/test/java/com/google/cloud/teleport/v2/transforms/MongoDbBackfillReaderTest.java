@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollection;
@@ -358,7 +359,10 @@ public class MongoDbBackfillReaderTest {
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
 
-    Document doc1 = new Document("_id", 1).append("name", "Item1");
+    Document doc1 =
+        new Document("_id", UUID.fromString("123e4567-e89b-12d3-a456-426614174000"))
+            .append("name", "Item1")
+            .append("nestedUuid", UUID.randomUUID());
     Document doc2 = new Document("_id", 2).append("name", "Item2");
 
     when(mockCursor1.hasNext()).thenReturn(true, false);

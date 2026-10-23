@@ -18,12 +18,16 @@ package com.google.cloud.teleport.v2.transforms;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mongodb.MongoClientSettings;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
+import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
@@ -39,6 +43,11 @@ public class DocumentWithMetadata implements Serializable {
 
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+
+  static final Codec<Document> DOCUMENT_CODEC =
+      CodecRegistries.withUuidRepresentation(
+              MongoClientSettings.getDefaultCodecRegistry(), UuidRepresentation.STANDARD)
+          .get(Document.class);
 
   public static final String METADATA_RETRY_COUNT = "_metadata_retry_count";
   public static final String METADATA_ERROR_TYPE = "_metadata_error_type";
@@ -157,21 +166,33 @@ public class DocumentWithMetadata implements Serializable {
     if (document != null && document.containsKey("_id")) {
       return document.get("_id");
     }
-    if (documentKey != null) {
+    if (documentKey != null && !documentKey.isEmpty()) {
       try {
-        Document keyDoc = Document.parse(documentKey);
+        Document keyDoc = Document.parse(documentKey, DOCUMENT_CODEC);
         if (keyDoc.containsKey("_id")) {
           return keyDoc.get("_id");
         }
       } catch (Exception ignored) {
-        return documentKey;
+        // Malformed documentKey JSON; return null so callers treat ID as missing.
       }
     }
     return null;
   }
 
+  private transient String cachedDedupKey;
+
   /** Returns a unique deduplication key scoped by collection and document identifier. */
   public String getDedupKey() {
+    String cached = this.cachedDedupKey;
+    if (cached != null) {
+      return cached;
+    }
+    String computed = computeDedupKey();
+    this.cachedDedupKey = computed;
+    return computed;
+  }
+
+  private String computeDedupKey() {
     String col;
     if (targetCollection != null && !targetCollection.isEmpty()) {
       col = targetCollection;
@@ -180,6 +201,13 @@ public class DocumentWithMetadata implements Serializable {
     } else {
       col = "default";
     }
+    if (document != null && document.containsKey("_id")) {
+      try {
+        return col + "#" + serializeIdDocument(document.get("_id"));
+      } catch (Exception ignored) {
+        return col + "#" + document.get("_id");
+      }
+    }
     if (documentKey != null && !documentKey.isEmpty()) {
       // On sharded collections the change stream documentKey carries the shard key fields in
       // addition to _id, while backfill events only ever carry _id. Normalize down to _id so both
@@ -187,25 +215,14 @@ public class DocumentWithMetadata implements Serializable {
       // state cells and two different write shards, allowing a stale backfill row to be written
       // concurrently with (and after) a newer CDC event.
       try {
-        Document keyDoc = Document.parse(documentKey);
+        Document keyDoc = Document.parse(documentKey, DOCUMENT_CODEC);
         if (keyDoc.containsKey("_id")) {
-          return col + "#" + new Document("_id", keyDoc.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
+          return col + "#" + serializeIdDocument(keyDoc.get("_id"));
         }
       } catch (Exception ignored) {
         // Fall through to the raw documentKey below.
       }
       return col + "#" + documentKey;
-    }
-    if (document != null && document.containsKey("_id")) {
-      try {
-        return col + "#" + new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
-      } catch (Exception ignored) {
-        return col + "#" + document.get("_id");
-      }
-    }
-    Object id = getId();
-    if (id != null) {
-      return col + "#" + id;
     }
     String raw =
         (originalDocument != null ? originalDocument : "")
@@ -220,7 +237,7 @@ public class DocumentWithMetadata implements Serializable {
       return originalDocument;
     }
     if (document != null) {
-      return document.toJson(CANONICAL_JSON_SETTINGS);
+      return document.toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC);
     }
     return null;
   }
@@ -351,9 +368,13 @@ public class DocumentWithMetadata implements Serializable {
   }
 
   public DocumentWithMetadata withDocument(Document newDoc) {
+    return withDocument(newDoc, getOriginalDocument());
+  }
+
+  public DocumentWithMetadata withDocument(Document newDoc, String preservedOriginalDocument) {
     return new DocumentWithMetadata(
         newDoc,
-        getOriginalDocument(),
+        preservedOriginalDocument,
         retryCount,
         errorMessage,
         errorType,
@@ -490,10 +511,10 @@ public class DocumentWithMetadata implements Serializable {
       String sourceCollection,
       String targetCollection,
       TimestampSortKey timestampSortKey) {
-    String docKey = null;
-    if (document != null && document.containsKey("_id")) {
-      docKey = new Document("_id", document.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
-    }
+    String docKey =
+        (document != null && document.containsKey("_id"))
+            ? serializeIdDocument(document.get("_id"))
+            : null;
     return new DocumentWithMetadata(
         document,
         null,
@@ -507,6 +528,12 @@ public class DocumentWithMetadata implements Serializable {
         timestampSortKey,
         docKey,
         false);
+  }
+
+  static String serializeIdDocument(Object id) {
+    return id != null
+        ? new Document("_id", id).toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC)
+        : null;
   }
 
   /**
@@ -524,7 +551,9 @@ public class DocumentWithMetadata implements Serializable {
       if (originalDocument != null && !originalDocument.isEmpty()) {
         dlqNode.set(ORIGINAL_DOCUMENT, MAPPER.readTree(originalDocument));
       } else if (document != null) {
-        dlqNode.set(ORIGINAL_DOCUMENT, MAPPER.readTree(document.toJson(CANONICAL_JSON_SETTINGS)));
+        dlqNode.set(
+            ORIGINAL_DOCUMENT,
+            MAPPER.readTree(document.toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC)));
       } else {
         dlqNode.putNull(ORIGINAL_DOCUMENT);
       }
@@ -597,7 +626,7 @@ public class DocumentWithMetadata implements Serializable {
       Document doc = null;
       String originalDocument = null;
       if (dataNode != null && !dataNode.isNull()) {
-        doc = Document.parse(dataNode.toString());
+        doc = Document.parse(dataNode.toString(), DOCUMENT_CODEC);
         originalDocument = dataNode.toString();
       }
 

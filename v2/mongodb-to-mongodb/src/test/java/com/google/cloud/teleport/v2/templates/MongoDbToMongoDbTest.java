@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
@@ -35,6 +36,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
+import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.Document;
 import org.junit.Rule;
 import org.junit.Test;
@@ -52,7 +55,7 @@ public class MongoDbToMongoDbTest {
   public void options_defaultValues() {
     MongoDbToMongoDb.Options options = PipelineOptionsFactory.as(MongoDbToMongoDb.Options.class);
 
-    assertEquals("BACKFILL_AND_STREAMING", options.getMigrationMode());
+    assertEquals("BACKFILL", options.getMigrationMode());
     assertEquals(Integer.valueOf(1), options.getNumChangeStreamSplits());
     assertEquals("updateLookup", options.getChangeStreamFullDocument());
     assertEquals(Integer.valueOf(5000), options.getWriteBatchSize());
@@ -172,7 +175,16 @@ public class MongoDbToMongoDbTest {
   @Test
   public void parseStartAtOperationTime_unparseable_throwsRatherThanStartingFromNow() {
     for (String bad :
-        new String[] {"2026-09-10T12:00:00", "2026-09-10", "not-a-time", "yesterday", ""}) {
+        new String[] {
+          "2026-09-10T12:00:00",
+          "2026-09-10",
+          "not-a-time",
+          "yesterday",
+          "",
+          "1724000000000",
+          "0",
+          "-100"
+        }) {
       IllegalArgumentException e =
           assertThrows(
               "expected rejection of '" + bad + "'",
@@ -336,5 +348,27 @@ public class MongoDbToMongoDbTest {
     fn.processElement(context);
 
     verify(context, never()).output(any());
+  }
+
+  @Test
+  public void
+      mongoDbTestHelper_staticFixturesAndBsonEquality_distinguishesSignedZeroAndHandlesNaN() {
+    assertThat(MongoDbTestHelper.HETEROGENEOUS_BSON_DOCS).hasSize(24);
+    assertThat(
+            MongoDbTestHelper.bsonValuesEqual(
+                MongoDbTestHelper.SPECIAL_FLOATS_AND_NESTED_PAYLOAD_DOC,
+                MongoDbTestHelper.SPECIAL_FLOATS_AND_NESTED_PAYLOAD_DOC))
+        .isTrue();
+    assertThat(MongoDbTestHelper.bsonValuesEqual(new BsonDouble(-0.0d), new BsonDouble(+0.0d)))
+        .isFalse();
+    assertThat(
+            MongoDbTestHelper.bsonValuesEqual(
+                new BsonDouble(Double.NaN), new BsonDouble(Double.NaN)))
+        .isTrue();
+    assertThat(
+            MongoDbTestHelper.bsonValuesEqual(
+                new BsonDocument("a", new BsonDouble(1.0)).append("b", new BsonDouble(2.0)),
+                new BsonDocument("b", new BsonDouble(2.0)).append("a", new BsonDouble(1.0))))
+        .isTrue();
   }
 }

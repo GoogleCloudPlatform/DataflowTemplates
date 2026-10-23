@@ -281,17 +281,17 @@ public class MongoDbToMongoDb {
         order = 18,
         groupName = "Source",
         enumOptions = {
+          @TemplateParameter.TemplateEnumOption("BACKFILL"),
           @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
-          @TemplateParameter.TemplateEnumOption("STREAMING_CDC"),
-          @TemplateParameter.TemplateEnumOption("BACKFILL")
+          @TemplateParameter.TemplateEnumOption("STREAMING_CDC")
         },
         optional = true,
         description = "Migration Mode",
         helpText =
-            "Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in"
-                + " parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only),"
-                + " or 'BACKFILL' (historical backfill only).")
-    @Default.String("BACKFILL_AND_STREAMING")
+            "Migration mode: 'BACKFILL' (historical backfill only), 'BACKFILL_AND_STREAMING'"
+                + " (historical backfill and streaming CDC in parallel with stateful"
+                + " deduplication), or 'STREAMING_CDC' (stream CDC only). Default is 'BACKFILL'.")
+    @Default.String("BACKFILL")
     String getMigrationMode();
 
     void setMigrationMode(String value);
@@ -416,9 +416,9 @@ public class MongoDbToMongoDb {
         description = "Deduplication State Retention (hours)",
         helpText =
             "How long per-document deduplication state is retained after the most recent accepted"
-                + " event, in hours. Only applies when both backfill and change streams are"
-                + " enabled. Defaults to 0, meaning state is kept for the life of the job; this is"
-                + " recommended. Per-document state is only about a hundred bytes, so bounding it"
+                + " event, in hours. Only applies when change streams are enabled. Defaults to 0,"
+                + " meaning state is kept for the life of the job; this is recommended."
+                + " Per-document state is only about a hundred bytes, so bounding it"
                 + " saves little, and if state expires while backfill is still running then a"
                 + " stale backfill record for that document is treated as unseen and re-applied"
                 + " over newer change stream data. Only set this if deduplication state size is a"
@@ -458,6 +458,12 @@ public class MongoDbToMongoDb {
             dtpe);
       }
     }
+    if (sec <= 0 || sec > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "startAtOperationTime epoch seconds out of valid 32-bit range: '"
+              + value
+              + "'. Expected positive epoch seconds (e.g. 1789041600, not milliseconds).");
+    }
     return new BsonTimestamp((int) sec, 0);
   }
 
@@ -469,7 +475,7 @@ public class MongoDbToMongoDb {
   public static void run(Options options) {
     String migrationMode = options.getMigrationMode();
     if (migrationMode == null || migrationMode.isEmpty()) {
-      migrationMode = "BACKFILL_AND_STREAMING";
+      migrationMode = "BACKFILL";
     }
 
     Pipeline pipeline = Pipeline.create(options);
@@ -503,16 +509,7 @@ public class MongoDbToMongoDb {
       }
     }
 
-    String stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
-    String tmpDirectory = options.getTempLocation();
-    if (tmpDirectory == null || tmpDirectory.isEmpty()) {
-      if (stagingLocation != null && !stagingLocation.isEmpty()) {
-        tmpDirectory =
-            stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
-      } else {
-        tmpDirectory = "/tmp";
-      }
-    }
+    String tmpDirectory = resolveTempDirectory(options);
 
     String dlqDirectory = options.getDlqDirectory();
     if (dlqDirectory == null || dlqDirectory.isEmpty()) {
@@ -772,11 +769,7 @@ public class MongoDbToMongoDb {
           documents.apply(
               "ProcessDocuments",
               new ProcessDocuments(
-                  options,
-                  retryableDlqPath,
-                  permanentDlqPath,
-                  tmpDirectory,
-                  includeBackfill && includeCdc));
+                  options, retryableDlqPath, permanentDlqPath, tmpDirectory, includeCdc));
 
       validDocs.apply(
           "WriteDocuments",
@@ -784,6 +777,23 @@ public class MongoDbToMongoDb {
     }
 
     pipeline.run();
+  }
+
+  private static String resolveTempDirectory(Options options) {
+    String tmpDirectory = options.getTempLocation();
+    if (tmpDirectory != null && !tmpDirectory.isEmpty()) {
+      return tmpDirectory;
+    }
+    String stagingLocation = null;
+    try {
+      stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
+    } catch (Exception ignored) {
+      // Non-Dataflow runners (e.g. DirectRunner) may reject DataflowPipelineOptions projection.
+    }
+    if (stagingLocation != null && !stagingLocation.isEmpty()) {
+      return stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
+    }
+    return "/tmp";
   }
 
   /**
@@ -820,9 +830,9 @@ public class MongoDbToMongoDb {
     public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
       PCollection<DocumentWithMetadata> documents = input;
 
-      // Stateful Deduplication Stage: Only needed when reconciling historical backfill records
-      // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
-      // for any given document are already strictly ordered and sequential from the oplog.
+      // Stateful Deduplication Stage: Required whenever CDC mutations are processed (standalone
+      // or combined with backfill) to enforce strict monotonic event ordering and drop stale
+      // out-of-order mutations per document key across change streams and retries.
       if (requiresDeduplication) {
         Integer retentionHours = options.getDedupStateRetentionHours();
         Duration dedupStateRetention =
@@ -852,7 +862,8 @@ public class MongoDbToMongoDb {
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteToDlq_UDF", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+                "WriteToDlq_UDF",
+                new WriteToDlq("udf", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents = udfProcessed.get(udfSuccessTag).setCoder(DocumentWithMetadataCoder.of());
       }
@@ -872,7 +883,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+              new WriteToDlq("validate", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return processed.get(successTag).setCoder(DocumentWithMetadataCoder.of());
     }
@@ -928,7 +939,8 @@ public class MongoDbToMongoDb {
                           : DEFAULT_WRITE_RATE_RAMP_UP_STEPS));
 
       writeFailures.apply(
-          "WriteToDlq_Write", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+          "WriteToDlq_Write",
+          new WriteToDlq("write", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
     }

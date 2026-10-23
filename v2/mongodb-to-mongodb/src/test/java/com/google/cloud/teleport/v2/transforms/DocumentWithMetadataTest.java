@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.Error
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.UUID;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
@@ -260,5 +261,55 @@ public class DocumentWithMetadataTest {
             unshardedDocumentKey);
 
     assertEquals(backfill.getDedupKey(), cdc.getDedupKey());
+  }
+
+  @Test
+  public void getDedupKey_andGetId_uuidStandardMatchesCdcDeleteBinarySubtype04() {
+    UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    Document doc = new Document("_id", uuid).append("name", "uuid-doc");
+
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            doc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+    String docKeyJson = backfill.getDocumentKey();
+
+    DocumentWithMetadata cdcDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            docKeyJson);
+
+    assertEquals(uuid, backfill.getId());
+    assertEquals(uuid, cdcDelete.getId());
+    assertEquals(backfill.getDedupKey(), cdcDelete.getDedupKey());
+  }
+
+  @Test
+  public void getId_emptyOrMalformedDocumentKey_returnsNull() {
+    DocumentWithMetadata emptyKeyDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            "");
+    DocumentWithMetadata malformedKeyDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 2L),
+            "{not-valid-json");
+
+    assertEquals(null, emptyKeyDelete.getId());
+    assertEquals(null, malformedKeyDelete.getId());
   }
 }
