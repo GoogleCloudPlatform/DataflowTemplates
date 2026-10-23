@@ -99,11 +99,18 @@ jobs:
     # The live, bulk and reverse poms set perCoreThreadCount=false, so it is NOT multiplied by the
     # runner's core count, and threadCountClasses=1/threadCountMethods=1, which splits it 1:1
     # between class runners and test methods. So at most 48 / 2 = 24 ITs run concurrently per template.
-    - name: Run Integration Tests
+    # TEMPORARY (S6): run the same ITs twice on the same runner while sampling CPU, RAM, disk and
+    # containers: first with one MySQL container per test (today), then with one shared container.
+    - name: Run Integration Tests (baseline - one container per test)
       env:
         # TEMPORARY (S6 shared MySQL container trial): run only these Bulk MySQL ITs.
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT' }}
+        SHARED_TEST_CONTAINERS: 'false'
       run: |
+        out="$GITHUB_WORKSPACE/s6-stats/baseline"
+        test-infra/ci_resource_monitor.sh "$out" 10 &
+        monitor_pid=$!
+        set +e
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
         --it-region="us-east1" \
@@ -115,6 +122,52 @@ jobs:
         --redirect-log-to-file='true' \
         --it-base-container-image=":dev-image-latest" \
         --test="$SPECIFIC_TEST"
+        rc=$?
+        set -e
+        kill "$monitor_pid" || true
+        mkdir -p "$out/surefire"
+        cp v2/sourcedb-to-spanner/target/surefire-reports/TEST-*.xml "$out/surefire/" 2>/dev/null || true
+        cp v2/sourcedb-to-spanner/target/surefire-reports/*-output.txt "$out/surefire/" 2>/dev/null || true
+        exit $rc
+    - name: Run Integration Tests (shared MySQL container)
+      if: always()
+      env:
+        # TEMPORARY (S6 shared MySQL container trial): run only these Bulk MySQL ITs.
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test || 'MySQLDDLIT,MySQLReservedKeywordsIT,MySQLForeignKeyDependencyIT' }}
+        SHARED_TEST_CONTAINERS: 'true'
+      run: |
+        out="$GITHUB_WORKSPACE/s6-stats/shared"
+        test-infra/ci_resource_monitor.sh "$out" 10 &
+        monitor_pid=$!
+        set +e
+        ./cicd/run-it-tests \
+        --modules-to-build="SPANNER" \
+        --it-region="us-east1" \
+        --it-project="span-cloud-teleport-testing" \
+        --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-connect-2" \
+        --it-cloud-proxy-host="10.128.0.16" \
+        --it-integration-test-parallelism=48 \
+        --redirect-log-to-file='true' \
+        --it-base-container-image=":dev-image-latest" \
+        --test="$SPECIFIC_TEST"
+        rc=$?
+        set -e
+        kill "$monitor_pid" || true
+        mkdir -p "$out/surefire"
+        cp v2/sourcedb-to-spanner/target/surefire-reports/TEST-*.xml "$out/surefire/" 2>/dev/null || true
+        cp v2/sourcedb-to-spanner/target/surefire-reports/*-output.txt "$out/surefire/" 2>/dev/null || true
+        exit $rc
+    - name: Resource usage summary
+      if: always()
+      run: python3 test-infra/ci_resource_summary.py "$GITHUB_WORKSPACE/s6-stats" baseline shared
+    - name: Upload resource usage stats
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      if: always()
+      with:
+        name: s6-resource-stats
+        path: s6-stats/
+        retention-days: 10
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       if: always() # always run even if the previous step fails
