@@ -52,14 +52,16 @@ public class ProcessChangeEventFn
   private final int maxRetries = 3; // Maximum number of retry attempts
   private final long retryDelayMs = 1000; // Initial delay in milliseconds
 
-  public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
+  public static final TupleTag<MongoDbChangeEventContext> SUCCESSFUL_WRITE_TAG =
       new TupleTag<>("successfulWrite");
-  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-      failedWriteTag = new TupleTag<>("failedWrite");
+  public static final TupleTag<
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      FAILED_WRITE_TAG = new TupleTag<>("failedWrite");
   // Tag for severe failures that should not be retried (e.g. permanent errors or non-transient
   // transaction errors)
-  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-      severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
+  public static final TupleTag<
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      SEVERE_FAILED_WRITE_TAG = new TupleTag<>("severeFailedWrite");
 
   // Error code 2 corresponds to BadValue/InvalidArgument, which is treated as a permanent error.
   public static final int INVALID_ARGUMENT = 2;
@@ -181,7 +183,7 @@ public class ProcessChangeEventFn
           outOfOrderSkips.inc();
         }
         session.commitTransaction();
-        out.get(successfulWriteTag).output(element);
+        out.get(SUCCESSFUL_WRITE_TAG).output(element);
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
@@ -217,7 +219,7 @@ public class ProcessChangeEventFn
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          out.get(severeFailedWriteTag).output(failedElement);
+          out.get(SEVERE_FAILED_WRITE_TAG).output(failedElement);
 
           String errorIdentifier = "UnknownError";
           if (e instanceof MongoWriteException writeException) {
@@ -264,7 +266,7 @@ public class ProcessChangeEventFn
                 FailsafeElement.of(element, element);
             failedElement.setErrorMessage(ie.getMessage());
             failedElement.setStacktrace(Throwables.getStackTraceAsString(ie));
-            out.get(failedWriteTag).output(failedElement);
+            out.get(FAILED_WRITE_TAG).output(failedElement);
             retriableFailedWrites.inc();
             break; // Exit the retry loop if interrupted
           }
@@ -282,7 +284,7 @@ public class ProcessChangeEventFn
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          out.get(failedWriteTag).output(failedElement);
+          out.get(FAILED_WRITE_TAG).output(failedElement);
           retriableFailedWrites.inc();
           LOG.info(
               "Failed element of id {} sent to retry DLQ after {} attempts",
