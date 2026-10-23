@@ -23,6 +23,7 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.testutils.retry.SkipRerunOfGenuineFailuresRule;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -66,6 +67,8 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
@@ -73,6 +76,16 @@ import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
+
+  /**
+   * Outermost rule: on Surefire's rerun, fails genuine (assertion) failures instantly without
+   * re-running setup/test. No-op unless -DitSkipRerunOfGenuineFailures=true or
+   * IT_SKIP_RERUN_OF_GENUINE_FAILURES=true.
+   */
+  @Rule(order = Integer.MIN_VALUE)
+  public final TestRule skipRerunOfGenuineFailures =
+      SkipRerunOfGenuineFailuresRule.fromSystemProperties();
+
   private FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   protected static DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
