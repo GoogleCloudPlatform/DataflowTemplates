@@ -13,9 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.model;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import java.util.Objects;
 
 /**

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.source.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
@@ -76,6 +75,10 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   public void init(SinkConfig sinkConfig) {
     if (sinkConfig == null) {
       throw new IllegalArgumentException("SinkConfig cannot be null");
+    }
+    if (!(sinkConfig instanceof MySqlSinkConfig)) {
+      throw new IllegalArgumentException(
+          "Expected MySqlSinkConfig, got " + sinkConfig.getClass().getName());
     }
     MySqlSinkConfig mySqlSinkConfig = (MySqlSinkConfig) sinkConfig;
     List<Shard> shards = mySqlSinkConfig.getShards();

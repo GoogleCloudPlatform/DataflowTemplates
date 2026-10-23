@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.source.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.annotations.VisibleForTesting;
