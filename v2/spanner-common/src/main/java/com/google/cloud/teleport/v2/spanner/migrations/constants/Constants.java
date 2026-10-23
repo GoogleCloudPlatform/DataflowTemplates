@@ -45,6 +45,24 @@ public class Constants {
   /* The run mode for regular */
   public static final String RUN_MODE_REGULAR = "regular";
 
+  /* The key for the event change type in the event json */
+  public static final String EVENT_CHANGE_TYPE_KEY = "_metadata_change_type";
+
+  public static final String INSERT_EVENT = "INSERT";
+
+  public static final String UPDATE_EVENT = "UPDATE";
+
+  public static final String UPDATE_INSERT_EVENT = "UPDATE-INSERT";
+
+  public static final String UPDATE_DELETE_EVENT = "UPDATE-DELETE";
+
+  public static final String DELETE_EVENT = "DELETE";
+
+  public static final String EMPTY_EVENT = "";
+
+  /* The key for the source database type in the event json */
+  public static final String EVENT_SOURCE_TYPE_KEY = "_metadata_source_type";
+
   /* The key for the schema name in the event json */
   public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
 
@@ -53,6 +71,9 @@ public class Constants {
 
   /* The key for the uuid field of the change event */
   public static final String EVENT_UUID_KEY = "_metadata_uuid";
+
+  /* The key for the read method in the event json */
+  public static final String EVENT_READ_METHOD_KEY = "_metadata_read_method";
 
   /* The prefix for all metadata keys in the event json */
   public static final String EVENT_METADATA_KEY_PREFIX = "_metadata";
