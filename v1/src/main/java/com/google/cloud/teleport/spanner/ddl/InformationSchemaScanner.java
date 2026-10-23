@@ -94,6 +94,7 @@ public class InformationSchemaScanner {
     }
     listColumns(builder);
     listColumnOptions(builder);
+    listTableOptions(builder);
     if (isModelSupported()) {
       listModels(builder);
       listModelOptions(builder);
@@ -115,6 +116,9 @@ public class InformationSchemaScanner {
     }
     if (placementsSupported()) {
       listPlacements(builder);
+    }
+    if (isLocalityGroupSupported()) {
+      listLocalityGroups(builder);
     }
     if (isPropertyGraphSupported()) {
       listPropertyGraphs(builder);
@@ -659,7 +663,10 @@ public class InformationSchemaScanner {
     Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
     while (resultSet.next()) {
       String tableName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
-      String indexName = resultSet.getString(2);
+      String indexName =
+          dialect == Dialect.POSTGRESQL
+              ? resultSet.getString(2)
+              : getQualifiedName(resultSet.getString(0), resultSet.getString(2));
       String indexType = resultSet.getString(3);
       String optionName = resultSet.getString(4);
       if (optionName.startsWith("internal_updated_")
@@ -678,7 +685,8 @@ public class InformationSchemaScanner {
             dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
         options.add(
             optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
-      } else if (optionType.equalsIgnoreCase("character varying")) {
+      } else if (optionType.equalsIgnoreCase("character varying")
+          || optionType.equalsIgnoreCase("text")) {
         options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
       } else {
         options.add(optionName + "=" + optionValue);
@@ -729,7 +737,66 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listColumnOptions(Ddl.Builder builder) {
+  @VisibleForTesting
+  void listTableOptions(Ddl.Builder builder) {
+    Statement statement = listTableOptionsSQL();
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      while (resultSet.next()) {
+        String tableName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+        String optionName = resultSet.getString(2);
+        String optionType = resultSet.getString(3);
+        String optionValue = resultSet.getString(4);
+
+        ImmutableList.Builder<String> options =
+            allOptions.computeIfAbsent(tableName, k -> ImmutableList.builder());
+
+        if (optionType.equalsIgnoreCase("STRING")) {
+          String quoteChar =
+              dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+          options.add(
+              optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
+        } else if (optionType.equalsIgnoreCase("character varying")
+            || optionType.equalsIgnoreCase("text")) {
+          options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
+        } else {
+          options.add(optionName + "=" + optionValue);
+        }
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String tableName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createTable(tableName).options(options).endTable();
+    }
+  }
+
+  @VisibleForTesting
+  Statement listTableOptionsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.option_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.option_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
+  @VisibleForTesting
+  void listColumnOptions(Ddl.Builder builder) {
     Statement statement = listColumnOptionsSQL();
 
     ResultSet resultSet = context.executeQuery(statement);
@@ -741,19 +808,28 @@ public class InformationSchemaScanner {
       String optionName = resultSet.getString(3);
       String optionType = resultSet.getString(4);
       String optionValue = resultSet.getString(5);
+      boolean isInherited =
+          !resultSet.isNull(6)
+              && (dialect == Dialect.GOOGLE_STANDARD_SQL
+                  ? resultSet.getBoolean(6)
+                  : "YES".equalsIgnoreCase(resultSet.getString(6)));
 
-      KV<String, String> kv = KV.of(tableName, columnName);
-
-      if (optionName.equalsIgnoreCase("locality_group")) {
+      if (isInherited) {
         continue;
       }
+
+      KV<String, String> kv = KV.of(tableName, columnName);
 
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
 
       if (optionType.equalsIgnoreCase("STRING")) {
-        options.add(optionName + "=\"" + OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
-      } else if (optionType.equalsIgnoreCase("character varying")) {
+        String quoteChar =
+            dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+        options.add(
+            optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
+      } else if (optionType.equalsIgnoreCase("character varying")
+          || optionType.equalsIgnoreCase("text")) {
         options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
       } else {
         options.add(optionName + "=" + optionValue);
@@ -780,7 +856,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.option_name, t.option_type,"
-                + " t.option_value"
+                + " t.option_value, t.is_inherited"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -789,7 +865,7 @@ public class InformationSchemaScanner {
         // Ignore the 'allow_commit_timestamp' option since it's not user-settable in POSTGRESQL.
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.option_name, t.option_type,"
-                + " t.option_value"
+                + " t.option_value, t.is_inherited"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
@@ -2109,6 +2185,100 @@ public class InformationSchemaScanner {
       String placementName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
       builder.createPlacement(placementName).options(options).endPlacement();
+    }
+  }
+
+  @VisibleForTesting
+  boolean isLocalityGroupSupported() {
+    Statement statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
+                    + " AND t.TABLE_NAME = 'LOCALITY_GROUP_OPTIONS'");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'information_schema'"
+                    + " AND t.TABLE_NAME = 'locality_group_options'");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      resultSet.next();
+      return resultSet.getLong(0) > 0;
+    }
+  }
+
+  @VisibleForTesting
+  Statement listLocalityGroupsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.locality_group_name, t.option_name, t.option_value, t.is_inherited"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
+  @VisibleForTesting
+  void listLocalityGroups(Ddl.Builder builder) {
+    Map<String, ImmutableList.Builder<String>> localityGroupNameToOptions = Maps.newHashMap();
+    try (ResultSet resultSet = context.executeQuery(listLocalityGroupsSQL())) {
+      while (resultSet.next()) {
+        String name = resultSet.getString(0);
+        String optionName = resultSet.getString(1);
+        String optionValue = resultSet.isNull(2) ? null : resultSet.getString(2);
+        boolean isInherited =
+            !resultSet.isNull(3)
+                && (dialect == Dialect.GOOGLE_STANDARD_SQL
+                    ? resultSet.getBoolean(3)
+                    : "YES".equalsIgnoreCase(resultSet.getString(3)));
+
+        if (!"default".equalsIgnoreCase(name)) {
+          localityGroupNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
+        }
+
+        if (optionValue == null || isInherited) {
+          continue;
+        }
+
+        LOG.info(
+            "locality group name = "
+                + name
+                + ", optionName = "
+                + optionName
+                + ", optionValue = "
+                + optionValue
+                + ", isInherited = "
+                + isInherited);
+
+        ImmutableList.Builder<String> options =
+            localityGroupNameToOptions.computeIfAbsent(name, k -> ImmutableList.builder());
+
+        String quoteChar =
+            dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+        options.add(
+            optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry :
+        localityGroupNameToOptions.entrySet()) {
+      String localityGroupName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createLocalityGroup(localityGroupName).options(options).endLocalityGroup();
     }
   }
 

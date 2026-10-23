@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.LocalityGroup;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
@@ -435,6 +436,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allLocalityGroupNames =
+        ddl.apply(
+            "List all locality group names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (LocalityGroup localityGroup : ddl.localityGroups()) {
+                      c.output(localityGroup.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allUdfNames =
         ddl.apply(
             "List all user-defined function names",
@@ -675,6 +691,24 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> localityGroups =
+        allLocalityGroupNames.apply(
+            "Export locality groups",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String localityGroupName = c.element();
+                    LOG.info("Exporting locality group: " + localityGroupName);
+                    // This file will contain the schema definition for the locality group.
+                    c.output(
+                        KV.of(
+                            localityGroupName,
+                            Collections.singleton(localityGroupName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> udfs =
         allUdfNames.apply(
             "Export user-defined functions",
@@ -700,6 +734,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .and(sequences)
             .and(namedSchemas)
             .and(placements)
+            .and(localityGroups)
             .and(udfs)
             .and(propertyGraphs)
             .apply("Combine all empty schema files", Flatten.pCollections());
@@ -1046,6 +1081,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
           exportManifest.addSequences(obj);
         } else if (ddl.placement(obj.getName()) != null) {
           exportManifest.addPlacements(obj);
+        } else if (ddl.localityGroup(obj.getName()) != null) {
+          exportManifest.addLocalityGroups(obj);
         } else if (ddl.udf(obj.getName()) != null) {
           exportManifest.addUdfs(obj);
         } else {
