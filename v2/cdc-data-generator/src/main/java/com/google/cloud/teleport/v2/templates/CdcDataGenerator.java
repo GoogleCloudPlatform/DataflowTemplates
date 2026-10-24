@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.templates.model.GeneratedRecord;
 import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SqlServerSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkConfigParser;
 import com.google.cloud.teleport.v2.templates.transforms.GeneratePrimaryKey;
 import com.google.cloud.teleport.v2.templates.transforms.GenerateTicks;
@@ -233,6 +234,20 @@ public class CdcDataGenerator {
       // operations. We keep key-parallelism low to prevent connection pool exhaustion or lock
       // contention on the target instance.
       // 500 DoFn per workers * 10 workers per MySQL shard
+      return 5000 * shardCount;
+    } else if (sinkType == CdcDataGeneratorOptions.SinkType.SQLSERVER) {
+      if (!(sinkConfig instanceof SqlServerSinkConfig)) {
+        throw new IllegalArgumentException(
+            "Sink configuration must be an instance of SqlServerSinkConfig for SQL Server sink"
+                + " type.");
+      }
+      SqlServerSinkConfig sqlServerConfig = (SqlServerSinkConfig) sinkConfig;
+      int shardCount = 1;
+      if (sqlServerConfig.getShards() != null && !sqlServerConfig.getShards().isEmpty()) {
+        shardCount = sqlServerConfig.getShards().size();
+      }
+      // Same reasoning as MySQL: keep key-parallelism low per shard to avoid connection pool
+      // exhaustion and lock contention on the SQL Server instance.
       return 5000 * shardCount;
     } else {
       throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
