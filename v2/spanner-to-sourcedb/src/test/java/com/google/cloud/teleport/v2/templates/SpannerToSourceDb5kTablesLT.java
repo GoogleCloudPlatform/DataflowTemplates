@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -84,21 +85,21 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
     spannerResourceManager =
         SpannerResourceManager.builder("rr-main-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setMonitoringClient(monitoringClient)
             .setSuppressVerboseLogs(true)
             .build();
 
     spannerMetadataResourceManager =
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerMetadataResourceManager.ensureUsableAndCreateResources();
 
     spannerChangeStreamMetadataResourceManager =
         SpannerResourceManager.builder("rr-cs-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .setSuppressVerboseLogs(true)
             .build();
     spannerChangeStreamMetadataResourceManager.ensureUsableAndCreateResources();

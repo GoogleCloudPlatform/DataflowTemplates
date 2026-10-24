@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.dtsx.astra.sdk.db.AstraDBOpsClient;
 import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.dtsx.astra.sdk.db.domain.Database;
@@ -171,6 +173,7 @@ public class AstraDbToSpannerIT extends SourceDbToSpannerITBase implements Seria
     if (dbClient != null) {
       try (CqlSession astraSession =
           CqlSession.builder()
+              .withConfigLoader(astraDriverConfigLoader())
               .withCloudSecureConnectBundle(
                   new ByteArrayInputStream(dbClient.downloadDefaultSecureConnectBundle()))
               .withAuthCredentials("token", dbClient.getToken())
@@ -236,9 +239,18 @@ public class AstraDbToSpannerIT extends SourceDbToSpannerITBase implements Seria
     }
   }
 
+  private static DriverConfigLoader astraDriverConfigLoader() {
+    return DriverConfigLoader.programmaticBuilder()
+        .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofSeconds(30))
+        .withDuration(
+            DefaultDriverOption.CONTROL_CONNECTION_AGREEMENT_TIMEOUT, Duration.ofSeconds(30))
+        .build();
+  }
+
   private void createAndPopulateTables() {
     try (CqlSession astraSession =
         CqlSession.builder()
+            .withConfigLoader(astraDriverConfigLoader())
             .withCloudSecureConnectBundle(
                 new ByteArrayInputStream(dbClient.downloadDefaultSecureConnectBundle()))
             .withAuthCredentials("token", dbClient.getToken())

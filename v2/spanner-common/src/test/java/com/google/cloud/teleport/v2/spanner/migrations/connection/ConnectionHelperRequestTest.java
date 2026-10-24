@@ -27,18 +27,16 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ConnectionHelperRequestTest {
   @Test
-  public void testGetters_returnConstructorArgumentsWithJdbcUrlPrefix() {
+  public void testGetters_returnConstructorArguments() {
     List<Shard> shards =
         ImmutableList.of(new Shard("id", "host", "5432", "user", "pass", "db", null, null, null));
     ConnectionHelperRequest request =
-        new ConnectionHelperRequest(
-            shards, "key=val", 7, "org.postgresql.Driver", "SELECT 1", "jdbc:postgresql://");
+        new ConnectionHelperRequest(shards, "key=val", 7, "org.postgresql.Driver", "SELECT 1");
 
     assertThat(request.getShards()).isSameInstanceAs(shards);
     assertThat(request.getProperties()).isEqualTo("key=val");
     assertThat(request.getMaxConnections()).isEqualTo(7);
     assertThat(request.getDriver()).isEqualTo("org.postgresql.Driver");
     assertThat(request.getConnectionInitQuery()).isEqualTo("SELECT 1");
-    assertThat(request.getJdbcUrlPrefix()).isEqualTo("jdbc:postgresql://");
   }
 }

@@ -142,7 +142,8 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("outputDirectory", getGcsPath("output", gcsResourceManager))
             .addParameter("sourceConfigURL", getGcsPath("input/shard.json", gcsResourceManager))
             .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
-            .addParameter("workerMachineType", "n2-standard-4")
+            .addEnvironmentVariable(
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"));
 
@@ -193,7 +194,8 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
                 "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-            .addParameter("workerMachineType", "n2-standard-4")
+            .addEnvironmentVariable(
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
             .build();
 
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
@@ -293,7 +295,8 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("inputFileFormat", "avro")
             .addParameter("runMode", runMode) // in case a test wants to use retryDLQ mode
             .addParameter("dlqRetryMinutes", "1")
-            .addParameter("workerMachineType", "n2-standard-4");
+            .addEnvironmentVariable(
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     if (customTransformation != null) {
       flexTemplateBuilder.addParameter(

@@ -116,7 +116,7 @@ jobs:
           ./cicd/run-unit-tests \
           --modules-to-build="BIGTABLE"
       - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-unit-test-results
@@ -126,7 +126,7 @@ jobs:
             **/surefire-reports/html/**
           retention-days: 1
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
@@ -154,9 +154,10 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-connect-2"
+          --it-private-connectivity="datastream-connect-2" \
+          --it-base-container-image=":dev-image-latest"
       - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-smoke-test-results
@@ -188,9 +189,10 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-connect-2"
+          --it-private-connectivity="datastream-connect-2" \
+          --it-base-container-image=":dev-image-latest"
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-integration-test-results
@@ -200,7 +202,7 @@ jobs:
             **/surefire-reports/html/**
           retention-days: 10 # Increased retention similar to Spanner
       - name: Integration Test report on GitHub
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
         with:
           name: Integration Test report on GitHub

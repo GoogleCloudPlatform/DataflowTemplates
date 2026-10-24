@@ -264,6 +264,25 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testDiscoverTableIndexesMatchesIndexSchema()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(false);
+
+    adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, ImmutableList.of("orders"));
+
+    // Index names are unique only within a schema, e.g. public.orders_pkey and tenant.orders_pkey.
+    verify(mockConnection)
+        .prepareStatement(
+            contains(
+                "JOIN pg_catalog.pg_namespace n ON n.nspname = ixs.schemaname"
+                    + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
+                    + " AND c.relnamespace = n.oid"));
+  }
+
+  @Test
   public void testDiscoverTableIndexes() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
 

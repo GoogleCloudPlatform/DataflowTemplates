@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.common.io.Resources;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -30,19 +32,32 @@ import org.apache.avro.generic.GenericRecordBuilder;
 public class GCSSpannerDVAvroSetupHelper {
 
   /**
+   * Helper function to load an Avro Schema from a resource file.
+   *
+   * @param resourceName The path to the Avro schema file relative to the resources directory
+   * @return The parsed Avro Schema
+   */
+  public static Schema getSchemaFromAvscFile(String resourceName) {
+    try (InputStream is = Resources.getResource(resourceName).openStream()) {
+      return new Schema.Parser().parse(is);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to load Avro schema from resource: " + resourceName, e);
+    }
+  }
+
+  /**
    * Defines standard table schemas that are universally used across multiple integration tests.
    * Centralizing these definitions prevents schema drift across tests and minimizes setup code.
    */
   public static class TableDef {
     public static final TableDef USERS =
         new TableDef(
-            GCSSpannerDVITBase.getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc"),
+            getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/users.avsc"),
             "Users",
             Arrays.asList("user_id", "event_id"));
     public static final TableDef ACCOUNT_ROLES =
         new TableDef(
-            GCSSpannerDVITBase.getSchemaFromAvscFile(
-                "GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
+            getSchemaFromAvscFile("GCSSpannerDVAvroSetupHelper/account_roles.avsc"),
             "AccountRoles",
             Arrays.asList("role_id"));
 
@@ -102,12 +117,13 @@ public class GCSSpannerDVAvroSetupHelper {
    * Converts standard Java types into the primitive formats required by Avro logical types.
    *
    * <p>Because this helper uses a generic {@code Map<String, Object>} to dynamically build records,
-   * standard Java objects (like {@link Instant}) must be manually translated into Avro's expected
-   * underlying primitives (like {@code Long} for timestamp-micros) before serialization.
+   * standard Java objects (like {@link Instant}, {@link java.math.BigDecimal}, {@code byte[]}) must
+   * be manually translated into Avro's expected underlying primitives (like {@code Long} for
+   * timestamp-micros, {@link java.nio.ByteBuffer} for decimals with scale 9 or raw bytes) before
+   * serialization.
    *
-   * <p><b>IMPORTANT:</b> This method currently only supports {@link Instant}. If new test tables
-   * are introduced that use other complex Avro mappings (e.g., Dates, Decimals, UUIDs, or custom
-   * Datastream composites like Datetime), this method MUST be updated to coerce those types.
+   * <p><b>NOTE:</b> {@link java.math.BigDecimal} is currently normalized to scale 9 for Avro
+   * decimal serialization.
    *
    * @param value The standard Java object provided in the test map.
    * @return The Avro-compatible primitive value ready for serialization.
@@ -120,6 +136,16 @@ public class GCSSpannerDVAvroSetupHelper {
     if (value instanceof Instant) {
       Instant t = (Instant) value;
       return (t.getEpochSecond() * 1_000_000L) + (t.getNano() / 1000L);
+    }
+
+    if (value instanceof java.math.BigDecimal) {
+      java.math.BigDecimal bd = (java.math.BigDecimal) value;
+      return java.nio.ByteBuffer.wrap(
+          bd.setScale(9, java.math.RoundingMode.HALF_UP).unscaledValue().toByteArray());
+    }
+
+    if (value instanceof byte[]) {
+      return java.nio.ByteBuffer.wrap((byte[]) value);
     }
 
     // Default fallback (String, Integer, Long, Double, Float)

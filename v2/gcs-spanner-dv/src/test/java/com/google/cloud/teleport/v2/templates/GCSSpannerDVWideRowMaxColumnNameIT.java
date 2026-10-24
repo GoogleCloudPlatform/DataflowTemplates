@@ -62,7 +62,9 @@ public class GCSSpannerDVWideRowMaxColumnNameIT extends GCSSpannerDVITBase {
   public void testMaxColumnNameLength() throws Exception {
     GCSSpannerDVAvroSetupHelper.TableDef maxColTableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
-            getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE), "MaxColumnNameTable", Arrays.asList("id"));
+            GCSSpannerDVAvroSetupHelper.getSchemaFromAvscFile(AVRO_SCHEMA_RESOURCE),
+            "MaxColumnNameTable",
+            Arrays.asList("id"));
 
     List<GenericRecord> records =
         Arrays.asList(

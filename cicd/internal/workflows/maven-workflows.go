@@ -50,6 +50,7 @@ type MavenFlags interface {
 	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
+	RedirectTestOutputToFile(bool) string
 	RunIntegrationTests(bool) string
 	RunIntegrationSmokeTests() string
 	RunSpannerStagingIntegrationTests() string
@@ -114,6 +115,13 @@ func (*mvnFlags) SkipIntegrationTests() string {
 
 func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
+}
+
+func (*mvnFlags) RedirectTestOutputToFile(redirectLog bool) string {
+	if redirectLog {
+		return "-Dmaven.test.redirectTestOutputToFile=true"
+	}
+	return ""
 }
 
 func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {

@@ -1,0 +1,7 @@
+{
+  "optionalConfigurations": {
+    "AuditLog": {
+      "spannerQuery": "SELECT * FROM AuditLog WHERE log_id <= 1"
+    }
+  }
+}

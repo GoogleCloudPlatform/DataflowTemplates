@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
@@ -45,7 +45,7 @@ public class SpannerToSourceDbTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  private Options options;
+  private SpannerToSourceDbOptions options;
   @Mock private PCollectionView<Ddl> mockDdlView;
   @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
   @Mock private SpannerConfig mockSpannerConfig;
@@ -68,7 +68,7 @@ public class SpannerToSourceDbTest {
     dummyDdl =
         Ddl.builder().createTable("shadow_T").column("c1").string().endColumn().endTable().build();
 
-    options = PipelineOptionsFactory.as(Options.class);
+    options = PipelineOptionsFactory.as(SpannerToSourceDbOptions.class);
     options.setRunMode("regular");
     options.setDeadLetterQueueDirectory("gs://test/dlq");
     options.setSkipDirectoryName("skip");

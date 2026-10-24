@@ -48,6 +48,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
@@ -69,6 +71,10 @@ import org.slf4j.LoggerFactory;
 public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesReleaseMojo.class);
+
+  private static final Pattern DISPLAY_NAME_PATTERN =
+      Pattern.compile(
+          "^\\s*display_name:\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\r\\n#]+))", Pattern.MULTILINE);
 
   private record ManifestEntry(String name, String path) {}
 
@@ -373,12 +379,32 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                   String baseName = fileName.substring(0, fileName.length() - ".yaml".length());
                   String displayName =
                       "blueprints".equals(subFolder)
-                          ? String.join(" to ", baseName.split("To"))
+                          ? getBlueprintDisplayName(path, baseName)
                           : baseName;
                   entries.add(new ManifestEntry(displayName, objectName));
                 });
       }
     }
+  }
+
+  private String getBlueprintDisplayName(Path path, String fallbackBaseName) {
+    try {
+      String content = Files.readString(path, StandardCharsets.UTF_8);
+      Matcher matcher = DISPLAY_NAME_PATTERN.matcher(content);
+      if (matcher.find()) {
+        String displayName =
+            matcher.group(1) != null
+                ? matcher.group(1)
+                : matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
+        if (displayName != null && !displayName.trim().isEmpty()) {
+          displayName = displayName.trim().replaceAll("(?i)\\s*\\(yaml\\)\\s*$", "");
+          return displayName.trim();
+        }
+      }
+    } catch (IOException e) {
+      LOG.warn("Unable to read blueprint file to extract display_name: {}", path, e);
+    }
+    return String.join(" to ", fallbackBaseName.split("To"));
   }
 
   private void uploadToGcs(Storage storage, Path path, String objectName) {

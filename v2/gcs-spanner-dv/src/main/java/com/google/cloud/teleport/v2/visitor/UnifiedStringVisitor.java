@@ -50,6 +50,11 @@ public class UnifiedStringVisitor implements IUnifiedVisitor {
   }
 
   @Override
+  public void visitFloat32(float f) {
+    result = String.valueOf(f);
+  }
+
+  @Override
   public void visitBool(boolean b) {
     result = String.valueOf(b);
   }
@@ -72,6 +77,11 @@ public class UnifiedStringVisitor implements IUnifiedVisitor {
   @Override
   public void visitTimestamp(Timestamp t) {
     result = t.toString();
+  }
+
+  @Override
+  public void visitUuid(java.util.UUID u) {
+    result = u.toString();
   }
 
   @Override

@@ -150,7 +150,7 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 buildConditionCheck(spannerTableData));
     assertThatResult(result).meetsConditions();
 

@@ -429,11 +429,18 @@ public class BoundarySplitterFactory {
     String suffixStart = start.substring(commonPrefixLength);
     String suffixEnd = end.substring(commonPrefixLength);
 
+    // The mapper pads in code points, so all lengths here must be code point counts (not UTF-16
+    // code units), otherwise supplementary characters inflate the boundary length on every split.
     int lengthToPad =
         Math.max(
-            Math.max(suffixStart.length(), suffixEnd.length()),
+            Math.max(
+                suffixStart.codePointCount(0, suffixStart.length()),
+                suffixEnd.codePointCount(0, suffixEnd.length())),
             Math.min(
-                Math.max(0, partitionColumn.stringMaxLength().intValue() - commonPrefixLength),
+                Math.max(
+                    0,
+                    partitionColumn.stringMaxLength().intValue()
+                        - commonPrefix.codePointCount(0, commonPrefix.length())),
                 MAX_STRING_PARTITION_PAD_LENGTH));
     BigInteger bigIntegerStart =
         (BigInteger) typeMapper.mapStringToBigInteger(suffixStart, lengthToPad, partitionColumn, c);

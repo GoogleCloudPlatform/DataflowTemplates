@@ -19,7 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types
  * migration.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
@@ -195,10 +195,16 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "char", createRows("char", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
-    // date_to_string is commented out to avoid failing the test case; returned data has format
-    // "YYYY-MM-DDTHH:mm:SSZ" which is unexpected even if it's not necessarily incorrect
-    // expectedData.put("date_to_string", createRows("date_to_string", "2012-09-17", "1000-01-01",
-    // "9999-12-31", "NULL"));
+    // date_to_string produces ISO 8601 timestamp strings ("YYYY-MM-DDTHH:mm:SSZ") since MySQL
+    // DATE is mapped to timestamp micros for Datastream alignment and live migration parity.
+    expectedData.put(
+        "date_to_string",
+        createRows(
+            "date_to_string",
+            "2012-09-17T00:00:00Z",
+            "1000-01-01T00:00:00Z",
+            "9999-12-31T00:00:00Z",
+            "NULL"));
     expectedData.put(
         "datetime",
         createRows(

@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ import org.slf4j.LoggerFactory;
 public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLSpToSrcSourceConnector.class);
+  private static final String JDBC_URL_PREFIX = "jdbc:mysql://";
 
   private final IConnectionHelper connectionHelper;
 
@@ -67,7 +69,7 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+    return JDBC_URL_PREFIX + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -78,14 +80,16 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
+      for (Shard shard : shards) {
+        shard.setConnectionUrl(getConnectionUrl(shard));
+      }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
               shards,
               null,
               maxConnections,
               "com.mysql.cj.jdbc.Driver",
-              "SET SESSION net_read_timeout=1200", // To avoid timeouts at the network layer
-              "jdbc:mysql://");
+              "SET SESSION net_read_timeout=1200"); // To avoid timeouts at the network layer
       connectionHelper.init(request);
     }
   }
@@ -142,6 +146,19 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     config.setUsername(shard.getUserName());
     config.setPassword(shard.getPassword());
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+    if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
+      LOG.info(
+          "Connection properties for shard {}: {}",
+          shard.getLogicalShardId(),
+          shard.getConnectionProperties());
+      Properties parsedProps =
+          JdbcConnectionHelper.parseProperties(shard.getConnectionProperties());
+      for (String key : parsedProps.stringPropertyNames()) {
+        config.addDataSourceProperty(key, parsedProps.getProperty(key));
+      }
+    }
+
     HikariDataSource ds = new HikariDataSource(config);
     return ds.getConnection();
   }

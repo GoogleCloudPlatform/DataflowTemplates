@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.utils.LTMySQLResourceManager;
-import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -33,11 +32,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -60,9 +59,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
   public static final String SESSION_FILE_NAME = "input/session.json";
   public static final String SCHEMA_FILE_NAME = "input/schema.json";
-  private static final String TEMPLATE_SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
   public SpannerResourceManager spannerResourceManager;
   public SpannerResourceManager spannerMetadataResourceManager;
   public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
@@ -136,7 +132,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-loadtest-" + testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(2))
             .build();
     String ddl =
         String.join(
@@ -161,7 +157,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
       builder.setInstanceId(metadataInstanceId).useStaticInstance();
     } else {
-      builder.maybeUseStaticInstance();
+      builder.maybeUseStaticInstance(Optional.of(2));
     }
 
     SpannerResourceManager spannerMetadataResourceManager = builder.build();
@@ -282,7 +278,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "100");
     params.put("sourceType", sourceType);
-    params.put("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
       params.put(
@@ -295,11 +290,13 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     }
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+        LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath());
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+        .addEnvironment(
+            "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"))
+        .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     options.setParameters(params);
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());

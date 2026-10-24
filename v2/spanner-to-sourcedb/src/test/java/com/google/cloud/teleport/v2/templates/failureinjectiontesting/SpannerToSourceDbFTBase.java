@@ -196,9 +196,10 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
+            .addEnvironmentVariable(
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"))
             .build();
 
     // Run
@@ -249,9 +250,10 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"));
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
+            .addEnvironmentVariable(
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
       flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);

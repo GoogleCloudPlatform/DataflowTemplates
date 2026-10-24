@@ -25,6 +25,7 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -47,6 +48,26 @@ public class UnifiedHasherVisitorTest {
             .putByte((byte) 1)
             .putInt(input.length())
             .putString(input, UTF_8)
+            .hash();
+
+    assertEquals(expectedHash, actualHash);
+  }
+
+  @Test
+  public void testVisitUuid() {
+    Hasher hasher = Hashing.murmur3_128().newHasher();
+    UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);
+    UUID input = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+
+    visitor.visitUuid(input);
+    HashCode actualHash = hasher.hash();
+
+    HashCode expectedHash =
+        Hashing.murmur3_128()
+            .newHasher()
+            .putByte((byte) 1)
+            .putInt(input.toString().length())
+            .putString(input.toString(), UTF_8)
             .hash();
 
     assertEquals(expectedHash, actualHash);
@@ -78,6 +99,21 @@ public class UnifiedHasherVisitorTest {
 
     HashCode expectedHash =
         Hashing.murmur3_128().newHasher().putByte((byte) 1).putDouble(input).hash();
+
+    assertEquals(expectedHash, actualHash);
+  }
+
+  @Test
+  public void testVisitFloat32() {
+    Hasher hasher = Hashing.murmur3_128().newHasher();
+    UnifiedHasherVisitor visitor = new UnifiedHasherVisitor(hasher);
+    float input = 123.456f;
+
+    visitor.visitFloat32(input);
+    HashCode actualHash = hasher.hash();
+
+    HashCode expectedHash =
+        Hashing.murmur3_128().newHasher().putByte((byte) 1).putFloat(input).hash();
 
     assertEquals(expectedHash, actualHash);
   }

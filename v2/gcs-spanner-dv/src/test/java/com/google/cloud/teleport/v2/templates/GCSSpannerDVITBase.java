@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -184,7 +183,7 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     // Generate a runId for the validation run
     String runId = PipelineUtils.createJobName(testId);
     params.put("runId", runId);
-    params.put("workerMachineType", "n2-standard-4");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // overridden parameters
     if (jobParameters != null) {
@@ -204,20 +203,6 @@ public abstract class GCSSpannerDVITBase extends TemplateTestBase {
     gcsClient.uploadArtifact(
         gcsPathPrefix + "/customTransformation.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
-  }
-
-  /**
-   * Helper function to load an Avro Schema from a resource file.
-   *
-   * @param resourceName The path to the Avro schema file relative to the resources directory
-   * @return The parsed Avro Schema
-   */
-  public static Schema getSchemaFromAvscFile(String resourceName) {
-    try (InputStream is = Resources.getResource(resourceName).openStream()) {
-      return new Schema.Parser().parse(is);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to load Avro schema from resource: " + resourceName, e);
-    }
   }
 
   /**

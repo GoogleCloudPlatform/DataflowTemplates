@@ -647,7 +647,9 @@ public class GenericRecordTypeConvertor {
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
         && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.JSON)) {
-      if (cassandraAnnotations.cassandraType().getKind().equals(Kind.MAP)) {
+      if (cassandraAnnotations != null
+          && cassandraAnnotations.cassandraType() != null
+          && cassandraAnnotations.cassandraType().getKind().equals(Kind.MAP)) {
         return AvroJsonToCassandraMapConvertor.handleJsonToMap(
             recordValue, cassandraAnnotations, fieldName, fieldSchema);
       } else {

@@ -66,6 +66,16 @@ public class TypesUtils {
     }
   }
 
+  /**
+   * Returns whether the information schema type is a TOKENLIST type, which is used by full-text
+   * search indexes. TOKENLIST columns are not tracked by change streams and can't be written to
+   * BigQuery, so they should be skipped.
+   */
+  public static boolean isInformationSchemaTokenlistType(String type) {
+    String cleanedType = cleanInformationSchemaType(type);
+    return cleanedType.equals("TOKENLIST") || cleanedType.equals("SPANNER.TOKENLIST");
+  }
+
   public static Type informationSchemaPostgreSQLTypeToSpannerType(String type) {
     Matcher vectorTypeMatcher = POSTGRES_VECTOR_TYPE_PATTERN.matcher(type);
     if (vectorTypeMatcher.matches()) {

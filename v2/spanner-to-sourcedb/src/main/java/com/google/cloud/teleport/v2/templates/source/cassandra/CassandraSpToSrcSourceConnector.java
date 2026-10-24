@@ -82,12 +82,7 @@ public class CassandraSpToSrcSourceConnector implements ISpToSrcSourceConnector 
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "com.datastax.oss.driver.api.core.CqlSession",
-              null,
-              null);
+              shards, null, maxConnections, "com.datastax.oss.driver.api.core.CqlSession", null);
       connectionHelper.init(request);
     }
   }

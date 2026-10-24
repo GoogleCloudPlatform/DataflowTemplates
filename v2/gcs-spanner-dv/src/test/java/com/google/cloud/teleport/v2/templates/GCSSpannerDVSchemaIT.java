@@ -104,7 +104,8 @@ public class GCSSpannerDVSchemaIT extends GCSSpannerDVITBase {
   public void validationTestWithReservedKeywords() throws Exception {
 
     Schema reservedKeywordsSchema =
-        getSchemaFromAvscFile("GCSSpannerDVSchemaIT/reserved_keywords.avsc");
+        GCSSpannerDVAvroSetupHelper.getSchemaFromAvscFile(
+            "GCSSpannerDVSchemaIT/reserved_keywords.avsc");
     GCSSpannerDVAvroSetupHelper.TableDef reservedTableDef =
         new GCSSpannerDVAvroSetupHelper.TableDef(
             reservedKeywordsSchema, "ORDER", Arrays.asList("SELECT"));
