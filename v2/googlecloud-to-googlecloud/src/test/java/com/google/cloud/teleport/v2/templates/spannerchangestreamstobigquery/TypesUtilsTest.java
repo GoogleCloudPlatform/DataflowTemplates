@@ -110,7 +110,9 @@ public final class TypesUtilsTest {
         () -> TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("real[] vector length 0"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("unsupportedtype[] vector length 4"));
+        () ->
+            TypesUtils.informationSchemaPostgreSQLTypeToSpannerType(
+                "unsupportedtype[] vector length 4"));
   }
 
   @Test
