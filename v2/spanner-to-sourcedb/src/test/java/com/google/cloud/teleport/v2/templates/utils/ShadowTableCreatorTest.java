@@ -323,6 +323,44 @@ public final class ShadowTableCreatorTest {
   }
 
   @Test
+  public void testShadowTableCreatedWhenShadowTableExistsInPrimaryDbButNotMetadataDb() {
+    Ddl primaryDbDdl =
+        Ddl.builder()
+            .createTable("table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("shadow_table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Ddl metadataDbDdl = Ddl.builder().build();
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    List<String> tablesToCreate = shadowTableCreator.getDataTablesWithNoShadowTables();
+    assertThat(tablesToCreate).containsExactly("table1");
+
+    shadowTableCreator.createShadowTablesInSpanner();
+    verify(mockDatabaseClient).updateDatabaseDdl(any(), any(), any(), any());
+  }
+
+  @Test
   public void testCreateShadowTables_Exception() throws Exception {
     Ddl primaryDbDdl = getPrimaryDbDdl();
     Ddl metadataDbDdl = getMetadataDbDdl();

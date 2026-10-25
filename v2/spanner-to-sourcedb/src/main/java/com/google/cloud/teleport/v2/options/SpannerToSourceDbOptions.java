@@ -141,7 +141,7 @@ public interface SpannerToSourceDbOptions extends CommonTemplateOptions, Streami
       order = 10,
       optional = true,
       description = "Cloud Spanner shadow table prefix.",
-      helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
+      helpText = "The prefix used to name shadow tables. Default: `rev_shadow_`.")
   @Default.String("rev_shadow_")
   String getShadowTablePrefix();
 
