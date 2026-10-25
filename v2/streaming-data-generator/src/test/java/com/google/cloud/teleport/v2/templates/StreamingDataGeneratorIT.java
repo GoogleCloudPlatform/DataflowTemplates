@@ -22,6 +22,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
@@ -47,6 +48,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
+import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -94,6 +96,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   private SpannerResourceManager spannerResourceManager;
   private JDBCResourceManager jdbcResourceManager;
   private KafkaResourceManager kafkaResourceManager;
+  private BigtableResourceManager bigtableResourceManager;
 
   @After
   public void tearDown() {
@@ -103,7 +106,8 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         bigQueryResourceManager,
         spannerResourceManager,
         jdbcResourceManager,
-        kafkaResourceManager);
+        kafkaResourceManager,
+        bigtableResourceManager);
   }
 
   @Test
@@ -429,6 +433,45 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                     outMessages.add(message.value());
                   }
                   return outMessages.size() >= 1;
+                });
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void testFakeMessagesToBigtable() throws IOException {
+    // Set up resource manager
+    bigtableResourceManager =
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+            .maybeUseStaticInstance()
+            .build();
+    String colFamily = "cf";
+    bigtableResourceManager.createTable(testName, ImmutableList.of(colFamily));
+
+    // Arrange
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter(SCHEMA_TEMPLATE_KEY, SchemaTemplate.GAME_EVENT.name())
+            .addParameter(QPS_KEY, DEFAULT_QPS)
+            .addParameter(SINK_TYPE_KEY, SinkType.BIGTABLE.name())
+            .addParameter("bigtableWriteProjectId", PROJECT)
+            .addParameter("bigtableWriteInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableWriteTableId", testName)
+            .addParameter("bigtableWriteColumnFamily", colFamily)
+            .addParameter("bigtableWriteRowkeyField", "eventId");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(info),
+                () -> {
+                  List<Row> rows = bigtableResourceManager.readTable(testName);
+                  return !rows.isEmpty();
                 });
 
     // Assert
