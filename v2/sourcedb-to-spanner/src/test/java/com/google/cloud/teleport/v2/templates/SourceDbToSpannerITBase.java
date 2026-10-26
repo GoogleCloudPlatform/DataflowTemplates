@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedCassandraServer;
 import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedContainerDatabases;
 import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedDatabaseServer;
 import com.google.common.io.Resources;
@@ -241,7 +242,21 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             + "_"
             + RandomStringUtils.randomAlphabetic(4).toLowerCase();
 
-    return CassandraResourceManager.builder(uniqueId).build();
+    return buildCassandraResourceManager(uniqueId);
+  }
+
+  /**
+   * Builds a Cassandra resource manager with its own keyspace on the Cassandra container shared by
+   * all tests in the JVM, or with its own container when sharing is turned off. The keyspace is
+   * dropped by {@code cleanupAll()} either way.
+   */
+  protected static CassandraResourceManager buildCassandraResourceManager(String testId) {
+    CassandraResourceManager.Builder builder = CassandraResourceManager.builder(testId);
+    if (SharedDatabaseServer.isEnabled()) {
+      SharedCassandraServer server = SharedCassandraServer.get();
+      builder.setHost(server.getHost()).setPort(server.getPort()).useStaticContainer();
+    }
+    return builder.build();
   }
 
   public SpannerResourceManager setUpSpannerResourceManager() {
