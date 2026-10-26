@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardCo
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.spanner.testutils.retry.SkipRerunOfGenuineFailuresRule;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedCassandraServer;
 import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedContainerDatabases;
 import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedDatabaseServer;
 import com.google.cloud.teleport.v2.templates.oracle.SharedOracleReverseITContainer;
@@ -325,7 +326,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
      * That's why we need to take a smaller subsequence of the testId.
      */
     String uniqueId = testId.substring(0, Math.min(20, testId.length()));
-    return CassandraResourceManager.builder(uniqueId).build();
+    CassandraResourceManager.Builder builder = CassandraResourceManager.builder(uniqueId);
+    // By default the keyspace goes on a Cassandra container shared by all tests in the JVM. It is
+    // dropped by cleanupAll() either way.
+    if (SharedDatabaseServer.isEnabled()) {
+      SharedCassandraServer server = SharedCassandraServer.get();
+      builder.setHost(server.getHost()).setPort(server.getPort()).useStaticContainer();
+    }
+    return builder.build();
   }
 
   protected void createCassandraSchema(
