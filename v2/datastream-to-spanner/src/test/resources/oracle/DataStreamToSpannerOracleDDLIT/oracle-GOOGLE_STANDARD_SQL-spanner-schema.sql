@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS Users (
 CREATE TABLE IF NOT EXISTS Authors (
    id INT64 NOT NULL,
    name STRING(200),
+   national_name STRING(200),
 ) PRIMARY KEY (id);
 
 CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (

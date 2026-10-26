@@ -22,16 +22,16 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -86,70 +86,99 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
     synchronized (OracleSeparateShadowTableDatabasePKFocusedIT.class) {
       testInstances.add(this);
       if (!initialized) {
-        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-
-        shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
-        spannerResourceManager = setUpSpannerResourceManager();
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
-        pubsubResourceManager = setUpPubSubResourceManager();
-        datastreamResourceManager =
-            DatastreamResourceManager.builder(testName, PROJECT, REGION)
-                .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity("datastream-connect-2")
-                .build();
-
-        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA);
-        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-
-        OracleSource oracleSource =
-            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
-                .setAllowedTables(
-                    Map.of(
-                        oracleUser.toUpperCase(),
-                        List.of(ORACLE_TABLE_MY_TABLE, ORACLE_TABLE_ALLTYPES)))
-                .build();
-
-        Map<String, String> overridesMap = new HashMap<>();
-        overridesMap.put("inputFileFormat", "avro");
-        overridesMap.put(
-            "shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
-        overridesMap.put(
-            "shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
-
-        jobInfo =
-            launchDataflowJob(
-                getClass().getSimpleName(),
-                null,
-                null,
-                GCS_PATH_PREFIX,
-                spannerResourceManager,
-                pubsubResourceManager,
-                overridesMap,
-                null,
-                null,
-                gcsResourceManager,
-                datastreamResourceManager,
-                null,
-                oracleSource);
-
-        assertThatPipeline(jobInfo).isRunning();
-        initialized = true;
+        try {
+          setUpSharedResources();
+        } catch (Exception | AssertionError e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
       }
     }
   }
 
+  /** Creates the shared resources and launches the Dataflow job (sets {@link #initialized}). */
+  private void setUpSharedResources() throws Exception {
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+
+    shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
+    spannerResourceManager = setUpSpannerResourceManager();
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+    pubsubResourceManager = setUpPubSubResourceManager();
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-connect-2")
+            .build();
+
+    SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA);
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    OracleSource oracleSource =
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
+            .setAllowedTables(
+                Map.of(
+                    oracleUser.toUpperCase(),
+                    List.of(ORACLE_TABLE_MY_TABLE, ORACLE_TABLE_ALLTYPES)))
+            .build();
+
+    Map<String, String> overridesMap = new HashMap<>();
+    overridesMap.put("inputFileFormat", "avro");
+    overridesMap.put("shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
+    overridesMap.put("shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
+
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            GCS_PATH_PREFIX,
+            spannerResourceManager,
+            pubsubResourceManager,
+            overridesMap,
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            null,
+            oracleSource);
+
+    assertThatPipeline(jobInfo).isRunning();
+    initialized = true;
+  }
+
   @AfterClass
-  public static void cleanUp() throws IOException {
-    for (OracleSeparateShadowTableDatabasePKFocusedIT instance : testInstances) {
-      instance.tearDownBase();
+  public static void cleanUp() {
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle user, then resets them so that a later setup (after a failed one) starts clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<OracleSeparateShadowTableDatabasePKFocusedIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUser),
+          spannerResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          datastreamResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      oracleUser = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -317,7 +346,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                     oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
-                        + " ('true', 1, 3.14, 'This is a test string for MySQL.', '564768',"
+                        + " ('true', 1, 3.14, 'This is a test string for Oracle.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
                         + " 'YYYY-MM-DD'), 12345.1234, 10)");
                 // 2
@@ -325,7 +354,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                     oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
-                        + " ('true', 2, 3.1415, 'This is a test string for MySQL.', '564768',"
+                        + " ('true', 2, 3.1415, 'This is a test string for Oracle.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
                         + " 'YYYY-MM-DD'), 12345.1234, 20)");
                 // 3
@@ -333,7 +362,7 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
                     oracleUser,
                     "INSERT INTO ALLTYPES (BOOL_FIELD, INT64_FIELD, FLOAT64_FIELD, STRING_FIELD,"
                         + " BYTES_FIELD, TIMESTAMP_FIELD, DATE_FIELD, NUMERIC_FIELD, VAL) VALUES"
-                        + " ('true', 3, 3.14159, 'This is a test string for MySQL.', '564768',"
+                        + " ('true', 3, 3.14159, 'This is a test string for Oracle.', '564768',"
                         + " TIMESTAMP '2024-12-20 10:30:00.00', TO_DATE('2024-12-20',"
                         + " 'YYYY-MM-DD'), 12345.1234, 30)");
                 SharedOracleLiveITContainer.flushRedoLogs();

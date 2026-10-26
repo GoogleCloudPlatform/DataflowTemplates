@@ -21,16 +21,16 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -65,7 +65,6 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   private static HashSet<OracleDataStreamToSpannerTimezoneIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static java.util.TimeZone originalTimeZone;
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
@@ -75,74 +74,97 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   @Before
   public void setUp() throws Exception {
-    if (originalTimeZone == null) {
-      originalTimeZone = java.util.TimeZone.getDefault();
-      java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
-    }
     skipBaseCleanup = true;
     synchronized (OracleDataStreamToSpannerTimezoneIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = setUpSpannerResourceManager();
-        pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
-
-        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-
-        datastreamResourceManager =
-            DatastreamResourceManager.builder(testName, PROJECT, REGION)
-                .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity("datastream-connect-2")
-                .build();
-
-        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-
-        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
-        SharedOracleLiveITContainer.flushRedoLogs();
-
-        OracleSource oracleSource =
-            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
-                .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("DateData")))
-                .build();
-
-        jobInfo =
-            launchDataflowJob(
-                getClass().getSimpleName(),
-                null,
-                null,
-                "TimezoneIT",
-                spannerResourceManager,
-                pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                    put("workerMachineType", "n1-standard-4");
-                  }
-                },
-                null,
-                null,
-                gcsResourceManager,
-                datastreamResourceManager,
-                null,
-                oracleSource);
+        try {
+          setUpSharedResources();
+        } catch (Exception e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
       }
     }
   }
 
+  /** Creates the shared resources and launches the Dataflow job (sets {@link #jobInfo}). */
+  private void setUpSharedResources() throws Exception {
+    spannerResourceManager = setUpSpannerResourceManager();
+    pubsubResourceManager = setUpPubSubResourceManager();
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-connect-2")
+            .build();
+
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+    SharedOracleLiveITContainer.flushRedoLogs();
+
+    OracleSource oracleSource =
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
+            .setAllowedTables(Map.of(oracleUser.toUpperCase(), List.of("DateData")))
+            .build();
+
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            "TimezoneIT",
+            spannerResourceManager,
+            pubsubResourceManager,
+            new HashMap<>() {
+              {
+                put("inputFileFormat", "avro");
+                put("workerMachineType", "n1-standard-4");
+              }
+            },
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            null,
+            oracleSource);
+  }
+
   @AfterClass
-  public static void cleanUp() throws IOException {
-    if (originalTimeZone != null) {
-      java.util.TimeZone.setDefault(originalTimeZone);
+  public static void cleanUp() {
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle user, then resets them so that a later setup (after a failed one) starts clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<OracleDataStreamToSpannerTimezoneIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUser),
+          spannerResourceManager,
+          pubsubResourceManager,
+          gcsResourceManager,
+          datastreamResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      pubsubResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      oracleUser = null;
     }
-    for (OracleDataStreamToSpannerTimezoneIT instance : testInstances) {
-      instance.tearDownBase();
-    }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test

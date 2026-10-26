@@ -2,7 +2,7 @@
   "SessionName": "NewSession",
   "EditorName": "",
   "DatabaseType": "oracle",
-  "DatabaseName": "mysql-schema.sql",
+  "DatabaseName": "XEPDB1",
   "Dialect": "google_standard_sql",
   "Notes": null,
   "Tags": null,
@@ -23,7 +23,7 @@
             "IsArray": false
           },
           "NotNull": true,
-          "Comment": "From: category_id tinyint(4)",
+          "Comment": "From: category_id NUMBER",
           "Id": "c15516",
           "AutoGen": {
             "Name": "",
@@ -38,7 +38,7 @@
             "IsArray": false
           },
           "NotNull": false,
-          "Comment": "From: name varchar(25)",
+          "Comment": "From: name VARCHAR2(25)",
           "Id": "c15517",
           "AutoGen": {
             "Name": "",
@@ -96,7 +96,7 @@
             "IsArray": false
           },
           "NotNull": true,
-          "Comment": "From: id int(11)",
+          "Comment": "From: id NUMBER",
           "Id": "c15520",
           "AutoGen": {
             "Name": "",
@@ -111,7 +111,7 @@
             "IsArray": false
           },
           "NotNull": false,
-          "Comment": "From: title varchar(200)",
+          "Comment": "From: title VARCHAR2(200)",
           "Id": "c15521",
           "AutoGen": {
             "Name": "",
@@ -126,7 +126,7 @@
             "IsArray": false
           },
           "NotNull": false,
-          "Comment": "From: author_id int(11)",
+          "Comment": "From: author_id NUMBER",
           "Id": "c15522",
           "AutoGen": {
             "Name": "",
@@ -185,10 +185,8 @@
         "c15516": {
           "Name": "category_id",
           "Type": {
-            "Name": "tinyint",
-            "Mods": [
-              4
-            ],
+            "Name": "NUMBER",
+            "Mods": [],
             "ArrayBounds": null
           },
           "NotNull": true,
@@ -209,7 +207,7 @@
         "c15517": {
           "Name": "name",
           "Type": {
-            "Name": "varchar",
+            "Name": "VARCHAR2",
             "Mods": [
               25
             ],
@@ -233,7 +231,7 @@
         "c15518": {
           "Name": "last_update",
           "Type": {
-            "Name": "timestamp",
+            "Name": "TIMESTAMP",
             "Mods": null,
             "ArrayBounds": null
           },
@@ -276,10 +274,8 @@
         "c15520": {
           "Name": "id",
           "Type": {
-            "Name": "int",
-            "Mods": [
-              11
-            ],
+            "Name": "NUMBER",
+            "Mods": [],
             "ArrayBounds": null
           },
           "NotNull": true,
@@ -300,7 +296,7 @@
         "c15521": {
           "Name": "title",
           "Type": {
-            "Name": "varchar",
+            "Name": "VARCHAR2",
             "Mods": [
               200
             ],
@@ -324,10 +320,8 @@
         "c15522": {
           "Name": "author_id",
           "Type": {
-            "Name": "int",
-            "Mods": [
-              11
-            ],
+            "Name": "NUMBER",
+            "Mods": [],
             "ArrayBounds": null
           },
           "NotNull": false,
@@ -350,66 +344,6 @@
       "ForeignKeys": null,
       "Indexes": null,
       "Id": "t15519"
-    },
-    "t15520": {
-      "Name": "Genre",
-      "Schema": "",
-      "ColIds": [
-        "c13",
-        "c14"
-      ],
-      "ColDefs": {
-        "c13": {
-          "Name": "name",
-          "Type": {
-            "Name": "varchar",
-            "Mods": [
-              200
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": false,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c13"
-        },
-        "c14": {
-          "Name": "genre_id",
-          "Type": {
-            "Name": "decimal",
-            "Mods": [
-              10
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": true,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c14"
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c14",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": null,
-      "Indexes": null,
-      "Id": "t15520"
     }
   },
   "SchemaIssues": {
@@ -435,10 +369,6 @@
           2
         ]
       },
-      "TableLevelIssues": null
-    },
-    "t15520": {
-      "ColumnLevelIssues": {},
       "TableLevelIssues": null
     }
   },

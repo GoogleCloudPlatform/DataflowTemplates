@@ -30,17 +30,19 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -65,9 +67,9 @@ import org.slf4j.LoggerFactory;
  * Oracle source through a real Datastream stream into Spanner, for Avro and JSON Datastream output
  * and for both GoogleSQL and PostgreSQL-dialect Spanner databases.
  *
- * <p>Each test provisions an isolated Oracle common user (schema) on the shared static Oracle
- * instance via {@link SharedOracleLiveITContainer}, its own Spanner database, Datastream stream,
- * Pub/Sub notifications and Dataflow job.
+ * <p>Each test provisions an isolated Oracle common user (schema) in the shared Oracle container
+ * via {@link SharedOracleLiveITContainer}, its own Spanner database, Datastream stream, Pub/Sub
+ * notifications and Dataflow job.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
@@ -132,15 +134,15 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
   }
 
   @After
-  public void cleanUp() throws IOException {
+  public void cleanUp() {
     // Stop consumers (Dataflow job, Datastream stream) before dropping the source Oracle user.
-    tearDownBase();
-    ResourceManagerUtils.cleanResources(
+    SharedOracleLiveITContainer.cleanUpTestResources(
+        List.of(this),
+        Arrays.asList(oracleUser),
         datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -364,6 +366,8 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
   /**
    * Helper function for constructing a ConditionCheck whose check() method constructs the initial
    * rows of data in the Oracle database according to the common schema for the IT's in this class.
+   * Tables already written by an earlier (partially failed) attempt are skipped, so that the check
+   * can be retried.
    *
    * @return A ConditionCheck containing the Oracle write operation.
    */
@@ -379,6 +383,9 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
         List<String> messages = new ArrayList<>();
         try {
           for (String tableName : TABLE_NAMES) {
+            if (cdcEvents.containsKey(tableName)) {
+              continue;
+            }
             List<Map<String, Object>> rows = new ArrayList<>();
             List<String> inserts = new ArrayList<>();
             for (int i = 0; i < NUM_EVENTS; i++) {
@@ -424,12 +431,15 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
   /**
    * Helper function for constructing a ConditionCheck whose check() method changes rows of data in
    * the Oracle database according to the common schema for the IT's in this class. Half the rows
-   * are mutated and half are removed completely.
+   * are mutated and half are removed completely. Tables already changed by an earlier (partially
+   * failed) attempt are skipped, so that the check can be retried.
    *
    * @return A ConditionCheck containing the Oracle mutate operation.
    */
   private ConditionCheck changeOracleData(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
+      private final Set<String> changedTables = new HashSet<>();
+
       @Override
       protected String getDescription() {
         return "Send Oracle changes.";
@@ -440,6 +450,9 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
         List<String> messages = new ArrayList<>();
         try {
           for (String tableName : TABLE_NAMES) {
+            if (changedTables.contains(tableName)) {
+              continue;
+            }
             List<Map<String, Object>> newCdcEvents = new ArrayList<>();
             List<String> statements = new ArrayList<>();
             for (int i = 0; i < NUM_EVENTS; i++) {
@@ -469,6 +482,7 @@ public class OracleDataStreamToSpannerIT extends DataStreamToSpannerITBase {
             }
             SharedOracleLiveITContainer.executeSql(oracleUser, String.join(";", statements));
             cdcEvents.put(tableName, newCdcEvents);
+            changedTables.add(tableName);
             messages.add(String.format("%d changes to %s", newCdcEvents.size(), tableName));
           }
         } catch (Exception e) {

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
@@ -26,13 +27,13 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
@@ -48,15 +49,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template which tests use-cases where a
  * session file is required.
  */
-@Category({TemplateIntegrationTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OracleDataStreamToSpannerSessionIT.class);
 
   private static final String TABLE1 = "Category";
   private static final String TABLE2 = "Books";
@@ -86,98 +92,128 @@ public class OracleDataStreamToSpannerSessionIT extends DataStreamToSpannerITBas
     synchronized (OracleDataStreamToSpannerSessionIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = setUpSpannerResourceManager();
-        pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
-        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-
-        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
-
-        // Pre-insert books
-        SharedOracleLiveITContainer.executeSql(
-            oracleUser,
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the"
-                + " Rings', 1)");
-        SharedOracleLiveITContainer.executeSql(
-            oracleUser,
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and"
-                + " Prejudice', 2)");
-        SharedOracleLiveITContainer.executeSql(
-            oracleUser,
-            "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers"
-                + " Guide to the Galaxy', 3)");
-
-        // Pre-insert categories
-        SharedOracleLiveITContainer.executeSql(
-            oracleUser,
-            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz',"
-                + " CURRENT_TIMESTAMP)");
-        SharedOracleLiveITContainer.executeSql(
-            oracleUser,
-            "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
-                + " CURRENT_TIMESTAMP)");
-
-        SharedOracleLiveITContainer.flushRedoLogs();
-
-        datastreamResourceManager =
-            DatastreamResourceManager.builder(testName, PROJECT, REGION)
-                .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity("datastream-connect-2")
-                .build();
-
-        OracleSource oracleSource =
-            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
-                .setAllowedTables(
-                    new HashMap<>() {
-                      {
-                        put(oracleUser.toUpperCase(), Arrays.asList("Category", "Books"));
-                      }
-                    })
-                .build();
-
-        String sessionFileContent =
-            com.google.common.io.Resources.toString(
-                com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
-                java.nio.charset.StandardCharsets.UTF_8);
-        sessionFileContent =
-            sessionFileContent.replace("\"Schema\": \"\"", "\"Schema\": \"" + oracleUser + "\"");
-
-        jobInfo =
-            launchDataflowJob(
-                getClass().getSimpleName(),
-                null,
-                null,
-                "OracleSessionIT",
-                spannerResourceManager,
-                pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                    put("workerMachineType", "n1-standard-4");
-                  }
-                },
-                null,
-                null,
-                gcsResourceManager,
-                datastreamResourceManager,
-                sessionFileContent,
-                oracleSource);
+        try {
+          setUpSharedResources();
+        } catch (Exception e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
       }
     }
   }
 
+  /** Creates the shared resources and launches the Dataflow job (sets {@link #jobInfo}). */
+  private void setUpSharedResources() throws Exception {
+    spannerResourceManager = setUpSpannerResourceManager();
+    pubsubResourceManager = setUpPubSubResourceManager();
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
+
+    // Pre-insert books
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(1, 'The Lord of the"
+            + " Rings', 1)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(2, 'Pride and"
+            + " Prejudice', 2)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Books\" (\"id\", \"title\", \"author_id\") VALUES(3, 'The Hitchhikers"
+            + " Guide to the Galaxy', 3)");
+
+    // Pre-insert categories
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(1, 'xyz',"
+            + " CURRENT_TIMESTAMP)");
+    SharedOracleLiveITContainer.executeSql(
+        oracleUser,
+        "INSERT INTO \"Category\" (\"category_id\", \"name\", \"last_update\") VALUES(2, 'abc',"
+            + " CURRENT_TIMESTAMP)");
+
+    SharedOracleLiveITContainer.flushRedoLogs();
+
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-connect-2")
+            .build();
+
+    OracleSource oracleSource =
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
+            .setAllowedTables(
+                new HashMap<>() {
+                  {
+                    put(oracleUser.toUpperCase(), Arrays.asList("Category", "Books"));
+                  }
+                })
+            .build();
+
+    String sessionFileContent =
+        com.google.common.io.Resources.toString(
+            com.google.common.io.Resources.getResource(SESSION_FILE_RESOURCE),
+            java.nio.charset.StandardCharsets.UTF_8);
+    sessionFileContent =
+        sessionFileContent.replace("\"Schema\": \"\"", "\"Schema\": \"" + oracleUser + "\"");
+
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            "OracleSessionIT",
+            spannerResourceManager,
+            pubsubResourceManager,
+            new HashMap<>() {
+              {
+                put("inputFileFormat", "avro");
+                put("workerMachineType", "n1-standard-4");
+              }
+            },
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            sessionFileContent,
+            oracleSource);
+  }
+
   @AfterClass
-  public static void cleanUp() throws IOException {
-    for (OracleDataStreamToSpannerSessionIT instance : testInstances) {
-      instance.tearDownBase();
+  public static void cleanUp() {
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle user, then resets them so that a later setup (after a failed one) starts clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<OracleDataStreamToSpannerSessionIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUser),
+          spannerResourceManager,
+          pubsubResourceManager,
+          gcsResourceManager,
+          datastreamResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      pubsubResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      oracleUser = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test

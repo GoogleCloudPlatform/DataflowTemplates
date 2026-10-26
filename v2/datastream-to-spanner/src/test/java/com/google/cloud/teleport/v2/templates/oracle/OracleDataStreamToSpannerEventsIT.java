@@ -24,16 +24,16 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -50,11 +50,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OracleDataStreamToSpannerEventsIT.class);
 
   private static final String TABLE1 = "Users";
   private static final String TABLE2 = "Movie";
@@ -77,66 +82,96 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
     synchronized (OracleDataStreamToSpannerEventsIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        datastreamResourceManager =
-            DatastreamResourceManager.builder(testName, PROJECT, REGION)
-                .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity("datastream-connect-2")
-                .build();
-
-        spannerResourceManager = setUpSpannerResourceManager();
-        pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
-        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-
-        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-
-        SharedOracleLiveITContainer.executeSqlScript(
-            oracleUser, "oracle/OracleDataStreamToSpannerEventsIT/oracle-schema.sql");
-
-        OracleSource jdbcSource =
-            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
-                .setAllowedTables(
-                    Map.of(
-                        oracleUser.toUpperCase(),
-                        List.of("Movie", "Users", "Authors", "Articles", "Books")))
-                .build();
-
-        jobInfo =
-            launchDataflowJob(
-                getClass().getSimpleName(),
-                null,
-                null,
-                "OracleDataStreamToSpannerEventsIT",
-                spannerResourceManager,
-                pubsubResourceManager,
-                new HashMap<>() {
-                  {
-                    put("inputFileFormat", "avro");
-                    put("workerMachineType", "n1-standard-4");
-                    put("datastreamSourceType", "oracle");
-                  }
-                },
-                null,
-                null,
-                gcsResourceManager,
-                datastreamResourceManager,
-                null,
-                jdbcSource);
+        try {
+          setUpSharedResources();
+        } catch (Exception e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
       }
     }
   }
 
+  /** Creates the shared resources and launches the Dataflow job (sets {@link #jobInfo}). */
+  private void setUpSharedResources() throws Exception {
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-connect-2")
+            .build();
+
+    spannerResourceManager = setUpSpannerResourceManager();
+    pubsubResourceManager = setUpPubSubResourceManager();
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+
+    SharedOracleLiveITContainer.executeSqlScript(
+        oracleUser, "oracle/OracleDataStreamToSpannerEventsIT/oracle-schema.sql");
+
+    OracleSource jdbcSource =
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
+            .setAllowedTables(
+                Map.of(
+                    oracleUser.toUpperCase(),
+                    List.of("Movie", "Users", "Authors", "Articles", "Books")))
+            .build();
+
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            "OracleDataStreamToSpannerEventsIT",
+            spannerResourceManager,
+            pubsubResourceManager,
+            new HashMap<>() {
+              {
+                put("inputFileFormat", "avro");
+                put("workerMachineType", "n1-standard-4");
+                put("datastreamSourceType", "oracle");
+              }
+            },
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            null,
+            jdbcSource);
+  }
+
   @AfterClass
-  public static void cleanUp() throws IOException {
-    for (OracleDataStreamToSpannerEventsIT instance : testInstances) {
-      instance.tearDownBase();
+  public static void cleanUp() {
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle user, then resets them so that a later setup (after a failed one) starts clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<OracleDataStreamToSpannerEventsIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUser),
+          spannerResourceManager,
+          pubsubResourceManager,
+          gcsResourceManager,
+          datastreamResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      pubsubResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      oracleUser = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -146,14 +181,11 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
                 List.of(
                     writeUsersInitialData(),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build(),
-                    writeUsersNextData(),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
-                        .build()))
+                        .build(),
+                    writeUsersNextData(),
+                    checkUsersTableContents()))
             .build();
 
     PipelineOperator.Result result =
@@ -236,11 +268,13 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
             SharedOracleLiveITContainer.executeSql(
                 oracleUser,
                 "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'))");
-            SharedOracleLiveITContainer.executeSql(
-                oracleUser,
-                "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (3, 'Tester Gupta', 50, 0, 'Z', TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
+                    + " VALUES (1, 'Tester Kumar', 30, 0, 'A', TO_DATE('2023-01-01', 'YYYY-MM-DD'));"
+                    + " INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\","
+                    + "\"startDate\") VALUES (2, 'Tester Yadav', 33, 1, 'B',"
+                    + " TO_DATE('2023-03-04', 'YYYY-MM-DD'));"
+                    + " INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\","
+                    + "\"startDate\") VALUES (3, 'Tester Gupta', 36, 0, 'C',"
+                    + " TO_DATE('2023-06-07', 'YYYY-MM-DD'))");
             SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
@@ -252,6 +286,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
     };
   }
 
+  /** Deletes user 2, updates user 3 and inserts user 4. */
   private ConditionCheck writeUsersNextData() {
     return new ConditionCheck() {
       boolean executed = false;
@@ -267,8 +302,11 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
           try {
             SharedOracleLiveITContainer.executeSql(
                 oracleUser,
-                "INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\",\"startDate\")"
-                    + " VALUES (4, 'Tester', 38, 1, 'D', TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
+                "DELETE FROM \"Users\" WHERE \"id\" = 2;"
+                    + " UPDATE \"Users\" SET \"age\" = 50, \"plan\" = 'Z' WHERE \"id\" = 3;"
+                    + " INSERT INTO \"Users\"(\"id\",\"name\",\"age\",\"subscribed\",\"plan\","
+                    + "\"startDate\") VALUES (4, 'Tester', 38, 1, 'D',"
+                    + " TO_DATE('2023-09-10', 'YYYY-MM-DD'))");
             SharedOracleLiveITContainer.flushRedoLogs();
             executed = true;
           } catch (Exception e) {
@@ -276,6 +314,29 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
           }
         }
         return new CheckResult(true, "Sent next Users data");
+      }
+    };
+  }
+
+  /**
+   * Waits for the Users table to reach its final contents, i.e. for the delete and the update to
+   * have been applied too (the row count alone does not change with them).
+   */
+  private ConditionCheck checkUsersTableContents() {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Check Users table contents";
+      }
+
+      @Override
+      protected CheckResult check() {
+        try {
+          assertUsersTableContents();
+          return new CheckResult(true, "Users table contains the expected rows");
+        } catch (AssertionError e) {
+          return new CheckResult(false, "Users table does not contain the expected rows yet");
+        }
       }
     };
   }
@@ -418,9 +479,10 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
             "D",
             "startDate",
             Timestamp.parseTimestamp("2023-09-10T00:00:00Z")));
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select * from Users where id in (1, 3, 4)"))
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Users"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
+    // The row of the deleted user 2 must be gone too.
+    Assert.assertEquals(events.size(), (long) spannerResourceManager.getRowCount(TABLE1));
   }
 
   private void assertMovieTableContents() {

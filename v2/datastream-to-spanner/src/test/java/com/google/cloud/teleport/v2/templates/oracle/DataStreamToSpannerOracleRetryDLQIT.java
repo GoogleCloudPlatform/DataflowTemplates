@@ -22,20 +22,20 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
-import com.google.common.io.Resources;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.OracleSource;
@@ -53,7 +53,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBase {
@@ -74,9 +74,12 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
   public static GcsResourceManager gcsResourceManager;
   public static DatastreamResourceManager datastreamResourceManager;
   public static PubsubResourceManager pubsubResourceManager;
-  public static String oracleUser;
 
-  private static String streamNameA;
+  /** Isolated Oracle user (schema) of shard A, i.e. logical shard "shard1". */
+  public static String oracleUserShardA;
+
+  /** Isolated Oracle user (schema) of shard B, i.e. logical shard "shard2". */
+  public static String oracleUserShardB;
 
   @Before
   public void setUp() throws Exception {
@@ -84,117 +87,153 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     synchronized (DataStreamToSpannerOracleRetryDLQIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = setUpSpannerResourceManager();
-        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-
-        oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-
-        SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_SCHEMA_FILE_RESOURCE);
-
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
-
-        datastreamResourceManager =
-            DatastreamResourceManager.builder(testName, PROJECT, REGION)
-                .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity(
-                    System.getProperty("privateConnectivity", "datastream-connect-2"))
-                .build();
-
-        pubsubResourceManager = setUpPubSubResourceManager();
-
-        gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
-
-        gcsResourceManager.uploadArtifact("input/customShard.jar", getCustomShardJarPath());
-
-        String gcsPrefix =
-            getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager)
-                .replace("gs://" + gcsResourceManager.getBucket(), "");
-
-        OracleSource oracleSourceA =
-            SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
-                .setAllowedTables(
-                    Map.of(
-                        oracleUser.toUpperCase(),
-                        List.of(
-                            "Customers",
-                            "Orders",
-                            "AllDataTypes"))) // Assuming schemas are username
-                .build();
-
-        SourceConfig sourceConfigA =
-            datastreamResourceManager.buildJDBCSourceConfig("oracle-profile-shardA", oracleSourceA);
-        DestinationConfig destinationConfigA =
-            datastreamResourceManager.buildGCSDestinationConfig(
-                "gcs-profile-shardA",
-                gcsResourceManager.getBucket(),
-                gcsPrefix,
-                DestinationOutputFormat.AVRO_FILE_FORMAT);
-        Stream streamA =
-            datastreamResourceManager.createStream(
-                "stream-shardA", sourceConfigA, destinationConfigA);
-        datastreamResourceManager.startStream(streamA);
-        streamNameA = streamA.getName().substring(streamA.getName().lastIndexOf('/') + 1);
-
-        String shardConfig =
-            generateSourceConfig(
-                streamNameA,
-                oracleUser.toUpperCase(),
-                "shard1",
-                streamNameA,
-                "DUMMY_DB_B",
-                "shard2");
-
-        gcsResourceManager.createArtifact(
-            "input/shardingConfig.conf", shardConfig.getBytes(StandardCharsets.UTF_8));
-
-        Map<String, String> jobParameters = new HashMap<>();
-        jobParameters.put(
-            "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
-        jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
-        jobParameters.put("transformationCustomParameters", "mode=bad");
-        jobParameters.put("dlqMaxRetryCount", "1000");
-        jobParameters.put(
-            "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
-        jobParameters.put(
-            "inputFilePattern", getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager));
-        jobParameters.put(
-            "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));
-        jobParameters.put("datastreamSourceType", "oracle");
-        jobParameters.put("workerMachineType", "n1-standard-4");
-        jobParameters.put("inputFileFormat", "avro");
-        jobParameters.put("dlqRetryMinutes", "1");
-
-        jobInfo =
-            launchDataflowJob(
-                getClass().getSimpleName(),
-                SESSION_FILE_RESOURCE,
-                null,
-                GCS_PATH_PREFIX,
-                spannerResourceManager,
-                pubsubResourceManager,
-                jobParameters,
-                null,
-                null,
-                gcsResourceManager,
-                datastreamResourceManager,
-                null,
-                null);
+        try {
+          setUpSharedResources();
+        } catch (Exception e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
       }
     }
   }
 
+  /**
+   * Creates the shared resources, one Oracle schema and Datastream stream per shard, and launches
+   * the Dataflow job (sets {@link #jobInfo}).
+   */
+  private void setUpSharedResources() throws Exception {
+    spannerResourceManager = setUpSpannerResourceManager();
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    oracleUserShardA = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+    SharedOracleLiveITContainer.executeSqlScript(oracleUserShardA, ORACLE_SCHEMA_FILE_RESOURCE);
+    oracleUserShardB = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+    SharedOracleLiveITContainer.executeSqlScript(oracleUserShardB, ORACLE_SCHEMA_FILE_RESOURCE);
+
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
+
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity(
+                System.getProperty("privateConnectivity", "datastream-connect-2"))
+            .build();
+
+    pubsubResourceManager = setUpPubSubResourceManager();
+
+    gcsResourceManager.uploadArtifact("input/customShard.jar", getCustomShardJarPath());
+
+    String gcsPrefix =
+        getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
+
+    String streamNameA = createStream("shardA", oracleUserShardA, gcsPrefix);
+    String streamNameB = createStream("shardB", oracleUserShardB, gcsPrefix);
+
+    // For Oracle, the dbName of a shard is the schema (owner) of the tables, i.e. the isolated
+    // Oracle user, which Datastream reports in the _metadata_schema field of the change events.
+    String shardConfig =
+        generateSourceConfig(
+            streamNameA, oracleUserShardA, "shard1", streamNameB, oracleUserShardB, "shard2");
+
+    gcsResourceManager.createArtifact(
+        "input/shardingConfig.conf", shardConfig.getBytes(StandardCharsets.UTF_8));
+
+    Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put(
+        "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
+    jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
+    jobParameters.put("transformationCustomParameters", "mode=bad");
+    jobParameters.put("dlqMaxRetryCount", "1000");
+    jobParameters.put(
+        "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
+    jobParameters.put(
+        "inputFilePattern", getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager));
+    jobParameters.put(
+        "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));
+    jobParameters.put("datastreamSourceType", "oracle");
+    jobParameters.put("workerMachineType", "n1-standard-4");
+    jobParameters.put("inputFileFormat", "avro");
+    jobParameters.put("dlqRetryMinutes", "1");
+
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            SESSION_FILE_RESOURCE,
+            null,
+            GCS_PATH_PREFIX,
+            spannerResourceManager,
+            pubsubResourceManager,
+            jobParameters,
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            null,
+            null);
+  }
+
+  /**
+   * Creates and starts a Datastream stream replicating the tables of the given Oracle user (shard)
+   * to the given GCS prefix.
+   *
+   * @return the ID of the stream.
+   */
+  private String createStream(String shardName, String oracleUser, String gcsPrefix) {
+    OracleSource oracleSource =
+        SharedOracleLiveITContainer.oracleSourceBuilder(oracleUser)
+            .setAllowedTables(
+                Map.of(oracleUser.toUpperCase(), List.of("Customers", "Orders", "AllDataTypes")))
+            .build();
+    SourceConfig sourceConfig =
+        buildJdbcSourceConfig(
+            datastreamResourceManager, "oracle-profile-" + shardName, oracleSource);
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile-" + shardName,
+            gcsResourceManager.getBucket(),
+            gcsPrefix,
+            DestinationOutputFormat.AVRO_FILE_FORMAT);
+    Stream stream =
+        datastreamResourceManager.createStream(
+            "stream-" + shardName, sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+    return stream.getName().substring(stream.getName().lastIndexOf('/') + 1);
+  }
+
   @AfterClass
-  public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerOracleRetryDLQIT instance : testInstances) {
-      instance.tearDownBase();
+  public static void cleanUp() {
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle users, then resets them so that a later setup (after a failed one) starts
+   * clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<DataStreamToSpannerOracleRetryDLQIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUserShardA, oracleUserShardB),
+          spannerResourceManager,
+          gcsResourceManager,
+          datastreamResourceManager,
+          pubsubResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      pubsubResourceManager = null;
+      oracleUserShardA = null;
+      oracleUserShardB = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager,
-        pubsubResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
   }
 
   @Test
@@ -247,11 +286,11 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
     assertThatResult(dlqWaitResult).meetsConditions();
 
     assertTrue(
-        "id=1 should exist in AllDataTypes on shard1",
-        rowExistsInSpanner("AllDataTypes", "id", 1, "shard1"));
+        "id=1 should exist in AllDataTypes on shard2",
+        rowExistsInSpanner("AllDataTypes", "id", 1, "shard2"));
     assertTrue(
-        "id=999 should NOT exist yet in AllDataTypes on shard1",
-        !rowExistsInSpanner("AllDataTypes", "id", 999, "shard1"));
+        "id=999 should NOT exist yet in AllDataTypes on shard2",
+        !rowExistsInSpanner("AllDataTypes", "id", 999, "shard2"));
 
     assertTrue(
         "id=2 should exist in Customers on shard1",
@@ -283,19 +322,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
         "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
     retryJobParameters.put("datastreamSourceType", "oracle");
     retryJobParameters.put("workerMachineType", "n1-standard-4");
-    retryJobParameters.put("workerMachineType", "n1-standard-4");
     retryJobParameters.put("inputFileFormat", "avro");
-
-    try {
-      java.lang.reflect.Field field =
-          com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher
-              .class
-              .getDeclaredField("spannerMigrationTransformer");
-      field.setAccessible(true);
-      field.set(null, null);
-    } catch (Exception e) {
-      LOG.warn("Failed to clear CustomTransformationImplFetcher static cache", e);
-    }
 
     PipelineLauncher.LaunchInfo retryJobInfo =
         launchDataflowJob(
@@ -357,7 +384,9 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
                             .build()));
     assertThatResult(finalWaitResult).meetsConditions();
 
-    assertTrue("id=999 should exist", rowExistsInSpanner("AllDataTypes", "id", 999, "shard1"));
+    assertTrue(
+        "id=999 should exist in AllDataTypes on shard2",
+        rowExistsInSpanner("AllDataTypes", "id", 999, "shard2"));
     assertTrue("id=3 should exist", rowExistsInSpanner("Customers", "CustomerId", 3, "shard1"));
     assertTrue(
         "id=1 should NOT exist", !rowExistsInSpanner("Customers", "CustomerId", 1, "shard1"));
@@ -384,27 +413,28 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
   private void insertDataInOracle() throws Exception {
     LOG.info("Inserting data in Oracle Shard A");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser,
+        oracleUserShardA,
         "INSERT INTO \"Customers\" (\"CustomerId\", \"CustomerName\", \"CreditLimit\","
             + " \"LoyaltyTier\") VALUES (1, 'Customer 1', 500, 'Bronze')");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser,
+        oracleUserShardA,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
             + " VALUES (3, 101, 1000, 'Website')");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser,
+        oracleUserShardA,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
             + " VALUES (2, 102, 1000, 'AppStore')");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser,
+        oracleUserShardA,
         "INSERT INTO \"Orders\" (\"CustomerId\", \"OrderId\", \"OrderValue\", \"OrderSource\")"
             + " VALUES (4, 103, 1000, 'AppStore')");
 
     LOG.info("Inserting data in Oracle Shard B");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser, "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
+        oracleUserShardB,
+        "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (1, 'test1')");
     SharedOracleLiveITContainer.executeSql(
-        oracleUser,
+        oracleUserShardB,
         "INSERT INTO \"AllDataTypes\" (\"id\", \"varchar_col\") VALUES (999, 'test999')");
     SharedOracleLiveITContainer.flushRedoLogs();
   }

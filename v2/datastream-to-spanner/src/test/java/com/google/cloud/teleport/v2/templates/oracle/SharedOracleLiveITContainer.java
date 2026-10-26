@@ -24,8 +24,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import org.apache.beam.it.common.ResourceManager;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -230,8 +235,45 @@ public final class SharedOracleLiveITContainer {
   }
 
   /**
+   * Cleans up the resources of an IT, in an order that does not leave anything reading from a
+   * dropped Oracle user: cancels the Dataflow jobs of the given test instances first, then cleans
+   * up the resource managers (including the Datastream streams reading from Oracle) and finally
+   * drops the isolated Oracle users. The Oracle users are dropped even if an earlier step fails.
+   *
+   * @param testInstances the test instances whose Dataflow jobs are cancelled.
+   * @param oracleUsers the isolated users created by {@link #setupOracleIsolatedUser()}. Null
+   *     entries (users that were not created) are ignored.
+   * @param resourceManagers the resource managers to clean up. Null entries (resource managers that
+   *     were not created) are ignored.
+   * @throws RuntimeException if the resource managers could not be cleaned up.
+   */
+  public static void cleanUpTestResources(
+      Collection<? extends TemplateTestBase> testInstances,
+      Collection<String> oracleUsers,
+      ResourceManager... resourceManagers) {
+    try {
+      for (TemplateTestBase instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to clean up the Dataflow jobs of a test instance.", e);
+        }
+      }
+      ResourceManagerUtils.cleanResources(resourceManagers);
+    } finally {
+      for (String user : oracleUsers) {
+        dropUser(user);
+      }
+    }
+  }
+
+  /**
    * Executes the {@code ;} separated SQL statements of a classpath resource in the schema of the
    * given user, as the PDB admin.
+   *
+   * <p>The script is parsed naively: {@code --} line comments are stripped and the remaining lines
+   * are joined and split on {@code ;}. Hence a {@code ;} must not appear inside a string literal
+   * and PL/SQL blocks are not supported.
    *
    * @param targetUsername the user whose schema is used as the current schema.
    * @param resourceName classpath resource containing {@code ;} separated SQL statements.
@@ -239,9 +281,24 @@ public final class SharedOracleLiveITContainer {
   public static void executeSqlScript(String targetUsername, String resourceName)
       throws IOException, SQLException {
     String sql =
-        String.join(
-            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+        Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8).stream()
+            .map(SharedOracleLiveITContainer::stripLineComment)
+            .collect(Collectors.joining(" "));
     executeSql(targetUsername, sql);
+  }
+
+  /** Removes a {@code --} comment (outside of a string literal) from a line of SQL. */
+  private static String stripLineComment(String line) {
+    boolean inLiteral = false;
+    for (int i = 0; i < line.length() - 1; i++) {
+      char c = line.charAt(i);
+      if (c == '\'') {
+        inLiteral = !inLiteral;
+      } else if (!inLiteral && c == '-' && line.charAt(i + 1) == '-') {
+        return line.substring(0, i);
+      }
+    }
+    return line;
   }
 
   /**

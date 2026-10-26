@@ -20,16 +20,19 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -37,7 +40,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -46,7 +49,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpannerITBase {
@@ -61,15 +64,43 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
   private static final String SESSION_FILE =
       "oracle/DatastreamToSpannerReservedKeywordsOracleIT/session.json";
 
-  private SpannerResourceManager spannerResourceManager;
-  private GcsResourceManager gcsResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
-  private DatastreamResourceManager datastreamResourceManager;
+  private static final HashSet<DatastreamToSpannerReservedKeywordsOracleIT> testInstances =
+      new HashSet<>();
+
+  private static SpannerResourceManager spannerResourceManager;
+  private static GcsResourceManager gcsResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
+  private static DatastreamResourceManager datastreamResourceManager;
   private static String oracleUser;
 
+  /**
+   * Setup resource managers once for all the tests of the class. They are shared by the test
+   * instances and cleaned up in {@link #cleanUp()}.
+   */
   @Before
   public void setUp() throws Exception {
-    LOG.info("Setting up Oracle resource manager...");
+    skipBaseCleanup = true;
+    synchronized (DatastreamToSpannerReservedKeywordsOracleIT.class) {
+      testInstances.add(this);
+      if (spannerResourceManager == null) {
+        try {
+          setUpSharedResources();
+        } catch (Exception e) {
+          LOG.error("Setup failed, cleaning up the resources created so far.", e);
+          try {
+            cleanUpSharedResources(List.of(this));
+          } catch (RuntimeException cleanupError) {
+            e.addSuppressed(cleanupError);
+          }
+          throw e;
+        }
+      }
+    }
+  }
+
+  /** Creates the shared resources (sets {@link #spannerResourceManager}). */
+  private void setUpSharedResources() throws Exception {
+    LOG.info("Setting up Oracle isolated user...");
     oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
 
     LOG.info("Setting up Spanner resource manager...");
@@ -90,20 +121,42 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2") /* from original */
+            .setPrivateConnectivity("datastream-connect-2")
             .build();
     LOG.info("Datastream resource manager created");
   }
 
-  @After
-  public void cleanUp() {
+  /**
+   * Cancels the Dataflow jobs of all the test instances first, then cleans up the resource managers
+   * the jobs were reading from and drops the isolated Oracle user.
+   */
+  @AfterClass
+  public static void cleanUp() {
     LOG.info("Cleaning up resources...");
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
-    SharedOracleLiveITContainer.dropUser(oracleUser);
+    cleanUpSharedResources(testInstances);
+  }
+
+  /**
+   * Cleans up the Dataflow jobs of the given test instances, the shared resource managers and the
+   * isolated Oracle user, then resets them so that a later setup (after a failed one) starts clean.
+   */
+  private static void cleanUpSharedResources(
+      Collection<DatastreamToSpannerReservedKeywordsOracleIT> instances) {
+    try {
+      SharedOracleLiveITContainer.cleanUpTestResources(
+          instances,
+          Arrays.asList(oracleUser),
+          spannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          datastreamResourceManager);
+    } finally {
+      spannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      oracleUser = null;
+    }
   }
 
   @Test

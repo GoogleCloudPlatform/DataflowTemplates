@@ -99,28 +99,29 @@ CREATE TABLE "Users" (
 CREATE TABLE "Authors" (
     "id" NUMBER NOT NULL,
     "name" VARCHAR2(200),
+    "national_name" NVARCHAR2(200),
     PRIMARY KEY ("id")
 ) ;
 
 CREATE TABLE "AllDatatypeTransformation" (
- "varchar_column" VARCHAR2(20) NOT NULL, 
- "tinyint_column" NUMBER,              
- "text_column" CLOB,                    
- "date_column" DATE,                    
- "int_column" NUMBER,                      
- "bigint_column" NUMBER,                
- "float_column" FLOAT,            
- "double_column" DOUBLE PRECISION,                
- "decimal_column" NUMBER(10,2),        
- "datetime_column" TIMESTAMP WITH TIME ZONE,            
- "timestamp_column" TIMESTAMP WITH TIME ZONE,          
- "time_column" VARCHAR2(50),                    
- "year_column" NUMBER,                    
- "blob_column" BLOB,                    
- "enum_column" VARCHAR2(255),       
- "bool_column" NUMBER(1),              
- "binary_column" RAW(20),            
- "bit_column" RAW(8),                   
+ "varchar_column" VARCHAR2(20) NOT NULL,
+ "tinyint_column" NUMBER(3),
+ "text_column" VARCHAR2(4000),
+ "date_column" DATE,
+ "int_column" NUMBER(10),
+ "bigint_column" NUMBER(18),
+ "float_column" BINARY_FLOAT,
+ "double_column" BINARY_DOUBLE,
+ "decimal_column" NUMBER(10,2),
+ "datetime_column" TIMESTAMP WITH TIME ZONE,
+ "timestamp_column" TIMESTAMP WITH TIME ZONE,
+ "time_column" VARCHAR2(50),
+ "year_column" NUMBER(4),
+ "blob_column" RAW(2000),
+ "enum_column" VARCHAR2(255),
+ "bool_column" NUMBER(1),
+ "binary_column" RAW(20),
+ "bit_column" RAW(8),
  PRIMARY KEY ("varchar_column")
 );
 
