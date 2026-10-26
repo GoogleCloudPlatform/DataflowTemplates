@@ -44,7 +44,7 @@
       <plugin>
         <groupId>com.google.cloud.tools</groupId>
         <artifactId>jib-maven-plugin</artifactId>
-        <version>3.4.0</version>
+        <version>${jib.maven.version}</version>
         <configuration>
           <from>
             <image>openjdk:8</image>

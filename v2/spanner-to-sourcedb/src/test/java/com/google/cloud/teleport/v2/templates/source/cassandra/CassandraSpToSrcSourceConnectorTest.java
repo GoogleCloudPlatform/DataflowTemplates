@@ -108,7 +108,6 @@ public class CassandraSpToSrcSourceConnectorTest {
     assertEquals(maxConnections, request.getMaxConnections());
     assertEquals("com.datastax.oss.driver.api.core.CqlSession", request.getDriver());
     assertEquals(null, request.getConnectionInitQuery());
-    assertEquals(null, request.getJdbcUrlPrefix());
   }
 
   @Test

@@ -43,7 +43,7 @@
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>spanner-migrations-sdk</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -61,7 +61,7 @@
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.0.1</version>
+            <version>${hikaricp.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -81,6 +81,18 @@
             <artifactId>it-google-cloud-platform</artifactId>
             <scope>compile</scope>
             <version>${project.version}</version>
+        </dependency>
+        <!--
+          Testcontainers (used by the IT helper resourcemanager/OracleITContainer) implements JUnit 4's
+          TestRule, so JUnit is needed to compile main. 'provided' (overriding the 'test' scope set in
+          the parent) keeps it out of the spanner-common jar and of the templates depending on it;
+          the helper is only used from the template modules' tests, which already have JUnit.
+        -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>

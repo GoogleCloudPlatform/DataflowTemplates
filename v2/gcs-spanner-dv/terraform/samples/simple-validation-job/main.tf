@@ -40,7 +40,7 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
   name                    = var.dataflow_params.runner_params.job_name
   project                 = var.common_params.project
   region                  = var.common_params.region
-  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/GCS_Spanner_Data_Validator"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Avro_to_Spanner_Data_Validator"
 
   parameters = {
     gcsInputDirectory              = var.dataflow_params.template_params.gcs_input_directory
@@ -54,6 +54,9 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_dv_job" {
     schemaOverridesFilePath        = var.dataflow_params.template_params.schema_overrides_file_path
     tableOverrides                 = var.dataflow_params.template_params.table_overrides
     columnOverrides                = var.dataflow_params.template_params.column_overrides
+    tables                         = var.dataflow_params.template_params.tables
+    tableConfigurationFilePath              = var.dataflow_params.template_params.table_configuration_file_path
+    shardIds                       = var.dataflow_params.template_params.shard_ids
     runId                          = var.dataflow_params.template_params.run_id
     transformationJarPath          = var.dataflow_params.template_params.transformation_jar_path
     transformationClassName        = var.dataflow_params.template_params.transformation_class_name

@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 public class ColumnTest {
@@ -290,5 +291,32 @@ public class ColumnTest {
     assertEquals(
         "\"col4\"                                  bigint GENERATED ALWAYS AS (1+1) STORED",
         c4.prettyPrint());
+  }
+
+  @Test
+  public void testPrettyPrintColumnOptions() {
+    // GoogleSQL supports an inline OPTIONS clause in a column definition.
+    Column gsql =
+        Column.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("col1")
+            .type(Type.int64())
+            .notNull(true)
+            .columnOptions(ImmutableList.of("locality_group=\"default\""))
+            .autoBuild();
+    assertEquals(
+        "`col1`                                  INT64 NOT NULL OPTIONS (locality_group=\"default\")",
+        gsql.prettyPrint());
+
+    // PostgreSQL has no inline OPTIONS clause. Emitting one yields DDL the PG dialect rejects
+    // with `syntax error at or near "OPTIONS"`, so the clause must be suppressed even when the
+    // information schema reports options for the column.
+    Column pg =
+        Column.builder(Dialect.POSTGRESQL)
+            .name("col1")
+            .type(Type.pgInt8())
+            .notNull(true)
+            .columnOptions(ImmutableList.of("locality_group='default'"))
+            .autoBuild();
+    assertEquals("\"col1\"                                  bigint NOT NULL", pg.prettyPrint());
   }
 }

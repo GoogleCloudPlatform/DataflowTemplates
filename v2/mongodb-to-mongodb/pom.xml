@@ -31,10 +31,6 @@
         Copy Data from One MongoDB Database to Another
     </description>
 
-    <properties>
-        <mongo-java-driver.version>5.6.5</mongo-java-driver.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -57,7 +53,7 @@
         <dependency>
             <groupId>dnsjava</groupId>
             <artifactId>dnsjava</artifactId>
-            <version>3.6.3</version>
+            <version>${dnsjava.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>

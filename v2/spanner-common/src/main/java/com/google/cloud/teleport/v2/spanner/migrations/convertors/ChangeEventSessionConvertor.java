@@ -30,6 +30,7 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
@@ -273,7 +274,8 @@ public class ChangeEventSessionConvertor {
     }
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
-      throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
+      throw new DroppedTableException(
+          "Table from change event does not exist in Spanner. table=" + tableName);
     }
     Iterator<String> fieldNames = changeEvent.fieldNames();
     List<String> columnNames =

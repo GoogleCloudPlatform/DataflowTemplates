@@ -316,13 +316,17 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
                         "deadLetterQueueDirectory",
                         getGcsPath(testName, gcsResourceManager) + "/dlq/")
                     .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
+                    // Streaming right fitting requires horizontal autoscaling to be enabled.
+                    .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
                     .addParameter(
                         "inputFileFormat",
                         fileFormat.equals(
                                 DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
                             ? "avro"
                             : "json"))
-            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+            .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
+            .addEnvironment(
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

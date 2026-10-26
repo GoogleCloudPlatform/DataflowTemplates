@@ -37,7 +37,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify Terraform formatting
-        uses: dflook/terraform-fmt-check@5702d43749973bd5b54e2380f090c1ad8054ecd4 # v3.0.0-dockerhub
+        uses: dflook/terraform-fmt-check@b5d95a3c92f409e0e1cae4200cb7b6e1244d3182 # v3.1.2
         with:
           path: ${{ matrix.terraform_paths }}
       - name: Verify Terraform template and required structure

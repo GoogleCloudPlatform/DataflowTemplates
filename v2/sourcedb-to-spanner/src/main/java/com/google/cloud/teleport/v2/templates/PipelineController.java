@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidOptionsException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
@@ -30,6 +31,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +90,7 @@ public class PipelineController {
       DbConfigContainer configContainer) {
 
     Map<Integer, PCollection<Void>> levelVsOutputMap = new HashMap<>();
+    List<String> allSourceTables = new ArrayList<>();
     for (int currentLevel = 0; currentLevel < levelToSpannerTableList.size(); currentLevel++) {
       List<String> spannerTables = levelToSpannerTableList.get(currentLevel);
       LOG.info("processing level: {} spanner tables: {}", currentLevel, spannerTables);
@@ -96,6 +99,7 @@ public class PipelineController {
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
       LOG.info("level: {} source tables: {}", currentLevel, sourceTables);
+      allSourceTables.addAll(sourceTables);
       PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
       if (currentLevel > 0 && previousLevelPCollection == null) {
         LOG.warn(
@@ -132,6 +136,15 @@ public class PipelineController {
                   tableSelector.getSchemaMapper(),
                   reader));
       levelVsOutputMap.put(currentLevel, output);
+    }
+
+    if (levelVsOutputMap.isEmpty() && !levelToSpannerTableList.isEmpty()) {
+      throw new InvalidOptionsException(
+          String.format(
+              "Aborting migration as none of the source tables %s were found at the source"
+                  + " database. Please verify that the source database and the Spanner database"
+                  + " (or session file / overrides) refer to the same schema.",
+              allSourceTables));
     }
 
     // Add transform to increment table counter

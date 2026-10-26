@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLSpToSrcSourceConnector.class);
+  private static final String JDBC_URL_PREFIX = "jdbc:mysql://";
 
   private final IConnectionHelper connectionHelper;
 
@@ -68,7 +69,7 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+    return JDBC_URL_PREFIX + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -79,14 +80,16 @@ public class MySQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
+      for (Shard shard : shards) {
+        shard.setConnectionUrl(getConnectionUrl(shard));
+      }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
               shards,
               null,
               maxConnections,
               "com.mysql.cj.jdbc.Driver",
-              "SET SESSION net_read_timeout=1200", // To avoid timeouts at the network layer
-              "jdbc:mysql://");
+              "SET SESSION net_read_timeout=1200"); // To avoid timeouts at the network layer
       connectionHelper.init(request);
     }
   }

@@ -490,6 +490,71 @@ public class ChangeEventTransformerDoFnTest {
     changeEventTransformerDoFn.setMapper(mapper);
     changeEventTransformerDoFn.processElement(processContextMock);
     verify(processContextMock, times(0)).output(any());
+    ArgumentCaptor<FailsafeElement<String, String>> captor =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG), captor.capture());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), any());
+    assertEquals(changeEvent.toString(), captor.getValue().getOriginalPayload());
+    assertEquals("Cannot find entry for Users", captor.getValue().getErrorMessage());
+  }
+
+  @Test
+  public void testProcessElementWithDroppedTableExceptionFromTransformChangeEventData()
+      throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    when(schema.isEmpty()).thenReturn(true);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventData(
+            changeEvent, databaseClientMock, null))
+        .thenThrow(
+            new DroppedTableException(
+                "Table from change event does not exist in Spanner. table=Users"));
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, null, null, "mysql", customTransformation, true, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement<String, String>> captor =
+        ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG), captor.capture());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, times(0))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), any());
+    assertEquals(changeEvent.toString(), captor.getValue().getOriginalPayload());
+    assertEquals(
+        "Table from change event does not exist in Spanner. table=Users",
+        captor.getValue().getErrorMessage());
   }
 
   @Test

@@ -30,8 +30,10 @@ import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDao;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.sqlserver.SQLServerSpToSrcSourceConnector;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -158,10 +160,10 @@ public class SourceProcessorFactoryTest {
     Assert.assertTrue(spannerSource instanceof SpannerSpToSrcSourceConnector);
 
     ISpToSrcSourceConnector oracleSource = SourceProcessorFactory.getSource("oracle");
-    Assert.assertTrue(
-        oracleSource
-            instanceof
-            com.google.cloud.teleport.v2.templates.source.oracle.OracleSpToSrcSourceConnector);
+    Assert.assertTrue(oracleSource instanceof OracleSpToSrcSourceConnector);
+
+    ISpToSrcSourceConnector sqlServerSource = SourceProcessorFactory.getSource("sqlserver");
+    Assert.assertTrue(sqlServerSource instanceof SQLServerSpToSrcSourceConnector);
   }
 
   @Test(expected = UnsupportedSourceException.class)

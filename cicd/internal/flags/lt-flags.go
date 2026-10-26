@@ -25,6 +25,7 @@ var (
 	dexportProject string
 	dexportDataset string
 	dexportTable   string
+	dspecPath      string
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -32,6 +33,7 @@ func RegisterLtFlags() {
 	flag.StringVar(&dexportProject, "lt-export-project", "", "The GCP project to export load test metrics")
 	flag.StringVar(&dexportDataset, "lt-export-dataset", "", "The GCP BigQuery dataset to export metrics")
 	flag.StringVar(&dexportTable, "lt-export-table", "", "A GCP BigQuery table to store metrics")
+	flag.StringVar(&dspecPath, "lt-spec-path", "", "(optional) Custom template spec GCS path")
 }
 
 func ExportProject() string {
@@ -44,4 +46,11 @@ func ExportDataset() string {
 
 func ExportTable() string {
 	return "-DexportTable=" + dexportTable
+}
+
+func SpecPath() string {
+	if dspecPath != "" {
+		return "-DspecPath=" + dspecPath
+	}
+	return ""
 }

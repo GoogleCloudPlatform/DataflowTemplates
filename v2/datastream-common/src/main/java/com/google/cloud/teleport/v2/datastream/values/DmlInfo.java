@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.datastream.values;
 
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
@@ -74,6 +75,77 @@ public abstract class DmlInfo implements Serializable {
   }
 
   public String getOrderByValueString() {
-    return String.join("-", this.getOrderByValues());
+    List<String> fields = this.getOrderByFields();
+    List<String> values = this.getOrderByValues();
+    List<String> normalizedValues = new ArrayList<>(values.size());
+    for (int i = 0; i < values.size(); i++) {
+      String val = values.get(i);
+      if (fields != null && i < fields.size() && "_metadata_lsn".equals(fields.get(i))) {
+        normalizedValues.add(normalizeLsnValue(val));
+      } else {
+        normalizedValues.add(val);
+      }
+    }
+    return String.join("-", normalizedValues);
+  }
+
+  public String normalizeSortKey(String sortKey) {
+    if (sortKey == null) {
+      return null;
+    }
+    List<String> fields = this.getOrderByFields();
+    if (fields == null) {
+      return sortKey;
+    }
+    int lsnFieldIdx = fields.indexOf("_metadata_lsn");
+    if (lsnFieldIdx < 0) {
+      return sortKey;
+    }
+
+    int trailingFields = fields.size() - 1 - lsnFieldIdx;
+    int endIdx = sortKey.length();
+    for (int i = 0; i < trailingFields; i++) {
+      int dashIdx = sortKey.lastIndexOf('-', endIdx - 1);
+      if (dashIdx < 0) {
+        return sortKey;
+      }
+      endIdx = dashIdx;
+    }
+
+    int startDashIdx = lsnFieldIdx == 0 ? -1 : sortKey.lastIndexOf('-', endIdx - 1);
+    if (lsnFieldIdx > 0 && startDashIdx < 0) {
+      return sortKey;
+    }
+
+    String prefix = startDashIdx < 0 ? "" : sortKey.substring(0, startDashIdx + 1);
+    String lsnSegment = sortKey.substring(startDashIdx + 1, endIdx);
+    String suffix = sortKey.substring(endIdx);
+    return prefix + normalizeLsnValue(lsnSegment) + suffix;
+  }
+
+  static String normalizeLsnValue(String lsnValue) {
+    if (lsnValue == null
+        || lsnValue.isEmpty()
+        || lsnValue.equalsIgnoreCase("null")
+        || lsnValue.equalsIgnoreCase("'null'")) {
+      return "";
+    }
+    boolean quoted = lsnValue.length() >= 2 && lsnValue.startsWith("'") && lsnValue.endsWith("'");
+    String raw = quoted ? lsnValue.substring(1, lsnValue.length() - 1) : lsnValue;
+    int slashIdx = raw.indexOf('/');
+    if (slashIdx > 0 && slashIdx < raw.length() - 1) {
+      String high = raw.substring(0, slashIdx);
+      String low = raw.substring(slashIdx + 1);
+      try {
+        long highVal = Long.parseUnsignedLong(high, 16);
+        long lowVal = Long.parseUnsignedLong(low, 16);
+        String padded = String.format("%08X/%08X", highVal, lowVal);
+        return quoted ? "'" + padded + "'" : padded;
+      } catch (NumberFormatException e) {
+        // Non-hex LSN (e.g., SQL Server), return as-is
+        return lsnValue;
+      }
+    }
+    return lsnValue;
   }
 }

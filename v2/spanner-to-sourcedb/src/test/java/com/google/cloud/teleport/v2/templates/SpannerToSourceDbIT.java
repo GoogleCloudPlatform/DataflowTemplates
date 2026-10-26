@@ -37,6 +37,10 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -117,19 +121,39 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         gcsResourceManager.uploadArtifact(
             "input/truststore_Shard1.jks", jdbcResourceManager.getTruststorePath());
         String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks", gcsResourceManager);
-
         String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
+
+        gcsResourceManager.uploadArtifact(
+            "input/keystore_Shard1.jks", jdbcResourceManager.getKeystorePath());
+        String keystoreGcsUrl = getGcsPath("input/keystore_Shard1.jks", gcsResourceManager);
+        String keystoreLocalUrl = "file:///extra_files/keystore_Shard1.jks";
 
         String props =
             String.format(
-                "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s",
+                "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s&clientCertificateKeyStoreUrl=%s&clientCertificateKeyStorePassword=%s",
                 URLEncoder.encode(truststoreLocalUrl, StandardCharsets.UTF_8),
+                URLEncoder.encode(jdbcResourceManager.getPassword(), StandardCharsets.UTF_8),
+                URLEncoder.encode(keystoreLocalUrl, StandardCharsets.UTF_8),
                 URLEncoder.encode(jdbcResourceManager.getPassword(), StandardCharsets.UTF_8));
 
         Shard shard = new Shard();
         shard.setLogicalShardId("Shard1");
-        shard.setUser(jdbcResourceManager.getUsername());
-        shard.setPassword(jdbcResourceManager.getPassword());
+        String dfUser = "df_user";
+        shard.setUser(dfUser);
+        try (Connection con =
+                DriverManager.getConnection(
+                    jdbcResourceManager.getUri(),
+                    jdbcResourceManager.getUsername(),
+                    jdbcResourceManager.getPassword());
+            Statement stmt = con.createStatement()) {
+          stmt.execute(
+              String.format(
+                  "CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '' REQUIRE X509", dfUser));
+          stmt.execute(String.format("GRANT ALL PRIVILEGES ON *.* TO '%s'@'%%'", dfUser));
+          stmt.execute("FLUSH PRIVILEGES");
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
         shard.setHost(jdbcResourceManager.getHost());
         shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
         shard.setDbName(jdbcResourceManager.getDatabaseName());
@@ -153,7 +177,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             new HashMap<>() {
               {
                 put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-                put("extraFilesToStage", truststoreGcsUrl);
+                put("extraFilesToStage", truststoreGcsUrl + "," + keystoreGcsUrl);
               }
             };
         jobInfo =
@@ -198,7 +222,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     // Write row in Spanner
     writeRowInSpanner();
     // Assert events on Mysql
-    assertRowInMySQL();
+    assertRowInSourceDb();
   }
 
   private void writeRowInSpanner() {
@@ -246,7 +270,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 });
   }
 
-  private void assertRowInMySQL() throws InterruptedException {
+  private void assertRowInSourceDb() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -344,7 +368,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     SpannerGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
     // Assert events on Mysql
-    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
+    SpannerGeneratedColumnUtils.assertRowInSourceDb(expectedData, jdbcResourceManager);
 
     // Validating update and delete events.
     Map<String, List<Map<String, Value>>> updateSpannerTableData =
@@ -360,7 +384,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
     expectedData = new HashMap<>();
     SpannerGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
-    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
+    SpannerGeneratedColumnUtils.assertRowInSourceDb(expectedData, jdbcResourceManager);
   }
 
   private void writeMaxColRowsInSpanner() {

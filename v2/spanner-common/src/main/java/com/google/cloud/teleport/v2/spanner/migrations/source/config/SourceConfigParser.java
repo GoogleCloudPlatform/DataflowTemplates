@@ -95,6 +95,7 @@ public class SourceConfigParser {
       case ORACLE:
       case MYSQL:
       case PG:
+      case SQLSERVER:
         String jdbcFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> jdbcConfigMap = parseConfigToConfigMap(jdbcFileContent);
         JdbcShardConfig jdbcShardConfig = mapper.convertValue(jdbcConfigMap, JdbcShardConfig.class);
@@ -135,13 +136,6 @@ public class SourceConfigParser {
       String password =
           secretManagerAccessor.resolvePassword(
               shard.getSecretManagerUri(), shard.getLogicalShardId(), shard.getPassword());
-      if (password == null || password.isEmpty()) {
-        throw new RuntimeException(
-            "Neither password nor secretManagerUri was found in the shard file "
-                + sourceShardsFilePath
-                + "  for shard "
-                + shard.getLogicalShardId());
-      }
       shard.setPassword(password);
     }
   }
