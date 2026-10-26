@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedContainerDatabases;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedDatabaseServer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import java.io.BufferedWriter;
@@ -55,6 +57,8 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.junit.ClassRule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
@@ -70,8 +74,27 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   // For direct runner pipeline execution it will spin up 15 threads per pipeline.
   private static final String TARGET_PARALLALISM_FOR_DIRECTRUNNER = "15";
 
+  /** Drops the databases this test class created on shared containers once its tests are done. */
+  @ClassRule
+  public static final TestRule DROP_SHARED_DATABASES =
+      SharedContainerDatabases.dropDatabasesAfterClass();
+
+  /**
+   * Returns a MySQL resource manager for the test. By default the test gets its own database on a
+   * MySQL container shared by all tests in the JVM; with sharing turned off (see {@link
+   * SharedDatabaseServer#isEnabled()}) it gets its own container instead.
+   */
   public MySQLResourceManager setUpMySQLResourceManager() {
-    return MySQLResourceManager.builder(testName).build();
+    return SharedContainerDatabases.mySql(getClass(), testName);
+  }
+
+  /**
+   * Returns a MySQL resource manager backed by a container of its own. Use this instead of {@link
+   * #setUpMySQLResourceManager()} for tests that change server-wide settings (e.g. {@code SET
+   * GLOBAL}), which would affect other tests on a shared container.
+   */
+  public MySQLResourceManager setUpDedicatedMySQLResourceManager() {
+    return SharedContainerDatabases.dedicatedMySql(testName);
   }
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {

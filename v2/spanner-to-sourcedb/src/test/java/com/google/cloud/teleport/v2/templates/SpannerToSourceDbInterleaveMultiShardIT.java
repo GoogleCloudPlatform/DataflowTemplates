@@ -90,11 +90,11 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             createSpannerDatabase(SpannerToSourceDbInterleaveMultiShardIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
+        jdbcResourceManagerShardA = setUpMySQLResourceManager(testName + "shardA");
         createMySQLSchema(
             jdbcResourceManagerShardA, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName + "shardB").build();
+        jdbcResourceManagerShardB = setUpMySQLResourceManager(testName + "shardB");
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 

@@ -93,7 +93,7 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToMySqlWithoutSessionIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = setUpMySQLResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlWithoutSessionIT.MYSQL_SCHEMA_FILE_RESOURCE);
