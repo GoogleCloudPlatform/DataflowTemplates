@@ -96,6 +96,14 @@ jobs:
     name: Build
     timeout-minutes: 60
     runs-on: [self-hosted, it]
+    # Gate untrusted PR code before it runs on the credentialed self-hosted
+    # runner. Every other [self-hosted, it] job (unit tests -> smoke -> IT)
+    # transitively `needs: java_build`, so requiring approval here holds the
+    # whole chain until a maintainer approves the current commit. Configure
+    # required reviewers on the `fork-ci-approval` environment in repo settings
+    # to activate this (until then the environment imposes no gate, so merging
+    # this PR is behavior-neutral).
+    environment: fork-ci-approval
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
