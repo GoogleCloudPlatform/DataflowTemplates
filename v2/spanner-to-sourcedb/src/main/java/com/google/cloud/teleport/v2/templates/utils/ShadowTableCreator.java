@@ -214,7 +214,7 @@ public class ShadowTableCreator {
      * (2) Data tables which have corresponding shadow tables in the metadata database.
      */
     return allTables.stream()
-        .filter(f -> !f.startsWith(shadowTablePrefix))
+        .filter(f -> shadowTablePrefix.isEmpty() || !f.startsWith(shadowTablePrefix))
         .filter(f -> !existingShadowTablesInMetadataDb.contains(shadowTablePrefix + f))
         .collect(Collectors.toList());
   }
