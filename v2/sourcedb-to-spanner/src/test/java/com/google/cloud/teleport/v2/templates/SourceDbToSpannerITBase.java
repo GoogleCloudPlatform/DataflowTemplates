@@ -175,8 +175,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return testUsername;
   }
 
+  /**
+   * Returns a PostgreSQL resource manager for the test: its own database on a PostgreSQL container
+   * shared by all tests in the JVM, or its own container with sharing turned off.
+   */
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
-    return PostgresResourceManager.builder(testName).build();
+    return SharedContainerDatabases.postgres(getClass(), testName);
   }
 
   private static MSSQLResourceManager sharedMssqlResourceManager;
