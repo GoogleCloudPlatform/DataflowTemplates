@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -62,7 +62,7 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
 
   private static final String SPANNER_DDL_RESOURCE =
       "oracle/SpannerToOracleInterleaveMultiShardIT/oracle-GOOGLE_STANDARD_SQL-spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURSE =
+  private static final String SESSION_FILE_RESOURCE =
       "oracle/SpannerToOracleInterleaveMultiShardIT/session.json";
   private static final String ORACLE_DDL_RESOURCE =
       "oracle/SpannerToOracleInterleaveMultiShardIT/oracle-schema.sql";
@@ -111,7 +111,7 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
             gcsResourceManager,
             Map.of("shardA", jdbcResourceManagerShardA, "shardB", jdbcResourceManagerShardB));
         gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
         subscriptionName =
             createPubsubResources(
@@ -141,6 +141,8 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
                 ORACLE_SOURCE_TYPE,
                 jobParameters);
       }
+      testUsernameShardA = oracleUsernameShardA;
+      testUsernameShardB = oracleUsernameShardB;
     }
   }
 
@@ -368,7 +370,7 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
             "SELECT \"child_id\",\"update_ts\" FROM \"child11\" ORDER BY \"child_id\"");
     assertThat(rows2).hasSize(2);
     assertThat(rows2.get(0).get("child_id")).isEqualTo(new java.math.BigDecimal("11"));
-    assertThat(rows.get(0).get("update_ts").toString()).isEqualTo("1980-01-01 00:00:00.0");
+    assertThat(rows2.get(0).get("update_ts").toString()).isEqualTo("1980-01-01 00:00:00.0");
   }
 
   private void doDeletesInSpanner() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -224,46 +224,6 @@ public class SharedOracleReverseITContainer {
       }
     } catch (Exception e) {
       throw new RuntimeException("failed creating isolated oracle schema", e);
-    }
-  }
-
-  /**
-   * Creates a table in the schema of the given isolated user with a {@code VARCHAR2} primary key
-   * column {@code id} and {@code n} {@code VARCHAR2} columns {@code col_1} to {@code col_n}.
-   */
-  public static void createTableWithNColumns(
-      String username, String tableName, int n, String stringSize) {
-    if (tableName == null || tableName.isBlank()) {
-      throw new IllegalArgumentException("table name blank");
-    }
-    if (n < 1) {
-      throw new IllegalArgumentException("n<1");
-    }
-    if (stringSize == null || stringSize.isBlank()) {
-      throw new IllegalArgumentException("stringSize blank");
-    }
-
-    StringBuilder ddlBuilder = new StringBuilder();
-    ddlBuilder
-        .append("CREATE TABLE ")
-        .append(username)
-        .append(".")
-        .append(tableName)
-        .append(" (\n");
-    ddlBuilder.append("    id VARCHAR2(").append(stringSize).append(") NOT NULL PRIMARY KEY,\n");
-
-    for (int i = 1; i <= n; i++) {
-      ddlBuilder.append("    col_").append(i).append(" VARCHAR2(").append(stringSize).append(")");
-      if (i < n) {
-        ddlBuilder.append(",\n");
-      }
-    }
-    ddlBuilder.append("\n)");
-
-    try {
-      getInstance().runSQLUpdate(ddlBuilder.toString());
-    } catch (Exception e) {
-      throw new RuntimeException("Error executing Oracle DDL statement", e);
     }
   }
 

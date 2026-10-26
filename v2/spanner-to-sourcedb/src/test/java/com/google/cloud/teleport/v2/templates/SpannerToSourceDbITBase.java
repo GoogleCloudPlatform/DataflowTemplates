@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_ORACLE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL;
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SQLSERVER;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
@@ -224,22 +226,28 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
-    if (shardId.equals("Shard1") && testUsername != null) {
-      shard.setNamespace(testUsername);
-      shard.setUser(testUsername);
-      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
-    } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
-        && testUsernameShardA != null) {
-      shard.setNamespace(testUsernameShardA);
-      shard.setUser(testUsernameShardA);
-      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
-    } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
-        && testUsernameShardB != null) {
-      shard.setNamespace(testUsernameShardB);
-      shard.setUser(testUsernameShardB);
-      shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
-    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
-      shard.setNamespace(jdbcResourceManager.getUsername().toUpperCase());
+    if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
+      // Oracle ITs write to a per-test isolated user (schema) on the shared Oracle container.
+      if (shardId.equals("Shard1") && testUsername != null) {
+        shard.setNamespace(testUsername);
+        shard.setUser(testUsername);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
+          && testUsernameShardA != null) {
+        shard.setNamespace(testUsernameShardA);
+        shard.setUser(testUsernameShardA);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
+          && testUsernameShardB != null) {
+        shard.setNamespace(testUsernameShardB);
+        shard.setUser(testUsernameShardB);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else {
+        throw new IllegalStateException(
+            "No isolated Oracle user created for shard "
+                + shardId
+                + "; call SharedOracleReverseITContainer.createIsolatedUser() in setUp.");
+      }
     }
     if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
@@ -258,7 +266,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       shard.setPort(String.valueOf(oracleRm.getPort()));
       shard.setDbName(oracleRm.getDatabaseName());
     } else {
-
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
     return shard;
@@ -380,12 +387,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                 "sourceShardsFilePath",
                 getGcsPath(
                     (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                            && !Objects.equals(
-                                sourceType,
-                                com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, SOURCE_POSTGRESQL)
                             && !Objects.equals(sourceType, SOURCE_SQLSERVER)
-                            && !Objects.equals(sourceType, "oracle"))
+                            && !Objects.equals(sourceType, SOURCE_ORACLE))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -408,7 +412,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     if (jobParameters != null) {
       params.putAll(jobParameters);
-      params.put("workerMachineType", "n1-standard-4");
     }
     if (shardingCustomJarPath != null) {
       params.put(

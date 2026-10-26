@@ -136,6 +136,7 @@ public class SpannerToOracleSourceDbWideRowMaxColumnsIT extends SpannerToSourceD
                 ORACLE_SOURCE_TYPE,
                 jobParameters);
       }
+      testUsername = oracleUsername;
     }
   }
 

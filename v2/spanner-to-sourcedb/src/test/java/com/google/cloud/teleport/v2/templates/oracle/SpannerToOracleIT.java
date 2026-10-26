@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -265,6 +265,7 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT), this::checkGenColRowsInOracleAfterUpdate);
+    assertThatResult(result).meetsConditions();
     // Delete rows in spanner.
     deleteGenColRowsInSpanner();
     PipelineOperator.Result deleteResult =
@@ -313,8 +314,9 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
-                OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager, testUsername));
+                OracleGeneratedColumnUtils.buildOracleRowCountCheck(
+                    spannerTableData, testUsername));
+    assertThatResult(result).meetsConditions();
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
     // Assert events on Oracle
@@ -327,8 +329,9 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
-                OracleGeneratedColumnUtils.buildConditionCheck(
-                    spannerTableData, jdbcResourceManager, testUsername));
+                OracleGeneratedColumnUtils.buildOracleRowCountCheck(
+                    spannerTableData, testUsername));
+    assertThatResult(result).meetsConditions();
     expectedData = new HashMap<>();
     OracleGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
     OracleGeneratedColumnUtils.assertRowInOracle(expectedData, jdbcResourceManager, testUsername);
@@ -355,6 +358,7 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
                     SharedOracleReverseITContainer.getRowCount(
                             testUsername, "\"" + BOUNDARY_CHECK_TABLE + "\"")
                         == 1);
+    assertThatResult(result).meetsConditions();
   }
 
   private void writeRowsWithGenColInSpanner() {

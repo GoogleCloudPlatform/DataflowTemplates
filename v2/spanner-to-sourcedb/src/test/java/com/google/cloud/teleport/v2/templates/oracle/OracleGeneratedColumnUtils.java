@@ -37,10 +37,12 @@ import org.slf4j.LoggerFactory;
 public class OracleGeneratedColumnUtils {
   private static final Logger LOG = LoggerFactory.getLogger(OracleGeneratedColumnUtils.class);
 
-  public static ConditionCheck buildConditionCheck(
-      Map<String, List<Map<String, Value>>> spannerTableData,
-      SpannerOracleResourceManager jdbcResourceManager,
-      String testUsername) {
+  /**
+   * Returns a condition that is met when each table in {@code spannerTableData} has exactly as many
+   * rows in the test user's Oracle schema as it has in Spanner.
+   */
+  public static ConditionCheck buildOracleRowCountCheck(
+      Map<String, List<Map<String, Value>>> spannerTableData, String testUsername) {
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
       String tableName = getTableName(entry.getKey());
@@ -49,7 +51,7 @@ public class OracleGeneratedColumnUtils {
           new ConditionCheck() {
             @Override
             protected @UnknownKeyFor @NonNull @Initialized String getDescription() {
-              return "Checking num rows in table " + tableName + " with " + numRows + " rows";
+              return "Waiting for Oracle table " + tableName + " to have " + numRows + " rows";
             }
 
             @Override
@@ -236,12 +238,9 @@ public class OracleGeneratedColumnUtils {
         "generated_pk_column",
         List.of(
             Map.of(
-                "first_name_col",
-                Value.string("AA"),
-                "last_name_col",
-                Value.string("BB"),
-                "generated_column_col",
-                Value.string("AA ")),
+                "first_name_col", Value.string("AA"),
+                "last_name_col", Value.string("BB"),
+                "generated_column_col", Value.string("AA ")),
             Map.of(
                 "first_name_col", Value.string("BB"),
                 "last_name_col", Value.string("CC"),
@@ -279,14 +278,10 @@ public class OracleGeneratedColumnUtils {
         "non_generated_to_generated_column",
         List.of(
             Map.of(
-                "first_name_col",
-                Value.string("AA"),
-                "last_name_col",
-                Value.string("BB"),
-                "generated_column_col",
-                Value.string("AA "),
-                "generated_column_pk_col",
-                Value.string("AA ")),
+                "first_name_col", Value.string("AA"),
+                "last_name_col", Value.string("BB"),
+                "generated_column_col", Value.string("AA "),
+                "generated_column_pk_col", Value.string("AA ")),
             Map.of(
                 "first_name_col", Value.string("BB"),
                 "last_name_col", Value.string("CC"),

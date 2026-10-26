@@ -131,6 +131,7 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
                 ORACLE_SOURCE_TYPE,
                 jobParameters);
       }
+      testUsername = oracleUsername;
     }
   }
 

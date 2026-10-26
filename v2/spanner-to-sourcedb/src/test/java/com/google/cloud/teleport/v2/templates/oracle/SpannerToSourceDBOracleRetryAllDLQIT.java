@@ -156,6 +156,7 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
                 ORACLE_SOURCE_TYPE,
                 jobParameters);
       }
+      testUsername = oracleUsername;
     }
   }
 
@@ -637,10 +638,6 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
             assertTrue(
                 "Field " + key + " mismatch: expected " + expectedValue + " but got " + actualValue,
                 expectedBool == actualBool);
-          } else if (expectedValue instanceof byte[] && actualValue instanceof byte[]) {
-            assertTrue(
-                "Field " + key + " mismatch",
-                java.util.Arrays.equals((byte[]) expectedValue, (byte[]) actualValue));
           } else if (expectedValue instanceof Number
               && actualValue instanceof byte[]
               && ((byte[]) actualValue).length == 1) {

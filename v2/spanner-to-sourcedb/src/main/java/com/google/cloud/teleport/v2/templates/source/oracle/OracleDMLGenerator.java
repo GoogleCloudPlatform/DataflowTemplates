@@ -46,6 +46,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
 
+  /** Maximum characters per bind for chunked LOB values (at most 4000 bytes in UTF-8). */
+  private static final int LOB_BIND_CHUNK_CHARS = 1000;
+
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     List<Object> currentParams = new ArrayList<>();
@@ -416,9 +419,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
             colType.toString());
     return response;
   }
-
-  /** Maximum characters per bind for chunked LOB values (at most 4000 bytes in UTF-8). */
-  private static final int LOB_BIND_CHUNK_CHARS = 1000;
 
   /**
    * Adds {@code value} to the prepared statement parameters in chunks and returns an expression
