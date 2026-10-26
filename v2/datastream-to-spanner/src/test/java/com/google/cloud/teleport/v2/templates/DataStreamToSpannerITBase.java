@@ -22,6 +22,7 @@ import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.sqlserverutils.SQLServerITContainer;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -92,8 +93,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
+  private static SQLServerITContainer sharedSqlServerContainer;
+
   public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
-    return CloudSqlServerResourceManager.builder(testName).build();
+    synchronized (DataStreamToSpannerITBase.class) {
+      if (sharedSqlServerContainer == null) {
+        sharedSqlServerContainer = SQLServerITContainer.start(/* enableCdc= */ true);
+      }
+      return sharedSqlServerContainer.createResourceManager(testName);
+    }
   }
 
   public DatastreamResourceManager setUpDatastreamResourceManager() throws IOException {
@@ -617,58 +625,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
           throw e;
         }
       }
-    }
-
-    if (resourceManager instanceof CloudSqlServerResourceManager) {
-      enableCdcForUntrackedSqlServerTables((CloudSqlServerResourceManager) resourceManager);
-    }
-  }
-
-  /**
-   * Enables CDC on every user table in the current database that is not yet tracked by CDC.
-   *
-   * <p>Note: {@code @supports_net_changes = 1} requires the table to have a primary key or a unique
-   * index. Tables without one will make {@code sp_cdc_enable_table} fail and abort the remaining
-   * tables in the batch.
-   */
-  protected void enableCdcForUntrackedSqlServerTables(
-      CloudSqlServerResourceManager resourceManager) {
-    String enableCdcQuery =
-        "DECLARE @schema_name SYSNAME; "
-            + "DECLARE @table_name SYSNAME; "
-            + "DECLARE table_cursor CURSOR FOR "
-            + "SELECT SCHEMA_NAME(schema_id), name FROM sys.tables"
-            + " WHERE is_ms_shipped = 0 AND is_tracked_by_cdc = 0; "
-            + "OPEN table_cursor; "
-            + "FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
-            + "WHILE @@FETCH_STATUS = 0 "
-            + "BEGIN "
-            + "    EXEC sys.sp_cdc_enable_table @source_schema = @schema_name,"
-            + " @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1; "
-            + "    FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
-            + "END; "
-            + "CLOSE table_cursor; "
-            + "DEALLOCATE table_cursor;";
-    resourceManager.runSQLUpdate(enableCdcQuery);
-    try {
-      String startJobQuery =
-          "DECLARE @job_id UNIQUEIDENTIFIER; "
-              + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs WHERE database_id = DB_ID() AND job_type = N'capture'; "
-              + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
-              + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
-              + "    WHERE job_id = @job_id "
-              + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
-              + "      AND start_execution_date IS NOT NULL "
-              + "      AND stop_execution_date IS NULL "
-              + ") "
-              + "BEGIN "
-              + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
-              + "END;";
-      resourceManager.runSQLUpdate(startJobQuery);
-    } catch (Exception e) {
-      LOG.info(
-          "Capture job start check encountered an issue (job is likely already running): {}",
-          e.getMessage());
     }
   }
 
