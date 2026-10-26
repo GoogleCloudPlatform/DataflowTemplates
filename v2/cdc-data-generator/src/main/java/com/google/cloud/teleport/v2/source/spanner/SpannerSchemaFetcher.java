@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
@@ -25,7 +25,6 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -72,6 +71,10 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   public void init(SinkConfig sinkConfig) {
     if (sinkConfig == null) {
       throw new IllegalArgumentException("SinkConfig cannot be null");
+    }
+    if (!(sinkConfig instanceof SpannerSinkConfig)) {
+      throw new IllegalArgumentException(
+          "Expected SpannerSinkConfig, got " + sinkConfig.getClass().getName());
     }
     SpannerSinkConfig spannerConfig = (SpannerSinkConfig) sinkConfig;
     this.projectId = spannerConfig.getProjectId();

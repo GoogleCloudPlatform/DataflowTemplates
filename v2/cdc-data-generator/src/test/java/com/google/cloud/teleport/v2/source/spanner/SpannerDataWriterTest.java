@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -31,8 +31,6 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter.SpannerAccessorFactory;
 import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -64,7 +62,7 @@ public class SpannerDataWriterTest {
   @Mock private com.google.cloud.spanner.DatabaseAdminClient mockDatabaseAdminClient;
   @Mock private com.google.cloud.spanner.Database mockDatabase;
 
-  private SpannerAccessorFactory factory;
+  private SpannerDataWriter.SpannerAccessorFactory factory;
 
   private SpannerSinkConfig testConfig() {
     return new SpannerSinkConfig(
@@ -646,7 +644,7 @@ public class SpannerDataWriterTest {
 
   @Test
   public void testFactoryReturningNullCausesFailureOnWrite() {
-    SpannerAccessorFactory nullFactory = config -> null;
+    SpannerDataWriter.SpannerAccessorFactory nullFactory = config -> null;
     SpannerDataWriter w = new SpannerDataWriter(testConfig(), nullFactory);
     assertThrows(
         NullPointerException.class,

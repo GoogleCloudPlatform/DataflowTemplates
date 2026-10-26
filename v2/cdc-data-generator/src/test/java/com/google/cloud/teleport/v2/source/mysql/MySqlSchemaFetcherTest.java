@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.mysql;
+package com.google.cloud.teleport.v2.source.mysql;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -30,8 +30,6 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher.ConnectionProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -51,7 +49,7 @@ public class MySqlSchemaFetcherTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private ConnectionProvider mockConnectionProvider;
+  @Mock private MySqlSchemaFetcher.ConnectionProvider mockConnectionProvider;
   @Mock private Connection mockConnection;
   @Mock private MySqlInformationSchemaScanner mockScanner;
 

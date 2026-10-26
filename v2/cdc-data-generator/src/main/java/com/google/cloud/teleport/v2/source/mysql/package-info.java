@@ -13,6 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-/** Spanner specific components for CDC Data Generator template. */
-package com.google.cloud.teleport.v2.templates.spanner;
+/** MySQL connector implementation and support classes for CDC Data Generator. */
+package com.google.cloud.teleport.v2.source.mysql;

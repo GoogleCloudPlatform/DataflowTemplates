@@ -26,6 +26,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.source.spanner.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
@@ -72,7 +73,15 @@ public class BatchAndWriteFnTest {
   public void testSetup_initializesDefaultWriterAndFaker() throws Exception {
     BatchAndWriteFn fn =
         new BatchAndWriteFn(
-            SinkType.SPANNER, null, 1, null, 10, 10, mock(PCollectionView.class), null, null);
+            SinkType.SPANNER,
+            new SpannerSinkConfig(),
+            1,
+            null,
+            10,
+            10,
+            mock(PCollectionView.class),
+            null,
+            null);
     fn.setup();
 
     assertNotNull(fn.getWriter());

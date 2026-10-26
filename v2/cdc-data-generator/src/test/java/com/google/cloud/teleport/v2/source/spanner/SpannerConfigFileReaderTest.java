@@ -13,13 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

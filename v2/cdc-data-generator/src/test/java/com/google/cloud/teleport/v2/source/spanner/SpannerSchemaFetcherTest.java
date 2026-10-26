@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner;
+package com.google.cloud.teleport.v2.source.spanner;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -31,8 +31,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher.DdlFetcher;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -50,7 +48,7 @@ import org.mockito.junit.MockitoRule;
 public class SpannerSchemaFetcherTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
-  @Mock private DdlFetcher mockDdlFetcher;
+  @Mock private SpannerSchemaFetcher.DdlFetcher mockDdlFetcher;
   @Mock private SpannerAccessor mockSpannerAccessor;
   @Mock private Ddl mockDdl;
 

@@ -15,16 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.dofn;
 
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.util.Map;
-import java.util.function.Supplier;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +28,6 @@ import org.slf4j.LoggerFactory;
 /** DoFn to fetch the schema from the sink. */
 public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
   private static final Logger LOG = LoggerFactory.getLogger(FetchSchemaFn.class);
-
-  private static final Map<SinkType, Supplier<SinkSchemaFetcher>> fetcherProviders =
-      ImmutableMap.of(
-          SinkType.SPANNER, SpannerSchemaFetcher::new,
-          SinkType.MYSQL, MySqlSchemaFetcher::new);
 
   private final SinkType sinkType;
   private final SinkConfig sinkConfig;
@@ -61,10 +52,6 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
   }
 
   protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
-    Supplier<SinkSchemaFetcher> provider = fetcherProviders.get(sinkType);
-    if (provider == null) {
-      throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
-    }
-    return provider.get();
+    return SourceConnectorFactory.getSourceConnector(sinkType).getSchemaFetcher();
   }
 }
